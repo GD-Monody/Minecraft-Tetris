@@ -72,6 +72,12 @@ namespace MinecraftTetris
                 _t = 0f;
         }
 
+        /// <summary>跳过开场动画，直接从暂停回到主界面时用。</summary>
+        public void SkipIntro()
+        {
+            _t = 99f;
+        }
+
         public bool AnyInputPressed()
         {
             return Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return);

@@ -44,6 +44,8 @@ namespace MinecraftTetris
             _hud = gameObject.AddComponent<Hud>();
             _hud.Loop = _loop;
             _hud.OnRestartClick = RestartGame;
+            _hud.OnResumeClick = OnResumeClick;
+            _hud.OnQuitToTitleClick = QuitToTitle;
 
             _nextPreview = gameObject.AddComponent<NextPreview>();
             _nextPreview.Init(_view);
@@ -71,6 +73,11 @@ namespace MinecraftTetris
             {
                 _title.Visible = true;
                 _title.ShowSettings = true;
+            }
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-pause") >= 0)
+            {
+                _title.Visible = false;
+                _paused = true;
             }
 
             _loop.PieceLocked += OnPieceLocked;
@@ -218,6 +225,24 @@ namespace MinecraftTetris
         {
             if (_sfx != null)
                 _sfx.Enabled = enabled;
+        }
+
+        void OnResumeClick()
+        {
+            _paused = false;
+        }
+
+        void QuitToTitle()
+        {
+            _paused = false;
+            GameSave.Save(_loop);
+            if (_particles != null)
+                _particles.Clear();
+            if (_title != null)
+            {
+                _title.Show(true);
+                _title.SkipIntro();
+            }
         }
 
         void OnPieceLocked(Piece piece)

@@ -13,6 +13,8 @@ namespace MinecraftTetris
         public bool Paused;
         public bool Hidden;
         public System.Action OnRestartClick;
+        public System.Action OnResumeClick;
+        public System.Action OnQuitToTitleClick;
 
         Font _font;
         int _best;
@@ -35,6 +37,11 @@ namespace MinecraftTetris
         GUIStyle _valueSmallShadow;
         GUIStyle _center;
         GUIStyle _centerShadow;
+        GUIStyle _pauseTitle;
+        GUIStyle _btnStyle;
+        Texture2D _btnNormal;
+        Texture2D _btnHover;
+        Texture2D _btnActive;
 
         void Awake()
         {
@@ -70,6 +77,32 @@ namespace MinecraftTetris
             _valueSmallShadow = MakeStyle(18, ShadowColor);
             _center = MakeStyle(26, ValueColor);
             _centerShadow = MakeStyle(26, ShadowColor);
+
+            _pauseTitle = MakeStyle(34, ValueColor);
+            _pauseTitle.alignment = TextAnchor.MiddleCenter;
+
+            _btnNormal = SolidTexture(new Color(0.13f, 0.15f, 0.19f, 0.96f));
+            _btnHover = SolidTexture(new Color(0.20f, 0.24f, 0.30f, 0.98f));
+            _btnActive = SolidTexture(new Color(0.10f, 0.12f, 0.15f, 0.98f));
+
+            _btnStyle = new GUIStyle(GUI.skin.button);
+            _btnStyle.fontSize = 18;
+            _btnStyle.alignment = TextAnchor.MiddleCenter;
+            _btnStyle.normal.background = _btnNormal;
+            _btnStyle.hover.background = _btnHover;
+            _btnStyle.active.background = _btnActive;
+            _btnStyle.normal.textColor = Color.white;
+            _btnStyle.hover.textColor = Color.white;
+            _btnStyle.active.textColor = new Color(0.8f, 0.85f, 0.9f, 1f);
+            _btnStyle.border = new RectOffset(0, 0, 0, 0);
+        }
+
+        static Texture2D SolidTexture(Color c)
+        {
+            var t = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+            t.SetPixel(0, 0, c);
+            t.Apply();
+            return t;
         }
 
         GUIStyle MakeStyle(int size, Color color)
@@ -109,7 +142,7 @@ namespace MinecraftTetris
             DrawNextPanel();
 
             if (Paused && !Loop.GameOver)
-                DrawCenterText("已暂停");
+                DrawPausePanel();
 
             if (Loop.GameOver)
             {
@@ -173,6 +206,42 @@ namespace MinecraftTetris
                 TypeLabel(Loop.Next), _valueSmall, _valueSmallShadow);
 
             DrawAccentLine(panel);
+        }
+
+        void DrawPausePanel()
+        {
+            GUI.color = new Color(0f, 0f, 0f, 0.55f);
+            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+
+            float w = Mathf.Clamp(Screen.width * 0.24f, 300f, 440f);
+            float h = 262f;
+            var panel = new Rect((Screen.width - w) * 0.5f, (Screen.height - h) * 0.5f, w, h);
+            DrawPanel(panel);
+
+            GUI.Label(new Rect(panel.x, panel.y + 16f, panel.width, 42f), "已暂停", _pauseTitle);
+
+            float bw = w - 80f;
+            float bx = panel.x + (panel.width - bw) * 0.5f;
+            float by = panel.y + 74f;
+
+            if (GUI.Button(new Rect(bx, by, bw, 40f), "继续游戏", _btnStyle))
+            {
+                if (OnResumeClick != null)
+                    OnResumeClick();
+            }
+            by += 52f;
+            if (GUI.Button(new Rect(bx, by, bw, 40f), "重新开始", _btnStyle))
+            {
+                if (OnRestartClick != null)
+                    OnRestartClick();
+            }
+            by += 52f;
+            if (GUI.Button(new Rect(bx, by, bw, 40f), "退出到主界面", _btnStyle))
+            {
+                if (OnQuitToTitleClick != null)
+                    OnQuitToTitleClick();
+            }
         }
 
         void DrawCenterText(string text)
