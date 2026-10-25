@@ -38,6 +38,9 @@ namespace MinecraftTetris
         GUIStyle _center;
         GUIStyle _centerShadow;
         GUIStyle _pauseTitle;
+        GUIStyle _gameOverTitle;
+        GUIStyle _gameOverTitleShadow;
+        GUIStyle _labelCenter;
         GUIStyle _btnStyle;
         Texture2D _btnNormal;
         Texture2D _btnHover;
@@ -79,6 +82,14 @@ namespace MinecraftTetris
             _centerShadow = MakeStyle(26, ShadowColor);
 
             _pauseTitle = MakeStyle(34, ValueColor);
+            _gameOverTitle = MakeStyle(40, ValueColor);
+            _gameOverTitle.alignment = TextAnchor.MiddleCenter;
+            _gameOverTitle.fontStyle = FontStyle.Bold;
+            _gameOverTitleShadow = MakeStyle(40, ShadowColor);
+            _gameOverTitleShadow.alignment = TextAnchor.MiddleCenter;
+            _gameOverTitleShadow.fontStyle = FontStyle.Bold;
+            _labelCenter = MakeStyle(16, LabelColor);
+            _labelCenter.alignment = TextAnchor.MiddleCenter;
             _pauseTitle.alignment = TextAnchor.MiddleCenter;
 
             _btnNormal = SolidTexture(new Color(0.13f, 0.15f, 0.19f, 0.96f));
@@ -145,15 +156,29 @@ namespace MinecraftTetris
                 DrawPausePanel();
 
             if (Loop.GameOver)
+                DrawGameOverPanel();
+        }
+
+        void DrawGameOverPanel()
+        {
+            GUI.color = new Color(0f, 0f, 0f, 0.55f);
+            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+
+            float w = Mathf.Clamp(Screen.width * 0.34f, 380f, 560f);
+            float h = 250f;
+            var panel = new Rect((Screen.width - w) * 0.5f, (Screen.height - h) * 0.5f, w, h);
+            DrawPanel(panel);
+
+            Text(new Rect(panel.x, panel.y + 22f, panel.width, 58f), "游戏结束", _gameOverTitle, _gameOverTitleShadow);
+            GUI.Label(new Rect(panel.x, panel.y + 90f, panel.width, 28f), "按 R 重开", _labelCenter);
+
+            float bw = Mathf.Min(w - 100f, 220f);
+            var btn = new Rect(panel.x + (panel.width - bw) * 0.5f, panel.y + 150f, bw, 46f);
+            if (GUI.Button(btn, "再来一局", _btnStyle))
             {
-                DrawCenterText("游戏结束");
-                Text(new Rect(Screen.width / 2f - 120f, Screen.height / 2f + 10f, 240f, 30f),
-                    "按 R 重开", _label, _labelShadow);
-                if (GUI.Button(new Rect(Screen.width / 2f - 65f, Screen.height / 2f + 46f, 130f, 38f), "再来一局"))
-                {
-                    if (OnRestartClick != null)
-                        OnRestartClick();
-                }
+                if (OnRestartClick != null)
+                    OnRestartClick();
             }
         }
 

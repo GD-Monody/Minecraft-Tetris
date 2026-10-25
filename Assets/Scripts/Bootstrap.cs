@@ -22,6 +22,7 @@ namespace MinecraftTetris
         ParticleBurst _particles;
         bool _paused;
         float _autoShotTimer = 6f;
+        float _forceGameOverAt = -1f;
         bool _autoShotDone;
         bool _demoMode;
         bool _demoBurst;
@@ -101,6 +102,8 @@ namespace MinecraftTetris
                 _title.Visible = false;
                 _paused = true;
             }
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-gameover") >= 0)
+                _forceGameOverAt = 1.5f;
 
             // -shotat N：把自动截图的时间点从默认 6 秒改成 N 秒（验证落定方块等需要跑够时间）
             var argv = System.Environment.GetCommandLineArgs();
@@ -127,6 +130,16 @@ namespace MinecraftTetris
 
             if (Input.GetKeyDown(KeyCode.F12))
                 CaptureShot("manual_shot.png");
+
+            if (_forceGameOverAt > 0f)
+            {
+                _forceGameOverAt -= Time.deltaTime;
+                if (_forceGameOverAt <= 0f)
+                {
+                    _loop.Score = 880;
+                    _loop.GameOver = true;
+                }
+            }
 
             // 开始界面动画分阶段截图（调试用 -title）
             if (_titleMode && _titleShotIndex < TitleShotTimes.Length && Time.time >= TitleShotTimes[_titleShotIndex])
