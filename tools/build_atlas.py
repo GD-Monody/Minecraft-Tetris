@@ -7,6 +7,7 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
 BLOCKS = ROOT / "Assets" / "Art" / "Blocks"
+OUT = ROOT / "Assets" / "Resources" / "atlas.png"
 TILE = 16
 COLS = 8
 
@@ -28,9 +29,8 @@ def main():
         atlas.paste(img, (col * TILE, row * TILE))
         mapping[f.name] = {"col": col, "row": row}
 
-    out = BLOCKS / "atlas.png"
-    atlas.save(out)
-    print("atlas: %s  %dx%d  tiles=%d  grid=%dx%d" % (out, atlas.width, atlas.height, len(files), COLS, rows))
+    atlas.save(OUT)
+    print("atlas: %s  %dx%d  tiles=%d  grid=%dx%d" % (OUT, atlas.width, atlas.height, len(files), COLS, rows))
     for name, pos in mapping.items():
         print("  %-32s col=%d row=%d" % (name, pos["col"], pos["row"]))
 

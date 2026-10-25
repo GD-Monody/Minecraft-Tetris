@@ -1,0 +1,106 @@
+using UnityEngine;
+
+namespace MinecraftTetris
+{
+    /// <summary>
+    /// 三维网格。初版只用 z = 1，但数据层按三个轴存，后面开深度不用改结构。
+    /// </summary>
+    public class Grid
+    {
+        public readonly int SizeX;
+        public readonly int SizeY;
+        public readonly int SizeZ;
+
+        // 0 表示空，>0 是方块类型索引 + 1（存 int 方便以后加方块种类）
+        readonly int[,,] _cells;
+
+        public Grid(int sizeX, int sizeY, int sizeZ)
+        {
+            SizeX = Mathf.Max(1, sizeX);
+            SizeY = Mathf.Max(1, sizeY);
+            SizeZ = Mathf.Max(1, sizeZ);
+            _cells = new int[SizeX, SizeY, SizeZ];
+        }
+
+        public bool InBounds(int x, int y, int z)
+        {
+            return x >= 0 && x < SizeX && y >= 0 && y < SizeY && z >= 0 && z < SizeZ;
+        }
+
+        public bool IsFree(int x, int y, int z)
+        {
+            return InBounds(x, y, z) && _cells[x, y, z] == 0;
+        }
+
+        public int Get(int x, int y, int z)
+        {
+            return _cells[x, y, z];
+        }
+
+        public void Set(int x, int y, int z, int block)
+        {
+            _cells[x, y, z] = block;
+        }
+
+        public void Clear()
+        {
+            System.Array.Clear(_cells, 0, _cells.Length);
+        }
+
+        /// <summary>
+        /// 检测并消除满行。z = 1 时一层就是一行，直接按层处理；
+        /// 以后 z > 1 时，行消要改成按 (y, z) 逐行检查。
+        /// </summary>
+        public int ClearFullLines()
+        {
+            int cleared = 0;
+            for (int y = 0; y < SizeY; y++)
+            {
+                while (IsLayerFull(y))
+                {
+                    DropLayerAbove(y);
+                    cleared++;
+                }
+            }
+            return cleared;
+        }
+
+        /// <summary>
+        /// 层消：整个 x × z 平面填满。阶段 2 用。
+        /// </summary>
+        public int ClearFullLayers()
+        {
+            int cleared = 0;
+            for (int y = 0; y < SizeY; y++)
+            {
+                while (IsLayerFull(y))
+                {
+                    DropLayerAbove(y);
+                    cleared++;
+                }
+            }
+            return cleared;
+        }
+
+        bool IsLayerFull(int y)
+        {
+            for (int x = 0; x < SizeX; x++)
+                for (int z = 0; z < SizeZ; z++)
+                    if (_cells[x, y, z] == 0)
+                        return false;
+            return true;
+        }
+
+        void DropLayerAbove(int y)
+        {
+            for (int yy = y; yy < SizeY - 1; yy++)
+                for (int x = 0; x < SizeX; x++)
+                    for (int z = 0; z < SizeZ; z++)
+                        _cells[x, yy, z] = _cells[x, yy + 1, z];
+
+            for (int x = 0; x < SizeX; x++)
+                for (int z = 0; z < SizeZ; z++)
+                    _cells[x, SizeY - 1, z] = 0;
+        }
+    }
+}

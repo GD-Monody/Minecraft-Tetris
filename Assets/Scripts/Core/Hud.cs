@@ -1,0 +1,39 @@
+using UnityEngine;
+
+namespace MinecraftTetris
+{
+    /// <summary>v0.1 用 OnGUI 显示分数/消除/下一个和结束界面，后面换正式 UI。</summary>
+    public class Hud : MonoBehaviour
+    {
+        public GameLoop Loop;
+        public bool Paused;
+
+        Font _font;
+
+        void Awake()
+        {
+            _font = Font.CreateDynamicFontFromOSFont(
+                new[] { "Microsoft YaHei", "SimHei", "Arial" }, 20);
+        }
+
+        void OnGUI()
+        {
+            if (_font != null)
+                GUI.skin.font = _font;
+
+            GUI.Label(new Rect(20, 16, 320, 28), "分数: " + Loop.Score);
+            GUI.Label(new Rect(20, 46, 320, 28), "消除行/层: " + Loop.LinesCleared);
+            GUI.Label(new Rect(20, 76, 320, 28), "下一个: " + Loop.Next);
+
+            if (Paused && !Loop.GameOver)
+                GUI.Label(new Rect(Screen.width / 2f - 40, Screen.height / 2f - 20, 120, 40), "已暂停");
+
+            if (Loop.GameOver)
+            {
+                GUI.Label(new Rect(Screen.width / 2f - 80, Screen.height / 2f - 40, 240, 40), "游戏结束");
+                if (GUI.Button(new Rect(Screen.width / 2f - 60, Screen.height / 2f + 10, 120, 36), "再来一局"))
+                    Loop.Restart();
+            }
+        }
+    }
+}

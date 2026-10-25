@@ -1,0 +1,129 @@
+using UnityEngine;
+
+namespace MinecraftTetris
+{
+    /// <summary>
+    /// 场景里唯一的入口：建逻辑、建视图、接相机。
+    /// 字段是 Inspector 里可调的场地尺寸。
+    /// </summary>
+    public class Bootstrap : MonoBehaviour
+    {
+        public int SizeX = 10;
+        public int SizeY = 20;
+        public int SizeZ = 1;
+
+        GameLoop _loop;
+        GridView _view;
+        KeyboardInput _input;
+        SfxPlayer _sfx;
+        Hud _hud;
+        bool _paused;
+        float _autoShotTimer = 6f;
+        bool _autoShotDone;
+
+        void Start()
+        {
+            _loop = new GameLoop(SizeX, SizeY, SizeZ, (int)System.DateTime.Now.Ticks);
+
+            _view = gameObject.AddComponent<GridView>();
+            _view.Setup(_loop.Grid);
+
+            _input = gameObject.AddComponent<KeyboardInput>();
+            _sfx = gameObject.AddComponent<SfxPlayer>();
+
+            _hud = gameObject.AddComponent<Hud>();
+            _hud.Loop = _loop;
+
+            _loop.PieceLocked += OnPieceLocked;
+            _loop.LinesClearedEvent += OnLinesCleared;
+            _loop.Spawned += OnSpawned;
+
+            _view.RefreshAll();
+            _view.RefreshPiece(_loop.Current);
+
+            SetupScene();
+        }
+
+        void Update()
+        {
+            if (_loop == null)
+                return;
+
+            if (Input.GetKeyDown(KeyCode.F12))
+                CaptureShot("manual_shot.png");
+
+            if (!_autoShotDone)
+            {
+                _autoShotTimer -= Time.deltaTime;
+                if (_autoShotTimer <= 0f)
+                {
+                    _autoShotDone = true;
+                    CaptureShot("auto_shot.png");
+                }
+            }
+
+            if (Input.GetKeyDown(KeyCode.Escape))
+                _paused = !_paused;
+
+            if (_hud != null)
+                _hud.Paused = _paused;
+
+            if (_paused || _loop.GameOver)
+                return;
+
+            _loop.Tick(Time.deltaTime, _input.Read());
+            _view.RefreshPiece(_loop.Current);
+        }
+
+        void CaptureShot(string fileName)
+        {
+            string path = System.IO.Path.Combine(Application.persistentDataPath, fileName);
+            ScreenCapture.CaptureScreenshot(path);
+            Debug.Log("[MinecraftTetris] 截图: " + path);
+        }
+
+        void OnPieceLocked(Piece piece)
+        {
+            _sfx.PlayPlace(BlockCatalog.For(piece.Type));
+            for (int i = 0; i < piece.Cells.Length; i++)
+            {
+                Vector3Int c = piece.WorldCell(i);
+                _view.SetCell(c.x, c.y, c.z, (int)piece.Type + 1);
+            }
+        }
+
+        void OnLinesCleared(int lines)
+        {
+            _sfx.PlayClear(lines);
+            _view.RefreshAll();
+        }
+
+        void OnSpawned()
+        {
+            _view.RefreshPiece(_loop.Current);
+        }
+
+        void SetupScene()
+        {
+            Vector3 center = new Vector3((SizeX - 1) / 2f, (SizeY - 1) / 2f, (SizeZ - 1) / 2f);
+
+            Camera cam = Camera.main;
+            if (cam == null)
+            {
+                var camGo = new GameObject("Main Camera");
+                camGo.tag = "MainCamera";
+                cam = camGo.AddComponent<Camera>();
+            }
+
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = new Color(0.08f, 0.09f, 0.12f);
+
+            CameraRig rig = cam.GetComponent<CameraRig>();
+            if (rig == null)
+                rig = cam.gameObject.AddComponent<CameraRig>();
+
+            rig.Target = center;
+            rig.Distance = SizeY * 1.05f;
+        }
+    }
+}
