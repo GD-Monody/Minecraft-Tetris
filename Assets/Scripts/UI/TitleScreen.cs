@@ -406,7 +406,7 @@ namespace MinecraftTetris
 
             if (_capturingAction >= 0)
             {
-                GUI.Label(new Rect(panel.x, panel.y + h - 96f, w, 24f), "按 Esc 取消", _rowLabelStyle);
+                GUI.Label(new Rect(panel.x, panel.y + h - 96f, w, 30f), "按 Esc 取消", _rowLabelStyle);
             }
 
             float bottomY = panel.y + h - 62f;
@@ -618,7 +618,7 @@ namespace MinecraftTetris
             const float itemH = 38f;
             const float itemGap = 6f;
 
-            GUI.Label(new Rect(listX, listY - 26f, 280f, 24f), "模具列表（点一下选中编辑）", _rowLabelStyle);
+            GUI.Label(new Rect(listX, listY - 30f, 280f, 30f), "模具列表（点一下选中编辑）", _rowLabelStyle);
 
             int count = MoldData.Items.Count;
             for (int i = 0; i < count && i < 7; i++)
@@ -636,14 +636,14 @@ namespace MinecraftTetris
             }
 
             if (count > 7)
-                GUI.Label(new Rect(listX, listY + 7 * (itemH + itemGap), 260f, 22f), "（只显示前 7 个）", _rowLabelStyle);
+                GUI.Label(new Rect(listX, listY + 7 * (itemH + itemGap), 260f, 30f), "（只显示前 7 个）", _rowLabelStyle);
 
             // 右边的 5x5 画布
             const float cell = 46f;
             float gridX = panel.x + 348f;
             float gridY = panel.y + 96f;
 
-            GUI.Label(new Rect(gridX, gridY - 26f, 300f, 24f), "点格子摆形状（再点一次取消）", _rowLabelStyle);
+            GUI.Label(new Rect(gridX, gridY - 30f, 300f, 30f), "点格子摆形状（再点一次取消）", _rowLabelStyle);
 
             for (int row = 0; row < MoldData.Size; row++)
             {
@@ -715,7 +715,7 @@ namespace MinecraftTetris
             if (_renaming)
             {
                 float ry = by - 46f;
-                GUI.Label(new Rect(bx, ry + 6f, 56f, 26f), "名字", _rowLabelStyle);
+                GUI.Label(new Rect(bx, ry + 2f, 56f, 30f), "名字", _rowLabelStyle);
                 _renameText = GUI.TextField(new Rect(bx + 58f, ry, 300f, 32f), _renameText, 16, _btnStyle);
                 if (GUI.Button(new Rect(bx + 370f, ry, 70f, 32f), "确定", _btnStyle))
                 {
@@ -727,7 +727,7 @@ namespace MinecraftTetris
                     _renaming = false;
             }
 
-            GUI.Label(new Rect(panel.x + 40f, by + bh2 + 22f, 520f, 24f),
+            GUI.Label(new Rect(panel.x + 40f, by + bh2 + 20f, 520f, 30f),
                 "启用的模具会和 7 种默认方块一起随机出现", _rowLabelStyle);
 
             if (GUI.Button(new Rect(panel.x + w - 170f, by + bh2 + 22f, 130f, bh2), "返回", _btnStyle))
