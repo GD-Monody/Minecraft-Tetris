@@ -91,15 +91,15 @@ namespace MinecraftTetris
                 new Vector3(Half, -Half, Half),
                 new Vector3(-Half, -Half, Half));
 
-            // 北（+z）
-            Quad(verts, uvs, tris, def.North,
+            // 南（+z，背对相机）
+            Quad(verts, uvs, tris, def.South,
                 new Vector3(-Half, -Half, Half),
                 new Vector3(Half, -Half, Half),
                 new Vector3(Half, Half, Half),
                 new Vector3(-Half, Half, Half));
 
-            // 南（-z）
-            Quad(verts, uvs, tris, def.South,
+            // 北（-z，朝向相机）：MC 里 north 就是 -Z，熔炉的炉口就画在这一面
+            Quad(verts, uvs, tris, def.North,
                 new Vector3(Half, -Half, -Half),
                 new Vector3(-Half, -Half, -Half),
                 new Vector3(-Half, Half, -Half),
