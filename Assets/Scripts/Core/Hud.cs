@@ -7,6 +7,7 @@ namespace MinecraftTetris
     {
         public GameLoop Loop;
         public bool Paused;
+        public System.Action OnRestartClick;
 
         Font _font;
         int _best;
@@ -43,7 +44,10 @@ namespace MinecraftTetris
                 GUI.Label(new Rect(Screen.width / 2f - 80, Screen.height / 2f - 40, 240, 40), "游戏结束");
                 GUI.Label(new Rect(Screen.width / 2f - 80, Screen.height / 2f + 6, 240, 28), "按 R 重开");
                 if (GUI.Button(new Rect(Screen.width / 2f - 60, Screen.height / 2f + 42, 120, 36), "再来一局"))
-                    Loop.Restart();
+                {
+                    if (OnRestartClick != null)
+                        OnRestartClick();
+                }
             }
         }
     }

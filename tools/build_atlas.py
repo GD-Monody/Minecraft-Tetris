@@ -15,6 +15,23 @@ PAD = 1
 CELL = TILE + PAD * 2
 COLS = 8
 
+# MC 原版里草方块顶面是一张灰度 tint 遮罩，进游戏后才按生物群系乘颜色。
+# 我们不用光照也不分群系，直接把平原草色乘进去，否则顶面看起来就是灰色的石头。
+TINT = {
+    "grass_block_top": (145, 189, 89),      # #91BD59 平原草色
+    "grass_block_side_overlay": (145, 189, 89),
+}
+
+
+def apply_tint(img, tint):
+    """把灰度贴图乘上 tint 色。tint 为 None 时原样返回。"""
+    if tint is None:
+        return img
+    arr = np.array(img).astype(np.float32)
+    scale = np.array(tint, dtype=np.float32) / 255.0
+    arr[:, :, :3] = np.clip(arr[:, :, :3] * scale, 0, 255)
+    return Image.fromarray(arr.astype(np.uint8))
+
 
 def main():
     files = sorted(p for p in BLOCKS.glob("*.png") if p.name != "atlas.png")
@@ -29,6 +46,7 @@ def main():
         img = Image.open(f).convert("RGBA")
         if img.size != (TILE, TILE):
             img = img.resize((TILE, TILE), Image.NEAREST)
+        img = apply_tint(img, TINT.get(f.stem))
         arr = np.array(img)
         arr = np.pad(arr, ((PAD, PAD), (PAD, PAD), (0, 0)), mode="edge")
         padded = Image.fromarray(arr)

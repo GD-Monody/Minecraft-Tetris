@@ -33,6 +33,7 @@ namespace MinecraftTetris
 
             _hud = gameObject.AddComponent<Hud>();
             _hud.Loop = _loop;
+            _hud.OnRestartClick = RestartGame;
 
             _loop.PieceLocked += OnPieceLocked;
             _loop.LinesClearedEvent += OnLinesCleared;
@@ -71,10 +72,7 @@ namespace MinecraftTetris
             if (_loop.GameOver)
             {
                 if (Input.GetKeyDown(KeyCode.R))
-                {
-                    _loop.Restart();
-                    _view.RefreshAll();
-                }
+                    RestartGame();
                 return;
             }
 
@@ -90,6 +88,13 @@ namespace MinecraftTetris
             string path = System.IO.Path.Combine(Application.persistentDataPath, fileName);
             ScreenCapture.CaptureScreenshot(path);
             Debug.Log("[MinecraftTetris] 截图: " + path);
+        }
+
+        void RestartGame()
+        {
+            _loop.Restart();
+            _view.RefreshAll();
+            _view.RefreshPiece(_loop.Current);
         }
 
         void OnPieceLocked(Piece piece)
