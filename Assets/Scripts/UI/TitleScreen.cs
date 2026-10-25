@@ -15,7 +15,8 @@ namespace MinecraftTetris
         [Serializable]
         class TitleMeta { public CharMeta[] chars; }
 
-        public bool Visible;
+        /// <summary>正常启动默认显示；-auto 等调试参数会在 Bootstrap 里覆盖。</summary>
+        public bool Visible = true;
         public bool ShowSettings;
         public bool HasContinue;
 
