@@ -17,6 +17,7 @@ namespace MinecraftTetris
         KeyboardInput _input;
         SfxPlayer _sfx;
         Hud _hud;
+        TitleScreen _title;
         bool _paused;
         float _autoShotTimer = 6f;
         bool _autoShotDone;
@@ -34,6 +35,8 @@ namespace MinecraftTetris
             _hud = gameObject.AddComponent<Hud>();
             _hud.Loop = _loop;
             _hud.OnRestartClick = RestartGame;
+
+            _title = gameObject.AddComponent<TitleScreen>();
 
             _loop.PieceLocked += OnPieceLocked;
             _loop.LinesClearedEvent += OnLinesCleared;
@@ -62,6 +65,22 @@ namespace MinecraftTetris
                     CaptureShot("auto_shot.png");
                 }
             }
+
+            if (_title != null && _title.Visible)
+            {
+                if (_title.AnyInputPressed())
+                {
+                    _title.Visible = false;
+                }
+                else
+                {
+                    if (_hud != null)
+                        _hud.Hidden = true;
+                    return;
+                }
+            }
+            if (_hud != null)
+                _hud.Hidden = false;
 
             if (Input.GetKeyDown(KeyCode.Escape))
                 _paused = !_paused;

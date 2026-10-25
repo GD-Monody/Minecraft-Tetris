@@ -7,6 +7,7 @@ namespace MinecraftTetris
     {
         public GameLoop Loop;
         public bool Paused;
+        public bool Hidden;
         public System.Action OnRestartClick;
 
         Font _font;
@@ -21,6 +22,9 @@ namespace MinecraftTetris
 
         void OnGUI()
         {
+            if (Hidden)
+                return;
+
             if (_font != null)
                 GUI.skin.font = _font;
 
