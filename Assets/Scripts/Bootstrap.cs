@@ -38,6 +38,10 @@ namespace MinecraftTetris
 
             _title = gameObject.AddComponent<TitleScreen>();
 
+            // 命令行带 -auto 时跳过开始界面，方便自动化截图与调试
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-auto") >= 0)
+                _title.Visible = false;
+
             _loop.PieceLocked += OnPieceLocked;
             _loop.LinesClearedEvent += OnLinesCleared;
             _loop.Spawned += OnSpawned;
@@ -122,7 +126,7 @@ namespace MinecraftTetris
             for (int i = 0; i < piece.Cells.Length; i++)
             {
                 Vector3Int c = piece.WorldCell(i);
-                _view.SetCell(c.x, c.y, c.z, (int)piece.Type + 1);
+                _view.SetCell(c.x, c.y, c.z, piece.BlockId);
             }
         }
 
