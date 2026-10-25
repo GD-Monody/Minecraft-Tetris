@@ -18,7 +18,7 @@ namespace MinecraftTetris
 
     /// <summary>
     /// 默认键位（可被 PlayerPrefs 里的 keybind.N 覆盖）：
-    /// A/← 左，D/→ 右，W/↑ 后，S/↓ 前，左Shift 软降，空格 硬降，Q 逆时针，E 顺时针。
+    /// A/← 左，D/→ 右，S/↓ 前（z 减小），W/↑ 后（z 增大），左Shift 软降，空格 硬降，Q 逆时针，E 顺时针。
     /// </summary>
     public class KeyboardInput : MonoBehaviour
     {
@@ -26,8 +26,8 @@ namespace MinecraftTetris
         {
             new[] { KeyCode.A, KeyCode.LeftArrow },
             new[] { KeyCode.D, KeyCode.RightArrow },
-            new[] { KeyCode.W, KeyCode.UpArrow },
             new[] { KeyCode.S, KeyCode.DownArrow },
+            new[] { KeyCode.W, KeyCode.UpArrow },
             new[] { KeyCode.LeftShift },
             new[] { KeyCode.Space },
             new[] { KeyCode.E },
