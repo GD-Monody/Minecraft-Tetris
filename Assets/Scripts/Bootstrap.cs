@@ -68,7 +68,17 @@ namespace MinecraftTetris
             if (_hud != null)
                 _hud.Paused = _paused;
 
-            if (_paused || _loop.GameOver)
+            if (_loop.GameOver)
+            {
+                if (Input.GetKeyDown(KeyCode.R))
+                {
+                    _loop.Restart();
+                    _view.RefreshAll();
+                }
+                return;
+            }
+
+            if (_paused)
                 return;
 
             _loop.Tick(Time.deltaTime, _input.Read());
@@ -105,6 +115,11 @@ namespace MinecraftTetris
 
         void SetupScene()
         {
+            BorderRenderer border = gameObject.GetComponent<BorderRenderer>();
+            if (border == null)
+                border = gameObject.AddComponent<BorderRenderer>();
+            border.Build(SizeX, SizeY, SizeZ);
+
             Vector3 center = new Vector3((SizeX - 1) / 2f, (SizeY - 1) / 2f, (SizeZ - 1) / 2f);
 
             Camera cam = Camera.main;

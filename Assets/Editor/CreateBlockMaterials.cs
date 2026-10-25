@@ -21,6 +21,7 @@ namespace MinecraftTetris.EditorTools
 
             CreateMaterial("Assets/Resources/BlockMat.mat", "MinecraftTetris/Atlas", atlas);
             CreateMaterial("Assets/Resources/BlockTransparentMat.mat", "MinecraftTetris/AtlasTransparent", atlas);
+            CreateSolidMaterial("Assets/Resources/BorderMat.mat", "Unlit/Color", new Color(0.20f, 0.21f, 0.24f));
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -39,6 +40,29 @@ namespace MinecraftTetris.EditorTools
 
             var mat = new Material(shader);
             mat.mainTexture = texture;
+            AssetDatabase.CreateAsset(mat, path);
+        }
+
+        static void CreateSolidMaterial(string path, string shaderName, Color color)
+        {
+            Shader shader = Shader.Find(shaderName);
+            if (shader == null)
+            {
+                Debug.LogError("[MinecraftTetris] 找不到 shader: " + shaderName);
+                return;
+            }
+
+            Material existing = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (existing != null)
+            {
+                existing.shader = shader;
+                existing.color = color;
+                EditorUtility.SetDirty(existing);
+                return;
+            }
+
+            var mat = new Material(shader);
+            mat.color = color;
             AssetDatabase.CreateAsset(mat, path);
         }
     }

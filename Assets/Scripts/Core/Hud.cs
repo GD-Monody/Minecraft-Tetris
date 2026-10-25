@@ -9,11 +9,13 @@ namespace MinecraftTetris
         public bool Paused;
 
         Font _font;
+        int _best;
 
         void Awake()
         {
             _font = Font.CreateDynamicFontFromOSFont(
                 new[] { "Microsoft YaHei", "SimHei", "Arial" }, 20);
+            _best = PlayerPrefs.GetInt("best_score", 0);
         }
 
         void OnGUI()
@@ -25,13 +27,22 @@ namespace MinecraftTetris
             GUI.Label(new Rect(20, 46, 320, 28), "消除行/层: " + Loop.LinesCleared);
             GUI.Label(new Rect(20, 76, 320, 28), "下一个: " + Loop.Next);
 
+            if (Loop.Score > _best)
+            {
+                _best = Loop.Score;
+                PlayerPrefs.SetInt("best_score", _best);
+                PlayerPrefs.Save();
+            }
+            GUI.Label(new Rect(20, 106, 320, 28), "最高分: " + _best);
+
             if (Paused && !Loop.GameOver)
                 GUI.Label(new Rect(Screen.width / 2f - 40, Screen.height / 2f - 20, 120, 40), "已暂停");
 
             if (Loop.GameOver)
             {
                 GUI.Label(new Rect(Screen.width / 2f - 80, Screen.height / 2f - 40, 240, 40), "游戏结束");
-                if (GUI.Button(new Rect(Screen.width / 2f - 60, Screen.height / 2f + 10, 120, 36), "再来一局"))
+                GUI.Label(new Rect(Screen.width / 2f - 80, Screen.height / 2f + 6, 240, 28), "按 R 重开");
+                if (GUI.Button(new Rect(Screen.width / 2f - 60, Screen.height / 2f + 42, 120, 36), "再来一局"))
                     Loop.Restart();
             }
         }
