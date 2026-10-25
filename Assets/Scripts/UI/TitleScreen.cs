@@ -17,6 +17,18 @@ namespace MinecraftTetris
 
         enum SettingsPage { Main, Keys, Size, Workshop }
 
+        struct Mote
+        {
+            public float x, y;      // 归一化坐标 0..1
+            public float vx, vy;    // 每秒归一化位移
+            public float size;      // 像素（按屏高缩放前）
+            public float phase;
+            public float speed;
+        }
+
+        Mote[] _motes;
+        float _moteT;
+
         public bool Visible = true;
         public bool ShowSettings;
         public bool HasContinue;
@@ -161,6 +173,8 @@ namespace MinecraftTetris
             }
 
             DrawRect(new Rect(0f, 0f, Screen.width, Screen.height), new Color(0f, 0f, 0f, 0.55f));
+
+            DrawPortalMotes();
 
             DrawMadeWith();
             DrawTitle();
@@ -772,6 +786,67 @@ namespace MinecraftTetris
             t.SetPixel(0, 0, c);
             t.Apply();
             return t;
+        }
+
+        void InitMotes()
+        {
+            if (_motes != null)
+                return;
+
+            int count = 170;
+            _motes = new Mote[count];
+            var rnd = new System.Random(20221025);
+            for (int i = 0; i < count; i++)
+            {
+                _motes[i] = new Mote
+                {
+                    x = (float)rnd.NextDouble(),
+                    y = (float)rnd.NextDouble(),
+                    vx = ((float)rnd.NextDouble() - 0.5f) * 0.016f,
+                    vy = -0.008f - (float)rnd.NextDouble() * 0.030f,
+                    size = 1f + (float)rnd.NextDouble() * 2.4f,
+                    phase = (float)rnd.NextDouble() * 6.2831853f,
+                    speed = 0.5f + (float)rnd.NextDouble() * 1.3f
+                };
+            }
+        }
+
+        void DrawPortalMotes()
+        {
+            InitMotes();
+
+            float dt = Mathf.Min(Time.deltaTime, 0.05f);
+            _moteT += dt;
+
+            float w = Screen.width;
+            float h = Screen.height;
+            float scale = Mathf.Max(1f, h / 900f);
+
+            for (int i = 0; i < _motes.Length; i++)
+            {
+                Mote m = _motes[i];
+                m.x += m.vx * dt;
+                m.y += m.vy * dt;
+
+                if (m.x < -0.02f) { m.x = 1.02f; }
+                else if (m.x > 1.02f) { m.x = -0.02f; }
+                if (m.y < -0.02f) { m.y = 1.02f; }
+                else if (m.y > 1.02f) { m.y = -0.02f; }
+
+                _motes[i] = m;
+
+                float breathe = 0.5f + 0.5f * Mathf.Sin(_moteT * m.speed + m.phase);
+                float a = 0.16f + 0.62f * breathe;
+                Color c = (i % 9 == 0)
+                    ? new Color(0.58f, 0.40f, 0.95f, a * 0.85f)
+                    : new Color(0.76f, 0.93f, 1f, a);
+
+                float sz = m.size * scale * (0.85f + 0.35f * breathe);
+                GUI.color = c;
+                GUI.DrawTexture(new Rect(m.x * w, m.y * h, sz, sz), Texture2D.whiteTexture);
+            }
+
+            GUI.color = Color.white;
         }
 
         static void DrawRect(Rect r, Color c)
