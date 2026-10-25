@@ -121,24 +121,55 @@ namespace MinecraftTetris
                 return;
             }
 
+            int n = piece.Cells.Length;
+            EnsurePieceCapacity(n);
+
             int idx = piece.BlockId - 1;
             if (idx < 0 || idx >= _meshes.Length)
                 idx = 0;
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < _pieceCells.Length; i++)
             {
                 GameObject go = _pieceCells[i];
                 if (go == null) continue;
-                go.SetActive(true);
-                go.transform.position = piece.WorldCell(i);
-                go.GetComponent<MeshFilter>().sharedMesh = _meshes[idx];
-                go.GetComponent<MeshRenderer>().sharedMaterial = _materials[idx];
+                if (i < n)
+                {
+                    go.SetActive(true);
+                    go.transform.position = piece.WorldCell(i);
+                    go.GetComponent<MeshFilter>().sharedMesh = _meshes[idx];
+                    go.GetComponent<MeshRenderer>().sharedMaterial = _materials[idx];
+                }
+                else
+                {
+                    go.SetActive(false);
+                }
             }
         }
 
         void HidePiece()
         {
+            if (_pieceCells == null)
+                return;
             for (int i = 0; i < _pieceCells.Length; i++)
-                _pieceCells[i].SetActive(false);
+                if (_pieceCells[i] != null)
+                    _pieceCells[i].SetActive(false);
+        }
+
+        void EnsurePieceCapacity(int n)
+        {
+            if (_pieceCells != null && _pieceCells.Length >= n)
+                return;
+
+            int oldCount = _pieceCells == null ? 0 : _pieceCells.Length;
+            var grown = new GameObject[Mathf.Max(n, oldCount + 4)];
+            for (int i = 0; i < oldCount; i++)
+                grown[i] = _pieceCells[i];
+            for (int i = oldCount; i < grown.Length; i++)
+            {
+                grown[i] = NewCubeObject("PieceCell" + i);
+                grown[i].transform.SetParent(_pieceRoot, false);
+                grown[i].SetActive(false);
+            }
+            _pieceCells = grown;
         }
 
         GameObject NewCubeObject(string name)

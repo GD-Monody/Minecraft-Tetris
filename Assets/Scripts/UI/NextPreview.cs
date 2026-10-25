@@ -15,8 +15,8 @@ namespace MinecraftTetris
         RenderTexture _rt;
         Transform _root;
         GridView _view;
-        readonly MeshFilter[] _filters = new MeshFilter[12];
-        readonly MeshRenderer[] _renderers = new MeshRenderer[12];
+        readonly MeshFilter[] _filters = new MeshFilter[25];
+        readonly MeshRenderer[] _renderers = new MeshRenderer[25];
 
         public Texture Texture
         {
