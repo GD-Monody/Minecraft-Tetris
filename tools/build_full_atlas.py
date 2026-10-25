@@ -48,7 +48,13 @@ def main():
             continue
         im = Image.open(io.BytesIO(z.read(path))).convert("RGBA")
         if im.size != (16, 16):
-            im = im.resize((16, 16), Image.NEAREST)
+            # 动画贴图是 16 x (16*帧数) 的竖排帧（命令方块、海晶石、绯红菌柄这些）。
+            # 直接把整张压成 16x16 会把所有帧叠在一起，看起来就是「图案重复好几份」。
+            # 所以只取第一帧。
+            if im.width == 16 and im.height % 16 == 0:
+                im = im.crop((0, 0, 16, 16))
+            else:
+                im = im.resize((16, 16), Image.NEAREST)
         arr = np.array(im)
         arr = np.pad(arr, ((PAD, PAD), (PAD, PAD), (0, 0)), mode="edge")
         atlas.paste(Image.fromarray(arr), ((i % COLS) * CELL, (i // COLS) * CELL))
