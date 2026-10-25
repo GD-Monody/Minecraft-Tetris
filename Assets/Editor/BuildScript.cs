@@ -11,6 +11,9 @@ namespace MinecraftTetris.EditorTools
         [MenuItem("MinecraftTetris/构建 Windows 版")]
         public static void BuildWindows()
         {
+            SetupPlayer();
+            SetupTextures();
+
             string outDir = "Build";
             if (!Directory.Exists(outDir))
                 Directory.CreateDirectory(outDir);
@@ -31,6 +34,39 @@ namespace MinecraftTetris.EditorTools
                       + " 错误: " + summary.totalErrors);
 
             EditorApplication.Exit(summary.result == BuildResult.Succeeded ? 0 : 1);
+        }
+
+        /// <summary>窗口模式 + 可缩放 + 标准窗口按钮。</summary>
+        static void SetupPlayer()
+        {
+            PlayerSettings.fullScreenMode = FullScreenMode.Windowed;
+            PlayerSettings.resizableWindow = true;
+            PlayerSettings.defaultScreenWidth = 1280;
+            PlayerSettings.defaultScreenHeight = 800;
+            PlayerSettings.runInBackground = true;
+            PlayerSettings.companyName = "MinecraftTetris";
+            PlayerSettings.productName = "MinecraftTetris";
+        }
+
+        /// <summary>像素风必须用 Point 过滤、不压缩、无 mipmap，否则 16×16 贴图会被拉糊。</summary>
+        static void SetupTextures()
+        {
+            string atlas = "Assets/Resources/atlas.png";
+            var importer = AssetImporter.GetAtPath(atlas) as TextureImporter;
+            if (importer != null)
+            {
+                importer.filterMode = FilterMode.Point;
+                importer.textureCompression = TextureImporterCompression.Uncompressed;
+                importer.mipmapEnabled = false;
+                importer.alphaIsTransparency = true;
+                importer.wrapMode = TextureWrapMode.Clamp;
+                importer.SaveAndReimport();
+                Debug.Log("[MinecraftTetris] 图集导入设置: Point / 不压缩 / 无 mipmap");
+            }
+            else
+            {
+                Debug.LogWarning("[MinecraftTetris] 没找到 " + atlas);
+            }
         }
     }
 }
