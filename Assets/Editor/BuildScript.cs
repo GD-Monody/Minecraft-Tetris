@@ -41,8 +41,8 @@ namespace MinecraftTetris.EditorTools
         {
             PlayerSettings.fullScreenMode = FullScreenMode.Windowed;
             PlayerSettings.resizableWindow = true;
-            PlayerSettings.defaultScreenWidth = 1280;
-            PlayerSettings.defaultScreenHeight = 800;
+            PlayerSettings.defaultScreenWidth = 1440;
+            PlayerSettings.defaultScreenHeight = 900;
             PlayerSettings.runInBackground = true;
             PlayerSettings.companyName = "MinecraftTetris";
             PlayerSettings.productName = "MinecraftTetris";
@@ -60,6 +60,9 @@ namespace MinecraftTetris.EditorTools
                 importer.mipmapEnabled = false;
                 importer.alphaIsTransparency = true;
                 importer.wrapMode = TextureWrapMode.Clamp;
+                // 图集尺寸不是 2 的幂（144×126），Unity 默认会把它缩成 128×128，
+                // 而 UV 是按 144×126 算的，一缩放就整体错位、边缘串到相邻格子。
+                importer.npotScale = TextureImporterNPOTScale.None;
                 importer.SaveAndReimport();
                 Debug.Log("[MinecraftTetris] 图集导入设置: Point / 不压缩 / 无 mipmap");
             }

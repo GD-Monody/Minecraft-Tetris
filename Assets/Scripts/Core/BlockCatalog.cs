@@ -45,6 +45,8 @@ namespace MinecraftTetris
         public const int AtlasColumns = 8;
         public const int AtlasRows = 7;
         public const int TilePixels = 16;
+        public const int TilePadding = 1;
+        public const int CellPixels = TilePixels + TilePadding * 2;
 
         static readonly Dictionary<string, Tile> Tiles = new Dictionary<string, Tile>
         {
