@@ -236,6 +236,94 @@ namespace MinecraftTetris
             }
         }
 
+        /// <summary>存档用的可序列化快照。</summary>
+        [System.Serializable]
+        public class SaveData
+        {
+            public int[] cells;
+            public int score;
+            public int lines;
+            public int nextType;
+            public int nextBlockId;
+            public int curType;
+            public int curBlockId;
+            public int ox, oy, oz;
+            public int[] curCellsX;
+            public int[] curCellsY;
+            public float fallTimer;
+        }
+
+        public string SerializeState()
+        {
+            var d = new SaveData
+            {
+                cells = Grid.Export(),
+                score = Score,
+                lines = LinesCleared,
+                nextType = (int)Next,
+                nextBlockId = NextBlockId,
+                curType = Current != null ? (int)Current.Type : -1,
+                curBlockId = Current != null ? Current.BlockId : 0,
+                ox = Current != null ? Current.OriginX : 0,
+                oy = Current != null ? Current.OriginY : 0,
+                oz = Current != null ? Current.OriginZ : 0,
+                fallTimer = _fallTimer,
+            };
+
+            if (Current != null)
+            {
+                d.curCellsX = new int[Current.Cells.Length];
+                d.curCellsY = new int[Current.Cells.Length];
+                for (int i = 0; i < Current.Cells.Length; i++)
+                {
+                    d.curCellsX[i] = Current.Cells[i].x;
+                    d.curCellsY[i] = Current.Cells[i].y;
+                }
+            }
+
+            return JsonUtility.ToJson(d);
+        }
+
+        public bool RestoreState(string json)
+        {
+            SaveData d;
+            try
+            {
+                d = JsonUtility.FromJson<SaveData>(json);
+            }
+            catch
+            {
+                return false;
+            }
+
+            if (d == null || d.cells == null || d.cells.Length != Grid.SizeX * Grid.SizeY * Grid.SizeZ)
+                return false;
+
+            Grid.Import(d.cells);
+            Score = d.score;
+            LinesCleared = d.lines;
+            GameOver = false;
+            Next = (PieceType)Mathf.Clamp(d.nextType, 0, 6);
+            NextBlockId = d.nextBlockId <= 0 ? RandomBlockId() : d.nextBlockId;
+
+            if (d.curType >= 0 && d.curType <= 6)
+            {
+                Current = new Piece((PieceType)d.curType, d.curBlockId, d.ox, d.oy, d.oz);
+                if (d.curCellsX != null && d.curCellsY != null && d.curCellsX.Length == Current.Cells.Length)
+                {
+                    for (int i = 0; i < Current.Cells.Length; i++)
+                        Current.Cells[i] = new Vector2Int(d.curCellsX[i], d.curCellsY[i]);
+                }
+            }
+            else
+            {
+                Current = null;
+            }
+
+            _fallTimer = d.fallTimer;
+            return true;
+        }
+
         public void Restart()
         {
             Grid.Clear();

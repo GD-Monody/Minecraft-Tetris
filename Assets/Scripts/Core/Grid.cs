@@ -37,6 +37,30 @@ namespace MinecraftTetris
             return _cells[x, y, z];
         }
 
+        /// <summary>按固定顺序导出所有格子，存档用。</summary>
+        public int[] Export()
+        {
+            var data = new int[SizeX * SizeY * SizeZ];
+            int i = 0;
+            for (int z = 0; z < SizeZ; z++)
+                for (int y = 0; y < SizeY; y++)
+                    for (int x = 0; x < SizeX; x++)
+                        data[i++] = _cells[x, y, z];
+            return data;
+        }
+
+        /// <summary>导入存档格子，长度不对就忽略。</summary>
+        public void Import(int[] data)
+        {
+            if (data == null || data.Length != _cells.Length)
+                return;
+            int i = 0;
+            for (int z = 0; z < SizeZ; z++)
+                for (int y = 0; y < SizeY; y++)
+                    for (int x = 0; x < SizeX; x++)
+                        _cells[x, y, z] = data[i++];
+        }
+
         public void Set(int x, int y, int z, int block)
         {
             _cells[x, y, z] = block;

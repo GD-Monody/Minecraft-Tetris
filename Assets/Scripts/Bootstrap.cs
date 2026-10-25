@@ -25,6 +25,11 @@ namespace MinecraftTetris
         bool _autoShotDone;
         bool _demoMode;
         bool _demoBurst;
+        bool _titleMode;
+        int _titleShotIndex;
+        static readonly float[] TitleShotTimes = { 0.4f, 1.3f, 2.5f, 3.4f, 4.2f };
+        Camera _mainCam;
+        int _normalCullMask;
 
         void Start()
         {
@@ -48,11 +53,25 @@ namespace MinecraftTetris
             _particles.Init(_view);
 
             _title = gameObject.AddComponent<TitleScreen>();
+            _title.HasContinue = GameSave.HasSave;
+            _title.OnStartGame += StartNewGame;
+            _title.OnContinue += ContinueGame;
+            _title.OnQuit += QuitGame;
+            _title.OnSfxChanged += OnSfxChanged;
+            _sfx.Enabled = _title.SfxEnabled;
 
             // 命令行带 -auto 时跳过开始界面，方便自动化截图与调试
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-auto") >= 0)
                 _title.Visible = false;
             _demoMode = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-demo") >= 0;
+            _titleMode = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-title") >= 0;
+            if (_titleMode)
+                _title.Visible = true;
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-settings") >= 0)
+            {
+                _title.Visible = true;
+                _title.ShowSettings = true;
+            }
 
             _loop.PieceLocked += OnPieceLocked;
             _loop.LinesClearedEvent += OnLinesCleared;
@@ -74,6 +93,13 @@ namespace MinecraftTetris
             if (Input.GetKeyDown(KeyCode.F12))
                 CaptureShot("manual_shot.png");
 
+            // 开始界面动画分阶段截图（调试用 -title）
+            if (_titleMode && _titleShotIndex < TitleShotTimes.Length && Time.time >= TitleShotTimes[_titleShotIndex])
+            {
+                CaptureShot("title_" + _titleShotIndex + ".png");
+                _titleShotIndex++;
+            }
+
             if (!_autoShotDone)
             {
                 _autoShotTimer -= Time.deltaTime;
@@ -86,19 +112,19 @@ namespace MinecraftTetris
 
             if (_title != null && _title.Visible)
             {
+                _title.HasContinue = GameSave.HasSave;
+                if (_hud != null)
+                    _hud.Hidden = true;
+                if (_mainCam != null)
+                    _mainCam.cullingMask = 0;
                 if (_title.AnyInputPressed())
-                {
-                    _title.Visible = false;
-                }
-                else
-                {
-                    if (_hud != null)
-                        _hud.Hidden = true;
-                    return;
-                }
+                    StartNewGame();
+                return;
             }
             if (_hud != null)
                 _hud.Hidden = false;
+            if (_mainCam != null && _mainCam.cullingMask != _normalCullMask)
+                _mainCam.cullingMask = _normalCullMask;
 
             if (Input.GetKeyDown(KeyCode.Escape))
                 _paused = !_paused;
@@ -108,8 +134,9 @@ namespace MinecraftTetris
 
             if (_loop.GameOver)
             {
+                GameSave.Clear();
                 if (Input.GetKeyDown(KeyCode.R))
-                    RestartGame();
+                    StartNewGame();
                 return;
             }
 
@@ -138,11 +165,59 @@ namespace MinecraftTetris
 
         void RestartGame()
         {
+            StartNewGame();
+        }
+
+        void StartNewGame()
+        {
+            GameSave.Clear();
             _loop.Restart();
             _particles.Clear();
+            _paused = false;
             _view.RefreshAll();
             _view.RefreshPiece(_loop.Current);
             _nextPreview.Show(_loop.Next, _loop.NextBlockId);
+            if (_title != null)
+                _title.Show(false);
+            if (_hud != null)
+                _hud.Hidden = false;
+            GameSave.Save(_loop);
+        }
+
+        void ContinueGame()
+        {
+            if (!GameSave.TryLoad(_loop))
+            {
+                StartNewGame();
+                return;
+            }
+
+            _particles.Clear();
+            _paused = false;
+            _view.RefreshAll();
+            _view.RefreshPiece(_loop.Current);
+            _nextPreview.Show(_loop.Next, _loop.NextBlockId);
+            if (_title != null)
+                _title.Show(false);
+            if (_hud != null)
+                _hud.Hidden = false;
+            GameSave.Save(_loop);
+        }
+
+        void QuitGame()
+        {
+            GameSave.Save(_loop);
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
+        }
+
+        void OnSfxChanged(bool enabled)
+        {
+            if (_sfx != null)
+                _sfx.Enabled = enabled;
         }
 
         void OnPieceLocked(Piece piece)
@@ -165,6 +240,8 @@ namespace MinecraftTetris
         {
             _view.RefreshPiece(_loop.Current);
             _nextPreview.Show(_loop.Next, _loop.NextBlockId);
+            if (!_loop.GameOver)
+                GameSave.Save(_loop);
         }
 
         void OnRowsCleared(System.Collections.Generic.List<int> rows, System.Collections.Generic.List<int> blocks)
@@ -206,6 +283,9 @@ namespace MinecraftTetris
 
             rig.Target = center;
             rig.Distance = SizeY * 1.05f;
+
+            _mainCam = cam;
+            _normalCullMask = cam.cullingMask;
         }
     }
 }

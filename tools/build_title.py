@@ -81,8 +81,10 @@ def build():
 
     img = Image.new("RGBA", (total, 16), (0, 0, 0, 0))
     pixels = img.load()
+    meta = []
     x = 0
     for i, c in enumerate(TITLE):
+        meta.append({"x": x, "w": widths[i], "space": c == " "})
         if c != " ":
             width, rows = glyphs[ord(c)]
             for y in range(16):
@@ -92,6 +94,10 @@ def build():
         x += widths[i] + gap
 
     img.save(OUT)
+    meta_path = os.path.join(ROOT, "Assets", "Resources", "title_meta.json")
+    with open(meta_path, "w", encoding="utf-8") as f:
+        json.dump({"chars": meta}, f)
+    print("meta: %s  %d chars" % (meta_path, len(meta)))
     print("title: %s  %dx%d" % (OUT, img.width, img.height))
 
 

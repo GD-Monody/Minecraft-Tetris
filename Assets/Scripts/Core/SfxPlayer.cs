@@ -8,12 +8,23 @@ namespace MinecraftTetris
     /// </summary>
     public class SfxPlayer : MonoBehaviour
     {
+        /// <summary>设置面板里的音效开关，关掉之后一律不播。</summary>
+        public bool Enabled = true;
+        public float Volume = 0.8f;
+
         AudioSource _source;
         AudioClip _placeStone;
         AudioClip _placeWood;
         AudioClip _placeGlass;
         AudioClip _pickupXp;
         AudioClip _levelup;
+
+        void Play(AudioClip clip)
+        {
+            if (clip == null || !Enabled || _source == null)
+                return;
+            _source.PlayOneShot(clip, Mathf.Clamp01(Volume));
+        }
 
         void Awake()
         {
@@ -48,15 +59,13 @@ namespace MinecraftTetris
                     break;
             }
 
-            if (clip != null)
-                _source.PlayOneShot(clip);
+            Play(clip);
         }
 
         public void PlayClear(int lines)
         {
             AudioClip clip = lines >= 2 ? _levelup : _pickupXp;
-            if (clip != null)
-                _source.PlayOneShot(clip);
+            Play(clip);
         }
     }
 }
