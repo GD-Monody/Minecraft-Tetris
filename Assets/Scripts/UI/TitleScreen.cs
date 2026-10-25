@@ -43,6 +43,7 @@ namespace MinecraftTetris
         GUIStyle _subStyle;
         GUIStyle _creditStyle;
         GUIStyle _btnStyle;
+        GUIStyle _listStyle;
         GUIStyle _panelTitleStyle;
         GUIStyle _rowLabelStyle;
         GUIStyle _valueStyle;
@@ -609,11 +610,11 @@ namespace MinecraftTetris
             for (int i = 0; i < count && i < 7; i++)
             {
                 MoldEntry m = MoldData.Items[i];
-                string label = (i == _moldSel ? "▸ " : "") + m.name + (m.enabled != 0 ? "  ✓" : "  -");
+                string label = (i == _moldSel ? "▸ " : "   ") + m.name + (m.enabled != 0 ? "     ✓ 启用" : "     ○ 未启用");
                 var rect = new Rect(listX, listY + i * (itemH + itemGap), 260f, itemH);
                 if (i == _moldSel)
                     DrawRect(rect, new Color(0.42f, 0.86f, 1f, 0.22f));
-                if (GUI.Button(rect, label, _btnStyle) && i != _moldSel)
+                if (GUI.Button(rect, label, _listStyle) && i != _moldSel)
                 {
                     _moldSel = i;
                     LoadMoldEdit();
@@ -749,6 +750,10 @@ namespace MinecraftTetris
             _btnStyle.hover.textColor = Color.white;
             _btnStyle.active.textColor = new Color(0.8f, 0.85f, 0.9f, 1f);
             _btnStyle.border = new RectOffset(0, 0, 0, 0);
+            _listStyle = new GUIStyle(_btnStyle);
+            _listStyle.fontSize = 17;
+            _listStyle.alignment = TextAnchor.MiddleLeft;
+            _listStyle.padding = new RectOffset(14, 10, 0, 0);
         }
 
         static GUIStyle MakeStyle(int size, Color color, TextAnchor anchor, FontStyle style)
