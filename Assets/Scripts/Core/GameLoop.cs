@@ -19,14 +19,16 @@ namespace MinecraftTetris
     public class Piece
     {
         public PieceType Type;
+        public int BlockId;   // 材质编号（1 起），每个新方块随机挑一种完整方块
         public int OriginX;
         public int OriginY;
         public int OriginZ;
         public Vector2Int[] Cells;
 
-        public Piece(PieceType type, int x, int y, int z)
+        public Piece(PieceType type, int blockId, int x, int y, int z)
         {
             Type = type;
+            BlockId = blockId;
             OriginX = x;
             OriginY = y;
             OriginZ = z;
@@ -47,6 +49,7 @@ namespace MinecraftTetris
         public Grid Grid;
         public Piece Current;
         public PieceType Next;
+        public int NextBlockId;
         public int Score;
         public int LinesCleared;
         public bool GameOver;
@@ -65,6 +68,7 @@ namespace MinecraftTetris
             Grid = new Grid(sizeX, sizeY, sizeZ);
             _bag = new PieceBag(seed);
             Next = _bag.Next();
+            NextBlockId = RandomBlockId();
             SpawnNext();
         }
 
@@ -159,7 +163,7 @@ namespace MinecraftTetris
 
         void LockPiece()
         {
-            int blockId = (int)Current.Type + 1;
+            int blockId = Current.BlockId;
             for (int i = 0; i < Current.Cells.Length; i++)
             {
                 Vector3Int c = Current.WorldCell(i);
@@ -189,7 +193,9 @@ namespace MinecraftTetris
         void SpawnNext()
         {
             PieceType type = Next;
+            int blockId = NextBlockId;
             Next = _bag.Next();
+            NextBlockId = RandomBlockId();
 
             Vector2Int[] cells = Tetromino.GetShape(type);
             int maxX = 0;
@@ -200,7 +206,7 @@ namespace MinecraftTetris
             int ox = (Grid.SizeX - width) / 2;
             int oy = Grid.SizeY - 3;
             int oz = (Grid.SizeZ - 1) / 2;
-            Current = new Piece(type, ox, oy, oz);
+            Current = new Piece(type, blockId, ox, oy, oz);
             _fallTimer = 0f;
 
             if (!CanPlace(Current, 0, 0, 0))
@@ -222,7 +228,13 @@ namespace MinecraftTetris
             GameOver = false;
             _fallTimer = 0f;
             Next = _bag.Next();
+            NextBlockId = RandomBlockId();
             SpawnNext();
+        }
+
+        public static int RandomBlockId()
+        {
+            return UnityEngine.Random.Range(1, BlockCatalog.Blocks.Length + 1);
         }
 
         bool CanPlace(Piece p, int dx, int dy, int dz)

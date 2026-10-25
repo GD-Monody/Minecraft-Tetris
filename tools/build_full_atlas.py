@@ -1,0 +1,115 @@
+# 把扫描出来的完整方块贴图拼成图集，并生成 C# 数据表。
+# 用法：先跑 tools/scan_full_blocks.py，再跑 python tools/build_full_atlas.py
+import io
+import json
+import os
+import zipfile
+
+import numpy as np
+from PIL import Image
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+JAR = os.path.expandvars(r'%APPDATA%\.minecraft\versions\26.2\26.2.jar')
+BLOCKS_JSON = os.path.join(ROOT, "tools", "full_blocks.json")
+ATLAS_OUT = os.path.join(ROOT, "Assets", "Resources", "atlas.png")
+DATA_OUT = os.path.join(ROOT, "Assets", "Scripts", "Core", "BlockCatalogData.cs")
+
+COLS = 20
+PAD = 1
+CELL = 18
+FACES = ("up", "down", "north", "south", "east", "west")
+
+
+def main():
+    with open(BLOCKS_JSON, encoding="utf-8") as f:
+        blocks = json.load(f)
+
+    z = zipfile.ZipFile(JAR)
+    names = set(z.namelist())
+
+    # 去重后的贴图，按方块出现顺序排；顺序固定，生成的数据表才能稳定
+    tiles = []
+    tile_index = {}
+    for b in blocks:
+        for face in FACES:
+            png = b["faces"].get(face)
+            if not png:
+                continue
+            if png not in tile_index:
+                tile_index[png] = len(tiles)
+                tiles.append(png)
+
+    rows = (len(tiles) + COLS - 1) // COLS
+    atlas = Image.new("RGBA", (COLS * CELL, rows * CELL), (0, 0, 0, 0))
+
+    for i, png in enumerate(tiles):
+        path = "assets/minecraft/textures/block/%s.png" % png
+        if path not in names:
+            continue
+        im = Image.open(io.BytesIO(z.read(path))).convert("RGBA")
+        if im.size != (16, 16):
+            im = im.resize((16, 16), Image.NEAREST)
+        arr = np.array(im)
+        arr = np.pad(arr, ((PAD, PAD), (PAD, PAD), (0, 0)), mode="edge")
+        atlas.paste(Image.fromarray(arr), ((i % COLS) * CELL, (i // COLS) * CELL))
+
+    atlas.save(ATLAS_OUT)
+    print("atlas: %s  %dx%d  tiles=%d  blocks=%d" % (ATLAS_OUT, atlas.width, atlas.height, len(tiles), len(blocks)))
+
+    lines = []
+    lines.append("// 由 tools/build_full_atlas.py 自动生成，不要手改。")
+    lines.append("namespace MinecraftTetris")
+    lines.append("{")
+    lines.append("    public static class BlockCatalogData")
+    lines.append("    {")
+    lines.append("        public const int AtlasColumns = %d;" % COLS)
+    lines.append("        public const int AtlasRows = %d;" % rows)
+    lines.append("        public const int TilePadding = %d;" % PAD)
+    lines.append("        public const int TilePixels = 16;")
+    lines.append("        public const int CellPixels = %d;" % CELL)
+    lines.append("")
+
+    lines.append("        public static readonly string[] Names =")
+    lines.append("        {")
+    for b in blocks:
+        lines.append('            "%s",' % b["name"])
+    lines.append("        };")
+    lines.append("")
+
+    lines.append("        public static readonly string[] NamesZh =")
+    lines.append("        {")
+    for b in blocks:
+        lines.append('            "%s",' % b.get("zh", b["name"]))
+    lines.append("        };")
+    lines.append("")
+
+    lines.append("        // 每个方块六个面：up, down, north, south, east, west 对应的图集格子编号")
+    lines.append("        public static readonly int[] FaceTiles =")
+    lines.append("        {")
+    for b in blocks:
+        faces = []
+        fallback = None
+        for face in FACES:
+            png = b["faces"].get(face)
+            if png is not None:
+                idx = tile_index.get(png)
+                if fallback is None:
+                    fallback = idx
+                faces.append(idx)
+            else:
+                faces.append(None)
+        if fallback is None:
+            fallback = 0
+        faces = [fallback if v is None else v for v in faces]
+        lines.append("            %s," % ", ".join(str(v) for v in faces))
+    lines.append("        };")
+    lines.append("    }")
+    lines.append("}")
+
+    with open(DATA_OUT, "w", encoding="utf-8", newline="\n") as f:
+        f.write("\n".join(lines) + "\n")
+    print("data: %s" % DATA_OUT)
+
+
+if __name__ == "__main__":
+    main()

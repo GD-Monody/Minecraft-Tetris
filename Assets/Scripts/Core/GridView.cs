@@ -37,12 +37,12 @@ namespace MinecraftTetris
 
         void BuildResources()
         {
-            int count = BlockCatalog.Pieces.Length;
+            int count = BlockCatalog.Blocks.Length;
             _meshes = new Mesh[count];
             _materials = new Material[count];
             for (int i = 0; i < count; i++)
             {
-                BlockDef def = BlockCatalog.Pieces[i];
+                BlockDef def = BlockCatalog.Blocks[i];
                 _meshes[i] = BlockMesh.Build(def);
                 _materials[i] = BlockMesh.GetMaterial(def);
             }
@@ -88,7 +88,9 @@ namespace MinecraftTetris
                 return;
             }
 
-            int idx = (int)piece.Type;
+            int idx = piece.BlockId - 1;
+            if (idx < 0 || idx >= _meshes.Length)
+                idx = 0;
             for (int i = 0; i < 4; i++)
             {
                 GameObject go = _pieceCells[i];

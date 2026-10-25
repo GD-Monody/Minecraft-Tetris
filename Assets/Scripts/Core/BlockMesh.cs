@@ -10,7 +10,7 @@ namespace MinecraftTetris
     public static class BlockMesh
     {
         // 顶点比 1 单位稍微大一点，让相邻方块重叠，避免交界处出现 1 像素的缝
-        const float Half = 0.5005f;
+        const float Half = 0.52f;
 
         static Material _atlasMaterial;
         static Material _transparentMaterial;
@@ -78,42 +78,42 @@ namespace MinecraftTetris
             var tris = new List<int>(36);
 
             // 上面（+y）
-            Quad(verts, uvs, tris, def.Top,
+            Quad(verts, uvs, tris, def.Up,
                 new Vector3(-Half, Half, Half),
                 new Vector3(Half, Half, Half),
                 new Vector3(Half, Half, -Half),
                 new Vector3(-Half, Half, -Half));
 
             // 下面（-y）
-            Quad(verts, uvs, tris, def.Bottom,
+            Quad(verts, uvs, tris, def.Down,
                 new Vector3(-Half, -Half, -Half),
                 new Vector3(Half, -Half, -Half),
                 new Vector3(Half, -Half, Half),
                 new Vector3(-Half, -Half, Half));
 
             // 北（+z）
-            Quad(verts, uvs, tris, def.Side,
+            Quad(verts, uvs, tris, def.North,
                 new Vector3(-Half, -Half, Half),
                 new Vector3(Half, -Half, Half),
                 new Vector3(Half, Half, Half),
                 new Vector3(-Half, Half, Half));
 
             // 南（-z）
-            Quad(verts, uvs, tris, def.Side,
+            Quad(verts, uvs, tris, def.South,
                 new Vector3(Half, -Half, -Half),
                 new Vector3(-Half, -Half, -Half),
                 new Vector3(-Half, Half, -Half),
                 new Vector3(Half, Half, -Half));
 
             // 东（+x）
-            Quad(verts, uvs, tris, def.Side,
+            Quad(verts, uvs, tris, def.East,
                 new Vector3(Half, -Half, Half),
                 new Vector3(Half, -Half, -Half),
                 new Vector3(Half, Half, -Half),
                 new Vector3(Half, Half, Half));
 
             // 西（-x）
-            Quad(verts, uvs, tris, def.Side,
+            Quad(verts, uvs, tris, def.West,
                 new Vector3(-Half, -Half, -Half),
                 new Vector3(-Half, -Half, Half),
                 new Vector3(-Half, Half, Half),

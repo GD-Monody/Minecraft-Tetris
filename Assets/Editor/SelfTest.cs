@@ -89,13 +89,17 @@ namespace MinecraftTetris.EditorTools
                 Check("方块形状四格: " + (PieceType)i, shape.Length == 4);
             }
 
-            // 图集格子都在范围内
-            for (int i = 0; i < BlockCatalog.Pieces.Length; i++)
+            // 方块材质表 + 图集格子范围
+            Check("方块材质表: " + BlockCatalog.Blocks.Length + " 种", BlockCatalog.Blocks.Length >= 100);
+            int badTiles = 0;
+            for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
             {
-                BlockDef def = BlockCatalog.Pieces[i];
-                Check("图集格子列范围: " + def.Name, def.Top.Col >= 0 && def.Top.Col < BlockCatalog.AtlasColumns);
-                Check("图集格子行范围: " + def.Name, def.Top.Row >= 0 && def.Top.Row < 7);
+                BlockDef def = BlockCatalog.Blocks[i];
+                if (def.Up.Col < 0 || def.Up.Col >= BlockCatalog.AtlasColumns ||
+                    def.Up.Row < 0 || def.Up.Row >= BlockCatalog.AtlasRows)
+                    badTiles++;
             }
+            Check("图集格子全部在范围内", badTiles == 0);
 
             sb.AppendLine();
             sb.AppendLine("通过 " + pass + " 项，失败 " + fail + " 项");

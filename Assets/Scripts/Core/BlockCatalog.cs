@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace MinecraftTetris
@@ -20,69 +19,93 @@ namespace MinecraftTetris
     public class BlockDef
     {
         public readonly string Name;
-        public readonly Tile Top;
-        public readonly Tile Bottom;
-        public readonly Tile Side;
+        public readonly string NameZh;
+        public readonly Tile Up;
+        public readonly Tile Down;
+        public readonly Tile North;
+        public readonly Tile South;
+        public readonly Tile East;
+        public readonly Tile West;
         public readonly string PlaceSfx;
         public readonly bool Transparent;
 
-        public BlockDef(string name, Tile top, Tile bottom, Tile side, string placeSfx, bool transparent = false)
+        public BlockDef(string name, string nameZh,
+                        Tile up, Tile down, Tile north, Tile south, Tile east, Tile west,
+                        string placeSfx, bool transparent)
         {
             Name = name;
-            Top = top;
-            Bottom = bottom;
-            Side = side;
+            NameZh = nameZh;
+            Up = up;
+            Down = down;
+            North = north;
+            South = south;
+            East = east;
+            West = west;
             PlaceSfx = placeSfx;
             Transparent = transparent;
         }
     }
 
     /// <summary>
-    /// 7 种方块对应哪些 MC 方块。图集格子与 tools/build_atlas.py 输出的顺序一致。
+    /// 方块材质表。数据在 BlockCatalogData.cs（由 tools/build_full_atlas.py 生成），
+    /// 这里把它变成运行时用的 BlockDef 数组。方块编号是 1 起（网格里 0 表示空）。
     /// </summary>
     public static class BlockCatalog
     {
-        public const int AtlasColumns = 8;
-        public const int AtlasRows = 7;
-        public const int TilePixels = 16;
-        public const int TilePadding = 1;
-        public const int CellPixels = TilePixels + TilePadding * 2;
+        public const int AtlasColumns = BlockCatalogData.AtlasColumns;
+        public const int AtlasRows = BlockCatalogData.AtlasRows;
+        public const int TilePixels = BlockCatalogData.TilePixels;
+        public const int TilePadding = BlockCatalogData.TilePadding;
+        public const int CellPixels = BlockCatalogData.CellPixels;
 
-        static readonly Dictionary<string, Tile> Tiles = new Dictionary<string, Tile>
-        {
-            { "dirt", new Tile(6, 1) },
-            { "grass_block_top", new Tile(2, 2) },
-            { "grass_block_side", new Tile(0, 2) },
-            { "stone", new Tile(1, 5) },
-            { "cobblestone", new Tile(0, 1) },
-            { "sand", new Tile(2, 4) },
-            { "gravel", new Tile(3, 2) },
-            { "oak_planks", new Tile(5, 3) },
-            { "oak_log", new Tile(3, 3) },
-            { "oak_log_top", new Tile(4, 3) },
-            { "glass", new Tile(7, 1) },
-        };
+        public static readonly BlockDef[] Blocks = BuildBlocks();
 
-        public static Tile TileOf(string name)
+        public static BlockDef Of(int blockId)
         {
-            return Tiles[name];
+            int index = blockId - 1;
+            if (index < 0 || index >= Blocks.Length)
+                index = 0;
+            return Blocks[index];
         }
 
-        /// <summary>顺序必须和 PieceType 一致。</summary>
-        public static readonly BlockDef[] Pieces =
+        static BlockDef[] BuildBlocks()
         {
-            new BlockDef("oak_log", TileOf("oak_log_top"), TileOf("oak_log_top"), TileOf("oak_log"), "place_wood"),
-            new BlockDef("grass_block", TileOf("grass_block_top"), TileOf("dirt"), TileOf("grass_block_side"), "place_stone"),
-            new BlockDef("stone", TileOf("stone"), TileOf("stone"), TileOf("stone"), "place_stone"),
-            new BlockDef("sand", TileOf("sand"), TileOf("sand"), TileOf("sand"), "place_stone"),
-            new BlockDef("gravel", TileOf("gravel"), TileOf("gravel"), TileOf("gravel"), "place_stone"),
-            new BlockDef("oak_planks", TileOf("oak_planks"), TileOf("oak_planks"), TileOf("oak_planks"), "place_wood"),
-            new BlockDef("glass", TileOf("glass"), TileOf("glass"), TileOf("glass"), "place_glass", true),
-        };
+            int count = BlockCatalogData.Names.Length;
+            var defs = new BlockDef[count];
+            for (int i = 0; i < count; i++)
+            {
+                var tiles = new Tile[6];
+                for (int f = 0; f < 6; f++)
+                {
+                    int tile = BlockCatalogData.FaceTiles[i * 6 + f];
+                    tiles[f] = new Tile(tile % AtlasColumns, tile / AtlasColumns);
+                }
 
-        public static BlockDef For(PieceType type)
+                string name = BlockCatalogData.Names[i];
+                defs[i] = new BlockDef(
+                    name,
+                    BlockCatalogData.NamesZh[i],
+                    tiles[0], tiles[1], tiles[2], tiles[3], tiles[4], tiles[5],
+                    SfxFor(name),
+                    IsTransparent(name));
+            }
+            return defs;
+        }
+
+        static string SfxFor(string name)
         {
-            return Pieces[(int)type];
+            if (name.Contains("glass") || name.Contains("coral"))
+                return "place_glass";
+            if (name.Contains("log") || name.Contains("wood") || name.Contains("planks") ||
+                name.Contains("stem") || name.Contains("hyphae") || name.Contains("mosaic") ||
+                name.Contains("bamboo") || name.Contains("barrel") || name.Contains("bookshelf"))
+                return "place_wood";
+            return "place_stone";
+        }
+
+        static bool IsTransparent(string name)
+        {
+            return name.Contains("glass") || name.Contains("leaves");
         }
     }
 }

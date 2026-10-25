@@ -118,7 +118,7 @@ namespace MinecraftTetris
 
         void OnPieceLocked(Piece piece)
         {
-            _sfx.PlayPlace(BlockCatalog.For(piece.Type));
+            _sfx.PlayPlace(BlockCatalog.Of(piece.BlockId));
             for (int i = 0; i < piece.Cells.Length; i++)
             {
                 Vector3Int c = piece.WorldCell(i);

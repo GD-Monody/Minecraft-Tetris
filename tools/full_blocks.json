@@ -1,0 +1,4240 @@
+[
+ {
+  "name": "acacia_log",
+  "zh": "acacia_log",
+  "root": "block",
+  "faces": {
+   "up": "acacia_log_top",
+   "down": "acacia_log_top",
+   "north": "acacia_log",
+   "south": "acacia_log",
+   "east": "acacia_log",
+   "west": "acacia_log"
+  }
+ },
+ {
+  "name": "acacia_planks",
+  "zh": "acacia_planks",
+  "root": "block",
+  "faces": {
+   "up": "acacia_planks",
+   "down": "acacia_planks",
+   "north": "acacia_planks",
+   "south": "acacia_planks",
+   "east": "acacia_planks",
+   "west": "acacia_planks"
+  }
+ },
+ {
+  "name": "acacia_wood",
+  "zh": "acacia_wood",
+  "root": "block",
+  "faces": {
+   "up": "acacia_log",
+   "down": "acacia_log",
+   "north": "acacia_log",
+   "south": "acacia_log",
+   "east": "acacia_log",
+   "west": "acacia_log"
+  }
+ },
+ {
+  "name": "amethyst_block",
+  "zh": "amethyst_block",
+  "root": "block",
+  "faces": {
+   "up": "amethyst_block",
+   "down": "amethyst_block",
+   "north": "amethyst_block",
+   "south": "amethyst_block",
+   "east": "amethyst_block",
+   "west": "amethyst_block"
+  }
+ },
+ {
+  "name": "ancient_debris",
+  "zh": "ancient_debris",
+  "root": "block",
+  "faces": {
+   "up": "ancient_debris_top",
+   "down": "ancient_debris_top",
+   "north": "ancient_debris_side",
+   "south": "ancient_debris_side",
+   "east": "ancient_debris_side",
+   "west": "ancient_debris_side"
+  }
+ },
+ {
+  "name": "andesite",
+  "zh": "andesite",
+  "root": "block",
+  "faces": {
+   "up": "andesite",
+   "down": "andesite",
+   "north": "andesite",
+   "south": "andesite",
+   "east": "andesite",
+   "west": "andesite"
+  }
+ },
+ {
+  "name": "bamboo_block",
+  "zh": "bamboo_block",
+  "root": "block",
+  "faces": {
+   "up": "bamboo_block_top",
+   "down": "bamboo_block_top",
+   "north": "bamboo_block",
+   "south": "bamboo_block",
+   "east": "bamboo_block",
+   "west": "bamboo_block"
+  }
+ },
+ {
+  "name": "bamboo_mosaic",
+  "zh": "bamboo_mosaic",
+  "root": "block",
+  "faces": {
+   "up": "bamboo_mosaic",
+   "down": "bamboo_mosaic",
+   "north": "bamboo_mosaic",
+   "south": "bamboo_mosaic",
+   "east": "bamboo_mosaic",
+   "west": "bamboo_mosaic"
+  }
+ },
+ {
+  "name": "bamboo_planks",
+  "zh": "bamboo_planks",
+  "root": "block",
+  "faces": {
+   "up": "bamboo_planks",
+   "down": "bamboo_planks",
+   "north": "bamboo_planks",
+   "south": "bamboo_planks",
+   "east": "bamboo_planks",
+   "west": "bamboo_planks"
+  }
+ },
+ {
+  "name": "barrel",
+  "zh": "barrel",
+  "root": "block",
+  "faces": {
+   "up": "barrel_top",
+   "down": "barrel_bottom",
+   "north": "barrel_side",
+   "south": "barrel_side",
+   "east": "barrel_side",
+   "west": "barrel_side"
+  }
+ },
+ {
+  "name": "basalt",
+  "zh": "basalt",
+  "root": "block",
+  "faces": {
+   "up": "basalt_top",
+   "down": "basalt_top",
+   "north": "basalt_side",
+   "south": "basalt_side",
+   "east": "basalt_side",
+   "west": "basalt_side"
+  }
+ },
+ {
+  "name": "birch_log",
+  "zh": "birch_log",
+  "root": "block",
+  "faces": {
+   "up": "birch_log_top",
+   "down": "birch_log_top",
+   "north": "birch_log",
+   "south": "birch_log",
+   "east": "birch_log",
+   "west": "birch_log"
+  }
+ },
+ {
+  "name": "birch_planks",
+  "zh": "birch_planks",
+  "root": "block",
+  "faces": {
+   "up": "birch_planks",
+   "down": "birch_planks",
+   "north": "birch_planks",
+   "south": "birch_planks",
+   "east": "birch_planks",
+   "west": "birch_planks"
+  }
+ },
+ {
+  "name": "birch_wood",
+  "zh": "birch_wood",
+  "root": "block",
+  "faces": {
+   "up": "birch_log",
+   "down": "birch_log",
+   "north": "birch_log",
+   "south": "birch_log",
+   "east": "birch_log",
+   "west": "birch_log"
+  }
+ },
+ {
+  "name": "black_concrete",
+  "zh": "black_concrete",
+  "root": "block",
+  "faces": {
+   "up": "black_concrete",
+   "down": "black_concrete",
+   "north": "black_concrete",
+   "south": "black_concrete",
+   "east": "black_concrete",
+   "west": "black_concrete"
+  }
+ },
+ {
+  "name": "black_concrete_powder",
+  "zh": "black_concrete_powder",
+  "root": "block",
+  "faces": {
+   "up": "black_concrete_powder",
+   "down": "black_concrete_powder",
+   "north": "black_concrete_powder",
+   "south": "black_concrete_powder",
+   "east": "black_concrete_powder",
+   "west": "black_concrete_powder"
+  }
+ },
+ {
+  "name": "black_terracotta",
+  "zh": "black_terracotta",
+  "root": "block",
+  "faces": {
+   "up": "black_terracotta",
+   "down": "black_terracotta",
+   "north": "black_terracotta",
+   "south": "black_terracotta",
+   "east": "black_terracotta",
+   "west": "black_terracotta"
+  }
+ },
+ {
+  "name": "black_wool",
+  "zh": "black_wool",
+  "root": "block",
+  "faces": {
+   "up": "black_wool",
+   "down": "black_wool",
+   "north": "black_wool",
+   "south": "black_wool",
+   "east": "black_wool",
+   "west": "black_wool"
+  }
+ },
+ {
+  "name": "blackstone",
+  "zh": "blackstone",
+  "root": "block",
+  "faces": {
+   "up": "blackstone_top",
+   "down": "blackstone_top",
+   "north": "blackstone",
+   "south": "blackstone",
+   "east": "blackstone",
+   "west": "blackstone"
+  }
+ },
+ {
+  "name": "blast_furnace",
+  "zh": "blast_furnace",
+  "root": "block",
+  "faces": {
+   "up": "blast_furnace_top",
+   "down": "blast_furnace_top",
+   "north": "blast_furnace_front",
+   "south": "blast_furnace_side",
+   "east": "blast_furnace_side",
+   "west": "blast_furnace_side"
+  }
+ },
+ {
+  "name": "blue_concrete",
+  "zh": "blue_concrete",
+  "root": "block",
+  "faces": {
+   "up": "blue_concrete",
+   "down": "blue_concrete",
+   "north": "blue_concrete",
+   "south": "blue_concrete",
+   "east": "blue_concrete",
+   "west": "blue_concrete"
+  }
+ },
+ {
+  "name": "blue_concrete_powder",
+  "zh": "blue_concrete_powder",
+  "root": "block",
+  "faces": {
+   "up": "blue_concrete_powder",
+   "down": "blue_concrete_powder",
+   "north": "blue_concrete_powder",
+   "south": "blue_concrete_powder",
+   "east": "blue_concrete_powder",
+   "west": "blue_concrete_powder"
+  }
+ },
+ {
+  "name": "blue_terracotta",
+  "zh": "blue_terracotta",
+  "root": "block",
+  "faces": {
+   "up": "blue_terracotta",
+   "down": "blue_terracotta",
+   "north": "blue_terracotta",
+   "south": "blue_terracotta",
+   "east": "blue_terracotta",
+   "west": "blue_terracotta"
+  }
+ },
+ {
+  "name": "blue_wool",
+  "zh": "blue_wool",
+  "root": "block",
+  "faces": {
+   "up": "blue_wool",
+   "down": "blue_wool",
+   "north": "blue_wool",
+   "south": "blue_wool",
+   "east": "blue_wool",
+   "west": "blue_wool"
+  }
+ },
+ {
+  "name": "bone_block",
+  "zh": "bone_block",
+  "root": "block",
+  "faces": {
+   "up": "bone_block_top",
+   "down": "bone_block_top",
+   "north": "bone_block_side",
+   "south": "bone_block_side",
+   "east": "bone_block_side",
+   "west": "bone_block_side"
+  }
+ },
+ {
+  "name": "bookshelf",
+  "zh": "bookshelf",
+  "root": "block",
+  "faces": {
+   "up": "oak_planks",
+   "down": "oak_planks",
+   "north": "bookshelf",
+   "south": "bookshelf",
+   "east": "bookshelf",
+   "west": "bookshelf"
+  }
+ },
+ {
+  "name": "brain_coral_block",
+  "zh": "brain_coral_block",
+  "root": "block",
+  "faces": {
+   "up": "brain_coral_block",
+   "down": "brain_coral_block",
+   "north": "brain_coral_block",
+   "south": "brain_coral_block",
+   "east": "brain_coral_block",
+   "west": "brain_coral_block"
+  }
+ },
+ {
+  "name": "bricks",
+  "zh": "bricks",
+  "root": "block",
+  "faces": {
+   "up": "bricks",
+   "down": "bricks",
+   "north": "bricks",
+   "south": "bricks",
+   "east": "bricks",
+   "west": "bricks"
+  }
+ },
+ {
+  "name": "brown_concrete",
+  "zh": "brown_concrete",
+  "root": "block",
+  "faces": {
+   "up": "brown_concrete",
+   "down": "brown_concrete",
+   "north": "brown_concrete",
+   "south": "brown_concrete",
+   "east": "brown_concrete",
+   "west": "brown_concrete"
+  }
+ },
+ {
+  "name": "brown_concrete_powder",
+  "zh": "brown_concrete_powder",
+  "root": "block",
+  "faces": {
+   "up": "brown_concrete_powder",
+   "down": "brown_concrete_powder",
+   "north": "brown_concrete_powder",
+   "south": "brown_concrete_powder",
+   "east": "brown_concrete_powder",
+   "west": "brown_concrete_powder"
+  }
+ },
+ {
+  "name": "brown_terracotta",
+  "zh": "brown_terracotta",
+  "root": "block",
+  "faces": {
+   "up": "brown_terracotta",
+   "down": "brown_terracotta",
+   "north": "brown_terracotta",
+   "south": "brown_terracotta",
+   "east": "brown_terracotta",
+   "west": "brown_terracotta"
+  }
+ },
+ {
+  "name": "brown_wool",
+  "zh": "brown_wool",
+  "root": "block",
+  "faces": {
+   "up": "brown_wool",
+   "down": "brown_wool",
+   "north": "brown_wool",
+   "south": "brown_wool",
+   "east": "brown_wool",
+   "west": "brown_wool"
+  }
+ },
+ {
+  "name": "bubble_coral_block",
+  "zh": "bubble_coral_block",
+  "root": "block",
+  "faces": {
+   "up": "bubble_coral_block",
+   "down": "bubble_coral_block",
+   "north": "bubble_coral_block",
+   "south": "bubble_coral_block",
+   "east": "bubble_coral_block",
+   "west": "bubble_coral_block"
+  }
+ },
+ {
+  "name": "budding_amethyst",
+  "zh": "budding_amethyst",
+  "root": "block",
+  "faces": {
+   "up": "budding_amethyst",
+   "down": "budding_amethyst",
+   "north": "budding_amethyst",
+   "south": "budding_amethyst",
+   "east": "budding_amethyst",
+   "west": "budding_amethyst"
+  }
+ },
+ {
+  "name": "calcite",
+  "zh": "calcite",
+  "root": "block",
+  "faces": {
+   "up": "calcite",
+   "down": "calcite",
+   "north": "calcite",
+   "south": "calcite",
+   "east": "calcite",
+   "west": "calcite"
+  }
+ },
+ {
+  "name": "cartography_table",
+  "zh": "cartography_table",
+  "root": "block",
+  "faces": {
+   "up": "cartography_table_top",
+   "down": "dark_oak_planks",
+   "north": "cartography_table_side3",
+   "south": "cartography_table_side1",
+   "east": "cartography_table_side3",
+   "west": "cartography_table_side2"
+  }
+ },
+ {
+  "name": "carved_pumpkin",
+  "zh": "carved_pumpkin",
+  "root": "block",
+  "faces": {
+   "up": "pumpkin_top",
+   "down": "pumpkin_top",
+   "north": "carved_pumpkin",
+   "south": "pumpkin_side",
+   "east": "pumpkin_side",
+   "west": "pumpkin_side"
+  }
+ },
+ {
+  "name": "chain_command_block",
+  "zh": "chain_command_block",
+  "root": "block",
+  "faces": {
+   "up": "chain_command_block_side",
+   "down": "chain_command_block_side",
+   "north": "chain_command_block_front",
+   "south": "chain_command_block_back",
+   "east": "chain_command_block_side",
+   "west": "chain_command_block_side"
+  }
+ },
+ {
+  "name": "cherry_log",
+  "zh": "cherry_log",
+  "root": "block",
+  "faces": {
+   "up": "cherry_log_top",
+   "down": "cherry_log_top",
+   "north": "cherry_log",
+   "south": "cherry_log",
+   "east": "cherry_log",
+   "west": "cherry_log"
+  }
+ },
+ {
+  "name": "cherry_planks",
+  "zh": "cherry_planks",
+  "root": "block",
+  "faces": {
+   "up": "cherry_planks",
+   "down": "cherry_planks",
+   "north": "cherry_planks",
+   "south": "cherry_planks",
+   "east": "cherry_planks",
+   "west": "cherry_planks"
+  }
+ },
+ {
+  "name": "cherry_wood",
+  "zh": "cherry_wood",
+  "root": "block",
+  "faces": {
+   "up": "cherry_log",
+   "down": "cherry_log",
+   "north": "cherry_log",
+   "south": "cherry_log",
+   "east": "cherry_log",
+   "west": "cherry_log"
+  }
+ },
+ {
+  "name": "chiseled_bookshelf",
+  "zh": "chiseled_bookshelf",
+  "root": "block",
+  "faces": {
+   "up": "chiseled_bookshelf_side",
+   "down": "chiseled_bookshelf_side",
+   "north": "chiseled_bookshelf_side",
+   "south": "chiseled_bookshelf_side",
+   "east": "chiseled_bookshelf_side",
+   "west": "chiseled_bookshelf_side"
+  }
+ },
+ {
+  "name": "chiseled_cinnabar",
+  "zh": "chiseled_cinnabar",
+  "root": "block",
+  "faces": {
+   "up": "chiseled_cinnabar",
+   "down": "chiseled_cinnabar",
+   "north": "chiseled_cinnabar",
+   "south": "chiseled_cinnabar",
+   "east": "chiseled_cinnabar",
+   "west": "chiseled_cinnabar"
+  }
+ },
+ {
+  "name": "chiseled_copper",
+  "zh": "chiseled_copper",
+  "root": "block",
+  "faces": {
+   "up": "chiseled_copper",
+   "down": "chiseled_copper",
+   "north": "chiseled_copper",
+   "south": "chiseled_copper",
+   "east": "chiseled_copper",
+   "west": "chiseled_copper"
+  }
+ },
+ {
+  "name": "chiseled_deepslate",
+  "zh": "chiseled_deepslate",
+  "root": "block",
+  "faces": {
+   "up": "chiseled_deepslate",
+   "down": "chiseled_deepslate",
+   "north": "chiseled_deepslate",
+   "south": "chiseled_deepslate",
+   "east": "chiseled_deepslate",
+   "west": "chiseled_deepslate"
+  }
+ },
+ {
+  "name": "chiseled_nether_bricks",
+  "zh": "chiseled_nether_bricks",
+  "root": "block",
+  "faces": {
+   "up": "chiseled_nether_bricks",
+   "down": "chiseled_nether_bricks",
+   "north": "chiseled_nether_bricks",
+   "south": "chiseled_nether_bricks",
+   "east": "chiseled_nether_bricks",
+   "west": "chiseled_nether_bricks"
+  }
+ },
+ {
+  "name": "chiseled_polished_blackstone",
+  "zh": "chiseled_polished_blackstone",
+  "root": "block",
+  "faces": {
+   "up": "chiseled_polished_blackstone",
+   "down": "chiseled_polished_blackstone",
+   "north": "chiseled_polished_blackstone",
+   "south": "chiseled_polished_blackstone",
+   "east": "chiseled_polished_blackstone",
+   "west": "chiseled_polished_blackstone"
+  }
+ },
+ {
+  "name": "chiseled_quartz_block",
+  "zh": "chiseled_quartz_block",
+  "root": "block",
+  "faces": {
+   "up": "chiseled_quartz_block_top",
+   "down": "chiseled_quartz_block_top",
+   "north": "chiseled_quartz_block",
+   "south": "chiseled_quartz_block",
+   "east": "chiseled_quartz_block",
+   "west": "chiseled_quartz_block"
+  }
+ },
+ {
+  "name": "chiseled_red_sandstone",
+  "zh": "chiseled_red_sandstone",
+  "root": "block",
+  "faces": {
+   "up": "red_sandstone_top",
+   "down": "red_sandstone_top",
+   "north": "chiseled_red_sandstone",
+   "south": "chiseled_red_sandstone",
+   "east": "chiseled_red_sandstone",
+   "west": "chiseled_red_sandstone"
+  }
+ },
+ {
+  "name": "chiseled_resin_bricks",
+  "zh": "chiseled_resin_bricks",
+  "root": "block",
+  "faces": {
+   "up": "chiseled_resin_bricks",
+   "down": "chiseled_resin_bricks",
+   "north": "chiseled_resin_bricks",
+   "south": "chiseled_resin_bricks",
+   "east": "chiseled_resin_bricks",
+   "west": "chiseled_resin_bricks"
+  }
+ },
+ {
+  "name": "chiseled_sandstone",
+  "zh": "chiseled_sandstone",
+  "root": "block",
+  "faces": {
+   "up": "sandstone_top",
+   "down": "sandstone_top",
+   "north": "chiseled_sandstone",
+   "south": "chiseled_sandstone",
+   "east": "chiseled_sandstone",
+   "west": "chiseled_sandstone"
+  }
+ },
+ {
+  "name": "chiseled_stone_bricks",
+  "zh": "chiseled_stone_bricks",
+  "root": "block",
+  "faces": {
+   "up": "chiseled_stone_bricks",
+   "down": "chiseled_stone_bricks",
+   "north": "chiseled_stone_bricks",
+   "south": "chiseled_stone_bricks",
+   "east": "chiseled_stone_bricks",
+   "west": "chiseled_stone_bricks"
+  }
+ },
+ {
+  "name": "chiseled_sulfur",
+  "zh": "chiseled_sulfur",
+  "root": "block",
+  "faces": {
+   "up": "chiseled_sulfur",
+   "down": "chiseled_sulfur",
+   "north": "chiseled_sulfur",
+   "south": "chiseled_sulfur",
+   "east": "chiseled_sulfur",
+   "west": "chiseled_sulfur"
+  }
+ },
+ {
+  "name": "chiseled_tuff",
+  "zh": "chiseled_tuff",
+  "root": "block",
+  "faces": {
+   "up": "chiseled_tuff_top",
+   "down": "chiseled_tuff_top",
+   "north": "chiseled_tuff",
+   "south": "chiseled_tuff",
+   "east": "chiseled_tuff",
+   "west": "chiseled_tuff"
+  }
+ },
+ {
+  "name": "chiseled_tuff_bricks",
+  "zh": "chiseled_tuff_bricks",
+  "root": "block",
+  "faces": {
+   "up": "chiseled_tuff_bricks_top",
+   "down": "chiseled_tuff_bricks_top",
+   "north": "chiseled_tuff_bricks",
+   "south": "chiseled_tuff_bricks",
+   "east": "chiseled_tuff_bricks",
+   "west": "chiseled_tuff_bricks"
+  }
+ },
+ {
+  "name": "cinnabar",
+  "zh": "cinnabar",
+  "root": "block",
+  "faces": {
+   "up": "cinnabar",
+   "down": "cinnabar",
+   "north": "cinnabar",
+   "south": "cinnabar",
+   "east": "cinnabar",
+   "west": "cinnabar"
+  }
+ },
+ {
+  "name": "cinnabar_bricks",
+  "zh": "cinnabar_bricks",
+  "root": "block",
+  "faces": {
+   "up": "cinnabar_bricks",
+   "down": "cinnabar_bricks",
+   "north": "cinnabar_bricks",
+   "south": "cinnabar_bricks",
+   "east": "cinnabar_bricks",
+   "west": "cinnabar_bricks"
+  }
+ },
+ {
+  "name": "clay",
+  "zh": "clay",
+  "root": "block",
+  "faces": {
+   "up": "clay",
+   "down": "clay",
+   "north": "clay",
+   "south": "clay",
+   "east": "clay",
+   "west": "clay"
+  }
+ },
+ {
+  "name": "coal_block",
+  "zh": "coal_block",
+  "root": "block",
+  "faces": {
+   "up": "coal_block",
+   "down": "coal_block",
+   "north": "coal_block",
+   "south": "coal_block",
+   "east": "coal_block",
+   "west": "coal_block"
+  }
+ },
+ {
+  "name": "coal_ore",
+  "zh": "coal_ore",
+  "root": "block",
+  "faces": {
+   "up": "coal_ore",
+   "down": "coal_ore",
+   "north": "coal_ore",
+   "south": "coal_ore",
+   "east": "coal_ore",
+   "west": "coal_ore"
+  }
+ },
+ {
+  "name": "coarse_dirt",
+  "zh": "coarse_dirt",
+  "root": "block",
+  "faces": {
+   "up": "coarse_dirt",
+   "down": "coarse_dirt",
+   "north": "coarse_dirt",
+   "south": "coarse_dirt",
+   "east": "coarse_dirt",
+   "west": "coarse_dirt"
+  }
+ },
+ {
+  "name": "cobbled_deepslate",
+  "zh": "cobbled_deepslate",
+  "root": "block",
+  "faces": {
+   "up": "cobbled_deepslate",
+   "down": "cobbled_deepslate",
+   "north": "cobbled_deepslate",
+   "south": "cobbled_deepslate",
+   "east": "cobbled_deepslate",
+   "west": "cobbled_deepslate"
+  }
+ },
+ {
+  "name": "cobblestone",
+  "zh": "cobblestone",
+  "root": "block",
+  "faces": {
+   "up": "cobblestone",
+   "down": "cobblestone",
+   "north": "cobblestone",
+   "south": "cobblestone",
+   "east": "cobblestone",
+   "west": "cobblestone"
+  }
+ },
+ {
+  "name": "command_block",
+  "zh": "command_block",
+  "root": "block",
+  "faces": {
+   "up": "command_block_side",
+   "down": "command_block_side",
+   "north": "command_block_front",
+   "south": "command_block_back",
+   "east": "command_block_side",
+   "west": "command_block_side"
+  }
+ },
+ {
+  "name": "copper_block",
+  "zh": "copper_block",
+  "root": "block",
+  "faces": {
+   "up": "copper_block",
+   "down": "copper_block",
+   "north": "copper_block",
+   "south": "copper_block",
+   "east": "copper_block",
+   "west": "copper_block"
+  }
+ },
+ {
+  "name": "copper_bulb",
+  "zh": "copper_bulb",
+  "root": "block",
+  "faces": {
+   "up": "copper_bulb",
+   "down": "copper_bulb",
+   "north": "copper_bulb",
+   "south": "copper_bulb",
+   "east": "copper_bulb",
+   "west": "copper_bulb"
+  }
+ },
+ {
+  "name": "copper_grate",
+  "zh": "copper_grate",
+  "root": "block",
+  "faces": {
+   "up": "copper_grate",
+   "down": "copper_grate",
+   "north": "copper_grate",
+   "south": "copper_grate",
+   "east": "copper_grate",
+   "west": "copper_grate"
+  }
+ },
+ {
+  "name": "copper_ore",
+  "zh": "copper_ore",
+  "root": "block",
+  "faces": {
+   "up": "copper_ore",
+   "down": "copper_ore",
+   "north": "copper_ore",
+   "south": "copper_ore",
+   "east": "copper_ore",
+   "west": "copper_ore"
+  }
+ },
+ {
+  "name": "cracked_deepslate_bricks",
+  "zh": "cracked_deepslate_bricks",
+  "root": "block",
+  "faces": {
+   "up": "cracked_deepslate_bricks",
+   "down": "cracked_deepslate_bricks",
+   "north": "cracked_deepslate_bricks",
+   "south": "cracked_deepslate_bricks",
+   "east": "cracked_deepslate_bricks",
+   "west": "cracked_deepslate_bricks"
+  }
+ },
+ {
+  "name": "cracked_deepslate_tiles",
+  "zh": "cracked_deepslate_tiles",
+  "root": "block",
+  "faces": {
+   "up": "cracked_deepslate_tiles",
+   "down": "cracked_deepslate_tiles",
+   "north": "cracked_deepslate_tiles",
+   "south": "cracked_deepslate_tiles",
+   "east": "cracked_deepslate_tiles",
+   "west": "cracked_deepslate_tiles"
+  }
+ },
+ {
+  "name": "cracked_nether_bricks",
+  "zh": "cracked_nether_bricks",
+  "root": "block",
+  "faces": {
+   "up": "cracked_nether_bricks",
+   "down": "cracked_nether_bricks",
+   "north": "cracked_nether_bricks",
+   "south": "cracked_nether_bricks",
+   "east": "cracked_nether_bricks",
+   "west": "cracked_nether_bricks"
+  }
+ },
+ {
+  "name": "cracked_polished_blackstone_bricks",
+  "zh": "cracked_polished_blackstone_bricks",
+  "root": "block",
+  "faces": {
+   "up": "cracked_polished_blackstone_bricks",
+   "down": "cracked_polished_blackstone_bricks",
+   "north": "cracked_polished_blackstone_bricks",
+   "south": "cracked_polished_blackstone_bricks",
+   "east": "cracked_polished_blackstone_bricks",
+   "west": "cracked_polished_blackstone_bricks"
+  }
+ },
+ {
+  "name": "cracked_stone_bricks",
+  "zh": "cracked_stone_bricks",
+  "root": "block",
+  "faces": {
+   "up": "cracked_stone_bricks",
+   "down": "cracked_stone_bricks",
+   "north": "cracked_stone_bricks",
+   "south": "cracked_stone_bricks",
+   "east": "cracked_stone_bricks",
+   "west": "cracked_stone_bricks"
+  }
+ },
+ {
+  "name": "crafter",
+  "zh": "crafter",
+  "root": "block",
+  "faces": {
+   "up": "crafter_top",
+   "down": "crafter_top",
+   "north": "crafter_north",
+   "south": "crafter_south",
+   "east": "crafter_east",
+   "west": "crafter_west"
+  }
+ },
+ {
+  "name": "crafting_table",
+  "zh": "crafting_table",
+  "root": "block",
+  "faces": {
+   "up": "crafting_table_top",
+   "down": "oak_planks",
+   "north": "crafting_table_front",
+   "south": "crafting_table_side",
+   "east": "crafting_table_side",
+   "west": "crafting_table_front"
+  }
+ },
+ {
+  "name": "creaking_heart",
+  "zh": "creaking_heart",
+  "root": "block",
+  "faces": {
+   "up": "creaking_heart_top",
+   "down": "creaking_heart_top",
+   "north": "creaking_heart",
+   "south": "creaking_heart",
+   "east": "creaking_heart",
+   "west": "creaking_heart"
+  }
+ },
+ {
+  "name": "crimson_hyphae",
+  "zh": "crimson_hyphae",
+  "root": "block",
+  "faces": {
+   "up": "crimson_stem",
+   "down": "crimson_stem",
+   "north": "crimson_stem",
+   "south": "crimson_stem",
+   "east": "crimson_stem",
+   "west": "crimson_stem"
+  }
+ },
+ {
+  "name": "crimson_nylium",
+  "zh": "crimson_nylium",
+  "root": "block",
+  "faces": {
+   "up": "crimson_nylium",
+   "down": "netherrack",
+   "north": "crimson_nylium_side",
+   "south": "crimson_nylium_side",
+   "east": "crimson_nylium_side",
+   "west": "crimson_nylium_side"
+  }
+ },
+ {
+  "name": "crimson_planks",
+  "zh": "crimson_planks",
+  "root": "block",
+  "faces": {
+   "up": "crimson_planks",
+   "down": "crimson_planks",
+   "north": "crimson_planks",
+   "south": "crimson_planks",
+   "east": "crimson_planks",
+   "west": "crimson_planks"
+  }
+ },
+ {
+  "name": "crimson_stem",
+  "zh": "crimson_stem",
+  "root": "block",
+  "faces": {
+   "up": "crimson_stem_top",
+   "down": "crimson_stem_top",
+   "north": "crimson_stem",
+   "south": "crimson_stem",
+   "east": "crimson_stem",
+   "west": "crimson_stem"
+  }
+ },
+ {
+  "name": "crying_obsidian",
+  "zh": "crying_obsidian",
+  "root": "block",
+  "faces": {
+   "up": "crying_obsidian",
+   "down": "crying_obsidian",
+   "north": "crying_obsidian",
+   "south": "crying_obsidian",
+   "east": "crying_obsidian",
+   "west": "crying_obsidian"
+  }
+ },
+ {
+  "name": "cut_copper",
+  "zh": "cut_copper",
+  "root": "block",
+  "faces": {
+   "up": "cut_copper",
+   "down": "cut_copper",
+   "north": "cut_copper",
+   "south": "cut_copper",
+   "east": "cut_copper",
+   "west": "cut_copper"
+  }
+ },
+ {
+  "name": "cut_red_sandstone",
+  "zh": "cut_red_sandstone",
+  "root": "block",
+  "faces": {
+   "up": "red_sandstone_top",
+   "down": "red_sandstone_top",
+   "north": "cut_red_sandstone",
+   "south": "cut_red_sandstone",
+   "east": "cut_red_sandstone",
+   "west": "cut_red_sandstone"
+  }
+ },
+ {
+  "name": "cut_sandstone",
+  "zh": "cut_sandstone",
+  "root": "block",
+  "faces": {
+   "up": "sandstone_top",
+   "down": "sandstone_top",
+   "north": "cut_sandstone",
+   "south": "cut_sandstone",
+   "east": "cut_sandstone",
+   "west": "cut_sandstone"
+  }
+ },
+ {
+  "name": "cyan_concrete",
+  "zh": "cyan_concrete",
+  "root": "block",
+  "faces": {
+   "up": "cyan_concrete",
+   "down": "cyan_concrete",
+   "north": "cyan_concrete",
+   "south": "cyan_concrete",
+   "east": "cyan_concrete",
+   "west": "cyan_concrete"
+  }
+ },
+ {
+  "name": "cyan_concrete_powder",
+  "zh": "cyan_concrete_powder",
+  "root": "block",
+  "faces": {
+   "up": "cyan_concrete_powder",
+   "down": "cyan_concrete_powder",
+   "north": "cyan_concrete_powder",
+   "south": "cyan_concrete_powder",
+   "east": "cyan_concrete_powder",
+   "west": "cyan_concrete_powder"
+  }
+ },
+ {
+  "name": "cyan_terracotta",
+  "zh": "cyan_terracotta",
+  "root": "block",
+  "faces": {
+   "up": "cyan_terracotta",
+   "down": "cyan_terracotta",
+   "north": "cyan_terracotta",
+   "south": "cyan_terracotta",
+   "east": "cyan_terracotta",
+   "west": "cyan_terracotta"
+  }
+ },
+ {
+  "name": "cyan_wool",
+  "zh": "cyan_wool",
+  "root": "block",
+  "faces": {
+   "up": "cyan_wool",
+   "down": "cyan_wool",
+   "north": "cyan_wool",
+   "south": "cyan_wool",
+   "east": "cyan_wool",
+   "west": "cyan_wool"
+  }
+ },
+ {
+  "name": "dark_oak_log",
+  "zh": "dark_oak_log",
+  "root": "block",
+  "faces": {
+   "up": "dark_oak_log_top",
+   "down": "dark_oak_log_top",
+   "north": "dark_oak_log",
+   "south": "dark_oak_log",
+   "east": "dark_oak_log",
+   "west": "dark_oak_log"
+  }
+ },
+ {
+  "name": "dark_oak_planks",
+  "zh": "dark_oak_planks",
+  "root": "block",
+  "faces": {
+   "up": "dark_oak_planks",
+   "down": "dark_oak_planks",
+   "north": "dark_oak_planks",
+   "south": "dark_oak_planks",
+   "east": "dark_oak_planks",
+   "west": "dark_oak_planks"
+  }
+ },
+ {
+  "name": "dark_oak_wood",
+  "zh": "dark_oak_wood",
+  "root": "block",
+  "faces": {
+   "up": "dark_oak_log",
+   "down": "dark_oak_log",
+   "north": "dark_oak_log",
+   "south": "dark_oak_log",
+   "east": "dark_oak_log",
+   "west": "dark_oak_log"
+  }
+ },
+ {
+  "name": "dark_prismarine",
+  "zh": "dark_prismarine",
+  "root": "block",
+  "faces": {
+   "up": "dark_prismarine",
+   "down": "dark_prismarine",
+   "north": "dark_prismarine",
+   "south": "dark_prismarine",
+   "east": "dark_prismarine",
+   "west": "dark_prismarine"
+  }
+ },
+ {
+  "name": "dead_brain_coral_block",
+  "zh": "dead_brain_coral_block",
+  "root": "block",
+  "faces": {
+   "up": "dead_brain_coral_block",
+   "down": "dead_brain_coral_block",
+   "north": "dead_brain_coral_block",
+   "south": "dead_brain_coral_block",
+   "east": "dead_brain_coral_block",
+   "west": "dead_brain_coral_block"
+  }
+ },
+ {
+  "name": "dead_bubble_coral_block",
+  "zh": "dead_bubble_coral_block",
+  "root": "block",
+  "faces": {
+   "up": "dead_bubble_coral_block",
+   "down": "dead_bubble_coral_block",
+   "north": "dead_bubble_coral_block",
+   "south": "dead_bubble_coral_block",
+   "east": "dead_bubble_coral_block",
+   "west": "dead_bubble_coral_block"
+  }
+ },
+ {
+  "name": "dead_fire_coral_block",
+  "zh": "dead_fire_coral_block",
+  "root": "block",
+  "faces": {
+   "up": "dead_fire_coral_block",
+   "down": "dead_fire_coral_block",
+   "north": "dead_fire_coral_block",
+   "south": "dead_fire_coral_block",
+   "east": "dead_fire_coral_block",
+   "west": "dead_fire_coral_block"
+  }
+ },
+ {
+  "name": "dead_horn_coral_block",
+  "zh": "dead_horn_coral_block",
+  "root": "block",
+  "faces": {
+   "up": "dead_horn_coral_block",
+   "down": "dead_horn_coral_block",
+   "north": "dead_horn_coral_block",
+   "south": "dead_horn_coral_block",
+   "east": "dead_horn_coral_block",
+   "west": "dead_horn_coral_block"
+  }
+ },
+ {
+  "name": "dead_tube_coral_block",
+  "zh": "dead_tube_coral_block",
+  "root": "block",
+  "faces": {
+   "up": "dead_tube_coral_block",
+   "down": "dead_tube_coral_block",
+   "north": "dead_tube_coral_block",
+   "south": "dead_tube_coral_block",
+   "east": "dead_tube_coral_block",
+   "west": "dead_tube_coral_block"
+  }
+ },
+ {
+  "name": "deepslate",
+  "zh": "deepslate",
+  "root": "block",
+  "faces": {
+   "up": "deepslate_top",
+   "down": "deepslate_top",
+   "north": "deepslate",
+   "south": "deepslate",
+   "east": "deepslate",
+   "west": "deepslate"
+  }
+ },
+ {
+  "name": "deepslate_bricks",
+  "zh": "deepslate_bricks",
+  "root": "block",
+  "faces": {
+   "up": "deepslate_bricks",
+   "down": "deepslate_bricks",
+   "north": "deepslate_bricks",
+   "south": "deepslate_bricks",
+   "east": "deepslate_bricks",
+   "west": "deepslate_bricks"
+  }
+ },
+ {
+  "name": "deepslate_coal_ore",
+  "zh": "deepslate_coal_ore",
+  "root": "block",
+  "faces": {
+   "up": "deepslate_coal_ore",
+   "down": "deepslate_coal_ore",
+   "north": "deepslate_coal_ore",
+   "south": "deepslate_coal_ore",
+   "east": "deepslate_coal_ore",
+   "west": "deepslate_coal_ore"
+  }
+ },
+ {
+  "name": "deepslate_copper_ore",
+  "zh": "deepslate_copper_ore",
+  "root": "block",
+  "faces": {
+   "up": "deepslate_copper_ore",
+   "down": "deepslate_copper_ore",
+   "north": "deepslate_copper_ore",
+   "south": "deepslate_copper_ore",
+   "east": "deepslate_copper_ore",
+   "west": "deepslate_copper_ore"
+  }
+ },
+ {
+  "name": "deepslate_diamond_ore",
+  "zh": "deepslate_diamond_ore",
+  "root": "block",
+  "faces": {
+   "up": "deepslate_diamond_ore",
+   "down": "deepslate_diamond_ore",
+   "north": "deepslate_diamond_ore",
+   "south": "deepslate_diamond_ore",
+   "east": "deepslate_diamond_ore",
+   "west": "deepslate_diamond_ore"
+  }
+ },
+ {
+  "name": "deepslate_emerald_ore",
+  "zh": "deepslate_emerald_ore",
+  "root": "block",
+  "faces": {
+   "up": "deepslate_emerald_ore",
+   "down": "deepslate_emerald_ore",
+   "north": "deepslate_emerald_ore",
+   "south": "deepslate_emerald_ore",
+   "east": "deepslate_emerald_ore",
+   "west": "deepslate_emerald_ore"
+  }
+ },
+ {
+  "name": "deepslate_gold_ore",
+  "zh": "deepslate_gold_ore",
+  "root": "block",
+  "faces": {
+   "up": "deepslate_gold_ore",
+   "down": "deepslate_gold_ore",
+   "north": "deepslate_gold_ore",
+   "south": "deepslate_gold_ore",
+   "east": "deepslate_gold_ore",
+   "west": "deepslate_gold_ore"
+  }
+ },
+ {
+  "name": "deepslate_iron_ore",
+  "zh": "deepslate_iron_ore",
+  "root": "block",
+  "faces": {
+   "up": "deepslate_iron_ore",
+   "down": "deepslate_iron_ore",
+   "north": "deepslate_iron_ore",
+   "south": "deepslate_iron_ore",
+   "east": "deepslate_iron_ore",
+   "west": "deepslate_iron_ore"
+  }
+ },
+ {
+  "name": "deepslate_lapis_ore",
+  "zh": "deepslate_lapis_ore",
+  "root": "block",
+  "faces": {
+   "up": "deepslate_lapis_ore",
+   "down": "deepslate_lapis_ore",
+   "north": "deepslate_lapis_ore",
+   "south": "deepslate_lapis_ore",
+   "east": "deepslate_lapis_ore",
+   "west": "deepslate_lapis_ore"
+  }
+ },
+ {
+  "name": "deepslate_redstone_ore",
+  "zh": "deepslate_redstone_ore",
+  "root": "block",
+  "faces": {
+   "up": "deepslate_redstone_ore",
+   "down": "deepslate_redstone_ore",
+   "north": "deepslate_redstone_ore",
+   "south": "deepslate_redstone_ore",
+   "east": "deepslate_redstone_ore",
+   "west": "deepslate_redstone_ore"
+  }
+ },
+ {
+  "name": "deepslate_tiles",
+  "zh": "deepslate_tiles",
+  "root": "block",
+  "faces": {
+   "up": "deepslate_tiles",
+   "down": "deepslate_tiles",
+   "north": "deepslate_tiles",
+   "south": "deepslate_tiles",
+   "east": "deepslate_tiles",
+   "west": "deepslate_tiles"
+  }
+ },
+ {
+  "name": "diamond_block",
+  "zh": "diamond_block",
+  "root": "block",
+  "faces": {
+   "up": "diamond_block",
+   "down": "diamond_block",
+   "north": "diamond_block",
+   "south": "diamond_block",
+   "east": "diamond_block",
+   "west": "diamond_block"
+  }
+ },
+ {
+  "name": "diamond_ore",
+  "zh": "diamond_ore",
+  "root": "block",
+  "faces": {
+   "up": "diamond_ore",
+   "down": "diamond_ore",
+   "north": "diamond_ore",
+   "south": "diamond_ore",
+   "east": "diamond_ore",
+   "west": "diamond_ore"
+  }
+ },
+ {
+  "name": "diorite",
+  "zh": "diorite",
+  "root": "block",
+  "faces": {
+   "up": "diorite",
+   "down": "diorite",
+   "north": "diorite",
+   "south": "diorite",
+   "east": "diorite",
+   "west": "diorite"
+  }
+ },
+ {
+  "name": "dirt",
+  "zh": "dirt",
+  "root": "block",
+  "faces": {
+   "up": "dirt",
+   "down": "dirt",
+   "north": "dirt",
+   "south": "dirt",
+   "east": "dirt",
+   "west": "dirt"
+  }
+ },
+ {
+  "name": "dispenser",
+  "zh": "dispenser",
+  "root": "block",
+  "faces": {
+   "up": "furnace_top",
+   "down": "furnace_top",
+   "north": "dispenser_front",
+   "south": "furnace_side",
+   "east": "furnace_side",
+   "west": "furnace_side"
+  }
+ },
+ {
+  "name": "dispenser_vertical",
+  "zh": "dispenser_vertical",
+  "root": "block",
+  "faces": {
+   "up": "dispenser_front_vertical",
+   "down": "furnace_top",
+   "north": "furnace_top",
+   "south": "furnace_top",
+   "east": "furnace_top",
+   "west": "furnace_top"
+  }
+ },
+ {
+  "name": "dried_kelp_block",
+  "zh": "dried_kelp_block",
+  "root": "block",
+  "faces": {
+   "up": "dried_kelp_top",
+   "down": "dried_kelp_bottom",
+   "north": "dried_kelp_side",
+   "south": "dried_kelp_side",
+   "east": "dried_kelp_side",
+   "west": "dried_kelp_side"
+  }
+ },
+ {
+  "name": "dripstone_block",
+  "zh": "dripstone_block",
+  "root": "block",
+  "faces": {
+   "up": "dripstone_block",
+   "down": "dripstone_block",
+   "north": "dripstone_block",
+   "south": "dripstone_block",
+   "east": "dripstone_block",
+   "west": "dripstone_block"
+  }
+ },
+ {
+  "name": "dropper",
+  "zh": "dropper",
+  "root": "block",
+  "faces": {
+   "up": "furnace_top",
+   "down": "furnace_top",
+   "north": "dropper_front",
+   "south": "furnace_side",
+   "east": "furnace_side",
+   "west": "furnace_side"
+  }
+ },
+ {
+  "name": "dropper_vertical",
+  "zh": "dropper_vertical",
+  "root": "block",
+  "faces": {
+   "up": "dropper_front_vertical",
+   "down": "furnace_top",
+   "north": "furnace_top",
+   "south": "furnace_top",
+   "east": "furnace_top",
+   "west": "furnace_top"
+  }
+ },
+ {
+  "name": "emerald_block",
+  "zh": "emerald_block",
+  "root": "block",
+  "faces": {
+   "up": "emerald_block",
+   "down": "emerald_block",
+   "north": "emerald_block",
+   "south": "emerald_block",
+   "east": "emerald_block",
+   "west": "emerald_block"
+  }
+ },
+ {
+  "name": "emerald_ore",
+  "zh": "emerald_ore",
+  "root": "block",
+  "faces": {
+   "up": "emerald_ore",
+   "down": "emerald_ore",
+   "north": "emerald_ore",
+   "south": "emerald_ore",
+   "east": "emerald_ore",
+   "west": "emerald_ore"
+  }
+ },
+ {
+  "name": "end_stone",
+  "zh": "end_stone",
+  "root": "block",
+  "faces": {
+   "up": "end_stone",
+   "down": "end_stone",
+   "north": "end_stone",
+   "south": "end_stone",
+   "east": "end_stone",
+   "west": "end_stone"
+  }
+ },
+ {
+  "name": "end_stone_bricks",
+  "zh": "end_stone_bricks",
+  "root": "block",
+  "faces": {
+   "up": "end_stone_bricks",
+   "down": "end_stone_bricks",
+   "north": "end_stone_bricks",
+   "south": "end_stone_bricks",
+   "east": "end_stone_bricks",
+   "west": "end_stone_bricks"
+  }
+ },
+ {
+  "name": "exposed_chiseled_copper",
+  "zh": "exposed_chiseled_copper",
+  "root": "block",
+  "faces": {
+   "up": "exposed_chiseled_copper",
+   "down": "exposed_chiseled_copper",
+   "north": "exposed_chiseled_copper",
+   "south": "exposed_chiseled_copper",
+   "east": "exposed_chiseled_copper",
+   "west": "exposed_chiseled_copper"
+  }
+ },
+ {
+  "name": "exposed_copper",
+  "zh": "exposed_copper",
+  "root": "block",
+  "faces": {
+   "up": "exposed_copper",
+   "down": "exposed_copper",
+   "north": "exposed_copper",
+   "south": "exposed_copper",
+   "east": "exposed_copper",
+   "west": "exposed_copper"
+  }
+ },
+ {
+  "name": "exposed_copper_bulb",
+  "zh": "exposed_copper_bulb",
+  "root": "block",
+  "faces": {
+   "up": "exposed_copper_bulb",
+   "down": "exposed_copper_bulb",
+   "north": "exposed_copper_bulb",
+   "south": "exposed_copper_bulb",
+   "east": "exposed_copper_bulb",
+   "west": "exposed_copper_bulb"
+  }
+ },
+ {
+  "name": "exposed_copper_grate",
+  "zh": "exposed_copper_grate",
+  "root": "block",
+  "faces": {
+   "up": "exposed_copper_grate",
+   "down": "exposed_copper_grate",
+   "north": "exposed_copper_grate",
+   "south": "exposed_copper_grate",
+   "east": "exposed_copper_grate",
+   "west": "exposed_copper_grate"
+  }
+ },
+ {
+  "name": "exposed_cut_copper",
+  "zh": "exposed_cut_copper",
+  "root": "block",
+  "faces": {
+   "up": "exposed_cut_copper",
+   "down": "exposed_cut_copper",
+   "north": "exposed_cut_copper",
+   "south": "exposed_cut_copper",
+   "east": "exposed_cut_copper",
+   "west": "exposed_cut_copper"
+  }
+ },
+ {
+  "name": "fire_coral_block",
+  "zh": "fire_coral_block",
+  "root": "block",
+  "faces": {
+   "up": "fire_coral_block",
+   "down": "fire_coral_block",
+   "north": "fire_coral_block",
+   "south": "fire_coral_block",
+   "east": "fire_coral_block",
+   "west": "fire_coral_block"
+  }
+ },
+ {
+  "name": "fletching_table",
+  "zh": "fletching_table",
+  "root": "block",
+  "faces": {
+   "up": "fletching_table_top",
+   "down": "birch_planks",
+   "north": "fletching_table_front",
+   "south": "fletching_table_front",
+   "east": "fletching_table_side",
+   "west": "fletching_table_side"
+  }
+ },
+ {
+  "name": "furnace",
+  "zh": "furnace",
+  "root": "block",
+  "faces": {
+   "up": "furnace_top",
+   "down": "furnace_top",
+   "north": "furnace_front",
+   "south": "furnace_side",
+   "east": "furnace_side",
+   "west": "furnace_side"
+  }
+ },
+ {
+  "name": "gilded_blackstone",
+  "zh": "gilded_blackstone",
+  "root": "block",
+  "faces": {
+   "up": "gilded_blackstone",
+   "down": "gilded_blackstone",
+   "north": "gilded_blackstone",
+   "south": "gilded_blackstone",
+   "east": "gilded_blackstone",
+   "west": "gilded_blackstone"
+  }
+ },
+ {
+  "name": "gold_block",
+  "zh": "gold_block",
+  "root": "block",
+  "faces": {
+   "up": "gold_block",
+   "down": "gold_block",
+   "north": "gold_block",
+   "south": "gold_block",
+   "east": "gold_block",
+   "west": "gold_block"
+  }
+ },
+ {
+  "name": "gold_ore",
+  "zh": "gold_ore",
+  "root": "block",
+  "faces": {
+   "up": "gold_ore",
+   "down": "gold_ore",
+   "north": "gold_ore",
+   "south": "gold_ore",
+   "east": "gold_ore",
+   "west": "gold_ore"
+  }
+ },
+ {
+  "name": "granite",
+  "zh": "granite",
+  "root": "block",
+  "faces": {
+   "up": "granite",
+   "down": "granite",
+   "north": "granite",
+   "south": "granite",
+   "east": "granite",
+   "west": "granite"
+  }
+ },
+ {
+  "name": "grass_block",
+  "zh": "grass_block",
+  "root": "block",
+  "faces": {
+   "up": "grass_block_side",
+   "down": "grass_block_side",
+   "north": "grass_block_side",
+   "south": "grass_block_side",
+   "east": "grass_block_side",
+   "west": "grass_block_side"
+  }
+ },
+ {
+  "name": "grass_block_snow",
+  "zh": "grass_block_snow",
+  "root": "block",
+  "faces": {
+   "up": "grass_block_top",
+   "down": "dirt",
+   "north": "grass_block_snow",
+   "south": "grass_block_snow",
+   "east": "grass_block_snow",
+   "west": "grass_block_snow"
+  }
+ },
+ {
+  "name": "gravel",
+  "zh": "gravel",
+  "root": "block",
+  "faces": {
+   "up": "gravel",
+   "down": "gravel",
+   "north": "gravel",
+   "south": "gravel",
+   "east": "gravel",
+   "west": "gravel"
+  }
+ },
+ {
+  "name": "gray_concrete",
+  "zh": "gray_concrete",
+  "root": "block",
+  "faces": {
+   "up": "gray_concrete",
+   "down": "gray_concrete",
+   "north": "gray_concrete",
+   "south": "gray_concrete",
+   "east": "gray_concrete",
+   "west": "gray_concrete"
+  }
+ },
+ {
+  "name": "gray_concrete_powder",
+  "zh": "gray_concrete_powder",
+  "root": "block",
+  "faces": {
+   "up": "gray_concrete_powder",
+   "down": "gray_concrete_powder",
+   "north": "gray_concrete_powder",
+   "south": "gray_concrete_powder",
+   "east": "gray_concrete_powder",
+   "west": "gray_concrete_powder"
+  }
+ },
+ {
+  "name": "gray_terracotta",
+  "zh": "gray_terracotta",
+  "root": "block",
+  "faces": {
+   "up": "gray_terracotta",
+   "down": "gray_terracotta",
+   "north": "gray_terracotta",
+   "south": "gray_terracotta",
+   "east": "gray_terracotta",
+   "west": "gray_terracotta"
+  }
+ },
+ {
+  "name": "gray_wool",
+  "zh": "gray_wool",
+  "root": "block",
+  "faces": {
+   "up": "gray_wool",
+   "down": "gray_wool",
+   "north": "gray_wool",
+   "south": "gray_wool",
+   "east": "gray_wool",
+   "west": "gray_wool"
+  }
+ },
+ {
+  "name": "green_concrete",
+  "zh": "green_concrete",
+  "root": "block",
+  "faces": {
+   "up": "green_concrete",
+   "down": "green_concrete",
+   "north": "green_concrete",
+   "south": "green_concrete",
+   "east": "green_concrete",
+   "west": "green_concrete"
+  }
+ },
+ {
+  "name": "green_concrete_powder",
+  "zh": "green_concrete_powder",
+  "root": "block",
+  "faces": {
+   "up": "green_concrete_powder",
+   "down": "green_concrete_powder",
+   "north": "green_concrete_powder",
+   "south": "green_concrete_powder",
+   "east": "green_concrete_powder",
+   "west": "green_concrete_powder"
+  }
+ },
+ {
+  "name": "green_terracotta",
+  "zh": "green_terracotta",
+  "root": "block",
+  "faces": {
+   "up": "green_terracotta",
+   "down": "green_terracotta",
+   "north": "green_terracotta",
+   "south": "green_terracotta",
+   "east": "green_terracotta",
+   "west": "green_terracotta"
+  }
+ },
+ {
+  "name": "green_wool",
+  "zh": "green_wool",
+  "root": "block",
+  "faces": {
+   "up": "green_wool",
+   "down": "green_wool",
+   "north": "green_wool",
+   "south": "green_wool",
+   "east": "green_wool",
+   "west": "green_wool"
+  }
+ },
+ {
+  "name": "hay_block",
+  "zh": "hay_block",
+  "root": "block",
+  "faces": {
+   "up": "hay_block_top",
+   "down": "hay_block_top",
+   "north": "hay_block_side",
+   "south": "hay_block_side",
+   "east": "hay_block_side",
+   "west": "hay_block_side"
+  }
+ },
+ {
+  "name": "horn_coral_block",
+  "zh": "horn_coral_block",
+  "root": "block",
+  "faces": {
+   "up": "horn_coral_block",
+   "down": "horn_coral_block",
+   "north": "horn_coral_block",
+   "south": "horn_coral_block",
+   "east": "horn_coral_block",
+   "west": "horn_coral_block"
+  }
+ },
+ {
+  "name": "iron_block",
+  "zh": "iron_block",
+  "root": "block",
+  "faces": {
+   "up": "iron_block",
+   "down": "iron_block",
+   "north": "iron_block",
+   "south": "iron_block",
+   "east": "iron_block",
+   "west": "iron_block"
+  }
+ },
+ {
+  "name": "iron_ore",
+  "zh": "iron_ore",
+  "root": "block",
+  "faces": {
+   "up": "iron_ore",
+   "down": "iron_ore",
+   "north": "iron_ore",
+   "south": "iron_ore",
+   "east": "iron_ore",
+   "west": "iron_ore"
+  }
+ },
+ {
+  "name": "jack_o_lantern",
+  "zh": "jack_o_lantern",
+  "root": "block",
+  "faces": {
+   "up": "pumpkin_top",
+   "down": "pumpkin_top",
+   "north": "jack_o_lantern",
+   "south": "pumpkin_side",
+   "east": "pumpkin_side",
+   "west": "pumpkin_side"
+  }
+ },
+ {
+  "name": "jukebox",
+  "zh": "jukebox",
+  "root": "block",
+  "faces": {
+   "up": "jukebox_top",
+   "down": "jukebox_side",
+   "north": "jukebox_side",
+   "south": "jukebox_side",
+   "east": "jukebox_side",
+   "west": "jukebox_side"
+  }
+ },
+ {
+  "name": "jungle_log",
+  "zh": "jungle_log",
+  "root": "block",
+  "faces": {
+   "up": "jungle_log_top",
+   "down": "jungle_log_top",
+   "north": "jungle_log",
+   "south": "jungle_log",
+   "east": "jungle_log",
+   "west": "jungle_log"
+  }
+ },
+ {
+  "name": "jungle_planks",
+  "zh": "jungle_planks",
+  "root": "block",
+  "faces": {
+   "up": "jungle_planks",
+   "down": "jungle_planks",
+   "north": "jungle_planks",
+   "south": "jungle_planks",
+   "east": "jungle_planks",
+   "west": "jungle_planks"
+  }
+ },
+ {
+  "name": "jungle_wood",
+  "zh": "jungle_wood",
+  "root": "block",
+  "faces": {
+   "up": "jungle_log",
+   "down": "jungle_log",
+   "north": "jungle_log",
+   "south": "jungle_log",
+   "east": "jungle_log",
+   "west": "jungle_log"
+  }
+ },
+ {
+  "name": "lapis_block",
+  "zh": "lapis_block",
+  "root": "block",
+  "faces": {
+   "up": "lapis_block",
+   "down": "lapis_block",
+   "north": "lapis_block",
+   "south": "lapis_block",
+   "east": "lapis_block",
+   "west": "lapis_block"
+  }
+ },
+ {
+  "name": "lapis_ore",
+  "zh": "lapis_ore",
+  "root": "block",
+  "faces": {
+   "up": "lapis_ore",
+   "down": "lapis_ore",
+   "north": "lapis_ore",
+   "south": "lapis_ore",
+   "east": "lapis_ore",
+   "west": "lapis_ore"
+  }
+ },
+ {
+  "name": "lime_concrete",
+  "zh": "lime_concrete",
+  "root": "block",
+  "faces": {
+   "up": "lime_concrete",
+   "down": "lime_concrete",
+   "north": "lime_concrete",
+   "south": "lime_concrete",
+   "east": "lime_concrete",
+   "west": "lime_concrete"
+  }
+ },
+ {
+  "name": "lime_concrete_powder",
+  "zh": "lime_concrete_powder",
+  "root": "block",
+  "faces": {
+   "up": "lime_concrete_powder",
+   "down": "lime_concrete_powder",
+   "north": "lime_concrete_powder",
+   "south": "lime_concrete_powder",
+   "east": "lime_concrete_powder",
+   "west": "lime_concrete_powder"
+  }
+ },
+ {
+  "name": "lime_terracotta",
+  "zh": "lime_terracotta",
+  "root": "block",
+  "faces": {
+   "up": "lime_terracotta",
+   "down": "lime_terracotta",
+   "north": "lime_terracotta",
+   "south": "lime_terracotta",
+   "east": "lime_terracotta",
+   "west": "lime_terracotta"
+  }
+ },
+ {
+  "name": "lime_wool",
+  "zh": "lime_wool",
+  "root": "block",
+  "faces": {
+   "up": "lime_wool",
+   "down": "lime_wool",
+   "north": "lime_wool",
+   "south": "lime_wool",
+   "east": "lime_wool",
+   "west": "lime_wool"
+  }
+ },
+ {
+  "name": "lodestone",
+  "zh": "lodestone",
+  "root": "block",
+  "faces": {
+   "up": "lodestone_top",
+   "down": "lodestone_top",
+   "north": "lodestone_side",
+   "south": "lodestone_side",
+   "east": "lodestone_side",
+   "west": "lodestone_side"
+  }
+ },
+ {
+  "name": "loom",
+  "zh": "loom",
+  "root": "block",
+  "faces": {
+   "up": "loom_top",
+   "down": "loom_bottom",
+   "north": "loom_front",
+   "south": "loom_side",
+   "east": "loom_side",
+   "west": "loom_side"
+  }
+ },
+ {
+  "name": "magenta_concrete",
+  "zh": "magenta_concrete",
+  "root": "block",
+  "faces": {
+   "up": "magenta_concrete",
+   "down": "magenta_concrete",
+   "north": "magenta_concrete",
+   "south": "magenta_concrete",
+   "east": "magenta_concrete",
+   "west": "magenta_concrete"
+  }
+ },
+ {
+  "name": "magenta_concrete_powder",
+  "zh": "magenta_concrete_powder",
+  "root": "block",
+  "faces": {
+   "up": "magenta_concrete_powder",
+   "down": "magenta_concrete_powder",
+   "north": "magenta_concrete_powder",
+   "south": "magenta_concrete_powder",
+   "east": "magenta_concrete_powder",
+   "west": "magenta_concrete_powder"
+  }
+ },
+ {
+  "name": "magenta_terracotta",
+  "zh": "magenta_terracotta",
+  "root": "block",
+  "faces": {
+   "up": "magenta_terracotta",
+   "down": "magenta_terracotta",
+   "north": "magenta_terracotta",
+   "south": "magenta_terracotta",
+   "east": "magenta_terracotta",
+   "west": "magenta_terracotta"
+  }
+ },
+ {
+  "name": "magenta_wool",
+  "zh": "magenta_wool",
+  "root": "block",
+  "faces": {
+   "up": "magenta_wool",
+   "down": "magenta_wool",
+   "north": "magenta_wool",
+   "south": "magenta_wool",
+   "east": "magenta_wool",
+   "west": "magenta_wool"
+  }
+ },
+ {
+  "name": "mangrove_log",
+  "zh": "mangrove_log",
+  "root": "block",
+  "faces": {
+   "up": "mangrove_log_top",
+   "down": "mangrove_log_top",
+   "north": "mangrove_log",
+   "south": "mangrove_log",
+   "east": "mangrove_log",
+   "west": "mangrove_log"
+  }
+ },
+ {
+  "name": "mangrove_planks",
+  "zh": "mangrove_planks",
+  "root": "block",
+  "faces": {
+   "up": "mangrove_planks",
+   "down": "mangrove_planks",
+   "north": "mangrove_planks",
+   "south": "mangrove_planks",
+   "east": "mangrove_planks",
+   "west": "mangrove_planks"
+  }
+ },
+ {
+  "name": "mangrove_wood",
+  "zh": "mangrove_wood",
+  "root": "block",
+  "faces": {
+   "up": "mangrove_log",
+   "down": "mangrove_log",
+   "north": "mangrove_log",
+   "south": "mangrove_log",
+   "east": "mangrove_log",
+   "west": "mangrove_log"
+  }
+ },
+ {
+  "name": "melon",
+  "zh": "melon",
+  "root": "block",
+  "faces": {
+   "up": "melon_top",
+   "down": "melon_top",
+   "north": "melon_side",
+   "south": "melon_side",
+   "east": "melon_side",
+   "west": "melon_side"
+  }
+ },
+ {
+  "name": "moss_block",
+  "zh": "moss_block",
+  "root": "block",
+  "faces": {
+   "up": "moss_block",
+   "down": "moss_block",
+   "north": "moss_block",
+   "south": "moss_block",
+   "east": "moss_block",
+   "west": "moss_block"
+  }
+ },
+ {
+  "name": "mossy_cobblestone",
+  "zh": "mossy_cobblestone",
+  "root": "block",
+  "faces": {
+   "up": "mossy_cobblestone",
+   "down": "mossy_cobblestone",
+   "north": "mossy_cobblestone",
+   "south": "mossy_cobblestone",
+   "east": "mossy_cobblestone",
+   "west": "mossy_cobblestone"
+  }
+ },
+ {
+  "name": "mossy_stone_bricks",
+  "zh": "mossy_stone_bricks",
+  "root": "block",
+  "faces": {
+   "up": "mossy_stone_bricks",
+   "down": "mossy_stone_bricks",
+   "north": "mossy_stone_bricks",
+   "south": "mossy_stone_bricks",
+   "east": "mossy_stone_bricks",
+   "west": "mossy_stone_bricks"
+  }
+ },
+ {
+  "name": "mud",
+  "zh": "mud",
+  "root": "block",
+  "faces": {
+   "up": "mud",
+   "down": "mud",
+   "north": "mud",
+   "south": "mud",
+   "east": "mud",
+   "west": "mud"
+  }
+ },
+ {
+  "name": "mud_bricks",
+  "zh": "mud_bricks",
+  "root": "block",
+  "faces": {
+   "up": "mud_bricks",
+   "down": "mud_bricks",
+   "north": "mud_bricks",
+   "south": "mud_bricks",
+   "east": "mud_bricks",
+   "west": "mud_bricks"
+  }
+ },
+ {
+  "name": "muddy_mangrove_roots",
+  "zh": "muddy_mangrove_roots",
+  "root": "block",
+  "faces": {
+   "up": "muddy_mangrove_roots_top",
+   "down": "muddy_mangrove_roots_top",
+   "north": "muddy_mangrove_roots_side",
+   "south": "muddy_mangrove_roots_side",
+   "east": "muddy_mangrove_roots_side",
+   "west": "muddy_mangrove_roots_side"
+  }
+ },
+ {
+  "name": "mycelium",
+  "zh": "mycelium",
+  "root": "block",
+  "faces": {
+   "up": "mycelium_top",
+   "down": "dirt",
+   "north": "mycelium_side",
+   "south": "mycelium_side",
+   "east": "mycelium_side",
+   "west": "mycelium_side"
+  }
+ },
+ {
+  "name": "nether_bricks",
+  "zh": "nether_bricks",
+  "root": "block",
+  "faces": {
+   "up": "nether_bricks",
+   "down": "nether_bricks",
+   "north": "nether_bricks",
+   "south": "nether_bricks",
+   "east": "nether_bricks",
+   "west": "nether_bricks"
+  }
+ },
+ {
+  "name": "nether_gold_ore",
+  "zh": "nether_gold_ore",
+  "root": "block",
+  "faces": {
+   "up": "nether_gold_ore",
+   "down": "nether_gold_ore",
+   "north": "nether_gold_ore",
+   "south": "nether_gold_ore",
+   "east": "nether_gold_ore",
+   "west": "nether_gold_ore"
+  }
+ },
+ {
+  "name": "nether_quartz_ore",
+  "zh": "nether_quartz_ore",
+  "root": "block",
+  "faces": {
+   "up": "nether_quartz_ore",
+   "down": "nether_quartz_ore",
+   "north": "nether_quartz_ore",
+   "south": "nether_quartz_ore",
+   "east": "nether_quartz_ore",
+   "west": "nether_quartz_ore"
+  }
+ },
+ {
+  "name": "nether_wart_block",
+  "zh": "nether_wart_block",
+  "root": "block",
+  "faces": {
+   "up": "nether_wart_block",
+   "down": "nether_wart_block",
+   "north": "nether_wart_block",
+   "south": "nether_wart_block",
+   "east": "nether_wart_block",
+   "west": "nether_wart_block"
+  }
+ },
+ {
+  "name": "netherite_block",
+  "zh": "netherite_block",
+  "root": "block",
+  "faces": {
+   "up": "netherite_block",
+   "down": "netherite_block",
+   "north": "netherite_block",
+   "south": "netherite_block",
+   "east": "netherite_block",
+   "west": "netherite_block"
+  }
+ },
+ {
+  "name": "netherrack",
+  "zh": "netherrack",
+  "root": "block",
+  "faces": {
+   "up": "netherrack",
+   "down": "netherrack",
+   "north": "netherrack",
+   "south": "netherrack",
+   "east": "netherrack",
+   "west": "netherrack"
+  }
+ },
+ {
+  "name": "note_block",
+  "zh": "note_block",
+  "root": "block",
+  "faces": {
+   "up": "note_block",
+   "down": "note_block",
+   "north": "note_block",
+   "south": "note_block",
+   "east": "note_block",
+   "west": "note_block"
+  }
+ },
+ {
+  "name": "oak_log",
+  "zh": "oak_log",
+  "root": "block",
+  "faces": {
+   "up": "oak_log_top",
+   "down": "oak_log_top",
+   "north": "oak_log",
+   "south": "oak_log",
+   "east": "oak_log",
+   "west": "oak_log"
+  }
+ },
+ {
+  "name": "oak_planks",
+  "zh": "oak_planks",
+  "root": "block",
+  "faces": {
+   "up": "oak_planks",
+   "down": "oak_planks",
+   "north": "oak_planks",
+   "south": "oak_planks",
+   "east": "oak_planks",
+   "west": "oak_planks"
+  }
+ },
+ {
+  "name": "oak_wood",
+  "zh": "oak_wood",
+  "root": "block",
+  "faces": {
+   "up": "oak_log",
+   "down": "oak_log",
+   "north": "oak_log",
+   "south": "oak_log",
+   "east": "oak_log",
+   "west": "oak_log"
+  }
+ },
+ {
+  "name": "observer",
+  "zh": "observer",
+  "root": "block",
+  "faces": {
+   "up": "observer_side",
+   "down": "observer_side",
+   "north": "observer_side",
+   "south": "observer_side",
+   "east": "observer_side",
+   "west": "observer_side"
+  }
+ },
+ {
+  "name": "obsidian",
+  "zh": "obsidian",
+  "root": "block",
+  "faces": {
+   "up": "obsidian",
+   "down": "obsidian",
+   "north": "obsidian",
+   "south": "obsidian",
+   "east": "obsidian",
+   "west": "obsidian"
+  }
+ },
+ {
+  "name": "orange_concrete",
+  "zh": "orange_concrete",
+  "root": "block",
+  "faces": {
+   "up": "orange_concrete",
+   "down": "orange_concrete",
+   "north": "orange_concrete",
+   "south": "orange_concrete",
+   "east": "orange_concrete",
+   "west": "orange_concrete"
+  }
+ },
+ {
+  "name": "orange_concrete_powder",
+  "zh": "orange_concrete_powder",
+  "root": "block",
+  "faces": {
+   "up": "orange_concrete_powder",
+   "down": "orange_concrete_powder",
+   "north": "orange_concrete_powder",
+   "south": "orange_concrete_powder",
+   "east": "orange_concrete_powder",
+   "west": "orange_concrete_powder"
+  }
+ },
+ {
+  "name": "orange_terracotta",
+  "zh": "orange_terracotta",
+  "root": "block",
+  "faces": {
+   "up": "orange_terracotta",
+   "down": "orange_terracotta",
+   "north": "orange_terracotta",
+   "south": "orange_terracotta",
+   "east": "orange_terracotta",
+   "west": "orange_terracotta"
+  }
+ },
+ {
+  "name": "orange_wool",
+  "zh": "orange_wool",
+  "root": "block",
+  "faces": {
+   "up": "orange_wool",
+   "down": "orange_wool",
+   "north": "orange_wool",
+   "south": "orange_wool",
+   "east": "orange_wool",
+   "west": "orange_wool"
+  }
+ },
+ {
+  "name": "oxidized_chiseled_copper",
+  "zh": "oxidized_chiseled_copper",
+  "root": "block",
+  "faces": {
+   "up": "oxidized_chiseled_copper",
+   "down": "oxidized_chiseled_copper",
+   "north": "oxidized_chiseled_copper",
+   "south": "oxidized_chiseled_copper",
+   "east": "oxidized_chiseled_copper",
+   "west": "oxidized_chiseled_copper"
+  }
+ },
+ {
+  "name": "oxidized_copper",
+  "zh": "oxidized_copper",
+  "root": "block",
+  "faces": {
+   "up": "oxidized_copper",
+   "down": "oxidized_copper",
+   "north": "oxidized_copper",
+   "south": "oxidized_copper",
+   "east": "oxidized_copper",
+   "west": "oxidized_copper"
+  }
+ },
+ {
+  "name": "oxidized_copper_bulb",
+  "zh": "oxidized_copper_bulb",
+  "root": "block",
+  "faces": {
+   "up": "oxidized_copper_bulb",
+   "down": "oxidized_copper_bulb",
+   "north": "oxidized_copper_bulb",
+   "south": "oxidized_copper_bulb",
+   "east": "oxidized_copper_bulb",
+   "west": "oxidized_copper_bulb"
+  }
+ },
+ {
+  "name": "oxidized_copper_grate",
+  "zh": "oxidized_copper_grate",
+  "root": "block",
+  "faces": {
+   "up": "oxidized_copper_grate",
+   "down": "oxidized_copper_grate",
+   "north": "oxidized_copper_grate",
+   "south": "oxidized_copper_grate",
+   "east": "oxidized_copper_grate",
+   "west": "oxidized_copper_grate"
+  }
+ },
+ {
+  "name": "oxidized_cut_copper",
+  "zh": "oxidized_cut_copper",
+  "root": "block",
+  "faces": {
+   "up": "oxidized_cut_copper",
+   "down": "oxidized_cut_copper",
+   "north": "oxidized_cut_copper",
+   "south": "oxidized_cut_copper",
+   "east": "oxidized_cut_copper",
+   "west": "oxidized_cut_copper"
+  }
+ },
+ {
+  "name": "packed_mud",
+  "zh": "packed_mud",
+  "root": "block",
+  "faces": {
+   "up": "packed_mud",
+   "down": "packed_mud",
+   "north": "packed_mud",
+   "south": "packed_mud",
+   "east": "packed_mud",
+   "west": "packed_mud"
+  }
+ },
+ {
+  "name": "pale_moss_block",
+  "zh": "pale_moss_block",
+  "root": "block",
+  "faces": {
+   "up": "pale_moss_block",
+   "down": "pale_moss_block",
+   "north": "pale_moss_block",
+   "south": "pale_moss_block",
+   "east": "pale_moss_block",
+   "west": "pale_moss_block"
+  }
+ },
+ {
+  "name": "pale_oak_log",
+  "zh": "pale_oak_log",
+  "root": "block",
+  "faces": {
+   "up": "pale_oak_log_top",
+   "down": "pale_oak_log_top",
+   "north": "pale_oak_log",
+   "south": "pale_oak_log",
+   "east": "pale_oak_log",
+   "west": "pale_oak_log"
+  }
+ },
+ {
+  "name": "pale_oak_planks",
+  "zh": "pale_oak_planks",
+  "root": "block",
+  "faces": {
+   "up": "pale_oak_planks",
+   "down": "pale_oak_planks",
+   "north": "pale_oak_planks",
+   "south": "pale_oak_planks",
+   "east": "pale_oak_planks",
+   "west": "pale_oak_planks"
+  }
+ },
+ {
+  "name": "pale_oak_wood",
+  "zh": "pale_oak_wood",
+  "root": "block",
+  "faces": {
+   "up": "pale_oak_log",
+   "down": "pale_oak_log",
+   "north": "pale_oak_log",
+   "south": "pale_oak_log",
+   "east": "pale_oak_log",
+   "west": "pale_oak_log"
+  }
+ },
+ {
+  "name": "pink_concrete",
+  "zh": "pink_concrete",
+  "root": "block",
+  "faces": {
+   "up": "pink_concrete",
+   "down": "pink_concrete",
+   "north": "pink_concrete",
+   "south": "pink_concrete",
+   "east": "pink_concrete",
+   "west": "pink_concrete"
+  }
+ },
+ {
+  "name": "pink_concrete_powder",
+  "zh": "pink_concrete_powder",
+  "root": "block",
+  "faces": {
+   "up": "pink_concrete_powder",
+   "down": "pink_concrete_powder",
+   "north": "pink_concrete_powder",
+   "south": "pink_concrete_powder",
+   "east": "pink_concrete_powder",
+   "west": "pink_concrete_powder"
+  }
+ },
+ {
+  "name": "pink_terracotta",
+  "zh": "pink_terracotta",
+  "root": "block",
+  "faces": {
+   "up": "pink_terracotta",
+   "down": "pink_terracotta",
+   "north": "pink_terracotta",
+   "south": "pink_terracotta",
+   "east": "pink_terracotta",
+   "west": "pink_terracotta"
+  }
+ },
+ {
+  "name": "pink_wool",
+  "zh": "pink_wool",
+  "root": "block",
+  "faces": {
+   "up": "pink_wool",
+   "down": "pink_wool",
+   "north": "pink_wool",
+   "south": "pink_wool",
+   "east": "pink_wool",
+   "west": "pink_wool"
+  }
+ },
+ {
+  "name": "piston",
+  "zh": "piston",
+  "root": "template_piston",
+  "faces": {
+   "up": "piston_side",
+   "down": "piston_side",
+   "north": "piston_side",
+   "south": "piston_side",
+   "east": "piston_side",
+   "west": "piston_side"
+  }
+ },
+ {
+  "name": "podzol",
+  "zh": "podzol",
+  "root": "block",
+  "faces": {
+   "up": "podzol_top",
+   "down": "dirt",
+   "north": "podzol_side",
+   "south": "podzol_side",
+   "east": "podzol_side",
+   "west": "podzol_side"
+  }
+ },
+ {
+  "name": "polished_andesite",
+  "zh": "polished_andesite",
+  "root": "block",
+  "faces": {
+   "up": "polished_andesite",
+   "down": "polished_andesite",
+   "north": "polished_andesite",
+   "south": "polished_andesite",
+   "east": "polished_andesite",
+   "west": "polished_andesite"
+  }
+ },
+ {
+  "name": "polished_basalt",
+  "zh": "polished_basalt",
+  "root": "block",
+  "faces": {
+   "up": "polished_basalt_top",
+   "down": "polished_basalt_top",
+   "north": "polished_basalt_side",
+   "south": "polished_basalt_side",
+   "east": "polished_basalt_side",
+   "west": "polished_basalt_side"
+  }
+ },
+ {
+  "name": "polished_blackstone",
+  "zh": "polished_blackstone",
+  "root": "block",
+  "faces": {
+   "up": "polished_blackstone",
+   "down": "polished_blackstone",
+   "north": "polished_blackstone",
+   "south": "polished_blackstone",
+   "east": "polished_blackstone",
+   "west": "polished_blackstone"
+  }
+ },
+ {
+  "name": "polished_blackstone_bricks",
+  "zh": "polished_blackstone_bricks",
+  "root": "block",
+  "faces": {
+   "up": "polished_blackstone_bricks",
+   "down": "polished_blackstone_bricks",
+   "north": "polished_blackstone_bricks",
+   "south": "polished_blackstone_bricks",
+   "east": "polished_blackstone_bricks",
+   "west": "polished_blackstone_bricks"
+  }
+ },
+ {
+  "name": "polished_cinnabar",
+  "zh": "polished_cinnabar",
+  "root": "block",
+  "faces": {
+   "up": "polished_cinnabar",
+   "down": "polished_cinnabar",
+   "north": "polished_cinnabar",
+   "south": "polished_cinnabar",
+   "east": "polished_cinnabar",
+   "west": "polished_cinnabar"
+  }
+ },
+ {
+  "name": "polished_deepslate",
+  "zh": "polished_deepslate",
+  "root": "block",
+  "faces": {
+   "up": "polished_deepslate",
+   "down": "polished_deepslate",
+   "north": "polished_deepslate",
+   "south": "polished_deepslate",
+   "east": "polished_deepslate",
+   "west": "polished_deepslate"
+  }
+ },
+ {
+  "name": "polished_diorite",
+  "zh": "polished_diorite",
+  "root": "block",
+  "faces": {
+   "up": "polished_diorite",
+   "down": "polished_diorite",
+   "north": "polished_diorite",
+   "south": "polished_diorite",
+   "east": "polished_diorite",
+   "west": "polished_diorite"
+  }
+ },
+ {
+  "name": "polished_granite",
+  "zh": "polished_granite",
+  "root": "block",
+  "faces": {
+   "up": "polished_granite",
+   "down": "polished_granite",
+   "north": "polished_granite",
+   "south": "polished_granite",
+   "east": "polished_granite",
+   "west": "polished_granite"
+  }
+ },
+ {
+  "name": "polished_sulfur",
+  "zh": "polished_sulfur",
+  "root": "block",
+  "faces": {
+   "up": "polished_sulfur",
+   "down": "polished_sulfur",
+   "north": "polished_sulfur",
+   "south": "polished_sulfur",
+   "east": "polished_sulfur",
+   "west": "polished_sulfur"
+  }
+ },
+ {
+  "name": "polished_tuff",
+  "zh": "polished_tuff",
+  "root": "block",
+  "faces": {
+   "up": "polished_tuff",
+   "down": "polished_tuff",
+   "north": "polished_tuff",
+   "south": "polished_tuff",
+   "east": "polished_tuff",
+   "west": "polished_tuff"
+  }
+ },
+ {
+  "name": "potent_sulfur",
+  "zh": "potent_sulfur",
+  "root": "block",
+  "faces": {
+   "up": "potent_sulfur",
+   "down": "potent_sulfur",
+   "north": "potent_sulfur",
+   "south": "potent_sulfur",
+   "east": "potent_sulfur",
+   "west": "potent_sulfur"
+  }
+ },
+ {
+  "name": "prismarine",
+  "zh": "prismarine",
+  "root": "block",
+  "faces": {
+   "up": "prismarine",
+   "down": "prismarine",
+   "north": "prismarine",
+   "south": "prismarine",
+   "east": "prismarine",
+   "west": "prismarine"
+  }
+ },
+ {
+  "name": "prismarine_bricks",
+  "zh": "prismarine_bricks",
+  "root": "block",
+  "faces": {
+   "up": "prismarine_bricks",
+   "down": "prismarine_bricks",
+   "north": "prismarine_bricks",
+   "south": "prismarine_bricks",
+   "east": "prismarine_bricks",
+   "west": "prismarine_bricks"
+  }
+ },
+ {
+  "name": "pumpkin",
+  "zh": "pumpkin",
+  "root": "block",
+  "faces": {
+   "up": "pumpkin_top",
+   "down": "pumpkin_top",
+   "north": "pumpkin_side",
+   "south": "pumpkin_side",
+   "east": "pumpkin_side",
+   "west": "pumpkin_side"
+  }
+ },
+ {
+  "name": "purple_concrete",
+  "zh": "purple_concrete",
+  "root": "block",
+  "faces": {
+   "up": "purple_concrete",
+   "down": "purple_concrete",
+   "north": "purple_concrete",
+   "south": "purple_concrete",
+   "east": "purple_concrete",
+   "west": "purple_concrete"
+  }
+ },
+ {
+  "name": "purple_concrete_powder",
+  "zh": "purple_concrete_powder",
+  "root": "block",
+  "faces": {
+   "up": "purple_concrete_powder",
+   "down": "purple_concrete_powder",
+   "north": "purple_concrete_powder",
+   "south": "purple_concrete_powder",
+   "east": "purple_concrete_powder",
+   "west": "purple_concrete_powder"
+  }
+ },
+ {
+  "name": "purple_terracotta",
+  "zh": "purple_terracotta",
+  "root": "block",
+  "faces": {
+   "up": "purple_terracotta",
+   "down": "purple_terracotta",
+   "north": "purple_terracotta",
+   "south": "purple_terracotta",
+   "east": "purple_terracotta",
+   "west": "purple_terracotta"
+  }
+ },
+ {
+  "name": "purple_wool",
+  "zh": "purple_wool",
+  "root": "block",
+  "faces": {
+   "up": "purple_wool",
+   "down": "purple_wool",
+   "north": "purple_wool",
+   "south": "purple_wool",
+   "east": "purple_wool",
+   "west": "purple_wool"
+  }
+ },
+ {
+  "name": "purpur_block",
+  "zh": "purpur_block",
+  "root": "block",
+  "faces": {
+   "up": "purpur_block",
+   "down": "purpur_block",
+   "north": "purpur_block",
+   "south": "purpur_block",
+   "east": "purpur_block",
+   "west": "purpur_block"
+  }
+ },
+ {
+  "name": "purpur_pillar",
+  "zh": "purpur_pillar",
+  "root": "block",
+  "faces": {
+   "up": "purpur_pillar_top",
+   "down": "purpur_pillar_top",
+   "north": "purpur_pillar_side",
+   "south": "purpur_pillar_side",
+   "east": "purpur_pillar_side",
+   "west": "purpur_pillar_side"
+  }
+ },
+ {
+  "name": "quartz_block",
+  "zh": "quartz_block",
+  "root": "block",
+  "faces": {
+   "up": "quartz_block_top",
+   "down": "quartz_block_top",
+   "north": "quartz_block_side",
+   "south": "quartz_block_side",
+   "east": "quartz_block_side",
+   "west": "quartz_block_side"
+  }
+ },
+ {
+  "name": "quartz_bricks",
+  "zh": "quartz_bricks",
+  "root": "block",
+  "faces": {
+   "up": "quartz_bricks",
+   "down": "quartz_bricks",
+   "north": "quartz_bricks",
+   "south": "quartz_bricks",
+   "east": "quartz_bricks",
+   "west": "quartz_bricks"
+  }
+ },
+ {
+  "name": "quartz_pillar",
+  "zh": "quartz_pillar",
+  "root": "block",
+  "faces": {
+   "up": "quartz_pillar_top",
+   "down": "quartz_pillar_top",
+   "north": "quartz_pillar_side",
+   "south": "quartz_pillar_side",
+   "east": "quartz_pillar_side",
+   "west": "quartz_pillar_side"
+  }
+ },
+ {
+  "name": "raw_copper_block",
+  "zh": "raw_copper_block",
+  "root": "block",
+  "faces": {
+   "up": "raw_copper_block",
+   "down": "raw_copper_block",
+   "north": "raw_copper_block",
+   "south": "raw_copper_block",
+   "east": "raw_copper_block",
+   "west": "raw_copper_block"
+  }
+ },
+ {
+  "name": "raw_gold_block",
+  "zh": "raw_gold_block",
+  "root": "block",
+  "faces": {
+   "up": "raw_gold_block",
+   "down": "raw_gold_block",
+   "north": "raw_gold_block",
+   "south": "raw_gold_block",
+   "east": "raw_gold_block",
+   "west": "raw_gold_block"
+  }
+ },
+ {
+  "name": "raw_iron_block",
+  "zh": "raw_iron_block",
+  "root": "block",
+  "faces": {
+   "up": "raw_iron_block",
+   "down": "raw_iron_block",
+   "north": "raw_iron_block",
+   "south": "raw_iron_block",
+   "east": "raw_iron_block",
+   "west": "raw_iron_block"
+  }
+ },
+ {
+  "name": "red_concrete",
+  "zh": "red_concrete",
+  "root": "block",
+  "faces": {
+   "up": "red_concrete",
+   "down": "red_concrete",
+   "north": "red_concrete",
+   "south": "red_concrete",
+   "east": "red_concrete",
+   "west": "red_concrete"
+  }
+ },
+ {
+  "name": "red_concrete_powder",
+  "zh": "red_concrete_powder",
+  "root": "block",
+  "faces": {
+   "up": "red_concrete_powder",
+   "down": "red_concrete_powder",
+   "north": "red_concrete_powder",
+   "south": "red_concrete_powder",
+   "east": "red_concrete_powder",
+   "west": "red_concrete_powder"
+  }
+ },
+ {
+  "name": "red_nether_bricks",
+  "zh": "red_nether_bricks",
+  "root": "block",
+  "faces": {
+   "up": "red_nether_bricks",
+   "down": "red_nether_bricks",
+   "north": "red_nether_bricks",
+   "south": "red_nether_bricks",
+   "east": "red_nether_bricks",
+   "west": "red_nether_bricks"
+  }
+ },
+ {
+  "name": "red_sand",
+  "zh": "red_sand",
+  "root": "block",
+  "faces": {
+   "up": "red_sand",
+   "down": "red_sand",
+   "north": "red_sand",
+   "south": "red_sand",
+   "east": "red_sand",
+   "west": "red_sand"
+  }
+ },
+ {
+  "name": "red_sandstone",
+  "zh": "red_sandstone",
+  "root": "block",
+  "faces": {
+   "up": "red_sandstone_top",
+   "down": "red_sandstone_bottom",
+   "north": "red_sandstone",
+   "south": "red_sandstone",
+   "east": "red_sandstone",
+   "west": "red_sandstone"
+  }
+ },
+ {
+  "name": "red_terracotta",
+  "zh": "red_terracotta",
+  "root": "block",
+  "faces": {
+   "up": "red_terracotta",
+   "down": "red_terracotta",
+   "north": "red_terracotta",
+   "south": "red_terracotta",
+   "east": "red_terracotta",
+   "west": "red_terracotta"
+  }
+ },
+ {
+  "name": "red_wool",
+  "zh": "red_wool",
+  "root": "block",
+  "faces": {
+   "up": "red_wool",
+   "down": "red_wool",
+   "north": "red_wool",
+   "south": "red_wool",
+   "east": "red_wool",
+   "west": "red_wool"
+  }
+ },
+ {
+  "name": "redstone_block",
+  "zh": "redstone_block",
+  "root": "block",
+  "faces": {
+   "up": "redstone_block",
+   "down": "redstone_block",
+   "north": "redstone_block",
+   "south": "redstone_block",
+   "east": "redstone_block",
+   "west": "redstone_block"
+  }
+ },
+ {
+  "name": "redstone_lamp",
+  "zh": "redstone_lamp",
+  "root": "block",
+  "faces": {
+   "up": "redstone_lamp",
+   "down": "redstone_lamp",
+   "north": "redstone_lamp",
+   "south": "redstone_lamp",
+   "east": "redstone_lamp",
+   "west": "redstone_lamp"
+  }
+ },
+ {
+  "name": "redstone_ore",
+  "zh": "redstone_ore",
+  "root": "block",
+  "faces": {
+   "up": "redstone_ore",
+   "down": "redstone_ore",
+   "north": "redstone_ore",
+   "south": "redstone_ore",
+   "east": "redstone_ore",
+   "west": "redstone_ore"
+  }
+ },
+ {
+  "name": "reinforced_deepslate",
+  "zh": "reinforced_deepslate",
+  "root": "block",
+  "faces": {
+   "up": "reinforced_deepslate_top",
+   "down": "reinforced_deepslate_bottom",
+   "north": "reinforced_deepslate_side",
+   "south": "reinforced_deepslate_side",
+   "east": "reinforced_deepslate_side",
+   "west": "reinforced_deepslate_side"
+  }
+ },
+ {
+  "name": "repeating_command_block",
+  "zh": "repeating_command_block",
+  "root": "block",
+  "faces": {
+   "up": "repeating_command_block_side",
+   "down": "repeating_command_block_side",
+   "north": "repeating_command_block_front",
+   "south": "repeating_command_block_back",
+   "east": "repeating_command_block_side",
+   "west": "repeating_command_block_side"
+  }
+ },
+ {
+  "name": "resin_block",
+  "zh": "resin_block",
+  "root": "block",
+  "faces": {
+   "up": "resin_block",
+   "down": "resin_block",
+   "north": "resin_block",
+   "south": "resin_block",
+   "east": "resin_block",
+   "west": "resin_block"
+  }
+ },
+ {
+  "name": "resin_bricks",
+  "zh": "resin_bricks",
+  "root": "block",
+  "faces": {
+   "up": "resin_bricks",
+   "down": "resin_bricks",
+   "north": "resin_bricks",
+   "south": "resin_bricks",
+   "east": "resin_bricks",
+   "west": "resin_bricks"
+  }
+ },
+ {
+  "name": "respawn_anchor_0",
+  "zh": "respawn_anchor_0",
+  "root": "block",
+  "faces": {
+   "up": "respawn_anchor_top_off",
+   "down": "respawn_anchor_bottom",
+   "north": "respawn_anchor_side0",
+   "south": "respawn_anchor_side0",
+   "east": "respawn_anchor_side0",
+   "west": "respawn_anchor_side0"
+  }
+ },
+ {
+  "name": "rooted_dirt",
+  "zh": "rooted_dirt",
+  "root": "block",
+  "faces": {
+   "up": "rooted_dirt",
+   "down": "rooted_dirt",
+   "north": "rooted_dirt",
+   "south": "rooted_dirt",
+   "east": "rooted_dirt",
+   "west": "rooted_dirt"
+  }
+ },
+ {
+  "name": "sand",
+  "zh": "sand",
+  "root": "block",
+  "faces": {
+   "up": "sand",
+   "down": "sand",
+   "north": "sand",
+   "south": "sand",
+   "east": "sand",
+   "west": "sand"
+  }
+ },
+ {
+  "name": "sandstone",
+  "zh": "sandstone",
+  "root": "block",
+  "faces": {
+   "up": "sandstone_top",
+   "down": "sandstone_bottom",
+   "north": "sandstone",
+   "south": "sandstone",
+   "east": "sandstone",
+   "west": "sandstone"
+  }
+ },
+ {
+  "name": "sculk",
+  "zh": "sculk",
+  "root": "block",
+  "faces": {
+   "up": "sculk",
+   "down": "sculk",
+   "north": "sculk",
+   "south": "sculk",
+   "east": "sculk",
+   "west": "sculk"
+  }
+ },
+ {
+  "name": "sculk_catalyst",
+  "zh": "sculk_catalyst",
+  "root": "block",
+  "faces": {
+   "up": "sculk_catalyst_top",
+   "down": "sculk_catalyst_bottom",
+   "north": "sculk_catalyst_side",
+   "south": "sculk_catalyst_side",
+   "east": "sculk_catalyst_side",
+   "west": "sculk_catalyst_side"
+  }
+ },
+ {
+  "name": "smithing_table",
+  "zh": "smithing_table",
+  "root": "block",
+  "faces": {
+   "up": "smithing_table_top",
+   "down": "smithing_table_bottom",
+   "north": "smithing_table_front",
+   "south": "smithing_table_front",
+   "east": "smithing_table_side",
+   "west": "smithing_table_side"
+  }
+ },
+ {
+  "name": "smoker",
+  "zh": "smoker",
+  "root": "block",
+  "faces": {
+   "up": "smoker_top",
+   "down": "smoker_bottom",
+   "north": "smoker_front",
+   "south": "smoker_side",
+   "east": "smoker_side",
+   "west": "smoker_side"
+  }
+ },
+ {
+  "name": "smooth_basalt",
+  "zh": "smooth_basalt",
+  "root": "block",
+  "faces": {
+   "up": "smooth_basalt",
+   "down": "smooth_basalt",
+   "north": "smooth_basalt",
+   "south": "smooth_basalt",
+   "east": "smooth_basalt",
+   "west": "smooth_basalt"
+  }
+ },
+ {
+  "name": "smooth_quartz",
+  "zh": "smooth_quartz",
+  "root": "block",
+  "faces": {
+   "up": "quartz_block_bottom",
+   "down": "quartz_block_bottom",
+   "north": "quartz_block_bottom",
+   "south": "quartz_block_bottom",
+   "east": "quartz_block_bottom",
+   "west": "quartz_block_bottom"
+  }
+ },
+ {
+  "name": "smooth_red_sandstone",
+  "zh": "smooth_red_sandstone",
+  "root": "block",
+  "faces": {
+   "up": "red_sandstone_top",
+   "down": "red_sandstone_top",
+   "north": "red_sandstone_top",
+   "south": "red_sandstone_top",
+   "east": "red_sandstone_top",
+   "west": "red_sandstone_top"
+  }
+ },
+ {
+  "name": "smooth_sandstone",
+  "zh": "smooth_sandstone",
+  "root": "block",
+  "faces": {
+   "up": "sandstone_top",
+   "down": "sandstone_top",
+   "north": "sandstone_top",
+   "south": "sandstone_top",
+   "east": "sandstone_top",
+   "west": "sandstone_top"
+  }
+ },
+ {
+  "name": "smooth_stone",
+  "zh": "smooth_stone",
+  "root": "block",
+  "faces": {
+   "up": "smooth_stone",
+   "down": "smooth_stone",
+   "north": "smooth_stone",
+   "south": "smooth_stone",
+   "east": "smooth_stone",
+   "west": "smooth_stone"
+  }
+ },
+ {
+  "name": "smooth_stone_slab_double",
+  "zh": "smooth_stone_slab_double",
+  "root": "block",
+  "faces": {
+   "up": "smooth_stone",
+   "down": "smooth_stone",
+   "north": "smooth_stone_slab_side",
+   "south": "smooth_stone_slab_side",
+   "east": "smooth_stone_slab_side",
+   "west": "smooth_stone_slab_side"
+  }
+ },
+ {
+  "name": "snow_block",
+  "zh": "snow_block",
+  "root": "block",
+  "faces": {
+   "up": "snow",
+   "down": "snow",
+   "north": "snow",
+   "south": "snow",
+   "east": "snow",
+   "west": "snow"
+  }
+ },
+ {
+  "name": "soul_sand",
+  "zh": "soul_sand",
+  "root": "block",
+  "faces": {
+   "up": "soul_sand",
+   "down": "soul_sand",
+   "north": "soul_sand",
+   "south": "soul_sand",
+   "east": "soul_sand",
+   "west": "soul_sand"
+  }
+ },
+ {
+  "name": "soul_soil",
+  "zh": "soul_soil",
+  "root": "block",
+  "faces": {
+   "up": "soul_soil",
+   "down": "soul_soil",
+   "north": "soul_soil",
+   "south": "soul_soil",
+   "east": "soul_soil",
+   "west": "soul_soil"
+  }
+ },
+ {
+  "name": "sponge",
+  "zh": "sponge",
+  "root": "block",
+  "faces": {
+   "up": "sponge",
+   "down": "sponge",
+   "north": "sponge",
+   "south": "sponge",
+   "east": "sponge",
+   "west": "sponge"
+  }
+ },
+ {
+  "name": "spruce_log",
+  "zh": "spruce_log",
+  "root": "block",
+  "faces": {
+   "up": "spruce_log_top",
+   "down": "spruce_log_top",
+   "north": "spruce_log",
+   "south": "spruce_log",
+   "east": "spruce_log",
+   "west": "spruce_log"
+  }
+ },
+ {
+  "name": "spruce_planks",
+  "zh": "spruce_planks",
+  "root": "block",
+  "faces": {
+   "up": "spruce_planks",
+   "down": "spruce_planks",
+   "north": "spruce_planks",
+   "south": "spruce_planks",
+   "east": "spruce_planks",
+   "west": "spruce_planks"
+  }
+ },
+ {
+  "name": "spruce_wood",
+  "zh": "spruce_wood",
+  "root": "block",
+  "faces": {
+   "up": "spruce_log",
+   "down": "spruce_log",
+   "north": "spruce_log",
+   "south": "spruce_log",
+   "east": "spruce_log",
+   "west": "spruce_log"
+  }
+ },
+ {
+  "name": "sticky_piston",
+  "zh": "sticky_piston",
+  "root": "template_piston",
+  "faces": {
+   "up": "piston_side",
+   "down": "piston_side",
+   "north": "piston_side",
+   "south": "piston_side",
+   "east": "piston_side",
+   "west": "piston_side"
+  }
+ },
+ {
+  "name": "stone",
+  "zh": "stone",
+  "root": "block",
+  "faces": {
+   "up": "stone",
+   "down": "stone",
+   "north": "stone",
+   "south": "stone",
+   "east": "stone",
+   "west": "stone"
+  }
+ },
+ {
+  "name": "stone_bricks",
+  "zh": "stone_bricks",
+  "root": "block",
+  "faces": {
+   "up": "stone_bricks",
+   "down": "stone_bricks",
+   "north": "stone_bricks",
+   "south": "stone_bricks",
+   "east": "stone_bricks",
+   "west": "stone_bricks"
+  }
+ },
+ {
+  "name": "stripped_acacia_log",
+  "zh": "stripped_acacia_log",
+  "root": "block",
+  "faces": {
+   "up": "stripped_acacia_log_top",
+   "down": "stripped_acacia_log_top",
+   "north": "stripped_acacia_log",
+   "south": "stripped_acacia_log",
+   "east": "stripped_acacia_log",
+   "west": "stripped_acacia_log"
+  }
+ },
+ {
+  "name": "stripped_acacia_wood",
+  "zh": "stripped_acacia_wood",
+  "root": "block",
+  "faces": {
+   "up": "stripped_acacia_log",
+   "down": "stripped_acacia_log",
+   "north": "stripped_acacia_log",
+   "south": "stripped_acacia_log",
+   "east": "stripped_acacia_log",
+   "west": "stripped_acacia_log"
+  }
+ },
+ {
+  "name": "stripped_bamboo_block",
+  "zh": "stripped_bamboo_block",
+  "root": "block",
+  "faces": {
+   "up": "stripped_bamboo_block_top",
+   "down": "stripped_bamboo_block_top",
+   "north": "stripped_bamboo_block",
+   "south": "stripped_bamboo_block",
+   "east": "stripped_bamboo_block",
+   "west": "stripped_bamboo_block"
+  }
+ },
+ {
+  "name": "stripped_birch_log",
+  "zh": "stripped_birch_log",
+  "root": "block",
+  "faces": {
+   "up": "stripped_birch_log_top",
+   "down": "stripped_birch_log_top",
+   "north": "stripped_birch_log",
+   "south": "stripped_birch_log",
+   "east": "stripped_birch_log",
+   "west": "stripped_birch_log"
+  }
+ },
+ {
+  "name": "stripped_birch_wood",
+  "zh": "stripped_birch_wood",
+  "root": "block",
+  "faces": {
+   "up": "stripped_birch_log",
+   "down": "stripped_birch_log",
+   "north": "stripped_birch_log",
+   "south": "stripped_birch_log",
+   "east": "stripped_birch_log",
+   "west": "stripped_birch_log"
+  }
+ },
+ {
+  "name": "stripped_cherry_log",
+  "zh": "stripped_cherry_log",
+  "root": "block",
+  "faces": {
+   "up": "stripped_cherry_log_top",
+   "down": "stripped_cherry_log_top",
+   "north": "stripped_cherry_log",
+   "south": "stripped_cherry_log",
+   "east": "stripped_cherry_log",
+   "west": "stripped_cherry_log"
+  }
+ },
+ {
+  "name": "stripped_cherry_wood",
+  "zh": "stripped_cherry_wood",
+  "root": "block",
+  "faces": {
+   "up": "stripped_cherry_log",
+   "down": "stripped_cherry_log",
+   "north": "stripped_cherry_log",
+   "south": "stripped_cherry_log",
+   "east": "stripped_cherry_log",
+   "west": "stripped_cherry_log"
+  }
+ },
+ {
+  "name": "stripped_crimson_hyphae",
+  "zh": "stripped_crimson_hyphae",
+  "root": "block",
+  "faces": {
+   "up": "stripped_crimson_stem",
+   "down": "stripped_crimson_stem",
+   "north": "stripped_crimson_stem",
+   "south": "stripped_crimson_stem",
+   "east": "stripped_crimson_stem",
+   "west": "stripped_crimson_stem"
+  }
+ },
+ {
+  "name": "stripped_crimson_stem",
+  "zh": "stripped_crimson_stem",
+  "root": "block",
+  "faces": {
+   "up": "stripped_crimson_stem_top",
+   "down": "stripped_crimson_stem_top",
+   "north": "stripped_crimson_stem",
+   "south": "stripped_crimson_stem",
+   "east": "stripped_crimson_stem",
+   "west": "stripped_crimson_stem"
+  }
+ },
+ {
+  "name": "stripped_dark_oak_log",
+  "zh": "stripped_dark_oak_log",
+  "root": "block",
+  "faces": {
+   "up": "stripped_dark_oak_log_top",
+   "down": "stripped_dark_oak_log_top",
+   "north": "stripped_dark_oak_log",
+   "south": "stripped_dark_oak_log",
+   "east": "stripped_dark_oak_log",
+   "west": "stripped_dark_oak_log"
+  }
+ },
+ {
+  "name": "stripped_dark_oak_wood",
+  "zh": "stripped_dark_oak_wood",
+  "root": "block",
+  "faces": {
+   "up": "stripped_dark_oak_log",
+   "down": "stripped_dark_oak_log",
+   "north": "stripped_dark_oak_log",
+   "south": "stripped_dark_oak_log",
+   "east": "stripped_dark_oak_log",
+   "west": "stripped_dark_oak_log"
+  }
+ },
+ {
+  "name": "stripped_jungle_log",
+  "zh": "stripped_jungle_log",
+  "root": "block",
+  "faces": {
+   "up": "stripped_jungle_log_top",
+   "down": "stripped_jungle_log_top",
+   "north": "stripped_jungle_log",
+   "south": "stripped_jungle_log",
+   "east": "stripped_jungle_log",
+   "west": "stripped_jungle_log"
+  }
+ },
+ {
+  "name": "stripped_jungle_wood",
+  "zh": "stripped_jungle_wood",
+  "root": "block",
+  "faces": {
+   "up": "stripped_jungle_log",
+   "down": "stripped_jungle_log",
+   "north": "stripped_jungle_log",
+   "south": "stripped_jungle_log",
+   "east": "stripped_jungle_log",
+   "west": "stripped_jungle_log"
+  }
+ },
+ {
+  "name": "stripped_mangrove_log",
+  "zh": "stripped_mangrove_log",
+  "root": "block",
+  "faces": {
+   "up": "stripped_mangrove_log_top",
+   "down": "stripped_mangrove_log_top",
+   "north": "stripped_mangrove_log",
+   "south": "stripped_mangrove_log",
+   "east": "stripped_mangrove_log",
+   "west": "stripped_mangrove_log"
+  }
+ },
+ {
+  "name": "stripped_mangrove_wood",
+  "zh": "stripped_mangrove_wood",
+  "root": "block",
+  "faces": {
+   "up": "stripped_mangrove_log",
+   "down": "stripped_mangrove_log",
+   "north": "stripped_mangrove_log",
+   "south": "stripped_mangrove_log",
+   "east": "stripped_mangrove_log",
+   "west": "stripped_mangrove_log"
+  }
+ },
+ {
+  "name": "stripped_oak_log",
+  "zh": "stripped_oak_log",
+  "root": "block",
+  "faces": {
+   "up": "stripped_oak_log_top",
+   "down": "stripped_oak_log_top",
+   "north": "stripped_oak_log",
+   "south": "stripped_oak_log",
+   "east": "stripped_oak_log",
+   "west": "stripped_oak_log"
+  }
+ },
+ {
+  "name": "stripped_oak_wood",
+  "zh": "stripped_oak_wood",
+  "root": "block",
+  "faces": {
+   "up": "stripped_oak_log",
+   "down": "stripped_oak_log",
+   "north": "stripped_oak_log",
+   "south": "stripped_oak_log",
+   "east": "stripped_oak_log",
+   "west": "stripped_oak_log"
+  }
+ },
+ {
+  "name": "stripped_pale_oak_log",
+  "zh": "stripped_pale_oak_log",
+  "root": "block",
+  "faces": {
+   "up": "stripped_pale_oak_log_top",
+   "down": "stripped_pale_oak_log_top",
+   "north": "stripped_pale_oak_log",
+   "south": "stripped_pale_oak_log",
+   "east": "stripped_pale_oak_log",
+   "west": "stripped_pale_oak_log"
+  }
+ },
+ {
+  "name": "stripped_pale_oak_wood",
+  "zh": "stripped_pale_oak_wood",
+  "root": "block",
+  "faces": {
+   "up": "stripped_pale_oak_log",
+   "down": "stripped_pale_oak_log",
+   "north": "stripped_pale_oak_log",
+   "south": "stripped_pale_oak_log",
+   "east": "stripped_pale_oak_log",
+   "west": "stripped_pale_oak_log"
+  }
+ },
+ {
+  "name": "stripped_spruce_log",
+  "zh": "stripped_spruce_log",
+  "root": "block",
+  "faces": {
+   "up": "stripped_spruce_log_top",
+   "down": "stripped_spruce_log_top",
+   "north": "stripped_spruce_log",
+   "south": "stripped_spruce_log",
+   "east": "stripped_spruce_log",
+   "west": "stripped_spruce_log"
+  }
+ },
+ {
+  "name": "stripped_spruce_wood",
+  "zh": "stripped_spruce_wood",
+  "root": "block",
+  "faces": {
+   "up": "stripped_spruce_log",
+   "down": "stripped_spruce_log",
+   "north": "stripped_spruce_log",
+   "south": "stripped_spruce_log",
+   "east": "stripped_spruce_log",
+   "west": "stripped_spruce_log"
+  }
+ },
+ {
+  "name": "stripped_warped_hyphae",
+  "zh": "stripped_warped_hyphae",
+  "root": "block",
+  "faces": {
+   "up": "stripped_warped_stem",
+   "down": "stripped_warped_stem",
+   "north": "stripped_warped_stem",
+   "south": "stripped_warped_stem",
+   "east": "stripped_warped_stem",
+   "west": "stripped_warped_stem"
+  }
+ },
+ {
+  "name": "stripped_warped_stem",
+  "zh": "stripped_warped_stem",
+  "root": "block",
+  "faces": {
+   "up": "stripped_warped_stem_top",
+   "down": "stripped_warped_stem_top",
+   "north": "stripped_warped_stem",
+   "south": "stripped_warped_stem",
+   "east": "stripped_warped_stem",
+   "west": "stripped_warped_stem"
+  }
+ },
+ {
+  "name": "structure_block",
+  "zh": "structure_block",
+  "root": "block",
+  "faces": {
+   "up": "structure_block",
+   "down": "structure_block",
+   "north": "structure_block",
+   "south": "structure_block",
+   "east": "structure_block",
+   "west": "structure_block"
+  }
+ },
+ {
+  "name": "sulfur",
+  "zh": "sulfur",
+  "root": "block",
+  "faces": {
+   "up": "sulfur",
+   "down": "sulfur",
+   "north": "sulfur",
+   "south": "sulfur",
+   "east": "sulfur",
+   "west": "sulfur"
+  }
+ },
+ {
+  "name": "sulfur_bricks",
+  "zh": "sulfur_bricks",
+  "root": "block",
+  "faces": {
+   "up": "sulfur_bricks",
+   "down": "sulfur_bricks",
+   "north": "sulfur_bricks",
+   "south": "sulfur_bricks",
+   "east": "sulfur_bricks",
+   "west": "sulfur_bricks"
+  }
+ },
+ {
+  "name": "suspicious_gravel_0",
+  "zh": "suspicious_gravel_0",
+  "root": "block",
+  "faces": {
+   "up": "suspicious_gravel_0",
+   "down": "suspicious_gravel_0",
+   "north": "suspicious_gravel_0",
+   "south": "suspicious_gravel_0",
+   "east": "suspicious_gravel_0",
+   "west": "suspicious_gravel_0"
+  }
+ },
+ {
+  "name": "suspicious_sand_0",
+  "zh": "suspicious_sand_0",
+  "root": "block",
+  "faces": {
+   "up": "suspicious_sand_0",
+   "down": "suspicious_sand_0",
+   "north": "suspicious_sand_0",
+   "south": "suspicious_sand_0",
+   "east": "suspicious_sand_0",
+   "west": "suspicious_sand_0"
+  }
+ },
+ {
+  "name": "target",
+  "zh": "target",
+  "root": "block",
+  "faces": {
+   "up": "target_top",
+   "down": "target_top",
+   "north": "target_side",
+   "south": "target_side",
+   "east": "target_side",
+   "west": "target_side"
+  }
+ },
+ {
+  "name": "terracotta",
+  "zh": "terracotta",
+  "root": "block",
+  "faces": {
+   "up": "terracotta",
+   "down": "terracotta",
+   "north": "terracotta",
+   "south": "terracotta",
+   "east": "terracotta",
+   "west": "terracotta"
+  }
+ },
+ {
+  "name": "tnt",
+  "zh": "tnt",
+  "root": "block",
+  "faces": {
+   "up": "tnt_top",
+   "down": "tnt_bottom",
+   "north": "tnt_side",
+   "south": "tnt_side",
+   "east": "tnt_side",
+   "west": "tnt_side"
+  }
+ },
+ {
+  "name": "tube_coral_block",
+  "zh": "tube_coral_block",
+  "root": "block",
+  "faces": {
+   "up": "tube_coral_block",
+   "down": "tube_coral_block",
+   "north": "tube_coral_block",
+   "south": "tube_coral_block",
+   "east": "tube_coral_block",
+   "west": "tube_coral_block"
+  }
+ },
+ {
+  "name": "tuff",
+  "zh": "tuff",
+  "root": "block",
+  "faces": {
+   "up": "tuff",
+   "down": "tuff",
+   "north": "tuff",
+   "south": "tuff",
+   "east": "tuff",
+   "west": "tuff"
+  }
+ },
+ {
+  "name": "tuff_bricks",
+  "zh": "tuff_bricks",
+  "root": "block",
+  "faces": {
+   "up": "tuff_bricks",
+   "down": "tuff_bricks",
+   "north": "tuff_bricks",
+   "south": "tuff_bricks",
+   "east": "tuff_bricks",
+   "west": "tuff_bricks"
+  }
+ },
+ {
+  "name": "warped_hyphae",
+  "zh": "warped_hyphae",
+  "root": "block",
+  "faces": {
+   "up": "warped_stem",
+   "down": "warped_stem",
+   "north": "warped_stem",
+   "south": "warped_stem",
+   "east": "warped_stem",
+   "west": "warped_stem"
+  }
+ },
+ {
+  "name": "warped_nylium",
+  "zh": "warped_nylium",
+  "root": "block",
+  "faces": {
+   "up": "warped_nylium",
+   "down": "netherrack",
+   "north": "warped_nylium_side",
+   "south": "warped_nylium_side",
+   "east": "warped_nylium_side",
+   "west": "warped_nylium_side"
+  }
+ },
+ {
+  "name": "warped_planks",
+  "zh": "warped_planks",
+  "root": "block",
+  "faces": {
+   "up": "warped_planks",
+   "down": "warped_planks",
+   "north": "warped_planks",
+   "south": "warped_planks",
+   "east": "warped_planks",
+   "west": "warped_planks"
+  }
+ },
+ {
+  "name": "warped_stem",
+  "zh": "warped_stem",
+  "root": "block",
+  "faces": {
+   "up": "warped_stem_top",
+   "down": "warped_stem_top",
+   "north": "warped_stem",
+   "south": "warped_stem",
+   "east": "warped_stem",
+   "west": "warped_stem"
+  }
+ },
+ {
+  "name": "warped_wart_block",
+  "zh": "warped_wart_block",
+  "root": "block",
+  "faces": {
+   "up": "warped_wart_block",
+   "down": "warped_wart_block",
+   "north": "warped_wart_block",
+   "south": "warped_wart_block",
+   "east": "warped_wart_block",
+   "west": "warped_wart_block"
+  }
+ },
+ {
+  "name": "weathered_chiseled_copper",
+  "zh": "weathered_chiseled_copper",
+  "root": "block",
+  "faces": {
+   "up": "weathered_chiseled_copper",
+   "down": "weathered_chiseled_copper",
+   "north": "weathered_chiseled_copper",
+   "south": "weathered_chiseled_copper",
+   "east": "weathered_chiseled_copper",
+   "west": "weathered_chiseled_copper"
+  }
+ },
+ {
+  "name": "weathered_copper",
+  "zh": "weathered_copper",
+  "root": "block",
+  "faces": {
+   "up": "weathered_copper",
+   "down": "weathered_copper",
+   "north": "weathered_copper",
+   "south": "weathered_copper",
+   "east": "weathered_copper",
+   "west": "weathered_copper"
+  }
+ },
+ {
+  "name": "weathered_copper_bulb",
+  "zh": "weathered_copper_bulb",
+  "root": "block",
+  "faces": {
+   "up": "weathered_copper_bulb",
+   "down": "weathered_copper_bulb",
+   "north": "weathered_copper_bulb",
+   "south": "weathered_copper_bulb",
+   "east": "weathered_copper_bulb",
+   "west": "weathered_copper_bulb"
+  }
+ },
+ {
+  "name": "weathered_copper_grate",
+  "zh": "weathered_copper_grate",
+  "root": "block",
+  "faces": {
+   "up": "weathered_copper_grate",
+   "down": "weathered_copper_grate",
+   "north": "weathered_copper_grate",
+   "south": "weathered_copper_grate",
+   "east": "weathered_copper_grate",
+   "west": "weathered_copper_grate"
+  }
+ },
+ {
+  "name": "weathered_cut_copper",
+  "zh": "weathered_cut_copper",
+  "root": "block",
+  "faces": {
+   "up": "weathered_cut_copper",
+   "down": "weathered_cut_copper",
+   "north": "weathered_cut_copper",
+   "south": "weathered_cut_copper",
+   "east": "weathered_cut_copper",
+   "west": "weathered_cut_copper"
+  }
+ },
+ {
+  "name": "wet_sponge",
+  "zh": "wet_sponge",
+  "root": "block",
+  "faces": {
+   "up": "wet_sponge",
+   "down": "wet_sponge",
+   "north": "wet_sponge",
+   "south": "wet_sponge",
+   "east": "wet_sponge",
+   "west": "wet_sponge"
+  }
+ },
+ {
+  "name": "white_concrete",
+  "zh": "white_concrete",
+  "root": "block",
+  "faces": {
+   "up": "white_concrete",
+   "down": "white_concrete",
+   "north": "white_concrete",
+   "south": "white_concrete",
+   "east": "white_concrete",
+   "west": "white_concrete"
+  }
+ },
+ {
+  "name": "white_concrete_powder",
+  "zh": "white_concrete_powder",
+  "root": "block",
+  "faces": {
+   "up": "white_concrete_powder",
+   "down": "white_concrete_powder",
+   "north": "white_concrete_powder",
+   "south": "white_concrete_powder",
+   "east": "white_concrete_powder",
+   "west": "white_concrete_powder"
+  }
+ },
+ {
+  "name": "white_terracotta",
+  "zh": "white_terracotta",
+  "root": "block",
+  "faces": {
+   "up": "white_terracotta",
+   "down": "white_terracotta",
+   "north": "white_terracotta",
+   "south": "white_terracotta",
+   "east": "white_terracotta",
+   "west": "white_terracotta"
+  }
+ },
+ {
+  "name": "white_wool",
+  "zh": "white_wool",
+  "root": "block",
+  "faces": {
+   "up": "white_wool",
+   "down": "white_wool",
+   "north": "white_wool",
+   "south": "white_wool",
+   "east": "white_wool",
+   "west": "white_wool"
+  }
+ },
+ {
+  "name": "yellow_concrete",
+  "zh": "yellow_concrete",
+  "root": "block",
+  "faces": {
+   "up": "yellow_concrete",
+   "down": "yellow_concrete",
+   "north": "yellow_concrete",
+   "south": "yellow_concrete",
+   "east": "yellow_concrete",
+   "west": "yellow_concrete"
+  }
+ },
+ {
+  "name": "yellow_concrete_powder",
+  "zh": "yellow_concrete_powder",
+  "root": "block",
+  "faces": {
+   "up": "yellow_concrete_powder",
+   "down": "yellow_concrete_powder",
+   "north": "yellow_concrete_powder",
+   "south": "yellow_concrete_powder",
+   "east": "yellow_concrete_powder",
+   "west": "yellow_concrete_powder"
+  }
+ },
+ {
+  "name": "yellow_terracotta",
+  "zh": "yellow_terracotta",
+  "root": "block",
+  "faces": {
+   "up": "yellow_terracotta",
+   "down": "yellow_terracotta",
+   "north": "yellow_terracotta",
+   "south": "yellow_terracotta",
+   "east": "yellow_terracotta",
+   "west": "yellow_terracotta"
+  }
+ },
+ {
+  "name": "yellow_wool",
+  "zh": "yellow_wool",
+  "root": "block",
+  "faces": {
+   "up": "yellow_wool",
+   "down": "yellow_wool",
+   "north": "yellow_wool",
+   "south": "yellow_wool",
+   "east": "yellow_wool",
+   "west": "yellow_wool"
+  }
+ }
+]
