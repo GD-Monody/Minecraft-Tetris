@@ -10,6 +10,7 @@ namespace MinecraftTetris
         public bool Visible = true;
 
         Font _font;
+        Font _titleFont;
         GUIStyle _titleStyle;
         GUIStyle _titleShadow;
         GUIStyle _subStyle;
@@ -19,23 +20,27 @@ namespace MinecraftTetris
         void EnsureStyles()
         {
             if (_font == null)
+            {
                 _font = Font.CreateDynamicFontFromOSFont(
                     new[] { "Microsoft YaHei", "SimHei", "Arial" }, 20);
+                _titleFont = Font.CreateDynamicFontFromOSFont(
+                    new[] { "Arial Black", "Impact", "Arial" }, 20);
+            }
 
-            int titleSize = Mathf.Max(30, Mathf.RoundToInt(Screen.height * 0.085f));
+            int titleSize = Mathf.Max(30, Mathf.RoundToInt(Screen.height * 0.078f));
             int subSize = Mathf.Max(16, Mathf.RoundToInt(Screen.height * 0.028f));
             int creditSize = Mathf.Max(12, Mathf.RoundToInt(Screen.height * 0.019f));
             int hintSize = Mathf.Max(14, Mathf.RoundToInt(Screen.height * 0.022f));
 
             _titleStyle = new GUIStyle(GUI.skin.label);
-            _titleStyle.font = _font;
+            _titleStyle.font = _titleFont;
             _titleStyle.fontSize = titleSize;
             _titleStyle.fontStyle = FontStyle.Bold;
             _titleStyle.alignment = TextAnchor.MiddleCenter;
-            _titleStyle.normal.textColor = new Color(0.57f, 0.74f, 0.35f);
+            _titleStyle.normal.textColor = Color.white;
 
             _titleShadow = new GUIStyle(_titleStyle);
-            _titleShadow.normal.textColor = new Color(0.16f, 0.16f, 0.16f);
+            _titleShadow.normal.textColor = Color.black;
 
             _subStyle = new GUIStyle(GUI.skin.label);
             _subStyle.font = _font;
@@ -73,14 +78,17 @@ namespace MinecraftTetris
             GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
             GUI.color = Color.white;
 
-            float titleY = Screen.height * 0.24f;
-            float titleH = Screen.height * 0.14f;
+            float titleY = Screen.height * 0.235f;
+            float titleH = Screen.height * 0.16f;
 
-            GUI.Label(new Rect(4f, titleY + 4f, Screen.width, titleH), "Minecraft x Tetris", _titleShadow);
-            GUI.Label(new Rect(0f, titleY, Screen.width, titleH), "Minecraft x Tetris", _titleStyle);
+            // MC logo 那种厚黑边：右下方向叠几层黑色，再盖一层白色字面
+            GUI.Label(new Rect(6f, titleY + 6f, Screen.width, titleH), "MINECRAFT X TETRIS", _titleShadow);
+            GUI.Label(new Rect(4f, titleY + 4f, Screen.width, titleH), "MINECRAFT X TETRIS", _titleShadow);
+            GUI.Label(new Rect(2f, titleY + 2f, Screen.width, titleH), "MINECRAFT X TETRIS", _titleShadow);
+            GUI.Label(new Rect(0f, titleY, Screen.width, titleH), "MINECRAFT X TETRIS", _titleStyle);
 
             GUI.Label(new Rect(0f, Screen.height * 0.435f, Screen.width, 40f), "Made by Monody", _subStyle);
-            GUI.Label(new Rect(0f, Screen.height * 0.495f, Screen.width, 30f), "DSH辅助完成", _creditStyle);
+            GUI.Label(new Rect(0f, Screen.height * 0.492f, Screen.width, 30f), "DSH辅助完成", _creditStyle);
 
             if (Mathf.Repeat(Time.time, 1.4f) < 0.9f)
                 GUI.Label(new Rect(0f, Screen.height * 0.64f, Screen.width, 30f), "按任意键开始", _hintStyle);
