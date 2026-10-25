@@ -6,7 +6,7 @@ namespace MinecraftTetris
 {
     /// <summary>
     /// 开始界面：先提示「Made with Unity」，标题逐字从上方落下，署名从透明渐显，
-    /// 最后淡入选项按钮和「DSH辅助完成」。设置面板内嵌在这里。
+    /// 最后淡入选项按钮和「DSH辅助完成」。设置面板（音效 / 按键 / 场地尺寸）内嵌在这里。
     /// </summary>
     public class TitleScreen : MonoBehaviour
     {
@@ -15,7 +15,8 @@ namespace MinecraftTetris
         [Serializable]
         class TitleMeta { public CharMeta[] chars; }
 
-        /// <summary>正常启动默认显示；-auto 等调试参数会在 Bootstrap 里覆盖。</summary>
+        enum SettingsPage { Main, Keys, Size }
+
         public bool Visible = true;
         public bool ShowSettings;
         public bool HasContinue;
@@ -24,6 +25,8 @@ namespace MinecraftTetris
         public event Action OnContinue;
         public event Action OnQuit;
         public event Action<bool> OnSfxChanged;
+        public event Action OnKeysChanged;
+        public event Action OnSizeApplied;
 
         const string SfxKey = "sfx_enabled";
 
@@ -41,9 +44,16 @@ namespace MinecraftTetris
         GUIStyle _creditStyle;
         GUIStyle _btnStyle;
         GUIStyle _panelTitleStyle;
+        GUIStyle _rowLabelStyle;
+        GUIStyle _valueStyle;
         Texture2D _btnNormal;
         Texture2D _btnHover;
         Texture2D _btnActive;
+
+        SettingsPage _page = SettingsPage.Main;
+        int _capturingAction = -1;
+        int _tmpX = 10;
+        int _tmpY = 20;
 
         // 时间轴（秒）
         const float MadeEnd = 0.8f;
@@ -53,6 +63,12 @@ namespace MinecraftTetris
         const float SubStart = 2.35f;
         const float BtnStart = 2.8f;
         const float CreditStart = 3.1f;
+
+        static readonly GameAction[] AllActions =
+        {
+            GameAction.Left, GameAction.Right, GameAction.Forward, GameAction.Back,
+            GameAction.SoftDrop, GameAction.HardDrop, GameAction.RotateCW, GameAction.RotateCCW
+        };
 
         void Awake()
         {
@@ -68,6 +84,8 @@ namespace MinecraftTetris
         {
             Visible = show;
             ShowSettings = false;
+            _page = SettingsPage.Main;
+            _capturingAction = -1;
             if (show)
                 _t = 0f;
         }
@@ -76,6 +94,16 @@ namespace MinecraftTetris
         public void SkipIntro()
         {
             _t = 99f;
+        }
+
+        /// <summary>调试用：直接打开某个设置页（0 主页面 / 1 按键 / 2 尺寸）。</summary>
+        public void OpenSettingsPage(int page)
+        {
+            ShowSettings = true;
+            _page = (SettingsPage)Mathf.Clamp(page, 0, 2);
+            _capturingAction = -1;
+            _tmpX = GameSettings.SizeX;
+            _tmpY = GameSettings.SizeY;
         }
 
         public bool AnyInputPressed()
@@ -117,6 +145,8 @@ namespace MinecraftTetris
 
             if (ShowSettings)
             {
+                if (_page == SettingsPage.Keys)
+                    HandleCapture();
                 DrawSettingsPanel();
                 return;
             }
@@ -151,10 +181,7 @@ namespace MinecraftTetris
                 return;
 
             if (_titleTex == null || _chars == null)
-            {
-                _subStyle.normal.textColor = new Color(1f, 1f, 1f, 1f);
                 return;
-            }
 
             int scale = Mathf.Max(2, Mathf.RoundToInt(Screen.height * 0.105f / 16f));
             int texW = _titleTex.width;
@@ -207,7 +234,7 @@ namespace MinecraftTetris
             if (HasContinue)
                 items.Add(new KeyValuePair<string, Action>("继续游戏", () => Fire(OnContinue)));
             items.Add(new KeyValuePair<string, Action>("开始游戏", () => Fire(OnStartGame)));
-            items.Add(new KeyValuePair<string, Action>("设置", () => { ShowSettings = true; }));
+            items.Add(new KeyValuePair<string, Action>("设置", () => { ShowSettings = true; _page = SettingsPage.Main; }));
             items.Add(new KeyValuePair<string, Action>("退出", () => Fire(OnQuit)));
 
             const float bw = 280f;
@@ -250,16 +277,33 @@ namespace MinecraftTetris
         {
             DrawRect(new Rect(0f, 0f, Screen.width, Screen.height), new Color(0f, 0f, 0f, 0.72f));
 
-            float cw = 360f;
-            float cx = (Screen.width - cw) * 0.5f;
-            float y = Screen.height * 0.3f;
+            switch (_page)
+            {
+                case SettingsPage.Main:
+                    DrawSettingsMain();
+                    break;
+                case SettingsPage.Keys:
+                    DrawSettingsKeys();
+                    break;
+                case SettingsPage.Size:
+                    DrawSettingsSize();
+                    break;
+            }
+        }
 
-            _panelTitleStyle.normal.textColor = Color.white;
-            GUI.Label(new Rect(0f, y, Screen.width, 44f), "设置", _panelTitleStyle);
-            y += 64f;
+        void DrawSettingsMain()
+        {
+            float w = 420f;
+            float h = 330f;
+            Rect panel = CenterPanel(w, h);
+            DrawPanel(panel);
 
-            string sfxLabel = SfxEnabled ? "音效：开" : "音效：关";
-            if (GUI.Button(new Rect(cx, y, cw, 42f), sfxLabel, _btnStyle))
+            GUI.Label(new Rect(panel.x, panel.y + 16f, w, 44f), "设置", _panelTitleStyle);
+
+            float bx = panel.x + (w - 300f) * 0.5f;
+            float y = panel.y + 80f;
+
+            if (GUI.Button(new Rect(bx, y, 300f, 42f), SfxEnabled ? "音效：开" : "音效：关", _btnStyle))
             {
                 bool next = !SfxEnabled;
                 PlayerPrefs.SetInt(SfxKey, next ? 1 : 0);
@@ -267,10 +311,199 @@ namespace MinecraftTetris
                 if (OnSfxChanged != null)
                     OnSfxChanged(next);
             }
+            y += 54f;
+
+            if (GUI.Button(new Rect(bx, y, 300f, 42f), "按键设置", _btnStyle))
+            {
+                _page = SettingsPage.Keys;
+                _capturingAction = -1;
+            }
+            y += 54f;
+
+            if (GUI.Button(new Rect(bx, y, 300f, 42f), "场地尺寸", _btnStyle))
+            {
+                _tmpX = GameSettings.SizeX;
+                _tmpY = GameSettings.SizeY;
+                _page = SettingsPage.Size;
+            }
             y += 62f;
 
-            if (GUI.Button(new Rect(cx, y, cw, 42f), "返回", _btnStyle))
+            if (GUI.Button(new Rect(bx, y, 300f, 42f), "返回", _btnStyle))
                 ShowSettings = false;
+        }
+
+        void DrawSettingsKeys()
+        {
+            float w = 480f;
+            float h = 620f;
+            Rect panel = CenterPanel(w, h);
+            DrawPanel(panel);
+
+            GUI.Label(new Rect(panel.x, panel.y + 12f, w, 44f), "按键设置", _panelTitleStyle);
+
+            float rowH = 44f;
+            float rowGap = 6f;
+            float rowW = 380f;
+            float bx = panel.x + (w - rowW) * 0.5f;
+            float y = panel.y + 62f;
+
+            for (int i = 0; i < AllActions.Length; i++)
+            {
+                GameAction action = AllActions[i];
+                var row = new Rect(bx, y, rowW, rowH);
+
+                GUI.Label(new Rect(row.x, row.y, 190f, rowH), ActionLabel(action), _rowLabelStyle);
+
+                string keyName = _capturingAction == (int)action
+                    ? "按任意键…"
+                    : KeyName(KeyboardInput.GetPrimaryKey(action));
+
+                if (GUI.Button(new Rect(row.x + 200f, row.y, 180f, rowH), keyName, _btnStyle))
+                {
+                    _capturingAction = (int)action;
+                }
+
+                y += rowH + rowGap;
+            }
+
+            if (_capturingAction >= 0)
+            {
+                GUI.Label(new Rect(panel.x, panel.y + h - 96f, w, 24f), "按 Esc 取消", _rowLabelStyle);
+            }
+
+            float bottomY = panel.y + h - 62f;
+            if (GUI.Button(new Rect(bx, bottomY, 180f, 42f), "恢复默认", _btnStyle))
+            {
+                ResetKeys();
+                if (OnKeysChanged != null)
+                    OnKeysChanged();
+            }
+            if (GUI.Button(new Rect(bx + 200f, bottomY, 180f, 42f), "返回", _btnStyle))
+            {
+                _capturingAction = -1;
+                _page = SettingsPage.Main;
+            }
+        }
+
+        void DrawSettingsSize()
+        {
+            float w = 460f;
+            float h = 380f;
+            Rect panel = CenterPanel(w, h);
+            DrawPanel(panel);
+
+            GUI.Label(new Rect(panel.x, panel.y + 14f, w, 44f), "场地尺寸", _panelTitleStyle);
+
+            float rowW = 360f;
+            float bx = panel.x + (w - rowW) * 0.5f;
+            float y = panel.y + 76f;
+
+            DrawSizeRow(bx, y, "宽度 X", ref _tmpX, GameSettings.MinSizeX, GameSettings.MaxSizeX);
+            y += 58f;
+            DrawSizeRow(bx, y, "高度 Y", ref _tmpY, GameSettings.MinSizeY, GameSettings.MaxSizeY);
+            y += 58f;
+
+            GUI.Label(new Rect(bx, y, 200f, 40f), "深度 Z", _rowLabelStyle);
+            GUI.Label(new Rect(bx + 200f, y, 160f, 40f), "1（暂不支持修改）", _rowLabelStyle);
+            y += 62f;
+
+            if (GUI.Button(new Rect(bx, y, rowW, 44f), "应用并重启", _btnStyle))
+            {
+                GameSettings.SetSize(_tmpX, _tmpY);
+                if (OnSizeApplied != null)
+                    OnSizeApplied();
+            }
+            y += 54f;
+
+            if (GUI.Button(new Rect(bx, y, rowW, 42f), "返回", _btnStyle))
+                _page = SettingsPage.Main;
+        }
+
+        void DrawSizeRow(float x, float y, string label, ref int value, int min, int max)
+        {
+            GUI.Label(new Rect(x, y, 160f, 40f), label, _rowLabelStyle);
+
+            bool canMinus = value > min;
+            bool canPlus = value < max;
+
+            GUI.enabled = canMinus;
+            if (GUI.Button(new Rect(x + 160f, y, 46f, 40f), "−", _btnStyle))
+                value = Mathf.Max(min, value - 1);
+            GUI.enabled = true;
+
+            GUI.Label(new Rect(x + 214f, y, 60f, 40f), value.ToString(), _valueStyle);
+
+            GUI.enabled = canPlus;
+            if (GUI.Button(new Rect(x + 282f, y, 46f, 40f), "+", _btnStyle))
+                value = Mathf.Min(max, value + 1);
+            GUI.enabled = true;        }
+
+        // ---------- 改键 ----------
+
+        void HandleCapture()
+        {
+            if (_capturingAction < 0)
+                return;
+
+            Event e = Event.current;
+            if (e == null || e.type != EventType.KeyDown)
+                return;
+
+            if (e.keyCode == KeyCode.Escape)
+            {
+                _capturingAction = -1;
+                e.Use();
+                return;
+            }
+
+            if (e.keyCode != KeyCode.None)
+            {
+                KeyboardInput.Save((GameAction)_capturingAction, e.keyCode);
+                _capturingAction = -1;
+                if (OnKeysChanged != null)
+                    OnKeysChanged();
+                e.Use();
+            }
+        }
+
+        static void ResetKeys()
+        {
+            for (int i = 0; i < AllActions.Length; i++)
+                KeyboardInput.Save(AllActions[i], KeyboardInput.Defaults[i]);
+        }
+
+        static string ActionLabel(GameAction a)
+        {
+            switch (a)
+            {
+                case GameAction.Left: return "左移";
+                case GameAction.Right: return "右移";
+                case GameAction.Forward: return "前进（z 减小）";
+                case GameAction.Back: return "后退（z 增大）";
+                case GameAction.SoftDrop: return "软降";
+                case GameAction.HardDrop: return "硬降";
+                case GameAction.RotateCW: return "顺时针旋转";
+                case GameAction.RotateCCW: return "逆时针旋转";
+                default: return a.ToString();
+            }
+        }
+
+        static string KeyName(KeyCode k)
+        {
+            switch (k)
+            {
+                case KeyCode.None: return "未设置";
+                case KeyCode.Space: return "空格";
+                case KeyCode.LeftShift: return "左 Shift";
+                case KeyCode.RightShift: return "右 Shift";
+                case KeyCode.LeftControl: return "左 Ctrl";
+                case KeyCode.RightControl: return "右 Ctrl";
+                case KeyCode.LeftArrow: return "←";
+                case KeyCode.RightArrow: return "→";
+                case KeyCode.UpArrow: return "↑";
+                case KeyCode.DownArrow: return "↓";
+                default: return k.ToString();
+            }
         }
 
         // ---------- 工具 ----------
@@ -279,6 +512,21 @@ namespace MinecraftTetris
         {
             if (a != null)
                 a();
+        }
+
+        static Rect CenterPanel(float w, float h)
+        {
+            return new Rect((Screen.width - w) * 0.5f, (Screen.height - h) * 0.5f, w, h);
+        }
+
+        void DrawPanel(Rect r)
+        {
+            DrawRect(r, new Color(0.09f, 0.10f, 0.14f, 0.97f));
+            Color border = new Color(0.35f, 0.37f, 0.44f, 0.95f);
+            DrawRect(new Rect(r.x, r.y, r.width, 1f), border);
+            DrawRect(new Rect(r.x, r.yMax - 1f, r.width, 1f), border);
+            DrawRect(new Rect(r.x, r.y, 1f, r.height), border);
+            DrawRect(new Rect(r.xMax - 1f, r.y, 1f, r.height), border);
         }
 
         void EnsureStyles()
@@ -294,10 +542,12 @@ namespace MinecraftTetris
             _madeStyle = MakeStyle(22, Color.white, TextAnchor.MiddleCenter, FontStyle.Normal);
             _subStyle = MakeStyle(30, Color.white, TextAnchor.MiddleCenter, FontStyle.Normal);
             _creditStyle = MakeStyle(17, Color.white, TextAnchor.MiddleCenter, FontStyle.Normal);
-            _panelTitleStyle = MakeStyle(34, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
+            _panelTitleStyle = MakeStyle(32, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
+            _rowLabelStyle = MakeStyle(18, new Color(0.72f, 0.76f, 0.82f, 1f), TextAnchor.MiddleLeft, FontStyle.Normal);
+            _valueStyle = MakeStyle(22, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
 
             _btnStyle = new GUIStyle(GUI.skin.button);
-            _btnStyle.fontSize = 19;
+            _btnStyle.fontSize = 18;
             _btnStyle.alignment = TextAnchor.MiddleCenter;
             _btnStyle.normal.background = _btnNormal;
             _btnStyle.hover.background = _btnHover;

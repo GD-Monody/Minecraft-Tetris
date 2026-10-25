@@ -33,6 +33,10 @@ namespace MinecraftTetris
 
         void Start()
         {
+            SizeX = GameSettings.SizeX;
+            SizeY = GameSettings.SizeY;
+            SizeZ = GameSettings.SizeZ;
+
             _loop = new GameLoop(SizeX, SizeY, SizeZ, (int)System.DateTime.Now.Ticks);
 
             _view = gameObject.AddComponent<GridView>();
@@ -60,6 +64,8 @@ namespace MinecraftTetris
             _title.OnContinue += ContinueGame;
             _title.OnQuit += QuitGame;
             _title.OnSfxChanged += OnSfxChanged;
+            _title.OnKeysChanged += OnKeysChanged;
+            _title.OnSizeApplied += OnSizeApplied;
             _sfx.Enabled = _title.SfxEnabled;
 
             // 命令行带 -auto 时跳过开始界面，方便自动化截图与调试
@@ -73,6 +79,16 @@ namespace MinecraftTetris
             {
                 _title.Visible = true;
                 _title.ShowSettings = true;
+            }
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-settingskeys") >= 0)
+            {
+                _title.Visible = true;
+                _title.OpenSettingsPage(1);
+            }
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-settingssize") >= 0)
+            {
+                _title.Visible = true;
+                _title.OpenSettingsPage(2);
             }
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-pause") >= 0)
             {
@@ -225,6 +241,19 @@ namespace MinecraftTetris
         {
             if (_sfx != null)
                 _sfx.Enabled = enabled;
+        }
+
+        void OnKeysChanged()
+        {
+            if (_input != null)
+                _input.Reload();
+        }
+
+        void OnSizeApplied()
+        {
+            GameSave.Clear();
+            UnityEngine.SceneManagement.SceneManager.LoadScene(
+                UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
         }
 
         void OnResumeClick()

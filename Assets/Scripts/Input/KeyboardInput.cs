@@ -38,6 +38,12 @@ namespace MinecraftTetris
 
         void Awake()
         {
+            Reload();
+        }
+
+        /// <summary>改完键位后调用，重新从 PlayerPrefs 读一遍。</summary>
+        public void Reload()
+        {
             for (int i = 0; i < _keys.Length; i++)
                 _keys[i] = Load((GameAction)i);
         }
@@ -66,6 +72,13 @@ namespace MinecraftTetris
                 parts.Add(((int)keys[i]).ToString());
             PlayerPrefs.SetString("keybind." + (int)action, string.Join(",", parts));
             PlayerPrefs.Save();
+        }
+
+        /// <summary>取某个动作的主键（设置界面显示用）。</summary>
+        public static KeyCode GetPrimaryKey(GameAction action)
+        {
+            KeyCode[] keys = Load(action);
+            return keys.Length > 0 ? keys[0] : KeyCode.None;
         }
 
         public InputState Read()
