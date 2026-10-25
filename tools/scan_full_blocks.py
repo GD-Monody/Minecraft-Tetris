@@ -10,6 +10,20 @@ import zipfile
 JAR = os.path.expandvars(r'%APPDATA%\.minecraft\versions\26.2\26.2.jar')
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tools", "full_blocks.json")
 
+# 特殊方块：模型里的“平台/推头”面不在 up 上，手动指定六面，避免启发式填错。
+FACE_OVERRIDES = {
+    'piston': {
+        'up': 'piston_top', 'down': 'piston_bottom',
+        'north': 'piston_side', 'south': 'piston_side',
+        'east': 'piston_side', 'west': 'piston_side',
+    },
+    'sticky_piston': {
+        'up': 'piston_top_sticky', 'down': 'piston_bottom',
+        'north': 'piston_side', 'south': 'piston_side',
+        'east': 'piston_side', 'west': 'piston_side',
+    },
+}
+
 CUBE_ROOTS = {
     'cube_all', 'cube', 'cube_column', 'cube_column_horizontal',
     'cube_bottom_top', 'cube_top', 'cube_directional',
@@ -157,6 +171,8 @@ def main():
                 faces[face] = png
         if not faces:
             continue
+        if name in FACE_OVERRIDES:
+            faces = dict(FACE_OVERRIDES[name])
         seq = chain(name) or []
         candidates.append({'name': name, 'zh': zh_name(name), 'root': seq[-1][0] if seq else '', 'faces': faces})
 

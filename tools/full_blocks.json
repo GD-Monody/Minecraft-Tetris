@@ -2695,8 +2695,8 @@
   "zh": "piston",
   "root": "template_piston",
   "faces": {
-   "up": "piston_side",
-   "down": "piston_side",
+   "up": "piston_top",
+   "down": "piston_bottom",
    "north": "piston_side",
    "south": "piston_side",
    "east": "piston_side",
@@ -3514,8 +3514,8 @@
   "zh": "sticky_piston",
   "root": "template_piston",
   "faces": {
-   "up": "piston_side",
-   "down": "piston_side",
+   "up": "piston_top_sticky",
+   "down": "piston_bottom",
    "north": "piston_side",
    "south": "piston_side",
    "east": "piston_side",
