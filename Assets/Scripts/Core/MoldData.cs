@@ -79,7 +79,7 @@ namespace MinecraftTetris
             return new List<MoldEntry>
             {
                 new MoldEntry { name = "五连条", cells = Encode(new[] { new Vector2Int(0, 2), new Vector2Int(1, 2), new Vector2Int(2, 2), new Vector2Int(3, 2), new Vector2Int(4, 2) }), enabled = 1 },
-                new MoldEntry { name = "大 T", cells = Encode(new[] { new Vector2Int(0, 2), new Vector2Int(1, 2), new Vector2Int(2, 2), new Vector2Int(1, 3), new Vector2Int(1, 1) }), enabled = 1 },
+                new MoldEntry { name = "大 T", cells = Encode(new[] { new Vector2Int(0, 2), new Vector2Int(1, 2), new Vector2Int(2, 2), new Vector2Int(1, 3), new Vector2Int(1, 4) }), enabled = 1 },
                 new MoldEntry { name = "十字", cells = Encode(new[] { new Vector2Int(2, 1), new Vector2Int(1, 2), new Vector2Int(2, 2), new Vector2Int(3, 2), new Vector2Int(2, 3) }), enabled = 1 },
             };
         }
