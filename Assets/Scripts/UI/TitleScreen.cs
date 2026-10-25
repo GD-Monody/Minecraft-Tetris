@@ -559,6 +559,8 @@ namespace MinecraftTetris
 
         int _moldSel;
         readonly List<Vector2Int> _moldEdit = new List<Vector2Int>();
+        bool _renaming;
+        string _renameText = "";
 
         void OpenWorkshop()
         {
@@ -653,7 +655,7 @@ namespace MinecraftTetris
             // 底部按钮
             float bx = panel.x + 40f;
             float by = panel.y + 430f;
-            const float bw2 = 130f;
+            const float bw2 = 110f;
             const float bh2 = 40f;
             const float bgap = 12f;
 
@@ -672,11 +674,20 @@ namespace MinecraftTetris
                 LoadMoldEdit();
             }
 
+            if (GUI.Button(new Rect(bx + (bw2 + bgap) * 2f, by, bw2, bh2), "重命名", _btnStyle))
+            {
+                if (_moldSel >= 0 && _moldSel < MoldData.Items.Count)
+                {
+                    _renaming = true;
+                    _renameText = MoldData.Items[_moldSel].name;
+                }
+            }
+
             string enableLabel = "未启用（点一下启用）";
             if (_moldSel >= 0 && _moldSel < MoldData.Items.Count && MoldData.Items[_moldSel].enabled != 0)
                 enableLabel = "启用中（点一下禁用）";
 
-            if (GUI.Button(new Rect(bx + (bw2 + bgap) * 2, by, bw2 * 2 + bgap, bh2), enableLabel, _btnStyle))
+            if (GUI.Button(new Rect(bx + (bw2 + bgap) * 3f, by, 200f, bh2), enableLabel, _btnStyle))
             {
                 if (_moldSel >= 0 && _moldSel < MoldData.Items.Count)
                 {
@@ -685,11 +696,30 @@ namespace MinecraftTetris
                 }
             }
 
+            // 重命名输入行（在按钮上方）
+            if (_renaming)
+            {
+                float ry = by - 46f;
+                GUI.Label(new Rect(bx, ry + 6f, 56f, 26f), "名字", _rowLabelStyle);
+                _renameText = GUI.TextField(new Rect(bx + 58f, ry, 300f, 32f), _renameText, 16, _btnStyle);
+                if (GUI.Button(new Rect(bx + 370f, ry, 70f, 32f), "确定", _btnStyle))
+                {
+                    MoldData.Rename(_moldSel, _renameText);
+                    _renaming = false;
+                    LoadMoldEdit();
+                }
+                if (GUI.Button(new Rect(bx + 452f, ry, 70f, 32f), "取消", _btnStyle))
+                    _renaming = false;
+            }
+
             GUI.Label(new Rect(panel.x + 40f, by + bh2 + 22f, 520f, 24f),
                 "启用的模具会和 7 种默认方块一起随机出现", _rowLabelStyle);
 
             if (GUI.Button(new Rect(panel.x + w - 170f, by + bh2 + 22f, 130f, bh2), "返回", _btnStyle))
-                _page = SettingsPage.Main;
+            {
+                _renaming = false;
+                ShowSettings = false;
+            }
         }
 
         void EnsureStyles()

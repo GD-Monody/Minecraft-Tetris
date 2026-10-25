@@ -159,6 +159,19 @@ namespace MinecraftTetris
             Save();
         }
 
+        public static void Rename(int index, string newName)
+        {
+            if (index < 0 || index >= _items.Count)
+                return;
+            newName = (newName ?? string.Empty).Trim();
+            if (newName.Length == 0)
+                newName = "未命名模具";
+            if (newName.Length > 16)
+                newName = newName.Substring(0, 16);
+            _items[index].name = newName;
+            Save();
+        }
+
         public static void ResetDefaults()
         {
             _items = DefaultMolds();
