@@ -48,8 +48,25 @@ namespace MinecraftTetris
             }
         }
 
-        public void RefreshAll()
+        /// <summary>按材质编号取渲染用的 mesh（预览和粒子共用）。</summary>
+        public Mesh GetMesh(int blockId)
         {
+            int idx = blockId - 1;
+            if (idx < 0 || idx >= _meshes.Length)
+                idx = 0;
+            return _meshes[idx];
+        }
+
+        /// <summary>按材质编号取渲染用的材质。</summary>
+        public Material GetMaterial(int blockId)
+        {
+            int idx = blockId - 1;
+            if (idx < 0 || idx >= _materials.Length)
+                idx = 0;
+            return _materials[idx];
+        }
+
+        public void RefreshAll()        {
             for (int x = 0; x < Grid.SizeX; x++)
                 for (int y = 0; y < Grid.SizeY; y++)
                     for (int z = 0; z < Grid.SizeZ; z++)

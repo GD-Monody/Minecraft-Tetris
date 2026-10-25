@@ -53,16 +53,22 @@ namespace MinecraftTetris
         /// </summary>
         public int ClearFullLines()
         {
-            int cleared = 0;
+            return ClearFullLinesDetailed().Count;
+        }
+
+        /// <summary>消除满行，返回被清掉的行号列表（粒子效果要按行炸）。</summary>
+        public System.Collections.Generic.List<int> ClearFullLinesDetailed()
+        {
+            var rows = new System.Collections.Generic.List<int>();
             for (int y = 0; y < SizeY; y++)
             {
                 while (IsLayerFull(y))
                 {
                     DropLayerAbove(y);
-                    cleared++;
+                    rows.Add(y);
                 }
             }
-            return cleared;
+            return rows;
         }
 
         /// <summary>
@@ -89,6 +95,22 @@ namespace MinecraftTetris
                     if (_cells[x, y, z] == 0)
                         return false;
             return true;
+        }
+
+        /// <summary>这一层（y 高度上的 x × z 平面）是否填满。</summary>
+        public bool IsLayerFullPublic(int y)
+        {
+            return IsLayerFull(y);
+        }
+
+        /// <summary>取这一层里第一个非空方块的编号，没有则返回 0。</summary>
+        public int FirstBlockInLayer(int y)
+        {
+            for (int x = 0; x < SizeX; x++)
+                for (int z = 0; z < SizeZ; z++)
+                    if (_cells[x, y, z] != 0)
+                        return _cells[x, y, z];
+            return 0;
         }
 
         void DropLayerAbove(int y)

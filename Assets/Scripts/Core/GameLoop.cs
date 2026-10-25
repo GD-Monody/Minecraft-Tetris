@@ -60,6 +60,8 @@ namespace MinecraftTetris
 
         public event Action<Piece> PieceLocked;
         public event Action<int> LinesClearedEvent;
+        /// <summary>消除时触发：参数是被清的行号列表 + 每行取一个代表材质（粒子用）。</summary>
+        public event Action<System.Collections.Generic.List<int>, System.Collections.Generic.List<int>> RowsCleared;
         public event Action GameOverEvent;
         public event Action Spawned;
 
@@ -173,6 +175,18 @@ namespace MinecraftTetris
 
             PieceLocked?.Invoke(Current);
 
+            // 先记下这一轮要清的行和每行的代表材质，清完再派事件给粒子效果
+            var fullRows = new System.Collections.Generic.List<int>();
+            var rowBlocks = new System.Collections.Generic.List<int>();
+            for (int y = 0; y < Grid.SizeY; y++)
+            {
+                if (Grid.IsLayerFullPublic(y))
+                {
+                    fullRows.Add(y);
+                    rowBlocks.Add(Grid.FirstBlockInLayer(y));
+                }
+            }
+
             int cleared = Grid.ClearFullLines();
             if (cleared > 0)
             {
@@ -185,6 +199,8 @@ namespace MinecraftTetris
                     _ => 800,
                 };
                 LinesClearedEvent?.Invoke(cleared);
+                if (fullRows.Count > 0)
+                    RowsCleared?.Invoke(fullRows, rowBlocks);
             }
 
             SpawnNext();

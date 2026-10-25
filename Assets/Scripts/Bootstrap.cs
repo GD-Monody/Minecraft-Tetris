@@ -18,9 +18,13 @@ namespace MinecraftTetris
         SfxPlayer _sfx;
         Hud _hud;
         TitleScreen _title;
+        NextPreview _nextPreview;
+        ParticleBurst _particles;
         bool _paused;
         float _autoShotTimer = 6f;
         bool _autoShotDone;
+        bool _demoMode;
+        bool _demoBurst;
 
         void Start()
         {
@@ -36,18 +40,28 @@ namespace MinecraftTetris
             _hud.Loop = _loop;
             _hud.OnRestartClick = RestartGame;
 
+            _nextPreview = gameObject.AddComponent<NextPreview>();
+            _nextPreview.Init(_view);
+            _hud.Preview = _nextPreview;
+
+            _particles = gameObject.AddComponent<ParticleBurst>();
+            _particles.Init(_view);
+
             _title = gameObject.AddComponent<TitleScreen>();
 
             // 命令行带 -auto 时跳过开始界面，方便自动化截图与调试
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-auto") >= 0)
                 _title.Visible = false;
+            _demoMode = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-demo") >= 0;
 
             _loop.PieceLocked += OnPieceLocked;
             _loop.LinesClearedEvent += OnLinesCleared;
+            _loop.RowsCleared += OnRowsCleared;
             _loop.Spawned += OnSpawned;
 
             _view.RefreshAll();
             _view.RefreshPiece(_loop.Current);
+            _nextPreview.Show(_loop.Next, _loop.NextBlockId);
 
             SetupScene();
         }
@@ -104,6 +118,15 @@ namespace MinecraftTetris
 
             _loop.Tick(Time.deltaTime, _input.Read());
             _view.RefreshPiece(_loop.Current);
+
+            // 调试用：-demo 启动时在自动截图前炸一把粒子，方便截图看效果
+            if (_demoMode && !_demoBurst && Time.time > 5.2f)
+            {
+                _demoBurst = true;
+                var rows = new System.Collections.Generic.List<int> { 2, 3, 4 };
+                var blocks = new System.Collections.Generic.List<int> { 12, 150, 260 };
+                OnRowsCleared(rows, blocks);
+            }
         }
 
         void CaptureShot(string fileName)
@@ -116,8 +139,10 @@ namespace MinecraftTetris
         void RestartGame()
         {
             _loop.Restart();
+            _particles.Clear();
             _view.RefreshAll();
             _view.RefreshPiece(_loop.Current);
+            _nextPreview.Show(_loop.Next, _loop.NextBlockId);
         }
 
         void OnPieceLocked(Piece piece)
@@ -139,6 +164,18 @@ namespace MinecraftTetris
         void OnSpawned()
         {
             _view.RefreshPiece(_loop.Current);
+            _nextPreview.Show(_loop.Next, _loop.NextBlockId);
+        }
+
+        void OnRowsCleared(System.Collections.Generic.List<int> rows, System.Collections.Generic.List<int> blocks)
+        {
+            for (int i = 0; i < rows.Count; i++)
+            {
+                int blockId = blocks[i];
+                for (int x = 0; x < SizeX; x++)
+                    for (int z = 0; z < SizeZ; z++)
+                        _particles.EmitCell(x, rows[i], z, blockId);
+            }
         }
 
         void SetupScene()
@@ -160,6 +197,8 @@ namespace MinecraftTetris
 
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(0.08f, 0.09f, 0.12f);
+            // 预览层只给「下一个」相机渲染，主相机不画
+            cam.cullingMask &= ~(1 << NextPreview.PreviewLayer);
 
             CameraRig rig = cam.GetComponent<CameraRig>();
             if (rig == null)
