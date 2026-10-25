@@ -203,7 +203,7 @@ namespace MinecraftTetris
                 GUI.DrawTexture(previewRect, Preview.Texture, ScaleMode.ScaleToFit, true);
 
             Text(new Rect(panel.x + 134f, panel.y + 78f, 106f, 44f),
-                TypeLabel(Loop.Next), _valueSmall, _valueSmallShadow);
+                Loop.Next != null ? Loop.Next.Label : "", _valueSmall, _valueSmallShadow);
 
             DrawAccentLine(panel);
         }

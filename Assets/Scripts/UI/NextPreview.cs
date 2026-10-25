@@ -15,8 +15,8 @@ namespace MinecraftTetris
         RenderTexture _rt;
         Transform _root;
         GridView _view;
-        readonly MeshFilter[] _filters = new MeshFilter[4];
-        readonly MeshRenderer[] _renderers = new MeshRenderer[4];
+        readonly MeshFilter[] _filters = new MeshFilter[12];
+        readonly MeshRenderer[] _renderers = new MeshRenderer[12];
 
         public Texture Texture
         {
@@ -52,7 +52,7 @@ namespace MinecraftTetris
             _root.localPosition = new Vector3(0f, 0f, 10f);
             _root.localRotation = Quaternion.Euler(20f, 34f, 0f);
 
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < _filters.Length; i++)
             {
                 var go = new GameObject("NextCell" + i);
                 go.transform.SetParent(_root, false);
@@ -62,13 +62,13 @@ namespace MinecraftTetris
             }
         }
 
-        /// <summary>换成下一个方块：形状用 Type，材质用 BlockId。</summary>
-        public void Show(PieceType type, int blockId)
+        /// <summary>换成下一个方块：形状来自出块池条目，材质用 BlockId。</summary>
+        public void Show(ShapeEntry entry, int blockId)
         {
-            if (_view == null)
+            if (_view == null || entry == null)
                 return;
 
-            Vector2Int[] shape = Tetromino.GetShape(type);
+            Vector2Int[] shape = entry.Cells;
             int minX = int.MaxValue, maxX = int.MinValue;
             int minY = int.MaxValue, maxY = int.MinValue;
             for (int i = 0; i < shape.Length; i++)
@@ -84,9 +84,14 @@ namespace MinecraftTetris
             Mesh mesh = _view.GetMesh(blockId);
             Material mat = _view.GetMaterial(blockId);
 
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < _filters.Length; i++)
             {
                 GameObject go = _filters[i].gameObject;
+                if (i >= shape.Length)
+                {
+                    go.SetActive(false);
+                    continue;
+                }
                 go.SetActive(true);
                 go.transform.localPosition = new Vector3(shape[i].x - cx, shape[i].y - cy, 0f);
                 _filters[i].sharedMesh = mesh;

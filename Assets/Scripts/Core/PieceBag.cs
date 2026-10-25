@@ -1,11 +1,35 @@
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace MinecraftTetris
 {
-    /// <summary>7-bag：七种方块洗一次，抽完之后再洗。</summary>
+    /// <summary>出块池里的一个形状：默认 7 种方块，或者玩家在创意工坊里做的模具。</summary>
+    public class ShapeEntry
+    {
+        public Vector2Int[] Cells;
+        public string Label;
+        public PieceType Type;
+        public bool IsMold;
+
+        public ShapeEntry Clone()
+        {
+            return new ShapeEntry
+            {
+                Cells = (Vector2Int[])Cells.Clone(),
+                Label = Label,
+                Type = Type,
+                IsMold = IsMold,
+            };
+        }
+    }
+
+    /// <summary>
+    /// 形状池：7 种默认方块 + 创意工坊里勾选启用的模具，混在一起洗牌。
+    /// 池子里一个都不剩时才重新洗一轮，保证每一轮里每种形状各出现一次。
+    /// </summary>
     public class PieceBag
     {
-        readonly List<PieceType> _queue = new List<PieceType>(7);
+        readonly List<ShapeEntry> _queue = new List<ShapeEntry>(7);
         readonly System.Random _rng;
 
         public PieceBag(int seed = 0)
@@ -13,23 +37,44 @@ namespace MinecraftTetris
             _rng = seed == 0 ? new System.Random() : new System.Random(seed);
         }
 
-        public PieceType Next()
+        public ShapeEntry Next()
         {
             if (_queue.Count == 0)
                 Refill();
 
-            PieceType t = _queue[0];
+            ShapeEntry e = _queue[0];
             _queue.RemoveAt(0);
-            return t;
+            return e;
         }
 
         void Refill()
         {
-            var all = new List<PieceType>
+            var all = new List<ShapeEntry>();
+
+            for (int i = 0; i < 7; i++)
             {
-                PieceType.I, PieceType.O, PieceType.T, PieceType.S,
-                PieceType.Z, PieceType.J, PieceType.L,
-            };
+                var type = (PieceType)i;
+                all.Add(new ShapeEntry
+                {
+                    Cells = Tetromino.GetShape(type),
+                    Label = type.ToString(),
+                    Type = type,
+                });
+            }
+
+            foreach (MoldEntry mold in MoldData.EnabledMolds())
+            {
+                Vector2Int[] cells = MoldData.Parse(mold.cells);
+                if (cells.Length == 0)
+                    continue;
+                all.Add(new ShapeEntry
+                {
+                    Cells = Normalize(cells),
+                    Label = mold.name,
+                    Type = PieceType.I,
+                    IsMold = true,
+                });
+            }
 
             for (int i = all.Count - 1; i > 0; i--)
             {
@@ -38,6 +83,23 @@ namespace MinecraftTetris
             }
 
             _queue.AddRange(all);
+        }
+
+        /// <summary>把形状平移到左下角，方便按左下角定位生成。</summary>
+        public static Vector2Int[] Normalize(Vector2Int[] cells)
+        {
+            int minX = int.MaxValue;
+            int minY = int.MaxValue;
+            for (int i = 0; i < cells.Length; i++)
+            {
+                minX = Mathf.Min(minX, cells[i].x);
+                minY = Mathf.Min(minY, cells[i].y);
+            }
+
+            var result = new Vector2Int[cells.Length];
+            for (int i = 0; i < cells.Length; i++)
+                result[i] = new Vector2Int(cells[i].x - minX, cells[i].y - minY);
+            return result;
         }
     }
 }

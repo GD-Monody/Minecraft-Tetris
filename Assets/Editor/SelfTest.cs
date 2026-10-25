@@ -64,7 +64,7 @@ namespace MinecraftTetris.EditorTools
             var loop = new GameLoop(10, 20, 1, 42);
             Check("开局有当前方块", loop.Current != null);
             Check("开局不是结束状态", !loop.GameOver);
-            Check("下一个已就绪", loop.Next >= PieceType.I && loop.Next <= PieceType.L);
+            Check("下一个已就绪", loop.Next != null && loop.Next.Cells != null && loop.Next.Cells.Length > 0);
 
             // 硬降会把方块锁进网格
             loop.HardDrop();

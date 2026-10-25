@@ -91,6 +91,11 @@ namespace MinecraftTetris
                 _title.Visible = true;
                 _title.OpenSettingsPage(2);
             }
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-workshop") >= 0)
+            {
+                _title.Visible = true;
+                _title.OpenSettingsPage(3);
+            }
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-pause") >= 0)
             {
                 _title.Visible = false;

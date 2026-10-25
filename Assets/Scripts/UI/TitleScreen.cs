@@ -15,7 +15,7 @@ namespace MinecraftTetris
         [Serializable]
         class TitleMeta { public CharMeta[] chars; }
 
-        enum SettingsPage { Main, Keys, Size }
+        enum SettingsPage { Main, Keys, Size, Workshop }
 
         public bool Visible = true;
         public bool ShowSettings;
@@ -101,11 +101,17 @@ namespace MinecraftTetris
         public void OpenSettingsPage(int page)
         {
             ShowSettings = true;
-            _page = (SettingsPage)Mathf.Clamp(page, 0, 2);
+            _page = (SettingsPage)Mathf.Clamp(page, 0, (int)SettingsPage.Workshop);
             _capturingAction = -1;
             _tmpX = GameSettings.SizeX;
             _tmpY = GameSettings.SizeY;
             _tmpZ = GameSettings.SizeZ;
+            if (_page == SettingsPage.Workshop)
+            {
+                if (_moldSel < 0 || _moldSel >= MoldData.Items.Count)
+                    _moldSel = 0;
+                LoadMoldEdit();
+            }
         }
 
         public bool AnyInputPressed()
@@ -236,6 +242,7 @@ namespace MinecraftTetris
             if (HasContinue)
                 items.Add(new KeyValuePair<string, Action>("继续游戏", () => Fire(OnContinue)));
             items.Add(new KeyValuePair<string, Action>("开始游戏", () => Fire(OnStartGame)));
+            items.Add(new KeyValuePair<string, Action>("创意工坊", OpenWorkshop));
             items.Add(new KeyValuePair<string, Action>("设置", () => { ShowSettings = true; _page = SettingsPage.Main; }));
             items.Add(new KeyValuePair<string, Action>("退出", () => Fire(OnQuit)));
 
@@ -289,6 +296,9 @@ namespace MinecraftTetris
                     break;
                 case SettingsPage.Size:
                     DrawSettingsSize();
+                    break;
+                case SettingsPage.Workshop:
+                    DrawWorkshop();
                     break;
             }
         }
@@ -542,6 +552,144 @@ namespace MinecraftTetris
             DrawRect(new Rect(r.x, r.yMax - 1f, r.width, 1f), border);
             DrawRect(new Rect(r.x, r.y, 1f, r.height), border);
             DrawRect(new Rect(r.xMax - 1f, r.y, 1f, r.height), border);
+        }
+
+
+        // ---------- 创意工坊 ----------
+
+        int _moldSel;
+        readonly List<Vector2Int> _moldEdit = new List<Vector2Int>();
+
+        void OpenWorkshop()
+        {
+            _page = SettingsPage.Workshop;
+            ShowSettings = true;
+            if (_moldSel >= MoldData.Items.Count)
+                _moldSel = 0;
+            LoadMoldEdit();
+        }
+
+        void LoadMoldEdit()
+        {
+            _moldEdit.Clear();
+            if (_moldSel >= 0 && _moldSel < MoldData.Items.Count)
+            {
+                Vector2Int[] cells = MoldData.Parse(MoldData.Items[_moldSel].cells);
+                for (int i = 0; i < cells.Length; i++)
+                    _moldEdit.Add(cells[i]);
+            }
+        }
+
+        void SaveMoldEdit()
+        {
+            if (_moldSel >= 0 && _moldSel < MoldData.Items.Count)
+                MoldData.SetCells(_moldSel, _moldEdit.ToArray());
+        }
+
+        void DrawWorkshop()
+        {
+            float w = 680f;
+            float h = 640f;
+            Rect panel = CenterPanel(w, h);
+            DrawPanel(panel);
+
+            GUI.Label(new Rect(panel.x, panel.y + 12f, w, 44f), "创意工坊", _panelTitleStyle);
+
+            // 左边的模具列表
+            float listX = panel.x + 24f;
+            float listY = panel.y + 96f;
+            const float itemH = 38f;
+            const float itemGap = 6f;
+
+            GUI.Label(new Rect(listX, listY - 26f, 280f, 24f), "模具列表（点一下选中编辑）", _rowLabelStyle);
+
+            int count = MoldData.Items.Count;
+            for (int i = 0; i < count && i < 7; i++)
+            {
+                MoldEntry m = MoldData.Items[i];
+                string label = (i == _moldSel ? "▸ " : "") + m.name + (m.enabled != 0 ? "  ✓" : "  -");
+                var rect = new Rect(listX, listY + i * (itemH + itemGap), 260f, itemH);
+                if (i == _moldSel)
+                    DrawRect(rect, new Color(0.42f, 0.86f, 1f, 0.22f));
+                if (GUI.Button(rect, label, _btnStyle) && i != _moldSel)
+                {
+                    _moldSel = i;
+                    LoadMoldEdit();
+                }
+            }
+
+            if (count > 7)
+                GUI.Label(new Rect(listX, listY + 7 * (itemH + itemGap), 260f, 22f), "（只显示前 7 个）", _rowLabelStyle);
+
+            // 右边的 5x5 画布
+            const float cell = 46f;
+            float gridX = panel.x + 348f;
+            float gridY = panel.y + 96f;
+
+            GUI.Label(new Rect(gridX, gridY - 26f, 300f, 24f), "点格子摆形状（再点一次取消）", _rowLabelStyle);
+
+            for (int row = 0; row < MoldData.Size; row++)
+            {
+                for (int col = 0; col < MoldData.Size; col++)
+                {
+                    int gx = col;
+                    int gy = MoldData.Size - 1 - row;
+                    var point = new Vector2Int(gx, gy);
+                    bool on = _moldEdit.Contains(point);
+
+                    var rc = new Rect(gridX + col * cell, gridY + row * cell, cell - 3f, cell - 3f);
+                    DrawRect(rc, on ? new Color(0.42f, 0.86f, 1f, 0.92f) : new Color(1f, 1f, 1f, 0.07f));
+                    if (GUI.Button(rc, "", GUIStyle.none))
+                    {
+                        if (on)
+                            _moldEdit.Remove(point);
+                        else
+                            _moldEdit.Add(point);
+                        SaveMoldEdit();
+                    }
+                }
+            }
+
+            // 底部按钮
+            float bx = panel.x + 40f;
+            float by = panel.y + 430f;
+            const float bw2 = 130f;
+            const float bh2 = 40f;
+            const float bgap = 12f;
+
+            if (GUI.Button(new Rect(bx, by, bw2, bh2), "新建模具", _btnStyle))
+            {
+                MoldData.Add();
+                _moldSel = MoldData.Items.Count - 1;
+                LoadMoldEdit();
+            }
+
+            if (GUI.Button(new Rect(bx + bw2 + bgap, by, bw2, bh2), "删除模具", _btnStyle))
+            {
+                MoldData.Remove(_moldSel);
+                if (_moldSel >= MoldData.Items.Count)
+                    _moldSel = MoldData.Items.Count - 1;
+                LoadMoldEdit();
+            }
+
+            string enableLabel = "未启用（点一下启用）";
+            if (_moldSel >= 0 && _moldSel < MoldData.Items.Count && MoldData.Items[_moldSel].enabled != 0)
+                enableLabel = "启用中（点一下禁用）";
+
+            if (GUI.Button(new Rect(bx + (bw2 + bgap) * 2, by, bw2 * 2 + bgap, bh2), enableLabel, _btnStyle))
+            {
+                if (_moldSel >= 0 && _moldSel < MoldData.Items.Count)
+                {
+                    MoldData.SetEnabled(_moldSel, MoldData.Items[_moldSel].enabled == 0);
+                    LoadMoldEdit();
+                }
+            }
+
+            GUI.Label(new Rect(panel.x + 40f, by + bh2 + 22f, 520f, 24f),
+                "启用的模具会和 7 种默认方块一起随机出现", _rowLabelStyle);
+
+            if (GUI.Button(new Rect(panel.x + w - 170f, by + bh2 + 22f, 130f, bh2), "返回", _btnStyle))
+                _page = SettingsPage.Main;
         }
 
         void EnsureStyles()

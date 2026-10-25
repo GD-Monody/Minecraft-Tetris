@@ -19,20 +19,27 @@ namespace MinecraftTetris
     public class Piece
     {
         public PieceType Type;
+        public string Label;   // HUD 上显示的名字：默认方块是 "I" 这种，模具是玩家起的名字
         public int BlockId;   // 材质编号（1 起），每个新方块随机挑一种完整方块
         public int OriginX;
         public int OriginY;
         public int OriginZ;
         public Vector2Int[] Cells;
 
-        public Piece(PieceType type, int blockId, int x, int y, int z)
+        public Piece(Vector2Int[] cells, string label, PieceType type, int blockId, int x, int y, int z)
         {
+            Cells = (Vector2Int[])cells.Clone();
+            Label = label;
             Type = type;
             BlockId = blockId;
             OriginX = x;
             OriginY = y;
             OriginZ = z;
-            Cells = Tetromino.GetShape(type);
+        }
+
+        public Piece(PieceType type, int blockId, int x, int y, int z)
+            : this(Tetromino.GetShape(type), type.ToString(), type, blockId, x, y, z)
+        {
         }
 
         public Vector3Int WorldCell(int i)
@@ -48,7 +55,7 @@ namespace MinecraftTetris
     {
         public Grid Grid;
         public Piece Current;
-        public PieceType Next;
+        public ShapeEntry Next;
         public int NextBlockId;
         public int Score;
         public int LinesCleared;
@@ -223,12 +230,12 @@ namespace MinecraftTetris
 
         void SpawnNext()
         {
-            PieceType type = Next;
+            ShapeEntry entry = Next;
             int blockId = NextBlockId;
             Next = _bag.Next();
             NextBlockId = RandomBlockId();
 
-            Vector2Int[] cells = Tetromino.GetShape(type);
+            Vector2Int[] cells = entry.Cells;
             int maxX = 0;
             for (int i = 0; i < cells.Length; i++)
                 maxX = Mathf.Max(maxX, cells[i].x);
@@ -237,7 +244,7 @@ namespace MinecraftTetris
             int ox = (Grid.SizeX - width) / 2;
             int oy = Grid.SizeY - 3;
             int oz = (Grid.SizeZ - 1) / 2;
-            Current = new Piece(type, blockId, ox, oy, oz);
+            Current = new Piece(cells, entry.Label, entry.Type, blockId, ox, oy, oz);
             _fallTimer = 0f;
 
             if (!CanPlace(Current, 0, 0, 0))
@@ -258,7 +265,10 @@ namespace MinecraftTetris
             public int[] cells;
             public int score;
             public int lines;
-            public int nextType;
+            public int nextType;      // -1 表示玩家模具
+            public string nextLabel;
+            public int[] nextCellsX;
+            public int[] nextCellsY;
             public int nextBlockId;
             public int curType;
             public int curBlockId;
@@ -275,7 +285,8 @@ namespace MinecraftTetris
                 cells = Grid.Export(),
                 score = Score,
                 lines = LinesCleared,
-                nextType = (int)Next,
+                nextType = Next.IsMold ? -1 : (int)Next.Type,
+                nextLabel = Next.Label,
                 nextBlockId = NextBlockId,
                 curType = Current != null ? (int)Current.Type : -1,
                 curBlockId = Current != null ? Current.BlockId : 0,
@@ -293,6 +304,17 @@ namespace MinecraftTetris
                 {
                     d.curCellsX[i] = Current.Cells[i].x;
                     d.curCellsY[i] = Current.Cells[i].y;
+                }
+            }
+
+            if (Next != null)
+            {
+                d.nextCellsX = new int[Next.Cells.Length];
+                d.nextCellsY = new int[Next.Cells.Length];
+                for (int i = 0; i < Next.Cells.Length; i++)
+                {
+                    d.nextCellsX[i] = Next.Cells[i].x;
+                    d.nextCellsY[i] = Next.Cells[i].y;
                 }
             }
 
@@ -318,7 +340,7 @@ namespace MinecraftTetris
             Score = d.score;
             LinesCleared = d.lines;
             GameOver = false;
-            Next = (PieceType)Mathf.Clamp(d.nextType, 0, 6);
+            Next = MakeEntry(d.nextType, d.nextLabel, d.nextCellsX, d.nextCellsY);
             NextBlockId = d.nextBlockId <= 0 ? RandomBlockId() : d.nextBlockId;
 
             if (d.curType >= 0 && d.curType <= 6)
@@ -337,6 +359,33 @@ namespace MinecraftTetris
 
             _fallTimer = d.fallTimer;
             return true;
+        }
+
+        /// <summary>从存档里的类型编号 / 名字 / 坐标重建一个出块池条目。</summary>
+        static ShapeEntry MakeEntry(int type, string label, int[] xs, int[] ys)
+        {
+            PieceType t = (type >= 0 && type <= 6) ? (PieceType)type : PieceType.I;
+
+            if (xs != null && ys != null && xs.Length == ys.Length && xs.Length > 0)
+            {
+                var cells = new Vector2Int[xs.Length];
+                for (int i = 0; i < xs.Length; i++)
+                    cells[i] = new Vector2Int(xs[i], ys[i]);
+                return new ShapeEntry
+                {
+                    Cells = cells,
+                    Label = string.IsNullOrEmpty(label) ? t.ToString() : label,
+                    Type = t,
+                    IsMold = type < 0,
+                };
+            }
+
+            return new ShapeEntry
+            {
+                Cells = Tetromino.GetShape(t),
+                Label = t.ToString(),
+                Type = t,
+            };
         }
 
         public void Restart()
