@@ -22,6 +22,9 @@ namespace MinecraftTetris.EditorTools
             CreateMaterial("Assets/Resources/BlockMat.mat", "MinecraftTetris/Atlas", atlas);
             CreateMaterial("Assets/Resources/BlockTransparentMat.mat", "MinecraftTetris/AtlasTransparent", atlas);
             CreateSolidMaterial("Assets/Resources/BorderMat.mat", "Unlit/Color", new Color(0.20f, 0.21f, 0.24f));
+            // 网格边框：核心亮线 + 外面一层加色光晕（海天蓝）
+            CreateSolidMaterial("Assets/Resources/GridCoreMat.mat", "Unlit/Color", new Color(0.42f, 0.86f, 1f));
+            CreateSolidMaterial("Assets/Resources/GridGlowMat.mat", "MinecraftTetris/GlowAdditive", new Color(0.10f, 0.55f, 1f, 0.34f));
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();

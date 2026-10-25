@@ -33,6 +33,13 @@ namespace MinecraftTetris
                 _pieceCells[i].transform.SetParent(_pieceRoot, false);
                 _pieceCells[i].SetActive(false);
             }
+
+            Debug.Log("[setup] grid=" + grid.SizeX + "x" + grid.SizeY + "x" + grid.SizeZ
+                + " cells=" + (_cells != null ? _cells.GetLength(0).ToString() : "null")
+                + " pieceCells=" + (_pieceCells != null ? _pieceCells.Length.ToString() : "null")
+                + " meshes=" + (_meshes != null ? _meshes.Length.ToString() : "null")
+                + " materials=" + (_materials != null ? _materials.Length.ToString() : "null")
+                + " 空材质=" + (CountNullMaterials()));
         }
 
         void BuildResources()
@@ -46,6 +53,15 @@ namespace MinecraftTetris
                 _meshes[i] = BlockMesh.Build(def);
                 _materials[i] = BlockMesh.GetMaterial(def);
             }
+        }
+
+        int CountNullMaterials()
+        {
+            if (_materials == null) return -1;
+            int n = 0;
+            for (int i = 0; i < _materials.Length; i++)
+                if (_materials[i] == null) n++;
+            return n;
         }
 
         /// <summary>按材质编号取渲染用的 mesh（预览和粒子共用）。</summary>
@@ -111,6 +127,7 @@ namespace MinecraftTetris
             for (int i = 0; i < 4; i++)
             {
                 GameObject go = _pieceCells[i];
+                if (go == null) continue;
                 go.SetActive(true);
                 go.transform.position = piece.WorldCell(i);
                 go.GetComponent<MeshFilter>().sharedMesh = _meshes[idx];

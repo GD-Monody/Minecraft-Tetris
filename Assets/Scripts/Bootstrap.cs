@@ -336,10 +336,12 @@ namespace MinecraftTetris
 
         void SetupScene()
         {
-            BorderRenderer border = gameObject.GetComponent<BorderRenderer>();
-            if (border == null)
-                border = gameObject.AddComponent<BorderRenderer>();
-            border.Build(SizeX, SizeY, SizeZ);
+            GridFrame frame = gameObject.GetComponent<GridFrame>();
+            if (frame == null)
+                frame = gameObject.AddComponent<GridFrame>();
+            frame.Build(SizeX, SizeY, SizeZ,
+                new Color(0.42f, 0.86f, 1f),                 // 核心线：海天蓝
+                new Color(0.10f, 0.55f, 1f, 0.34f));         // 光晕：更深的蓝、半透明
 
             Vector3 center = new Vector3((SizeX - 1) / 2f, (SizeY - 1) / 2f, (SizeZ - 1) / 2f);
 

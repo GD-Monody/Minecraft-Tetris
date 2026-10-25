@@ -401,7 +401,7 @@ namespace MinecraftTetris
         void DrawSettingsSize()
         {
             float w = 460f;
-            float h = 460f;
+            float h = 500f;
             Rect panel = CenterPanel(w, h);
             DrawPanel(panel);
 
@@ -418,8 +418,8 @@ namespace MinecraftTetris
             DrawSizeRow(bx, y, "深度 Z", ref _tmpZ, GameSettings.MinSizeZ, GameSettings.MaxSizeZ);
             y += 54f;
 
-            GUI.Label(new Rect(bx, y, rowW, 24f), "深度大于 1 时用 W / S 前后移动方块", _rowLabelStyle);
-            y += 36f;
+            GUI.Label(new Rect(bx, y, rowW, 40f), "深度大于 1 时用 W / S 前后移动方块", _rowLabelStyle);
+            y += 44f;
 
             if (GUI.Button(new Rect(bx, y, rowW, 44f), "应用并重启", _btnStyle))
             {
