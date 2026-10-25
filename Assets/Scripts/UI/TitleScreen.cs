@@ -54,6 +54,7 @@ namespace MinecraftTetris
         int _capturingAction = -1;
         int _tmpX = 10;
         int _tmpY = 20;
+        int _tmpZ = 1;
 
         // 时间轴（秒）
         const float MadeEnd = 0.8f;
@@ -104,6 +105,7 @@ namespace MinecraftTetris
             _capturingAction = -1;
             _tmpX = GameSettings.SizeX;
             _tmpY = GameSettings.SizeY;
+            _tmpZ = GameSettings.SizeZ;
         }
 
         public bool AnyInputPressed()
@@ -294,7 +296,7 @@ namespace MinecraftTetris
         void DrawSettingsMain()
         {
             float w = 420f;
-            float h = 330f;
+            float h = 384f;
             Rect panel = CenterPanel(w, h);
             DrawPanel(panel);
 
@@ -313,6 +315,16 @@ namespace MinecraftTetris
             }
             y += 54f;
 
+            string elimName = GameSettings.ElimMode == GameSettings.ElimLayer ? "消除：层消" : "消除：行消";
+            if (GUI.Button(new Rect(bx, y, 300f, 42f), elimName, _btnStyle))
+            {
+                int next = GameSettings.ElimMode == GameSettings.ElimLayer
+                    ? GameSettings.ElimRows
+                    : GameSettings.ElimLayer;
+                GameSettings.SetElimMode(next);
+            }
+            y += 54f;
+
             if (GUI.Button(new Rect(bx, y, 300f, 42f), "按键设置", _btnStyle))
             {
                 _page = SettingsPage.Keys;
@@ -324,6 +336,7 @@ namespace MinecraftTetris
             {
                 _tmpX = GameSettings.SizeX;
                 _tmpY = GameSettings.SizeY;
+                _tmpZ = GameSettings.SizeZ;
                 _page = SettingsPage.Size;
             }
             y += 62f;
@@ -388,7 +401,7 @@ namespace MinecraftTetris
         void DrawSettingsSize()
         {
             float w = 460f;
-            float h = 380f;
+            float h = 460f;
             Rect panel = CenterPanel(w, h);
             DrawPanel(panel);
 
@@ -402,14 +415,15 @@ namespace MinecraftTetris
             y += 58f;
             DrawSizeRow(bx, y, "高度 Y", ref _tmpY, GameSettings.MinSizeY, GameSettings.MaxSizeY);
             y += 58f;
+            DrawSizeRow(bx, y, "深度 Z", ref _tmpZ, GameSettings.MinSizeZ, GameSettings.MaxSizeZ);
+            y += 54f;
 
-            GUI.Label(new Rect(bx, y, 200f, 40f), "深度 Z", _rowLabelStyle);
-            GUI.Label(new Rect(bx + 200f, y, 160f, 40f), "1（暂不支持修改）", _rowLabelStyle);
-            y += 62f;
+            GUI.Label(new Rect(bx, y, rowW, 24f), "深度大于 1 时用 W / S 前后移动方块", _rowLabelStyle);
+            y += 36f;
 
             if (GUI.Button(new Rect(bx, y, rowW, 44f), "应用并重启", _btnStyle))
             {
-                GameSettings.SetSize(_tmpX, _tmpY);
+                GameSettings.SetSize(_tmpX, _tmpY, _tmpZ);
                 if (OnSizeApplied != null)
                     OnSizeApplied();
             }
@@ -436,7 +450,8 @@ namespace MinecraftTetris
             GUI.enabled = canPlus;
             if (GUI.Button(new Rect(x + 282f, y, 46f, 40f), "+", _btnStyle))
                 value = Mathf.Min(max, value + 1);
-            GUI.enabled = true;        }
+            GUI.enabled = true;
+        }
 
         // ---------- 改键 ----------
 

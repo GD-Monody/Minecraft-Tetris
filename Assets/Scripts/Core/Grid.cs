@@ -73,7 +73,7 @@ namespace MinecraftTetris
 
         /// <summary>
         /// 检测并消除满行。z = 1 时一层就是一行，直接按层处理；
-        /// 以后 z > 1 时，行消要改成按 (y, z) 逐行检查。
+        /// z > 1 时按 (y, z) 逐行检查（行消模式）。
         /// </summary>
         public int ClearFullLines()
         {
@@ -95,8 +95,60 @@ namespace MinecraftTetris
             return rows;
         }
 
+        /// <summary>行消：某个 (y, z) 上 x 方向一行是否填满。</summary>
+        public bool IsRowFullPublic(int y, int z)
+        {
+            for (int x = 0; x < SizeX; x++)
+                if (_cells[x, y, z] == 0)
+                    return false;
+            return true;
+        }
+
+        /// <summary>取这一行里第一个非空方块的编号，没有则返回 0。</summary>
+        public int FirstBlockInRow(int y, int z)
+        {
+            for (int x = 0; x < SizeX; x++)
+                if (_cells[x, y, z] != 0)
+                    return _cells[x, y, z];
+            return 0;
+        }
+
         /// <summary>
-        /// 层消：整个 x × z 平面填满。阶段 2 用。
+        /// 行消模式：把所有填满的 (y, z) 行清掉，上方同 z 的格子下落。返回清除行数。
+        /// </summary>
+        public int ClearFullRows()
+        {
+            int cleared = 0;
+            for (int z = 0; z < SizeZ; z++)
+                for (int y = 0; y < SizeY; y++)
+                    while (IsRowFull(y, z))
+                    {
+                        DropRowAbove(y, z);
+                        cleared++;
+                    }
+            return cleared;
+        }
+
+        void DropRowAbove(int y, int z)
+        {
+            for (int yy = y; yy < SizeY - 1; yy++)
+                for (int x = 0; x < SizeX; x++)
+                    _cells[x, yy, z] = _cells[x, yy + 1, z];
+
+            for (int x = 0; x < SizeX; x++)
+                _cells[x, SizeY - 1, z] = 0;
+        }
+
+        bool IsRowFull(int y, int z)
+        {
+            for (int x = 0; x < SizeX; x++)
+                if (_cells[x, y, z] == 0)
+                    return false;
+            return true;
+        }
+
+        /// <summary>
+        /// 层消：整个 x × z 平面填满。
         /// </summary>
         public int ClearFullLayers()
         {

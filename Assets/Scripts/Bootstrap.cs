@@ -36,6 +36,7 @@ namespace MinecraftTetris
             SizeX = GameSettings.SizeX;
             SizeY = GameSettings.SizeY;
             SizeZ = GameSettings.SizeZ;
+            ApplyDebugSizeArgs();
 
             _loop = new GameLoop(SizeX, SizeY, SizeZ, (int)System.DateTime.Now.Ticks);
 
@@ -95,6 +96,12 @@ namespace MinecraftTetris
                 _title.Visible = false;
                 _paused = true;
             }
+
+            // -shotat N：把自动截图的时间点从默认 6 秒改成 N 秒（验证落定方块等需要跑够时间）
+            var argv = System.Environment.GetCommandLineArgs();
+            int shotArg = System.Array.IndexOf(argv, "-shotat");
+            if (shotArg >= 0 && shotArg + 1 < argv.Length && float.TryParse(argv[shotArg + 1], out float shotAt))
+                _autoShotTimer = shotAt;
 
             _loop.PieceLocked += OnPieceLocked;
             _loop.LinesClearedEvent += OnLinesCleared;
@@ -237,6 +244,24 @@ namespace MinecraftTetris
 #endif
         }
 
+        /// <summary>调试用：-size X Y Z 只覆盖本次运行的场地尺寸，不写盘。</summary>
+        void ApplyDebugSizeArgs()
+        {
+            string[] args = System.Environment.GetCommandLineArgs();
+            int i = System.Array.IndexOf(args, "-size");
+            if (i < 0 || i + 3 >= args.Length)
+                return;
+
+            int sx, sy, sz;
+            if (int.TryParse(args[i + 1], out sx) && int.TryParse(args[i + 2], out sy) &&
+                int.TryParse(args[i + 3], out sz))
+            {
+                SizeX = Mathf.Clamp(sx, GameSettings.MinSizeX, GameSettings.MaxSizeX);
+                SizeY = Mathf.Clamp(sy, GameSettings.MinSizeY, GameSettings.MaxSizeY);
+                SizeZ = Mathf.Clamp(sz, GameSettings.MinSizeZ, GameSettings.MaxSizeZ);
+            }
+        }
+
         void OnSfxChanged(bool enabled)
         {
             if (_sfx != null)
@@ -336,7 +361,8 @@ namespace MinecraftTetris
                 rig = cam.gameObject.AddComponent<CameraRig>();
 
             rig.Target = center;
-            rig.Distance = SizeY * 1.05f;
+            // 场地变深以后，相机要退得够远才看得全
+            rig.Distance = Mathf.Max(SizeY * 1.05f, SizeZ * 1.8f);
 
             _mainCam = cam;
             _normalCullMask = cam.cullingMask;

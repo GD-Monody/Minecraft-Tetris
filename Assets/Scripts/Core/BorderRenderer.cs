@@ -23,21 +23,21 @@ namespace MinecraftTetris
 
             float cx = (sizeX - 1) * 0.5f;
             float cy = (sizeY - 1) * 0.5f;
-            // 方块中心在 z=0，深度 ±0.5；边框退到 -0.7 藏在后面
-            float z = -0.7f;
+            float cz = (sizeZ - 1) * 0.5f;
+            float zLen = sizeZ + 0.08f;
             float thick = 0.28f;
 
             CreateCube("BorderLeft",
-                new Vector3(-0.5f - thick * 0.5f - 0.02f, cy, z),
-                new Vector3(thick, sizeY, 0.3f), mat);
+                new Vector3(-0.5f - thick * 0.5f - 0.02f, cy, cz),
+                new Vector3(thick, sizeY, zLen), mat);
 
             CreateCube("BorderRight",
-                new Vector3(sizeX - 0.5f + thick * 0.5f + 0.02f, cy, z),
-                new Vector3(thick, sizeY, 0.3f), mat);
+                new Vector3(sizeX - 0.5f + thick * 0.5f + 0.02f, cy, cz),
+                new Vector3(thick, sizeY, zLen), mat);
 
             CreateCube("BorderBottom",
-                new Vector3(cx, -0.5f - thick * 0.5f - 0.02f, z),
-                new Vector3(sizeX + thick * 2f + 0.04f, thick, 0.3f), mat);
+                new Vector3(cx, -0.5f - thick * 0.5f - 0.02f, cz),
+                new Vector3(sizeX + thick * 2f + 0.04f, thick, zLen), mat);
         }
 
         void CreateCube(string cubeName, Vector3 position, Vector3 scale, Material mat)

@@ -178,16 +178,31 @@ namespace MinecraftTetris
             // 先记下这一轮要清的行和每行的代表材质，清完再派事件给粒子效果
             var fullRows = new System.Collections.Generic.List<int>();
             var rowBlocks = new System.Collections.Generic.List<int>();
-            for (int y = 0; y < Grid.SizeY; y++)
+            bool layerMode = GameSettings.ElimMode == GameSettings.ElimLayer;
+
+            if (layerMode)
             {
-                if (Grid.IsLayerFullPublic(y))
+                for (int y = 0; y < Grid.SizeY; y++)
                 {
-                    fullRows.Add(y);
-                    rowBlocks.Add(Grid.FirstBlockInLayer(y));
+                    if (Grid.IsLayerFullPublic(y))
+                    {
+                        fullRows.Add(y);
+                        rowBlocks.Add(Grid.FirstBlockInLayer(y));
+                    }
                 }
             }
+            else
+            {
+                for (int y = 0; y < Grid.SizeY; y++)
+                    for (int z = 0; z < Grid.SizeZ; z++)
+                        if (Grid.IsRowFullPublic(y, z))
+                        {
+                            fullRows.Add(y);
+                            rowBlocks.Add(Grid.FirstBlockInRow(y, z));
+                        }
+            }
 
-            int cleared = Grid.ClearFullLines();
+            int cleared = layerMode ? Grid.ClearFullLayers() : Grid.ClearFullRows();
             if (cleared > 0)
             {
                 LinesCleared += cleared;
