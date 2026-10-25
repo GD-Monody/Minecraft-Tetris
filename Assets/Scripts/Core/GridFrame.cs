@@ -53,8 +53,8 @@ namespace MinecraftTetris
             AddLine(coreVerts, coreTris, glowVerts, glowTris, new Vector3(xRight, yTop, zFront), new Vector3(xRight, yTop, zBack));
 
             // 左右两侧：每层一条横线 + 每格一段竖线，组成网格
-            AddSideGrid(coreVerts, coreTris, glowVerts, glowTris, xLeft, yBottom, yTop, zFront, zBack, sizeY);
-            AddSideGrid(coreVerts, coreTris, glowVerts, glowTris, xRight, yBottom, yTop, zFront, zBack, sizeY);
+            AddSideGrid(coreVerts, coreTris, glowVerts, glowTris, xLeft, yBottom, yTop, zFront, zBack, sizeZ);
+            AddSideGrid(coreVerts, coreTris, glowVerts, glowTris, xRight, yBottom, yTop, zFront, zBack, sizeZ);
 
             CreateMeshObject("FrameCore", coreVerts, coreTris, CoreMaterial);
             CreateMeshObject("FrameGlow", glowVerts, glowTris, GlowMaterial);
@@ -70,22 +70,14 @@ namespace MinecraftTetris
             AddLine(cv, ct, gv, gt, new Vector3(xLeft, yTop, z), new Vector3(xLeft, yBottom, z));
         }
 
-        /// <summary>一面竖直的网格墙：每层一条横线（沿 z 方向），前后各一条竖线。</summary>
+        /// <summary>一面竖直的网格墙：深度方向每格一条贯通整根竖线，看起来是竖向条纹。</summary>
         void AddSideGrid(List<Vector3> cv, List<int> ct, List<Vector3> gv, List<int> gt,
-            float x, float yBottom, float yTop, float zFront, float zBack, int sizeY)
+            float x, float yBottom, float yTop, float zFront, float zBack, int sizeZ)
         {
-            for (int i = 0; i <= sizeY; i++)
+            for (int i = 0; i <= sizeZ; i++)
             {
-                float y = yBottom + (yTop - yBottom) * i / sizeY;
-                AddLine(cv, ct, gv, gt, new Vector3(x, y, zFront), new Vector3(x, y, zBack));
-            }
-
-            for (int i = 0; i < sizeY; i++)
-            {
-                float y0 = yBottom + (yTop - yBottom) * i / sizeY;
-                float y1 = yBottom + (yTop - yBottom) * (i + 1) / sizeY;
-                AddLine(cv, ct, gv, gt, new Vector3(x, y0, zFront), new Vector3(x, y1, zFront));
-                AddLine(cv, ct, gv, gt, new Vector3(x, y0, zBack), new Vector3(x, y1, zBack));
+                float z = zFront + (zBack - zFront) * i / Mathf.Max(1, sizeZ);
+                AddLine(cv, ct, gv, gt, new Vector3(x, yBottom, z), new Vector3(x, yTop, z));
             }
         }
 

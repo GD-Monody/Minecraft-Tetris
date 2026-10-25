@@ -336,9 +336,11 @@ namespace MinecraftTetris
 
         void SetupScene()
         {
-            GridFrame frame = gameObject.GetComponent<GridFrame>();
-            if (frame == null)
-                frame = gameObject.AddComponent<GridFrame>();
+            // 边框挂在独立子对象上：GridFrame.Build 会清空自己的子节点，
+            // 如果和 GridView 挂在同一个 GameObject 上，会把格子和当前方块一起删掉
+            GameObject frameGo = new GameObject("GridFrame");
+            frameGo.transform.SetParent(transform, false);
+            GridFrame frame = frameGo.AddComponent<GridFrame>();
             frame.Build(SizeX, SizeY, SizeZ,
                 new Color(0.42f, 0.86f, 1f),                 // 核心线：海天蓝
                 new Color(0.10f, 0.55f, 1f, 0.34f));         // 光晕：更深的蓝、半透明
