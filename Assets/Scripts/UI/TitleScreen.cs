@@ -11,6 +11,7 @@ namespace MinecraftTetris
 
         Font _font;
         Font _titleFont;
+        Texture2D _titleTex;
         GUIStyle _titleStyle;
         GUIStyle _titleShadow;
         GUIStyle _subStyle;
@@ -19,6 +20,16 @@ namespace MinecraftTetris
 
         void EnsureStyles()
         {
+            if (_titleTex == null)
+            {
+                _titleTex = Resources.Load<Texture2D>("title");
+                if (_titleTex != null)
+                {
+                    _titleTex.filterMode = FilterMode.Point;
+                    _titleTex.wrapMode = TextureWrapMode.Clamp;
+                }
+            }
+
             if (_font == null)
             {
                 _font = Font.CreateDynamicFontFromOSFont(
@@ -78,14 +89,33 @@ namespace MinecraftTetris
             GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
             GUI.color = Color.white;
 
-            float titleY = Screen.height * 0.235f;
-            float titleH = Screen.height * 0.16f;
+            if (_titleTex != null)
+            {
+                // 整数倍放大，点阵才不会被插值拉歪
+                float scale = Mathf.Max(3f, Mathf.FloorToInt(Screen.height * 0.145f / _titleTex.height));
+                float w = _titleTex.width * scale;
+                float h = _titleTex.height * scale;
+                float x = (Screen.width - w) * 0.5f;
+                float y = Screen.height * 0.225f;
 
-            // MC logo 那种厚黑边：右下方向叠几层黑色，再盖一层白色字面
-            GUI.Label(new Rect(6f, titleY + 6f, Screen.width, titleH), "MINECRAFT X TETRIS", _titleShadow);
-            GUI.Label(new Rect(4f, titleY + 4f, Screen.width, titleH), "MINECRAFT X TETRIS", _titleShadow);
-            GUI.Label(new Rect(2f, titleY + 2f, Screen.width, titleH), "MINECRAFT X TETRIS", _titleShadow);
-            GUI.Label(new Rect(0f, titleY, Screen.width, titleH), "MINECRAFT X TETRIS", _titleStyle);
+                int off = Mathf.Max(2, Mathf.RoundToInt(scale * 0.6f));
+                GUI.color = Color.black;
+                GUI.DrawTexture(new Rect(x + off * 1.5f, y + off * 1.5f, w, h), _titleTex);
+                GUI.DrawTexture(new Rect(x + off, y + off, w, h), _titleTex);
+                GUI.color = Color.white;
+                GUI.DrawTexture(new Rect(x, y, w, h), _titleTex);
+            }
+            else
+            {
+                float titleY = Screen.height * 0.235f;
+                float titleH = Screen.height * 0.16f;
+
+                // 没有像素标题图时的兜底：粗体白字 + 右下厚投影
+                GUI.Label(new Rect(6f, titleY + 6f, Screen.width, titleH), "MINECRAFT X TETRIS", _titleShadow);
+                GUI.Label(new Rect(4f, titleY + 4f, Screen.width, titleH), "MINECRAFT X TETRIS", _titleShadow);
+                GUI.Label(new Rect(2f, titleY + 2f, Screen.width, titleH), "MINECRAFT X TETRIS", _titleShadow);
+                GUI.Label(new Rect(0f, titleY, Screen.width, titleH), "MINECRAFT X TETRIS", _titleStyle);
+            }
 
             GUI.Label(new Rect(0f, Screen.height * 0.435f, Screen.width, 40f), "Made by Monody", _subStyle);
             GUI.Label(new Rect(0f, Screen.height * 0.492f, Screen.width, 30f), "DSH辅助完成", _creditStyle);

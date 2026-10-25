@@ -48,27 +48,30 @@ namespace MinecraftTetris.EditorTools
             PlayerSettings.productName = "MinecraftTetris";
         }
 
-        /// <summary>像素风必须用 Point 过滤、不压缩、无 mipmap，否则 16×16 贴图会被拉糊。</summary>
+        /// <summary>像素风必须用 Point 过滤、不压缩、无 mipmap，否则小尺寸贴图会被拉糊。</summary>
         static void SetupTextures()
         {
-            string atlas = "Assets/Resources/atlas.png";
-            var importer = AssetImporter.GetAtPath(atlas) as TextureImporter;
-            if (importer != null)
+            // 图集尺寸不是 2 的幂（144×126），Unity 默认会把它缩成 128×128，
+            // 而 UV 是按 144×126 算的，一缩放就整体错位、边缘串到相邻格子。
+            // 标题图同理（140×16），缩放会直接把点阵搞歪。
+            string[] paths = { "Assets/Resources/atlas.png", "Assets/Resources/title.png" };
+            foreach (string path in paths)
             {
+                var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+                if (importer == null)
+                {
+                    Debug.LogWarning("[MinecraftTetris] 没找到 " + path);
+                    continue;
+                }
+
                 importer.filterMode = FilterMode.Point;
                 importer.textureCompression = TextureImporterCompression.Uncompressed;
                 importer.mipmapEnabled = false;
                 importer.alphaIsTransparency = true;
                 importer.wrapMode = TextureWrapMode.Clamp;
-                // 图集尺寸不是 2 的幂（144×126），Unity 默认会把它缩成 128×128，
-                // 而 UV 是按 144×126 算的，一缩放就整体错位、边缘串到相邻格子。
                 importer.npotScale = TextureImporterNPOTScale.None;
                 importer.SaveAndReimport();
-                Debug.Log("[MinecraftTetris] 图集导入设置: Point / 不压缩 / 无 mipmap");
-            }
-            else
-            {
-                Debug.LogWarning("[MinecraftTetris] 没找到 " + atlas);
+                Debug.Log("[MinecraftTetris] 纹理导入设置: Point / 不压缩 / 无 mipmap / 不缩放 " + path);
             }
         }
     }
