@@ -4,27 +4,27 @@ using UnityEngine;
 namespace MinecraftTetris
 {
     /// <summary>
-    /// 水和岩浆的流动。
+    /// 水和岩浆的流动，按 Minecraft 现在的规则来（不是早期那种"无限蔓延"）。
     ///
-    /// 规则（2026-10-26 和用户确认过的版本）：
-    /// - 水/岩浆方块落定后开始流动：先往下流到支撑面，再向四周蔓延；
-    ///   扩散有上限（水 1.5 秒 / 60 格，岩浆 0.8 秒 / 30 格），不会铺满全场。
-    /// - 流体只往空格里流，不会穿过方块。
-    /// - 方块落下来时可以压在流体上（流体不算实体），落定后那一格流体消失；
-    ///   如果被压的是源头或者把水路截断了，受影响的那部分流体逐格退掉。
+    /// MC 的水流规则（这里实现的是核心那几条）：
+    /// - 每个流体格有个"水位"：0 是水源，1~7 是一格一格流出去的水，数字越大离源越远。
+    /// - 水平每流一格水位 +1，到 7 就不再往外流 —— 所以一片水最多往外铺 7 格，
+    ///   不会像早期版本那样顺着地形一路铺到天边。
+    /// - 向下流不涨水位：水从高处落下来，落地以后还能再往外铺 7 格。
+    /// - 水不会往上流。
+    /// - 水源被方块压住、或者水路被截断时，没源供水的那部分会逐格退掉（干涸）。
     ///
-    /// 实现方式：每次"应不应该有水"变化时，从所有源头重新 BFS 一遍应存在的水格，
-    /// 然后每 tick 只填几格、退几格，所以看起来是一格一格漫过去 / 退回来。
+    /// 实现方式：每次"应不应该有水"变化时，从所有水源做一遍多源 BFS 算出每格的水位，
+    /// 再和场上的实际格子对一遍：缺的排队填、多的排队退，每 tick 只填几格退几格，
+    /// 看起来就是水一格一格漫过去、一格一格退回来。
     /// </summary>
     public static class Fluids
     {
         static int _waterId = -1;
         static int _lavaId = -1;
 
-        const float WaterLife = 1.5f;
-        const int WaterMax = 60;
-        const float LavaLife = 0.8f;
-        const int LavaMax = 30;
+        /// <summary>水平最多流 7 格（MC 的 level 1~7）。</summary>
+        public const int MaxSpread = 7;
 
         const float FillPerSecond = 24f;   // 每秒最多铺几格（看起来是漫过去）
         const float DrainPerSecond = 12f;  // 每秒最多退几格
@@ -33,16 +33,19 @@ namespace MinecraftTetris
         {
             public int X, Y, Z;
             public int Id;
-            public float Life;     // 还能流多久
-            public float MaxLife;
-            public int MaxCells;
         }
 
         static readonly List<Source> _sources = new List<Source>();
-        static readonly HashSet<Vector3Int> _wanted = new HashSet<Vector3Int>();
+
+        // 按 MC 规则算出来的"这里应该是几级水"（0=源，1~7=流动水）
+        static readonly Dictionary<Vector3Int, int> _depth = new Dictionary<Vector3Int, int>();
+        static readonly Dictionary<Vector3Int, int> _ids = new Dictionary<Vector3Int, int>();
+
         static readonly List<Vector3Int> _cellsToFill = new List<Vector3Int>();
         static readonly List<Vector3Int> _cellsToDrain = new List<Vector3Int>();
         static float _fillCredit, _drainCredit;
+
+        static readonly Queue<Vector3Int> _queue = new Queue<Vector3Int>();
 
         public static int WaterId { get { return _waterId; } }
         public static int LavaId { get { return _lavaId; } }
@@ -55,7 +58,6 @@ namespace MinecraftTetris
             Debug.Log("[fluids] water=" + _waterId + " lava=" + _lavaId);
         }
 
-        /// <summary>按英文名找方块编号（返回 1 起的 blockId，找不到返回 -1）。</summary>
         static int FindByName(string name)
         {
             for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
@@ -69,32 +71,32 @@ namespace MinecraftTetris
             return blockId > 0 && (blockId == _waterId || blockId == _lavaId);
         }
 
+        /// <summary>这个格子的水位（0 是源，1~7 是流动水，-1 表示这格不该有水）。给渲染用。</summary>
+        public static int DepthAt(int x, int y, int z)
+        {
+            int d;
+            return _depth.TryGetValue(new Vector3Int(x, y, z), out d) ? d : -1;
+        }
+
         public static void Reset()
         {
             _sources.Clear();
-            _wanted.Clear();
+            _depth.Clear();
+            _ids.Clear();
             _cellsToFill.Clear();
             _cellsToDrain.Clear();
             _fillCredit = 0f;
             _drainCredit = 0f;
         }
 
-        /// <summary>流体方块落定：登记成新的源头，并立刻重算一次流动范围。</summary>
+        /// <summary>流体方块落定：登记成新的水源，并立刻重算一次流动范围。</summary>
         public static void AddSource(Grid grid, int x, int y, int z, int blockId)
         {
-            bool lava = blockId == _lavaId;
-            _sources.Add(new Source
-            {
-                X = x, Y = y, Z = z,
-                Id = blockId,
-                Life = lava ? LavaLife : WaterLife,
-                MaxLife = lava ? LavaLife : WaterLife,
-                MaxCells = lava ? LavaMax : WaterMax,
-            });
+            _sources.Add(new Source { X = x, Y = y, Z = z, Id = blockId });
             Rebuild(grid);
         }
 
-        /// <summary>固体方块压到某个格子上：这一格如果是源头就不再有水。</summary>
+        /// <summary>固体方块压到某个格子上：这一格如果是水源就不再有水，然后重算（可能截断水路）。</summary>
         public static void OnSolidPlaced(Grid grid, int x, int y, int z)
         {
             bool removed = false;
@@ -107,10 +109,9 @@ namespace MinecraftTetris
                     removed = true;
                 }
             }
-            // 不管压的是不是源头都重算：可能正好把一条水路截断了
             Rebuild(grid);
             if (removed)
-                Debug.Log("[fluids] 源头被压住: " + x + "," + y + "," + z);
+                Debug.Log("[fluids] 水源被压住: " + x + "," + y + "," + z);
         }
 
         /// <summary>每帧推进：填几格、退几格。返回 true 表示画面需要刷新。</summary>
@@ -118,18 +119,6 @@ namespace MinecraftTetris
         {
             bool changed = false;
 
-            // 源头还有寿命，过期就不再往外扩（已经铺出去的水留着）
-            for (int i = 0; i < _sources.Count; i++)
-            {
-                Source s = _sources[i];
-                if (s.Life > 0f)
-                {
-                    s.Life -= dt;
-                    _sources[i] = s;
-                }
-            }
-
-            // 该铺没铺的
             if (_cellsToFill.Count > 0)
             {
                 _fillCredit += FillPerSecond * dt;
@@ -147,7 +136,6 @@ namespace MinecraftTetris
                 }
             }
 
-            // 该退没退的
             if (_cellsToDrain.Count > 0)
             {
                 _drainCredit += DrainPerSecond * dt;
@@ -169,34 +157,28 @@ namespace MinecraftTetris
             return changed;
         }
 
-        static readonly Dictionary<Vector3Int, int> _wantedIds = new Dictionary<Vector3Int, int>();
-
         static int WantedId(Vector3Int cell)
         {
             int id;
-            return _wantedIds.TryGetValue(cell, out id) ? id : _waterId;
+            return _ids.TryGetValue(cell, out id) ? id : _waterId;
         }
 
-        /// <summary>从所有源头重算"应该有哪些流体格"。</summary>
+        /// <summary>从所有水源重算"按 MC 规则应该有哪些流体格、各是几级水"。</summary>
         public static void Rebuild(Grid grid)
         {
-            _wanted.Clear();
-            _wantedIds.Clear();
+            _depth.Clear();
+            _ids.Clear();
 
             for (int i = 0; i < _sources.Count; i++)
-            {
-                Source s = _sources[i];
-                if (s.Life <= 0f)
-                    continue;
-                Bfs(grid, s);
-            }
+                SpreadFrom(grid, _sources[i]);
 
-            // 和当前格子对一遍：缺的排队填，多的排队退
+            // 和场上实际格子对一遍：缺的排队填，多的排队退
             _cellsToFill.Clear();
             _cellsToDrain.Clear();
 
-            foreach (Vector3Int cell in _wanted)
+            foreach (KeyValuePair<Vector3Int, int> kv in _depth)
             {
+                Vector3Int cell = kv.Key;
                 int cur = grid.Get(cell.x, cell.y, cell.z);
                 if (cur == 0)
                     _cellsToFill.Add(cell);
@@ -212,86 +194,72 @@ namespace MinecraftTetris
                         if (!IsFluid(cur))
                             continue;
                         var cell = new Vector3Int(x, y, z);
-                        if (!_wanted.Contains(cell) && !_cellsToDrain.Contains(cell))
+                        if (!_depth.ContainsKey(cell) && !_cellsToDrain.Contains(cell))
                             _cellsToDrain.Add(cell);
                     }
         }
 
-        /// <summary>从源头铺开：先往下，再往四周，最多 maxCells 格。</summary>
-        static void Bfs(Grid grid, Source src)
+        /// <summary>水能流过的地方：空格，或者本来就是一格流体（水可以接着往前铺）。</summary>
+        static bool CanFlowInto(Grid grid, int x, int y, int z)
+        {
+            if (!grid.InBounds(x, y, z))
+                return false;
+            int cur = grid.Get(x, y, z);
+            return cur == 0 || IsFluid(cur);
+        }
+
+        /// <summary>
+        /// 从水源按 MC 的水位规则铺开：向下不涨水位，水平每格 +1，涨到 7 就停。
+        /// 多源一起算时取"更近的那个源"的水位（这就是 MC 里水流合并的逻辑）。
+        /// </summary>
+        static void SpreadFrom(Grid grid, Source src)
         {
             var start = new Vector3Int(src.X, src.Y, src.Z);
-            var queue = new Queue<Vector3Int>();
-            var seen = new HashSet<Vector3Int>();
-            queue.Enqueue(start);
-            seen.Add(start);
-            _wanted.Add(start);
-            _wantedIds[start] = src.Id;
+            int startDepth;
+            if (_depth.TryGetValue(start, out startDepth) && startDepth <= 0)
+                return;   // 这里已经有更近的水源了
+            _depth[start] = 0;
+            _ids[start] = src.Id;
+            _queue.Clear();
+            _queue.Enqueue(start);
 
-            int budget = src.MaxCells;
-            // 让水先往下走：用两个队列，先把"下落"这条链走完再向侧面铺
-            var down = new Queue<Vector3Int>();
-            down.Enqueue(start);
-
-            while (down.Count > 0)
+            while (_queue.Count > 0)
             {
-                Vector3Int p = down.Dequeue();
+                Vector3Int p = _queue.Dequeue();
+                int d = _depth[p];
+                int id = _ids[p];
+
+                // 向下：水位不涨，可以一直落
                 var below = new Vector3Int(p.x, p.y - 1, p.z);
-                if (below.y < 0 || !grid.InBounds(below.x, below.y, below.z))
-                    continue;
-                if (seen.Contains(below) || !grid.IsFree(below.x, below.y, below.z))
-                    continue;
-                if (--budget <= 0)
-                    return;
-                seen.Add(below);
-                _wanted.Add(below);
-                _wantedIds[below] = src.Id;
-                down.Enqueue(below);
-                queue.Enqueue(below);
-            }
-
-            // 再向四周扩散（广度优先，一层一层）
-            var spread = new Queue<Vector3Int>();
-            foreach (Vector3Int c in seen)
-                spread.Enqueue(c);
-
-            Vector3Int[] dirs =
-            {
-                new Vector3Int(1, 0, 0), new Vector3Int(-1, 0, 0),
-                new Vector3Int(0, 0, 1), new Vector3Int(0, 0, -1),
-            };
-
-            while (spread.Count > 0)
-            {
-                if (budget <= 0)
-                    return;
-                Vector3Int p = spread.Dequeue();
-                for (int i = 0; i < dirs.Length; i++)
+                if (CanFlowInto(grid, below.x, below.y, below.z))
                 {
-                    var n = p + dirs[i];
-                    if (!grid.InBounds(n.x, n.y, n.z))
-                        continue;
-                    if (seen.Contains(n) || !grid.IsFree(n.x, n.y, n.z))
-                        continue;
-                    if (--budget <= 0)
-                        return;
-                    seen.Add(n);
-                    _wanted.Add(n);
-                    _wantedIds[n] = src.Id;
-                    spread.Enqueue(n);
-
-                    // 侧向铺出去以后，落下去的那一列也算水
-                    var below = new Vector3Int(n.x, n.y - 1, n.z);
-                    while (below.y >= 0 && grid.InBounds(below.x, below.y, below.z)
-                           && !seen.Contains(below) && grid.IsFree(below.x, below.y, below.z))
+                    int bd;
+                    if (!_depth.TryGetValue(below, out bd) || bd > d)
                     {
-                        if (--budget <= 0)
-                            return;
-                        seen.Add(below);
-                        _wanted.Add(below);
-                        _wantedIds[below] = src.Id;
-                        spread.Enqueue(below);
-                        below = new Vector3Int(below.x, below.y - 1, below.z);
+                        _depth[below] = d;
+                        _ids[below] = id;
+                        _queue.Enqueue(below);
+                    }
+                }
+
+                // 水平：水位 +1，超过 7 就不再往外流
+                if (d >= MaxSpread)
+                    continue;
+
+                int nd = d + 1;
+                for (int i = 0; i < 4; i++)
+                {
+                    int nx = p.x + (i == 0 ? 1 : i == 1 ? -1 : 0);
+                    int nz = p.z + (i == 2 ? 1 : i == 3 ? -1 : 0);
+                    if (!CanFlowInto(grid, nx, p.y, nz))
+                        continue;
+                    var n = new Vector3Int(nx, p.y, nz);
+                    int old;
+                    if (!_depth.TryGetValue(n, out old) || old > nd)
+                    {
+                        _depth[n] = nd;
+                        _ids[n] = id;
+                        _queue.Enqueue(n);
                     }
                 }
             }
