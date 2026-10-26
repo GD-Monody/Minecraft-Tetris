@@ -72,6 +72,13 @@ namespace MinecraftTetris
         }
 
         /// <summary>这个格子的水位（0 是源，1~7 是流动水，-1 表示这格不该有水）。给渲染用。</summary>
+        /// <summary>这一格是哪种流体（水/岩浆的 blockId），不是流体返回 0。</summary>
+        static int IdAt(int x, int y, int z)
+        {
+            int id;
+            return _ids.TryGetValue(new Vector3Int(x, y, z), out id) ? id : 0;
+        }
+
         public static int DepthAt(int x, int y, int z)
         {
             int d;
@@ -96,22 +103,39 @@ namespace MinecraftTetris
             Rebuild(grid);
         }
 
-        /// <summary>固体方块压到某个格子上：这一格如果是水源就不再有水，然后重算（可能截断水路）。</summary>
+        /// <summary>
+        /// 固体方块压到某个格子上：这一格原来有流体的话，把它顶到上面一格去（被方块挤起来，体积不丢），
+        /// 顶不上去（上方也是方块 / 顶到场地边界）才让它消失，然后重算整片。
+        /// </summary>
         public static void OnSolidPlaced(Grid grid, int x, int y, int z)
         {
-            bool removed = false;
+            int id = IdAt(x, y, z);
+
+            // 被压这一格原来的源要删掉（它已经不是源的位置了）
             for (int i = _sources.Count - 1; i >= 0; i--)
             {
-                Source s = _sources[i];
-                if (s.X == x && s.Y == y && s.Z == z)
-                {
+                Source s0 = _sources[i];
+                if (s0.X == x && s0.Y == y && s0.Z == z)
                     _sources.RemoveAt(i);
-                    removed = true;
+            }
+
+            bool moved = false;
+            if (id > 0)
+            {
+                int ux = x, uy = y + 1, uz = z;
+                if (CanFlowInto(grid, ux, uy, uz))
+                {
+                    // 挤到上面一格，并且当水源继续往外流（被方块挡住，只会往两边走）
+                    _sources.Add(new Source { X = ux, Y = uy, Z = uz, Id = id });
+                    moved = true;
                 }
             }
+
             Rebuild(grid);
-            if (removed)
-                Debug.Log("[fluids] 水源被压住: " + x + "," + y + "," + z);
+            if (moved)
+                Debug.Log("[fluids] 流体被方块顶上去了: " + x + "," + y + "," + z);
+            else if (id > 0)
+                Debug.Log("[fluids] 流体被压没（上方放不下）: " + x + "," + y + "," + z);
         }
 
         /// <summary>每帧推进：填几格、退几格。返回 true 表示画面需要刷新。</summary>
