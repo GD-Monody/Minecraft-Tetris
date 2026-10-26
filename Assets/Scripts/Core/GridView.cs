@@ -200,6 +200,12 @@ namespace MinecraftTetris
                 int lv = Fluids.DepthAt(x, y, z);
                 if (lv < 0) lv = 0;
                 if (lv >= fluidLevels.Length) lv = fluidLevels.Length - 1;
+
+                // 上面还压着水的格子属于水柱内部，画满格；只有最上面那层水才按水位压矮。
+                // 否则一列水里每层都矮一截，层与层之间就会漏出空缝，看着全是一格格的空隙。
+                if (Fluids.DepthAt(x, y + 1, z) >= 0)
+                    lv = 0;
+
                 mesh = fluidLevels[lv];
             }
             go.GetComponent<MeshFilter>().sharedMesh = mesh;
