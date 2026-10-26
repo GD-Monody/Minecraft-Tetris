@@ -10,7 +10,8 @@
    "south": "acacia_log",
    "east": "acacia_log",
    "west": "acacia_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "acacia_planks",
@@ -23,7 +24,8 @@
    "south": "acacia_planks",
    "east": "acacia_planks",
    "west": "acacia_planks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "acacia_wood",
@@ -36,7 +38,8 @@
    "south": "acacia_log",
    "east": "acacia_log",
    "west": "acacia_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "amethyst_block",
@@ -49,7 +52,8 @@
    "south": "amethyst_block",
    "east": "amethyst_block",
    "west": "amethyst_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "ancient_debris",
@@ -62,7 +66,8 @@
    "south": "ancient_debris_side",
    "east": "ancient_debris_side",
    "west": "ancient_debris_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "andesite",
@@ -75,7 +80,8 @@
    "south": "andesite",
    "east": "andesite",
    "west": "andesite"
-  }
+  },
+  "tint": []
  },
  {
   "name": "bamboo_block",
@@ -88,7 +94,8 @@
    "south": "bamboo_block",
    "east": "bamboo_block",
    "west": "bamboo_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "bamboo_mosaic",
@@ -101,7 +108,8 @@
    "south": "bamboo_mosaic",
    "east": "bamboo_mosaic",
    "west": "bamboo_mosaic"
-  }
+  },
+  "tint": []
  },
  {
   "name": "bamboo_planks",
@@ -114,7 +122,8 @@
    "south": "bamboo_planks",
    "east": "bamboo_planks",
    "west": "bamboo_planks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "barrel",
@@ -127,7 +136,8 @@
    "south": "barrel_side",
    "east": "barrel_side",
    "west": "barrel_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "basalt",
@@ -140,7 +150,8 @@
    "south": "basalt_side",
    "east": "basalt_side",
    "west": "basalt_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "birch_log",
@@ -153,7 +164,8 @@
    "south": "birch_log",
    "east": "birch_log",
    "west": "birch_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "birch_planks",
@@ -166,7 +178,8 @@
    "south": "birch_planks",
    "east": "birch_planks",
    "west": "birch_planks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "birch_wood",
@@ -179,7 +192,8 @@
    "south": "birch_log",
    "east": "birch_log",
    "west": "birch_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "black_concrete",
@@ -192,7 +206,8 @@
    "south": "black_concrete",
    "east": "black_concrete",
    "west": "black_concrete"
-  }
+  },
+  "tint": []
  },
  {
   "name": "black_concrete_powder",
@@ -205,7 +220,22 @@
    "south": "black_concrete_powder",
    "east": "black_concrete_powder",
    "west": "black_concrete_powder"
-  }
+  },
+  "tint": []
+ },
+ {
+  "name": "black_glazed_terracotta",
+  "zh": "black_glazed_terracotta",
+  "root": "block",
+  "faces": {
+   "up": "black_glazed_terracotta",
+   "down": "black_glazed_terracotta",
+   "north": "black_glazed_terracotta",
+   "south": "black_glazed_terracotta",
+   "east": "black_glazed_terracotta",
+   "west": "black_glazed_terracotta"
+  },
+  "tint": []
  },
  {
   "name": "black_terracotta",
@@ -218,7 +248,8 @@
    "south": "black_terracotta",
    "east": "black_terracotta",
    "west": "black_terracotta"
-  }
+  },
+  "tint": []
  },
  {
   "name": "black_wool",
@@ -231,7 +262,8 @@
    "south": "black_wool",
    "east": "black_wool",
    "west": "black_wool"
-  }
+  },
+  "tint": []
  },
  {
   "name": "blackstone",
@@ -244,7 +276,8 @@
    "south": "blackstone",
    "east": "blackstone",
    "west": "blackstone"
-  }
+  },
+  "tint": []
  },
  {
   "name": "blast_furnace",
@@ -257,7 +290,8 @@
    "south": "blast_furnace_side",
    "east": "blast_furnace_side",
    "west": "blast_furnace_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "blue_concrete",
@@ -270,7 +304,8 @@
    "south": "blue_concrete",
    "east": "blue_concrete",
    "west": "blue_concrete"
-  }
+  },
+  "tint": []
  },
  {
   "name": "blue_concrete_powder",
@@ -283,7 +318,22 @@
    "south": "blue_concrete_powder",
    "east": "blue_concrete_powder",
    "west": "blue_concrete_powder"
-  }
+  },
+  "tint": []
+ },
+ {
+  "name": "blue_glazed_terracotta",
+  "zh": "blue_glazed_terracotta",
+  "root": "block",
+  "faces": {
+   "up": "blue_glazed_terracotta",
+   "down": "blue_glazed_terracotta",
+   "north": "blue_glazed_terracotta",
+   "south": "blue_glazed_terracotta",
+   "east": "blue_glazed_terracotta",
+   "west": "blue_glazed_terracotta"
+  },
+  "tint": []
  },
  {
   "name": "blue_terracotta",
@@ -296,7 +346,8 @@
    "south": "blue_terracotta",
    "east": "blue_terracotta",
    "west": "blue_terracotta"
-  }
+  },
+  "tint": []
  },
  {
   "name": "blue_wool",
@@ -309,7 +360,8 @@
    "south": "blue_wool",
    "east": "blue_wool",
    "west": "blue_wool"
-  }
+  },
+  "tint": []
  },
  {
   "name": "bone_block",
@@ -322,7 +374,8 @@
    "south": "bone_block_side",
    "east": "bone_block_side",
    "west": "bone_block_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "bookshelf",
@@ -335,7 +388,8 @@
    "south": "bookshelf",
    "east": "bookshelf",
    "west": "bookshelf"
-  }
+  },
+  "tint": []
  },
  {
   "name": "brain_coral_block",
@@ -348,7 +402,8 @@
    "south": "brain_coral_block",
    "east": "brain_coral_block",
    "west": "brain_coral_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "bricks",
@@ -361,7 +416,8 @@
    "south": "bricks",
    "east": "bricks",
    "west": "bricks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "brown_concrete",
@@ -374,7 +430,8 @@
    "south": "brown_concrete",
    "east": "brown_concrete",
    "west": "brown_concrete"
-  }
+  },
+  "tint": []
  },
  {
   "name": "brown_concrete_powder",
@@ -387,7 +444,22 @@
    "south": "brown_concrete_powder",
    "east": "brown_concrete_powder",
    "west": "brown_concrete_powder"
-  }
+  },
+  "tint": []
+ },
+ {
+  "name": "brown_glazed_terracotta",
+  "zh": "brown_glazed_terracotta",
+  "root": "block",
+  "faces": {
+   "up": "brown_glazed_terracotta",
+   "down": "brown_glazed_terracotta",
+   "north": "brown_glazed_terracotta",
+   "south": "brown_glazed_terracotta",
+   "east": "brown_glazed_terracotta",
+   "west": "brown_glazed_terracotta"
+  },
+  "tint": []
  },
  {
   "name": "brown_terracotta",
@@ -400,7 +472,8 @@
    "south": "brown_terracotta",
    "east": "brown_terracotta",
    "west": "brown_terracotta"
-  }
+  },
+  "tint": []
  },
  {
   "name": "brown_wool",
@@ -413,7 +486,8 @@
    "south": "brown_wool",
    "east": "brown_wool",
    "west": "brown_wool"
-  }
+  },
+  "tint": []
  },
  {
   "name": "bubble_coral_block",
@@ -426,7 +500,8 @@
    "south": "bubble_coral_block",
    "east": "bubble_coral_block",
    "west": "bubble_coral_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "budding_amethyst",
@@ -439,7 +514,8 @@
    "south": "budding_amethyst",
    "east": "budding_amethyst",
    "west": "budding_amethyst"
-  }
+  },
+  "tint": []
  },
  {
   "name": "calcite",
@@ -452,7 +528,8 @@
    "south": "calcite",
    "east": "calcite",
    "west": "calcite"
-  }
+  },
+  "tint": []
  },
  {
   "name": "cartography_table",
@@ -465,7 +542,8 @@
    "south": "cartography_table_side1",
    "east": "cartography_table_side3",
    "west": "cartography_table_side2"
-  }
+  },
+  "tint": []
  },
  {
   "name": "carved_pumpkin",
@@ -478,7 +556,8 @@
    "south": "pumpkin_side",
    "east": "pumpkin_side",
    "west": "pumpkin_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "chain_command_block",
@@ -491,7 +570,8 @@
    "south": "chain_command_block_back",
    "east": "chain_command_block_side",
    "west": "chain_command_block_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "cherry_log",
@@ -504,7 +584,8 @@
    "south": "cherry_log",
    "east": "cherry_log",
    "west": "cherry_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "cherry_planks",
@@ -517,7 +598,8 @@
    "south": "cherry_planks",
    "east": "cherry_planks",
    "west": "cherry_planks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "cherry_wood",
@@ -530,20 +612,22 @@
    "south": "cherry_log",
    "east": "cherry_log",
    "west": "cherry_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "chiseled_bookshelf",
   "zh": "chiseled_bookshelf",
   "root": "block",
   "faces": {
-   "up": "chiseled_bookshelf_side",
-   "down": "chiseled_bookshelf_side",
-   "north": "chiseled_bookshelf_side",
+   "up": "chiseled_bookshelf_top",
+   "down": "chiseled_bookshelf_top",
    "south": "chiseled_bookshelf_side",
    "east": "chiseled_bookshelf_side",
-   "west": "chiseled_bookshelf_side"
-  }
+   "west": "chiseled_bookshelf_side",
+   "north": "chiseled_bookshelf_side"
+  },
+  "tint": []
  },
  {
   "name": "chiseled_cinnabar",
@@ -556,7 +640,8 @@
    "south": "chiseled_cinnabar",
    "east": "chiseled_cinnabar",
    "west": "chiseled_cinnabar"
-  }
+  },
+  "tint": []
  },
  {
   "name": "chiseled_copper",
@@ -569,7 +654,8 @@
    "south": "chiseled_copper",
    "east": "chiseled_copper",
    "west": "chiseled_copper"
-  }
+  },
+  "tint": []
  },
  {
   "name": "chiseled_deepslate",
@@ -582,7 +668,8 @@
    "south": "chiseled_deepslate",
    "east": "chiseled_deepslate",
    "west": "chiseled_deepslate"
-  }
+  },
+  "tint": []
  },
  {
   "name": "chiseled_nether_bricks",
@@ -595,7 +682,8 @@
    "south": "chiseled_nether_bricks",
    "east": "chiseled_nether_bricks",
    "west": "chiseled_nether_bricks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "chiseled_polished_blackstone",
@@ -608,7 +696,8 @@
    "south": "chiseled_polished_blackstone",
    "east": "chiseled_polished_blackstone",
    "west": "chiseled_polished_blackstone"
-  }
+  },
+  "tint": []
  },
  {
   "name": "chiseled_quartz_block",
@@ -621,7 +710,8 @@
    "south": "chiseled_quartz_block",
    "east": "chiseled_quartz_block",
    "west": "chiseled_quartz_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "chiseled_red_sandstone",
@@ -634,7 +724,8 @@
    "south": "chiseled_red_sandstone",
    "east": "chiseled_red_sandstone",
    "west": "chiseled_red_sandstone"
-  }
+  },
+  "tint": []
  },
  {
   "name": "chiseled_resin_bricks",
@@ -647,7 +738,8 @@
    "south": "chiseled_resin_bricks",
    "east": "chiseled_resin_bricks",
    "west": "chiseled_resin_bricks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "chiseled_sandstone",
@@ -660,7 +752,8 @@
    "south": "chiseled_sandstone",
    "east": "chiseled_sandstone",
    "west": "chiseled_sandstone"
-  }
+  },
+  "tint": []
  },
  {
   "name": "chiseled_stone_bricks",
@@ -673,7 +766,8 @@
    "south": "chiseled_stone_bricks",
    "east": "chiseled_stone_bricks",
    "west": "chiseled_stone_bricks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "chiseled_sulfur",
@@ -686,7 +780,8 @@
    "south": "chiseled_sulfur",
    "east": "chiseled_sulfur",
    "west": "chiseled_sulfur"
-  }
+  },
+  "tint": []
  },
  {
   "name": "chiseled_tuff",
@@ -699,7 +794,8 @@
    "south": "chiseled_tuff",
    "east": "chiseled_tuff",
    "west": "chiseled_tuff"
-  }
+  },
+  "tint": []
  },
  {
   "name": "chiseled_tuff_bricks",
@@ -712,7 +808,8 @@
    "south": "chiseled_tuff_bricks",
    "east": "chiseled_tuff_bricks",
    "west": "chiseled_tuff_bricks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "cinnabar",
@@ -725,7 +822,8 @@
    "south": "cinnabar",
    "east": "cinnabar",
    "west": "cinnabar"
-  }
+  },
+  "tint": []
  },
  {
   "name": "cinnabar_bricks",
@@ -738,7 +836,8 @@
    "south": "cinnabar_bricks",
    "east": "cinnabar_bricks",
    "west": "cinnabar_bricks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "clay",
@@ -751,7 +850,8 @@
    "south": "clay",
    "east": "clay",
    "west": "clay"
-  }
+  },
+  "tint": []
  },
  {
   "name": "coal_block",
@@ -764,7 +864,8 @@
    "south": "coal_block",
    "east": "coal_block",
    "west": "coal_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "coal_ore",
@@ -777,7 +878,8 @@
    "south": "coal_ore",
    "east": "coal_ore",
    "west": "coal_ore"
-  }
+  },
+  "tint": []
  },
  {
   "name": "coarse_dirt",
@@ -790,7 +892,8 @@
    "south": "coarse_dirt",
    "east": "coarse_dirt",
    "west": "coarse_dirt"
-  }
+  },
+  "tint": []
  },
  {
   "name": "cobbled_deepslate",
@@ -803,7 +906,8 @@
    "south": "cobbled_deepslate",
    "east": "cobbled_deepslate",
    "west": "cobbled_deepslate"
-  }
+  },
+  "tint": []
  },
  {
   "name": "cobblestone",
@@ -816,7 +920,8 @@
    "south": "cobblestone",
    "east": "cobblestone",
    "west": "cobblestone"
-  }
+  },
+  "tint": []
  },
  {
   "name": "command_block",
@@ -829,7 +934,8 @@
    "south": "command_block_back",
    "east": "command_block_side",
    "west": "command_block_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "copper_block",
@@ -842,7 +948,8 @@
    "south": "copper_block",
    "east": "copper_block",
    "west": "copper_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "copper_bulb",
@@ -855,7 +962,8 @@
    "south": "copper_bulb",
    "east": "copper_bulb",
    "west": "copper_bulb"
-  }
+  },
+  "tint": []
  },
  {
   "name": "copper_grate",
@@ -868,7 +976,8 @@
    "south": "copper_grate",
    "east": "copper_grate",
    "west": "copper_grate"
-  }
+  },
+  "tint": []
  },
  {
   "name": "copper_ore",
@@ -881,7 +990,8 @@
    "south": "copper_ore",
    "east": "copper_ore",
    "west": "copper_ore"
-  }
+  },
+  "tint": []
  },
  {
   "name": "cracked_deepslate_bricks",
@@ -894,7 +1004,8 @@
    "south": "cracked_deepslate_bricks",
    "east": "cracked_deepslate_bricks",
    "west": "cracked_deepslate_bricks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "cracked_deepslate_tiles",
@@ -907,7 +1018,8 @@
    "south": "cracked_deepslate_tiles",
    "east": "cracked_deepslate_tiles",
    "west": "cracked_deepslate_tiles"
-  }
+  },
+  "tint": []
  },
  {
   "name": "cracked_nether_bricks",
@@ -920,7 +1032,8 @@
    "south": "cracked_nether_bricks",
    "east": "cracked_nether_bricks",
    "west": "cracked_nether_bricks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "cracked_polished_blackstone_bricks",
@@ -933,7 +1046,8 @@
    "south": "cracked_polished_blackstone_bricks",
    "east": "cracked_polished_blackstone_bricks",
    "west": "cracked_polished_blackstone_bricks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "cracked_stone_bricks",
@@ -946,7 +1060,8 @@
    "south": "cracked_stone_bricks",
    "east": "cracked_stone_bricks",
    "west": "cracked_stone_bricks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "crafter",
@@ -954,12 +1069,13 @@
   "root": "block",
   "faces": {
    "up": "crafter_top",
-   "down": "crafter_top",
+   "down": "crafter_bottom",
    "north": "crafter_north",
    "south": "crafter_south",
    "east": "crafter_east",
    "west": "crafter_west"
-  }
+  },
+  "tint": []
  },
  {
   "name": "crafting_table",
@@ -972,7 +1088,8 @@
    "south": "crafting_table_side",
    "east": "crafting_table_side",
    "west": "crafting_table_front"
-  }
+  },
+  "tint": []
  },
  {
   "name": "creaking_heart",
@@ -985,7 +1102,8 @@
    "south": "creaking_heart",
    "east": "creaking_heart",
    "west": "creaking_heart"
-  }
+  },
+  "tint": []
  },
  {
   "name": "crimson_hyphae",
@@ -998,7 +1116,8 @@
    "south": "crimson_stem",
    "east": "crimson_stem",
    "west": "crimson_stem"
-  }
+  },
+  "tint": []
  },
  {
   "name": "crimson_nylium",
@@ -1011,7 +1130,8 @@
    "south": "crimson_nylium_side",
    "east": "crimson_nylium_side",
    "west": "crimson_nylium_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "crimson_planks",
@@ -1024,7 +1144,8 @@
    "south": "crimson_planks",
    "east": "crimson_planks",
    "west": "crimson_planks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "crimson_stem",
@@ -1037,7 +1158,8 @@
    "south": "crimson_stem",
    "east": "crimson_stem",
    "west": "crimson_stem"
-  }
+  },
+  "tint": []
  },
  {
   "name": "crying_obsidian",
@@ -1050,7 +1172,8 @@
    "south": "crying_obsidian",
    "east": "crying_obsidian",
    "west": "crying_obsidian"
-  }
+  },
+  "tint": []
  },
  {
   "name": "cut_copper",
@@ -1063,7 +1186,8 @@
    "south": "cut_copper",
    "east": "cut_copper",
    "west": "cut_copper"
-  }
+  },
+  "tint": []
  },
  {
   "name": "cut_red_sandstone",
@@ -1076,7 +1200,8 @@
    "south": "cut_red_sandstone",
    "east": "cut_red_sandstone",
    "west": "cut_red_sandstone"
-  }
+  },
+  "tint": []
  },
  {
   "name": "cut_sandstone",
@@ -1089,7 +1214,8 @@
    "south": "cut_sandstone",
    "east": "cut_sandstone",
    "west": "cut_sandstone"
-  }
+  },
+  "tint": []
  },
  {
   "name": "cyan_concrete",
@@ -1102,7 +1228,8 @@
    "south": "cyan_concrete",
    "east": "cyan_concrete",
    "west": "cyan_concrete"
-  }
+  },
+  "tint": []
  },
  {
   "name": "cyan_concrete_powder",
@@ -1115,7 +1242,22 @@
    "south": "cyan_concrete_powder",
    "east": "cyan_concrete_powder",
    "west": "cyan_concrete_powder"
-  }
+  },
+  "tint": []
+ },
+ {
+  "name": "cyan_glazed_terracotta",
+  "zh": "cyan_glazed_terracotta",
+  "root": "block",
+  "faces": {
+   "up": "cyan_glazed_terracotta",
+   "down": "cyan_glazed_terracotta",
+   "north": "cyan_glazed_terracotta",
+   "south": "cyan_glazed_terracotta",
+   "east": "cyan_glazed_terracotta",
+   "west": "cyan_glazed_terracotta"
+  },
+  "tint": []
  },
  {
   "name": "cyan_terracotta",
@@ -1128,7 +1270,8 @@
    "south": "cyan_terracotta",
    "east": "cyan_terracotta",
    "west": "cyan_terracotta"
-  }
+  },
+  "tint": []
  },
  {
   "name": "cyan_wool",
@@ -1141,7 +1284,8 @@
    "south": "cyan_wool",
    "east": "cyan_wool",
    "west": "cyan_wool"
-  }
+  },
+  "tint": []
  },
  {
   "name": "dark_oak_log",
@@ -1154,7 +1298,8 @@
    "south": "dark_oak_log",
    "east": "dark_oak_log",
    "west": "dark_oak_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "dark_oak_planks",
@@ -1167,7 +1312,8 @@
    "south": "dark_oak_planks",
    "east": "dark_oak_planks",
    "west": "dark_oak_planks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "dark_oak_wood",
@@ -1180,7 +1326,8 @@
    "south": "dark_oak_log",
    "east": "dark_oak_log",
    "west": "dark_oak_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "dark_prismarine",
@@ -1193,7 +1340,8 @@
    "south": "dark_prismarine",
    "east": "dark_prismarine",
    "west": "dark_prismarine"
-  }
+  },
+  "tint": []
  },
  {
   "name": "dead_brain_coral_block",
@@ -1206,7 +1354,8 @@
    "south": "dead_brain_coral_block",
    "east": "dead_brain_coral_block",
    "west": "dead_brain_coral_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "dead_bubble_coral_block",
@@ -1219,7 +1368,8 @@
    "south": "dead_bubble_coral_block",
    "east": "dead_bubble_coral_block",
    "west": "dead_bubble_coral_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "dead_fire_coral_block",
@@ -1232,7 +1382,8 @@
    "south": "dead_fire_coral_block",
    "east": "dead_fire_coral_block",
    "west": "dead_fire_coral_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "dead_horn_coral_block",
@@ -1245,7 +1396,8 @@
    "south": "dead_horn_coral_block",
    "east": "dead_horn_coral_block",
    "west": "dead_horn_coral_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "dead_tube_coral_block",
@@ -1258,7 +1410,8 @@
    "south": "dead_tube_coral_block",
    "east": "dead_tube_coral_block",
    "west": "dead_tube_coral_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "deepslate",
@@ -1271,7 +1424,8 @@
    "south": "deepslate",
    "east": "deepslate",
    "west": "deepslate"
-  }
+  },
+  "tint": []
  },
  {
   "name": "deepslate_bricks",
@@ -1284,7 +1438,8 @@
    "south": "deepslate_bricks",
    "east": "deepslate_bricks",
    "west": "deepslate_bricks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "deepslate_coal_ore",
@@ -1297,7 +1452,8 @@
    "south": "deepslate_coal_ore",
    "east": "deepslate_coal_ore",
    "west": "deepslate_coal_ore"
-  }
+  },
+  "tint": []
  },
  {
   "name": "deepslate_copper_ore",
@@ -1310,7 +1466,8 @@
    "south": "deepslate_copper_ore",
    "east": "deepslate_copper_ore",
    "west": "deepslate_copper_ore"
-  }
+  },
+  "tint": []
  },
  {
   "name": "deepslate_diamond_ore",
@@ -1323,7 +1480,8 @@
    "south": "deepslate_diamond_ore",
    "east": "deepslate_diamond_ore",
    "west": "deepslate_diamond_ore"
-  }
+  },
+  "tint": []
  },
  {
   "name": "deepslate_emerald_ore",
@@ -1336,7 +1494,8 @@
    "south": "deepslate_emerald_ore",
    "east": "deepslate_emerald_ore",
    "west": "deepslate_emerald_ore"
-  }
+  },
+  "tint": []
  },
  {
   "name": "deepslate_gold_ore",
@@ -1349,7 +1508,8 @@
    "south": "deepslate_gold_ore",
    "east": "deepslate_gold_ore",
    "west": "deepslate_gold_ore"
-  }
+  },
+  "tint": []
  },
  {
   "name": "deepslate_iron_ore",
@@ -1362,7 +1522,8 @@
    "south": "deepslate_iron_ore",
    "east": "deepslate_iron_ore",
    "west": "deepslate_iron_ore"
-  }
+  },
+  "tint": []
  },
  {
   "name": "deepslate_lapis_ore",
@@ -1375,7 +1536,8 @@
    "south": "deepslate_lapis_ore",
    "east": "deepslate_lapis_ore",
    "west": "deepslate_lapis_ore"
-  }
+  },
+  "tint": []
  },
  {
   "name": "deepslate_redstone_ore",
@@ -1388,7 +1550,8 @@
    "south": "deepslate_redstone_ore",
    "east": "deepslate_redstone_ore",
    "west": "deepslate_redstone_ore"
-  }
+  },
+  "tint": []
  },
  {
   "name": "deepslate_tiles",
@@ -1401,7 +1564,8 @@
    "south": "deepslate_tiles",
    "east": "deepslate_tiles",
    "west": "deepslate_tiles"
-  }
+  },
+  "tint": []
  },
  {
   "name": "diamond_block",
@@ -1414,7 +1578,8 @@
    "south": "diamond_block",
    "east": "diamond_block",
    "west": "diamond_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "diamond_ore",
@@ -1427,7 +1592,8 @@
    "south": "diamond_ore",
    "east": "diamond_ore",
    "west": "diamond_ore"
-  }
+  },
+  "tint": []
  },
  {
   "name": "diorite",
@@ -1440,7 +1606,8 @@
    "south": "diorite",
    "east": "diorite",
    "west": "diorite"
-  }
+  },
+  "tint": []
  },
  {
   "name": "dirt",
@@ -1453,7 +1620,8 @@
    "south": "dirt",
    "east": "dirt",
    "west": "dirt"
-  }
+  },
+  "tint": []
  },
  {
   "name": "dispenser",
@@ -1466,7 +1634,8 @@
    "south": "furnace_side",
    "east": "furnace_side",
    "west": "furnace_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "dispenser_vertical",
@@ -1479,7 +1648,8 @@
    "south": "furnace_top",
    "east": "furnace_top",
    "west": "furnace_top"
-  }
+  },
+  "tint": []
  },
  {
   "name": "dried_kelp_block",
@@ -1492,7 +1662,8 @@
    "south": "dried_kelp_side",
    "east": "dried_kelp_side",
    "west": "dried_kelp_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "dripstone_block",
@@ -1505,7 +1676,8 @@
    "south": "dripstone_block",
    "east": "dripstone_block",
    "west": "dripstone_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "dropper",
@@ -1518,7 +1690,8 @@
    "south": "furnace_side",
    "east": "furnace_side",
    "west": "furnace_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "dropper_vertical",
@@ -1531,7 +1704,8 @@
    "south": "furnace_top",
    "east": "furnace_top",
    "west": "furnace_top"
-  }
+  },
+  "tint": []
  },
  {
   "name": "emerald_block",
@@ -1544,7 +1718,8 @@
    "south": "emerald_block",
    "east": "emerald_block",
    "west": "emerald_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "emerald_ore",
@@ -1557,7 +1732,8 @@
    "south": "emerald_ore",
    "east": "emerald_ore",
    "west": "emerald_ore"
-  }
+  },
+  "tint": []
  },
  {
   "name": "end_stone",
@@ -1570,7 +1746,8 @@
    "south": "end_stone",
    "east": "end_stone",
    "west": "end_stone"
-  }
+  },
+  "tint": []
  },
  {
   "name": "end_stone_bricks",
@@ -1583,7 +1760,8 @@
    "south": "end_stone_bricks",
    "east": "end_stone_bricks",
    "west": "end_stone_bricks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "exposed_chiseled_copper",
@@ -1596,7 +1774,8 @@
    "south": "exposed_chiseled_copper",
    "east": "exposed_chiseled_copper",
    "west": "exposed_chiseled_copper"
-  }
+  },
+  "tint": []
  },
  {
   "name": "exposed_copper",
@@ -1609,7 +1788,8 @@
    "south": "exposed_copper",
    "east": "exposed_copper",
    "west": "exposed_copper"
-  }
+  },
+  "tint": []
  },
  {
   "name": "exposed_copper_bulb",
@@ -1622,7 +1802,8 @@
    "south": "exposed_copper_bulb",
    "east": "exposed_copper_bulb",
    "west": "exposed_copper_bulb"
-  }
+  },
+  "tint": []
  },
  {
   "name": "exposed_copper_grate",
@@ -1635,7 +1816,8 @@
    "south": "exposed_copper_grate",
    "east": "exposed_copper_grate",
    "west": "exposed_copper_grate"
-  }
+  },
+  "tint": []
  },
  {
   "name": "exposed_cut_copper",
@@ -1648,7 +1830,8 @@
    "south": "exposed_cut_copper",
    "east": "exposed_cut_copper",
    "west": "exposed_cut_copper"
-  }
+  },
+  "tint": []
  },
  {
   "name": "fire_coral_block",
@@ -1661,7 +1844,8 @@
    "south": "fire_coral_block",
    "east": "fire_coral_block",
    "west": "fire_coral_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "fletching_table",
@@ -1674,7 +1858,8 @@
    "south": "fletching_table_front",
    "east": "fletching_table_side",
    "west": "fletching_table_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "furnace",
@@ -1687,7 +1872,8 @@
    "south": "furnace_side",
    "east": "furnace_side",
    "west": "furnace_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "gilded_blackstone",
@@ -1700,7 +1886,8 @@
    "south": "gilded_blackstone",
    "east": "gilded_blackstone",
    "west": "gilded_blackstone"
-  }
+  },
+  "tint": []
  },
  {
   "name": "gold_block",
@@ -1713,7 +1900,8 @@
    "south": "gold_block",
    "east": "gold_block",
    "west": "gold_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "gold_ore",
@@ -1726,7 +1914,8 @@
    "south": "gold_ore",
    "east": "gold_ore",
    "west": "gold_ore"
-  }
+  },
+  "tint": []
  },
  {
   "name": "granite",
@@ -1739,20 +1928,24 @@
    "south": "granite",
    "east": "granite",
    "west": "granite"
-  }
+  },
+  "tint": []
  },
  {
   "name": "grass_block",
   "zh": "grass_block",
   "root": "block",
   "faces": {
-   "up": "grass_block_side",
-   "down": "grass_block_side",
+   "up": "grass_block_top",
+   "down": "dirt",
    "north": "grass_block_side",
    "south": "grass_block_side",
    "east": "grass_block_side",
    "west": "grass_block_side"
-  }
+  },
+  "tint": [
+   "up"
+  ]
  },
  {
   "name": "grass_block_snow",
@@ -1765,7 +1958,8 @@
    "south": "grass_block_snow",
    "east": "grass_block_snow",
    "west": "grass_block_snow"
-  }
+  },
+  "tint": []
  },
  {
   "name": "gravel",
@@ -1778,7 +1972,8 @@
    "south": "gravel",
    "east": "gravel",
    "west": "gravel"
-  }
+  },
+  "tint": []
  },
  {
   "name": "gray_concrete",
@@ -1791,7 +1986,8 @@
    "south": "gray_concrete",
    "east": "gray_concrete",
    "west": "gray_concrete"
-  }
+  },
+  "tint": []
  },
  {
   "name": "gray_concrete_powder",
@@ -1804,7 +2000,22 @@
    "south": "gray_concrete_powder",
    "east": "gray_concrete_powder",
    "west": "gray_concrete_powder"
-  }
+  },
+  "tint": []
+ },
+ {
+  "name": "gray_glazed_terracotta",
+  "zh": "gray_glazed_terracotta",
+  "root": "block",
+  "faces": {
+   "up": "gray_glazed_terracotta",
+   "down": "gray_glazed_terracotta",
+   "north": "gray_glazed_terracotta",
+   "south": "gray_glazed_terracotta",
+   "east": "gray_glazed_terracotta",
+   "west": "gray_glazed_terracotta"
+  },
+  "tint": []
  },
  {
   "name": "gray_terracotta",
@@ -1817,7 +2028,8 @@
    "south": "gray_terracotta",
    "east": "gray_terracotta",
    "west": "gray_terracotta"
-  }
+  },
+  "tint": []
  },
  {
   "name": "gray_wool",
@@ -1830,7 +2042,8 @@
    "south": "gray_wool",
    "east": "gray_wool",
    "west": "gray_wool"
-  }
+  },
+  "tint": []
  },
  {
   "name": "green_concrete",
@@ -1843,7 +2056,8 @@
    "south": "green_concrete",
    "east": "green_concrete",
    "west": "green_concrete"
-  }
+  },
+  "tint": []
  },
  {
   "name": "green_concrete_powder",
@@ -1856,7 +2070,22 @@
    "south": "green_concrete_powder",
    "east": "green_concrete_powder",
    "west": "green_concrete_powder"
-  }
+  },
+  "tint": []
+ },
+ {
+  "name": "green_glazed_terracotta",
+  "zh": "green_glazed_terracotta",
+  "root": "block",
+  "faces": {
+   "up": "green_glazed_terracotta",
+   "down": "green_glazed_terracotta",
+   "north": "green_glazed_terracotta",
+   "south": "green_glazed_terracotta",
+   "east": "green_glazed_terracotta",
+   "west": "green_glazed_terracotta"
+  },
+  "tint": []
  },
  {
   "name": "green_terracotta",
@@ -1869,7 +2098,8 @@
    "south": "green_terracotta",
    "east": "green_terracotta",
    "west": "green_terracotta"
-  }
+  },
+  "tint": []
  },
  {
   "name": "green_wool",
@@ -1882,7 +2112,8 @@
    "south": "green_wool",
    "east": "green_wool",
    "west": "green_wool"
-  }
+  },
+  "tint": []
  },
  {
   "name": "hay_block",
@@ -1895,7 +2126,8 @@
    "south": "hay_block_side",
    "east": "hay_block_side",
    "west": "hay_block_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "horn_coral_block",
@@ -1908,7 +2140,8 @@
    "south": "horn_coral_block",
    "east": "horn_coral_block",
    "west": "horn_coral_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "iron_block",
@@ -1921,7 +2154,8 @@
    "south": "iron_block",
    "east": "iron_block",
    "west": "iron_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "iron_ore",
@@ -1934,7 +2168,8 @@
    "south": "iron_ore",
    "east": "iron_ore",
    "west": "iron_ore"
-  }
+  },
+  "tint": []
  },
  {
   "name": "jack_o_lantern",
@@ -1947,7 +2182,8 @@
    "south": "pumpkin_side",
    "east": "pumpkin_side",
    "west": "pumpkin_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "jukebox",
@@ -1960,7 +2196,8 @@
    "south": "jukebox_side",
    "east": "jukebox_side",
    "west": "jukebox_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "jungle_log",
@@ -1973,7 +2210,8 @@
    "south": "jungle_log",
    "east": "jungle_log",
    "west": "jungle_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "jungle_planks",
@@ -1986,7 +2224,8 @@
    "south": "jungle_planks",
    "east": "jungle_planks",
    "west": "jungle_planks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "jungle_wood",
@@ -1999,7 +2238,8 @@
    "south": "jungle_log",
    "east": "jungle_log",
    "west": "jungle_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "lapis_block",
@@ -2012,7 +2252,8 @@
    "south": "lapis_block",
    "east": "lapis_block",
    "west": "lapis_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "lapis_ore",
@@ -2025,7 +2266,8 @@
    "south": "lapis_ore",
    "east": "lapis_ore",
    "west": "lapis_ore"
-  }
+  },
+  "tint": []
  },
  {
   "name": "lime_concrete",
@@ -2038,7 +2280,8 @@
    "south": "lime_concrete",
    "east": "lime_concrete",
    "west": "lime_concrete"
-  }
+  },
+  "tint": []
  },
  {
   "name": "lime_concrete_powder",
@@ -2051,7 +2294,22 @@
    "south": "lime_concrete_powder",
    "east": "lime_concrete_powder",
    "west": "lime_concrete_powder"
-  }
+  },
+  "tint": []
+ },
+ {
+  "name": "lime_glazed_terracotta",
+  "zh": "lime_glazed_terracotta",
+  "root": "block",
+  "faces": {
+   "up": "lime_glazed_terracotta",
+   "down": "lime_glazed_terracotta",
+   "north": "lime_glazed_terracotta",
+   "south": "lime_glazed_terracotta",
+   "east": "lime_glazed_terracotta",
+   "west": "lime_glazed_terracotta"
+  },
+  "tint": []
  },
  {
   "name": "lime_terracotta",
@@ -2064,7 +2322,8 @@
    "south": "lime_terracotta",
    "east": "lime_terracotta",
    "west": "lime_terracotta"
-  }
+  },
+  "tint": []
  },
  {
   "name": "lime_wool",
@@ -2077,7 +2336,8 @@
    "south": "lime_wool",
    "east": "lime_wool",
    "west": "lime_wool"
-  }
+  },
+  "tint": []
  },
  {
   "name": "lodestone",
@@ -2090,7 +2350,8 @@
    "south": "lodestone_side",
    "east": "lodestone_side",
    "west": "lodestone_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "loom",
@@ -2103,7 +2364,8 @@
    "south": "loom_side",
    "east": "loom_side",
    "west": "loom_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "magenta_concrete",
@@ -2116,7 +2378,8 @@
    "south": "magenta_concrete",
    "east": "magenta_concrete",
    "west": "magenta_concrete"
-  }
+  },
+  "tint": []
  },
  {
   "name": "magenta_concrete_powder",
@@ -2129,7 +2392,22 @@
    "south": "magenta_concrete_powder",
    "east": "magenta_concrete_powder",
    "west": "magenta_concrete_powder"
-  }
+  },
+  "tint": []
+ },
+ {
+  "name": "magenta_glazed_terracotta",
+  "zh": "magenta_glazed_terracotta",
+  "root": "block",
+  "faces": {
+   "up": "magenta_glazed_terracotta",
+   "down": "magenta_glazed_terracotta",
+   "north": "magenta_glazed_terracotta",
+   "south": "magenta_glazed_terracotta",
+   "east": "magenta_glazed_terracotta",
+   "west": "magenta_glazed_terracotta"
+  },
+  "tint": []
  },
  {
   "name": "magenta_terracotta",
@@ -2142,7 +2420,8 @@
    "south": "magenta_terracotta",
    "east": "magenta_terracotta",
    "west": "magenta_terracotta"
-  }
+  },
+  "tint": []
  },
  {
   "name": "magenta_wool",
@@ -2155,7 +2434,8 @@
    "south": "magenta_wool",
    "east": "magenta_wool",
    "west": "magenta_wool"
-  }
+  },
+  "tint": []
  },
  {
   "name": "mangrove_log",
@@ -2168,7 +2448,8 @@
    "south": "mangrove_log",
    "east": "mangrove_log",
    "west": "mangrove_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "mangrove_planks",
@@ -2181,7 +2462,8 @@
    "south": "mangrove_planks",
    "east": "mangrove_planks",
    "west": "mangrove_planks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "mangrove_wood",
@@ -2194,7 +2476,8 @@
    "south": "mangrove_log",
    "east": "mangrove_log",
    "west": "mangrove_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "melon",
@@ -2207,7 +2490,8 @@
    "south": "melon_side",
    "east": "melon_side",
    "west": "melon_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "moss_block",
@@ -2220,7 +2504,8 @@
    "south": "moss_block",
    "east": "moss_block",
    "west": "moss_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "mossy_cobblestone",
@@ -2233,7 +2518,8 @@
    "south": "mossy_cobblestone",
    "east": "mossy_cobblestone",
    "west": "mossy_cobblestone"
-  }
+  },
+  "tint": []
  },
  {
   "name": "mossy_stone_bricks",
@@ -2246,7 +2532,8 @@
    "south": "mossy_stone_bricks",
    "east": "mossy_stone_bricks",
    "west": "mossy_stone_bricks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "mud",
@@ -2259,7 +2546,8 @@
    "south": "mud",
    "east": "mud",
    "west": "mud"
-  }
+  },
+  "tint": []
  },
  {
   "name": "mud_bricks",
@@ -2272,7 +2560,8 @@
    "south": "mud_bricks",
    "east": "mud_bricks",
    "west": "mud_bricks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "muddy_mangrove_roots",
@@ -2285,7 +2574,8 @@
    "south": "muddy_mangrove_roots_side",
    "east": "muddy_mangrove_roots_side",
    "west": "muddy_mangrove_roots_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "mycelium",
@@ -2298,7 +2588,8 @@
    "south": "mycelium_side",
    "east": "mycelium_side",
    "west": "mycelium_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "nether_bricks",
@@ -2311,7 +2602,8 @@
    "south": "nether_bricks",
    "east": "nether_bricks",
    "west": "nether_bricks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "nether_gold_ore",
@@ -2324,7 +2616,8 @@
    "south": "nether_gold_ore",
    "east": "nether_gold_ore",
    "west": "nether_gold_ore"
-  }
+  },
+  "tint": []
  },
  {
   "name": "nether_quartz_ore",
@@ -2337,7 +2630,8 @@
    "south": "nether_quartz_ore",
    "east": "nether_quartz_ore",
    "west": "nether_quartz_ore"
-  }
+  },
+  "tint": []
  },
  {
   "name": "nether_wart_block",
@@ -2350,7 +2644,8 @@
    "south": "nether_wart_block",
    "east": "nether_wart_block",
    "west": "nether_wart_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "netherite_block",
@@ -2363,7 +2658,8 @@
    "south": "netherite_block",
    "east": "netherite_block",
    "west": "netherite_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "netherrack",
@@ -2376,7 +2672,8 @@
    "south": "netherrack",
    "east": "netherrack",
    "west": "netherrack"
-  }
+  },
+  "tint": []
  },
  {
   "name": "note_block",
@@ -2389,7 +2686,8 @@
    "south": "note_block",
    "east": "note_block",
    "west": "note_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "oak_log",
@@ -2402,7 +2700,8 @@
    "south": "oak_log",
    "east": "oak_log",
    "west": "oak_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "oak_planks",
@@ -2415,7 +2714,8 @@
    "south": "oak_planks",
    "east": "oak_planks",
    "west": "oak_planks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "oak_wood",
@@ -2428,20 +2728,22 @@
    "south": "oak_log",
    "east": "oak_log",
    "west": "oak_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "observer",
   "zh": "observer",
   "root": "block",
   "faces": {
-   "up": "observer_side",
-   "down": "observer_side",
-   "north": "observer_side",
-   "south": "observer_side",
+   "up": "observer_top",
+   "down": "observer_top",
+   "north": "observer_front",
+   "south": "observer_back",
    "east": "observer_side",
    "west": "observer_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "obsidian",
@@ -2454,7 +2756,8 @@
    "south": "obsidian",
    "east": "obsidian",
    "west": "obsidian"
-  }
+  },
+  "tint": []
  },
  {
   "name": "orange_concrete",
@@ -2467,7 +2770,8 @@
    "south": "orange_concrete",
    "east": "orange_concrete",
    "west": "orange_concrete"
-  }
+  },
+  "tint": []
  },
  {
   "name": "orange_concrete_powder",
@@ -2480,7 +2784,22 @@
    "south": "orange_concrete_powder",
    "east": "orange_concrete_powder",
    "west": "orange_concrete_powder"
-  }
+  },
+  "tint": []
+ },
+ {
+  "name": "orange_glazed_terracotta",
+  "zh": "orange_glazed_terracotta",
+  "root": "block",
+  "faces": {
+   "up": "orange_glazed_terracotta",
+   "down": "orange_glazed_terracotta",
+   "north": "orange_glazed_terracotta",
+   "south": "orange_glazed_terracotta",
+   "east": "orange_glazed_terracotta",
+   "west": "orange_glazed_terracotta"
+  },
+  "tint": []
  },
  {
   "name": "orange_terracotta",
@@ -2493,7 +2812,8 @@
    "south": "orange_terracotta",
    "east": "orange_terracotta",
    "west": "orange_terracotta"
-  }
+  },
+  "tint": []
  },
  {
   "name": "orange_wool",
@@ -2506,7 +2826,8 @@
    "south": "orange_wool",
    "east": "orange_wool",
    "west": "orange_wool"
-  }
+  },
+  "tint": []
  },
  {
   "name": "oxidized_chiseled_copper",
@@ -2519,7 +2840,8 @@
    "south": "oxidized_chiseled_copper",
    "east": "oxidized_chiseled_copper",
    "west": "oxidized_chiseled_copper"
-  }
+  },
+  "tint": []
  },
  {
   "name": "oxidized_copper",
@@ -2532,7 +2854,8 @@
    "south": "oxidized_copper",
    "east": "oxidized_copper",
    "west": "oxidized_copper"
-  }
+  },
+  "tint": []
  },
  {
   "name": "oxidized_copper_bulb",
@@ -2545,7 +2868,8 @@
    "south": "oxidized_copper_bulb",
    "east": "oxidized_copper_bulb",
    "west": "oxidized_copper_bulb"
-  }
+  },
+  "tint": []
  },
  {
   "name": "oxidized_copper_grate",
@@ -2558,7 +2882,8 @@
    "south": "oxidized_copper_grate",
    "east": "oxidized_copper_grate",
    "west": "oxidized_copper_grate"
-  }
+  },
+  "tint": []
  },
  {
   "name": "oxidized_cut_copper",
@@ -2571,7 +2896,8 @@
    "south": "oxidized_cut_copper",
    "east": "oxidized_cut_copper",
    "west": "oxidized_cut_copper"
-  }
+  },
+  "tint": []
  },
  {
   "name": "packed_mud",
@@ -2584,7 +2910,8 @@
    "south": "packed_mud",
    "east": "packed_mud",
    "west": "packed_mud"
-  }
+  },
+  "tint": []
  },
  {
   "name": "pale_moss_block",
@@ -2597,7 +2924,8 @@
    "south": "pale_moss_block",
    "east": "pale_moss_block",
    "west": "pale_moss_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "pale_oak_log",
@@ -2610,7 +2938,8 @@
    "south": "pale_oak_log",
    "east": "pale_oak_log",
    "west": "pale_oak_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "pale_oak_planks",
@@ -2623,7 +2952,8 @@
    "south": "pale_oak_planks",
    "east": "pale_oak_planks",
    "west": "pale_oak_planks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "pale_oak_wood",
@@ -2636,7 +2966,8 @@
    "south": "pale_oak_log",
    "east": "pale_oak_log",
    "west": "pale_oak_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "pink_concrete",
@@ -2649,7 +2980,8 @@
    "south": "pink_concrete",
    "east": "pink_concrete",
    "west": "pink_concrete"
-  }
+  },
+  "tint": []
  },
  {
   "name": "pink_concrete_powder",
@@ -2662,7 +2994,22 @@
    "south": "pink_concrete_powder",
    "east": "pink_concrete_powder",
    "west": "pink_concrete_powder"
-  }
+  },
+  "tint": []
+ },
+ {
+  "name": "pink_glazed_terracotta",
+  "zh": "pink_glazed_terracotta",
+  "root": "block",
+  "faces": {
+   "up": "pink_glazed_terracotta",
+   "down": "pink_glazed_terracotta",
+   "north": "pink_glazed_terracotta",
+   "south": "pink_glazed_terracotta",
+   "east": "pink_glazed_terracotta",
+   "west": "pink_glazed_terracotta"
+  },
+  "tint": []
  },
  {
   "name": "pink_terracotta",
@@ -2675,7 +3022,8 @@
    "south": "pink_terracotta",
    "east": "pink_terracotta",
    "west": "pink_terracotta"
-  }
+  },
+  "tint": []
  },
  {
   "name": "pink_wool",
@@ -2688,7 +3036,8 @@
    "south": "pink_wool",
    "east": "pink_wool",
    "west": "pink_wool"
-  }
+  },
+  "tint": []
  },
  {
   "name": "piston",
@@ -2701,7 +3050,8 @@
    "south": "piston_side",
    "east": "piston_side",
    "west": "piston_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "podzol",
@@ -2714,7 +3064,8 @@
    "south": "podzol_side",
    "east": "podzol_side",
    "west": "podzol_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "polished_andesite",
@@ -2727,7 +3078,8 @@
    "south": "polished_andesite",
    "east": "polished_andesite",
    "west": "polished_andesite"
-  }
+  },
+  "tint": []
  },
  {
   "name": "polished_basalt",
@@ -2740,7 +3092,8 @@
    "south": "polished_basalt_side",
    "east": "polished_basalt_side",
    "west": "polished_basalt_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "polished_blackstone",
@@ -2753,7 +3106,8 @@
    "south": "polished_blackstone",
    "east": "polished_blackstone",
    "west": "polished_blackstone"
-  }
+  },
+  "tint": []
  },
  {
   "name": "polished_blackstone_bricks",
@@ -2766,7 +3120,8 @@
    "south": "polished_blackstone_bricks",
    "east": "polished_blackstone_bricks",
    "west": "polished_blackstone_bricks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "polished_cinnabar",
@@ -2779,7 +3134,8 @@
    "south": "polished_cinnabar",
    "east": "polished_cinnabar",
    "west": "polished_cinnabar"
-  }
+  },
+  "tint": []
  },
  {
   "name": "polished_deepslate",
@@ -2792,7 +3148,8 @@
    "south": "polished_deepslate",
    "east": "polished_deepslate",
    "west": "polished_deepslate"
-  }
+  },
+  "tint": []
  },
  {
   "name": "polished_diorite",
@@ -2805,7 +3162,8 @@
    "south": "polished_diorite",
    "east": "polished_diorite",
    "west": "polished_diorite"
-  }
+  },
+  "tint": []
  },
  {
   "name": "polished_granite",
@@ -2818,7 +3176,8 @@
    "south": "polished_granite",
    "east": "polished_granite",
    "west": "polished_granite"
-  }
+  },
+  "tint": []
  },
  {
   "name": "polished_sulfur",
@@ -2831,7 +3190,8 @@
    "south": "polished_sulfur",
    "east": "polished_sulfur",
    "west": "polished_sulfur"
-  }
+  },
+  "tint": []
  },
  {
   "name": "polished_tuff",
@@ -2844,7 +3204,8 @@
    "south": "polished_tuff",
    "east": "polished_tuff",
    "west": "polished_tuff"
-  }
+  },
+  "tint": []
  },
  {
   "name": "potent_sulfur",
@@ -2857,7 +3218,8 @@
    "south": "potent_sulfur",
    "east": "potent_sulfur",
    "west": "potent_sulfur"
-  }
+  },
+  "tint": []
  },
  {
   "name": "prismarine",
@@ -2870,7 +3232,8 @@
    "south": "prismarine",
    "east": "prismarine",
    "west": "prismarine"
-  }
+  },
+  "tint": []
  },
  {
   "name": "prismarine_bricks",
@@ -2883,7 +3246,8 @@
    "south": "prismarine_bricks",
    "east": "prismarine_bricks",
    "west": "prismarine_bricks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "pumpkin",
@@ -2896,7 +3260,8 @@
    "south": "pumpkin_side",
    "east": "pumpkin_side",
    "west": "pumpkin_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "purple_concrete",
@@ -2909,7 +3274,8 @@
    "south": "purple_concrete",
    "east": "purple_concrete",
    "west": "purple_concrete"
-  }
+  },
+  "tint": []
  },
  {
   "name": "purple_concrete_powder",
@@ -2922,7 +3288,22 @@
    "south": "purple_concrete_powder",
    "east": "purple_concrete_powder",
    "west": "purple_concrete_powder"
-  }
+  },
+  "tint": []
+ },
+ {
+  "name": "purple_glazed_terracotta",
+  "zh": "purple_glazed_terracotta",
+  "root": "block",
+  "faces": {
+   "up": "purple_glazed_terracotta",
+   "down": "purple_glazed_terracotta",
+   "north": "purple_glazed_terracotta",
+   "south": "purple_glazed_terracotta",
+   "east": "purple_glazed_terracotta",
+   "west": "purple_glazed_terracotta"
+  },
+  "tint": []
  },
  {
   "name": "purple_terracotta",
@@ -2935,7 +3316,8 @@
    "south": "purple_terracotta",
    "east": "purple_terracotta",
    "west": "purple_terracotta"
-  }
+  },
+  "tint": []
  },
  {
   "name": "purple_wool",
@@ -2948,7 +3330,8 @@
    "south": "purple_wool",
    "east": "purple_wool",
    "west": "purple_wool"
-  }
+  },
+  "tint": []
  },
  {
   "name": "purpur_block",
@@ -2961,7 +3344,8 @@
    "south": "purpur_block",
    "east": "purpur_block",
    "west": "purpur_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "purpur_pillar",
@@ -2974,7 +3358,8 @@
    "south": "purpur_pillar_side",
    "east": "purpur_pillar_side",
    "west": "purpur_pillar_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "quartz_block",
@@ -2987,7 +3372,8 @@
    "south": "quartz_block_side",
    "east": "quartz_block_side",
    "west": "quartz_block_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "quartz_bricks",
@@ -3000,7 +3386,8 @@
    "south": "quartz_bricks",
    "east": "quartz_bricks",
    "west": "quartz_bricks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "quartz_pillar",
@@ -3013,7 +3400,8 @@
    "south": "quartz_pillar_side",
    "east": "quartz_pillar_side",
    "west": "quartz_pillar_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "raw_copper_block",
@@ -3026,7 +3414,8 @@
    "south": "raw_copper_block",
    "east": "raw_copper_block",
    "west": "raw_copper_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "raw_gold_block",
@@ -3039,7 +3428,8 @@
    "south": "raw_gold_block",
    "east": "raw_gold_block",
    "west": "raw_gold_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "raw_iron_block",
@@ -3052,7 +3442,8 @@
    "south": "raw_iron_block",
    "east": "raw_iron_block",
    "west": "raw_iron_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "red_concrete",
@@ -3065,7 +3456,8 @@
    "south": "red_concrete",
    "east": "red_concrete",
    "west": "red_concrete"
-  }
+  },
+  "tint": []
  },
  {
   "name": "red_concrete_powder",
@@ -3078,7 +3470,22 @@
    "south": "red_concrete_powder",
    "east": "red_concrete_powder",
    "west": "red_concrete_powder"
-  }
+  },
+  "tint": []
+ },
+ {
+  "name": "red_glazed_terracotta",
+  "zh": "red_glazed_terracotta",
+  "root": "block",
+  "faces": {
+   "up": "red_glazed_terracotta",
+   "down": "red_glazed_terracotta",
+   "north": "red_glazed_terracotta",
+   "south": "red_glazed_terracotta",
+   "east": "red_glazed_terracotta",
+   "west": "red_glazed_terracotta"
+  },
+  "tint": []
  },
  {
   "name": "red_nether_bricks",
@@ -3091,7 +3498,8 @@
    "south": "red_nether_bricks",
    "east": "red_nether_bricks",
    "west": "red_nether_bricks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "red_sand",
@@ -3104,7 +3512,8 @@
    "south": "red_sand",
    "east": "red_sand",
    "west": "red_sand"
-  }
+  },
+  "tint": []
  },
  {
   "name": "red_sandstone",
@@ -3117,7 +3526,8 @@
    "south": "red_sandstone",
    "east": "red_sandstone",
    "west": "red_sandstone"
-  }
+  },
+  "tint": []
  },
  {
   "name": "red_terracotta",
@@ -3130,7 +3540,8 @@
    "south": "red_terracotta",
    "east": "red_terracotta",
    "west": "red_terracotta"
-  }
+  },
+  "tint": []
  },
  {
   "name": "red_wool",
@@ -3143,7 +3554,8 @@
    "south": "red_wool",
    "east": "red_wool",
    "west": "red_wool"
-  }
+  },
+  "tint": []
  },
  {
   "name": "redstone_block",
@@ -3156,7 +3568,8 @@
    "south": "redstone_block",
    "east": "redstone_block",
    "west": "redstone_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "redstone_lamp",
@@ -3169,7 +3582,8 @@
    "south": "redstone_lamp",
    "east": "redstone_lamp",
    "west": "redstone_lamp"
-  }
+  },
+  "tint": []
  },
  {
   "name": "redstone_ore",
@@ -3182,7 +3596,8 @@
    "south": "redstone_ore",
    "east": "redstone_ore",
    "west": "redstone_ore"
-  }
+  },
+  "tint": []
  },
  {
   "name": "reinforced_deepslate",
@@ -3195,7 +3610,8 @@
    "south": "reinforced_deepslate_side",
    "east": "reinforced_deepslate_side",
    "west": "reinforced_deepslate_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "repeating_command_block",
@@ -3208,7 +3624,8 @@
    "south": "repeating_command_block_back",
    "east": "repeating_command_block_side",
    "west": "repeating_command_block_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "resin_block",
@@ -3221,7 +3638,8 @@
    "south": "resin_block",
    "east": "resin_block",
    "west": "resin_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "resin_bricks",
@@ -3234,7 +3652,8 @@
    "south": "resin_bricks",
    "east": "resin_bricks",
    "west": "resin_bricks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "respawn_anchor_0",
@@ -3247,7 +3666,8 @@
    "south": "respawn_anchor_side0",
    "east": "respawn_anchor_side0",
    "west": "respawn_anchor_side0"
-  }
+  },
+  "tint": []
  },
  {
   "name": "rooted_dirt",
@@ -3260,7 +3680,8 @@
    "south": "rooted_dirt",
    "east": "rooted_dirt",
    "west": "rooted_dirt"
-  }
+  },
+  "tint": []
  },
  {
   "name": "sand",
@@ -3273,7 +3694,8 @@
    "south": "sand",
    "east": "sand",
    "west": "sand"
-  }
+  },
+  "tint": []
  },
  {
   "name": "sandstone",
@@ -3286,7 +3708,8 @@
    "south": "sandstone",
    "east": "sandstone",
    "west": "sandstone"
-  }
+  },
+  "tint": []
  },
  {
   "name": "sculk",
@@ -3299,7 +3722,8 @@
    "south": "sculk",
    "east": "sculk",
    "west": "sculk"
-  }
+  },
+  "tint": []
  },
  {
   "name": "sculk_catalyst",
@@ -3312,7 +3736,8 @@
    "south": "sculk_catalyst_side",
    "east": "sculk_catalyst_side",
    "west": "sculk_catalyst_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "smithing_table",
@@ -3325,7 +3750,8 @@
    "south": "smithing_table_front",
    "east": "smithing_table_side",
    "west": "smithing_table_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "smoker",
@@ -3338,7 +3764,8 @@
    "south": "smoker_side",
    "east": "smoker_side",
    "west": "smoker_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "smooth_basalt",
@@ -3351,7 +3778,8 @@
    "south": "smooth_basalt",
    "east": "smooth_basalt",
    "west": "smooth_basalt"
-  }
+  },
+  "tint": []
  },
  {
   "name": "smooth_quartz",
@@ -3364,7 +3792,8 @@
    "south": "quartz_block_bottom",
    "east": "quartz_block_bottom",
    "west": "quartz_block_bottom"
-  }
+  },
+  "tint": []
  },
  {
   "name": "smooth_red_sandstone",
@@ -3377,7 +3806,8 @@
    "south": "red_sandstone_top",
    "east": "red_sandstone_top",
    "west": "red_sandstone_top"
-  }
+  },
+  "tint": []
  },
  {
   "name": "smooth_sandstone",
@@ -3390,7 +3820,8 @@
    "south": "sandstone_top",
    "east": "sandstone_top",
    "west": "sandstone_top"
-  }
+  },
+  "tint": []
  },
  {
   "name": "smooth_stone",
@@ -3403,7 +3834,8 @@
    "south": "smooth_stone",
    "east": "smooth_stone",
    "west": "smooth_stone"
-  }
+  },
+  "tint": []
  },
  {
   "name": "smooth_stone_slab_double",
@@ -3416,7 +3848,8 @@
    "south": "smooth_stone_slab_side",
    "east": "smooth_stone_slab_side",
    "west": "smooth_stone_slab_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "snow_block",
@@ -3429,7 +3862,8 @@
    "south": "snow",
    "east": "snow",
    "west": "snow"
-  }
+  },
+  "tint": []
  },
  {
   "name": "soul_sand",
@@ -3442,7 +3876,8 @@
    "south": "soul_sand",
    "east": "soul_sand",
    "west": "soul_sand"
-  }
+  },
+  "tint": []
  },
  {
   "name": "soul_soil",
@@ -3455,7 +3890,8 @@
    "south": "soul_soil",
    "east": "soul_soil",
    "west": "soul_soil"
-  }
+  },
+  "tint": []
  },
  {
   "name": "sponge",
@@ -3468,7 +3904,8 @@
    "south": "sponge",
    "east": "sponge",
    "west": "sponge"
-  }
+  },
+  "tint": []
  },
  {
   "name": "spruce_log",
@@ -3481,7 +3918,8 @@
    "south": "spruce_log",
    "east": "spruce_log",
    "west": "spruce_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "spruce_planks",
@@ -3494,7 +3932,8 @@
    "south": "spruce_planks",
    "east": "spruce_planks",
    "west": "spruce_planks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "spruce_wood",
@@ -3507,7 +3946,8 @@
    "south": "spruce_log",
    "east": "spruce_log",
    "west": "spruce_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "sticky_piston",
@@ -3520,7 +3960,8 @@
    "south": "piston_side",
    "east": "piston_side",
    "west": "piston_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "stone",
@@ -3533,7 +3974,8 @@
    "south": "stone",
    "east": "stone",
    "west": "stone"
-  }
+  },
+  "tint": []
  },
  {
   "name": "stone_bricks",
@@ -3546,7 +3988,8 @@
    "south": "stone_bricks",
    "east": "stone_bricks",
    "west": "stone_bricks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "stripped_acacia_log",
@@ -3559,7 +4002,8 @@
    "south": "stripped_acacia_log",
    "east": "stripped_acacia_log",
    "west": "stripped_acacia_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "stripped_acacia_wood",
@@ -3572,7 +4016,8 @@
    "south": "stripped_acacia_log",
    "east": "stripped_acacia_log",
    "west": "stripped_acacia_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "stripped_bamboo_block",
@@ -3585,7 +4030,8 @@
    "south": "stripped_bamboo_block",
    "east": "stripped_bamboo_block",
    "west": "stripped_bamboo_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "stripped_birch_log",
@@ -3598,7 +4044,8 @@
    "south": "stripped_birch_log",
    "east": "stripped_birch_log",
    "west": "stripped_birch_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "stripped_birch_wood",
@@ -3611,7 +4058,8 @@
    "south": "stripped_birch_log",
    "east": "stripped_birch_log",
    "west": "stripped_birch_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "stripped_cherry_log",
@@ -3624,7 +4072,8 @@
    "south": "stripped_cherry_log",
    "east": "stripped_cherry_log",
    "west": "stripped_cherry_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "stripped_cherry_wood",
@@ -3637,7 +4086,8 @@
    "south": "stripped_cherry_log",
    "east": "stripped_cherry_log",
    "west": "stripped_cherry_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "stripped_crimson_hyphae",
@@ -3650,7 +4100,8 @@
    "south": "stripped_crimson_stem",
    "east": "stripped_crimson_stem",
    "west": "stripped_crimson_stem"
-  }
+  },
+  "tint": []
  },
  {
   "name": "stripped_crimson_stem",
@@ -3663,7 +4114,8 @@
    "south": "stripped_crimson_stem",
    "east": "stripped_crimson_stem",
    "west": "stripped_crimson_stem"
-  }
+  },
+  "tint": []
  },
  {
   "name": "stripped_dark_oak_log",
@@ -3676,7 +4128,8 @@
    "south": "stripped_dark_oak_log",
    "east": "stripped_dark_oak_log",
    "west": "stripped_dark_oak_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "stripped_dark_oak_wood",
@@ -3689,7 +4142,8 @@
    "south": "stripped_dark_oak_log",
    "east": "stripped_dark_oak_log",
    "west": "stripped_dark_oak_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "stripped_jungle_log",
@@ -3702,7 +4156,8 @@
    "south": "stripped_jungle_log",
    "east": "stripped_jungle_log",
    "west": "stripped_jungle_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "stripped_jungle_wood",
@@ -3715,7 +4170,8 @@
    "south": "stripped_jungle_log",
    "east": "stripped_jungle_log",
    "west": "stripped_jungle_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "stripped_mangrove_log",
@@ -3728,7 +4184,8 @@
    "south": "stripped_mangrove_log",
    "east": "stripped_mangrove_log",
    "west": "stripped_mangrove_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "stripped_mangrove_wood",
@@ -3741,7 +4198,8 @@
    "south": "stripped_mangrove_log",
    "east": "stripped_mangrove_log",
    "west": "stripped_mangrove_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "stripped_oak_log",
@@ -3754,7 +4212,8 @@
    "south": "stripped_oak_log",
    "east": "stripped_oak_log",
    "west": "stripped_oak_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "stripped_oak_wood",
@@ -3767,7 +4226,8 @@
    "south": "stripped_oak_log",
    "east": "stripped_oak_log",
    "west": "stripped_oak_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "stripped_pale_oak_log",
@@ -3780,7 +4240,8 @@
    "south": "stripped_pale_oak_log",
    "east": "stripped_pale_oak_log",
    "west": "stripped_pale_oak_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "stripped_pale_oak_wood",
@@ -3793,7 +4254,8 @@
    "south": "stripped_pale_oak_log",
    "east": "stripped_pale_oak_log",
    "west": "stripped_pale_oak_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "stripped_spruce_log",
@@ -3806,7 +4268,8 @@
    "south": "stripped_spruce_log",
    "east": "stripped_spruce_log",
    "west": "stripped_spruce_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "stripped_spruce_wood",
@@ -3819,7 +4282,8 @@
    "south": "stripped_spruce_log",
    "east": "stripped_spruce_log",
    "west": "stripped_spruce_log"
-  }
+  },
+  "tint": []
  },
  {
   "name": "stripped_warped_hyphae",
@@ -3832,7 +4296,8 @@
    "south": "stripped_warped_stem",
    "east": "stripped_warped_stem",
    "west": "stripped_warped_stem"
-  }
+  },
+  "tint": []
  },
  {
   "name": "stripped_warped_stem",
@@ -3845,7 +4310,8 @@
    "south": "stripped_warped_stem",
    "east": "stripped_warped_stem",
    "west": "stripped_warped_stem"
-  }
+  },
+  "tint": []
  },
  {
   "name": "structure_block",
@@ -3858,7 +4324,8 @@
    "south": "structure_block",
    "east": "structure_block",
    "west": "structure_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "sulfur",
@@ -3871,7 +4338,8 @@
    "south": "sulfur",
    "east": "sulfur",
    "west": "sulfur"
-  }
+  },
+  "tint": []
  },
  {
   "name": "sulfur_bricks",
@@ -3884,7 +4352,8 @@
    "south": "sulfur_bricks",
    "east": "sulfur_bricks",
    "west": "sulfur_bricks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "suspicious_gravel_0",
@@ -3897,7 +4366,8 @@
    "south": "suspicious_gravel_0",
    "east": "suspicious_gravel_0",
    "west": "suspicious_gravel_0"
-  }
+  },
+  "tint": []
  },
  {
   "name": "suspicious_sand_0",
@@ -3910,7 +4380,8 @@
    "south": "suspicious_sand_0",
    "east": "suspicious_sand_0",
    "west": "suspicious_sand_0"
-  }
+  },
+  "tint": []
  },
  {
   "name": "target",
@@ -3923,7 +4394,8 @@
    "south": "target_side",
    "east": "target_side",
    "west": "target_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "terracotta",
@@ -3936,7 +4408,8 @@
    "south": "terracotta",
    "east": "terracotta",
    "west": "terracotta"
-  }
+  },
+  "tint": []
  },
  {
   "name": "tnt",
@@ -3949,7 +4422,8 @@
    "south": "tnt_side",
    "east": "tnt_side",
    "west": "tnt_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "tube_coral_block",
@@ -3962,7 +4436,8 @@
    "south": "tube_coral_block",
    "east": "tube_coral_block",
    "west": "tube_coral_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "tuff",
@@ -3975,7 +4450,8 @@
    "south": "tuff",
    "east": "tuff",
    "west": "tuff"
-  }
+  },
+  "tint": []
  },
  {
   "name": "tuff_bricks",
@@ -3988,7 +4464,8 @@
    "south": "tuff_bricks",
    "east": "tuff_bricks",
    "west": "tuff_bricks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "warped_hyphae",
@@ -4001,7 +4478,8 @@
    "south": "warped_stem",
    "east": "warped_stem",
    "west": "warped_stem"
-  }
+  },
+  "tint": []
  },
  {
   "name": "warped_nylium",
@@ -4014,7 +4492,8 @@
    "south": "warped_nylium_side",
    "east": "warped_nylium_side",
    "west": "warped_nylium_side"
-  }
+  },
+  "tint": []
  },
  {
   "name": "warped_planks",
@@ -4027,7 +4506,8 @@
    "south": "warped_planks",
    "east": "warped_planks",
    "west": "warped_planks"
-  }
+  },
+  "tint": []
  },
  {
   "name": "warped_stem",
@@ -4040,7 +4520,8 @@
    "south": "warped_stem",
    "east": "warped_stem",
    "west": "warped_stem"
-  }
+  },
+  "tint": []
  },
  {
   "name": "warped_wart_block",
@@ -4053,7 +4534,8 @@
    "south": "warped_wart_block",
    "east": "warped_wart_block",
    "west": "warped_wart_block"
-  }
+  },
+  "tint": []
  },
  {
   "name": "weathered_chiseled_copper",
@@ -4066,7 +4548,8 @@
    "south": "weathered_chiseled_copper",
    "east": "weathered_chiseled_copper",
    "west": "weathered_chiseled_copper"
-  }
+  },
+  "tint": []
  },
  {
   "name": "weathered_copper",
@@ -4079,7 +4562,8 @@
    "south": "weathered_copper",
    "east": "weathered_copper",
    "west": "weathered_copper"
-  }
+  },
+  "tint": []
  },
  {
   "name": "weathered_copper_bulb",
@@ -4092,7 +4576,8 @@
    "south": "weathered_copper_bulb",
    "east": "weathered_copper_bulb",
    "west": "weathered_copper_bulb"
-  }
+  },
+  "tint": []
  },
  {
   "name": "weathered_copper_grate",
@@ -4105,7 +4590,8 @@
    "south": "weathered_copper_grate",
    "east": "weathered_copper_grate",
    "west": "weathered_copper_grate"
-  }
+  },
+  "tint": []
  },
  {
   "name": "weathered_cut_copper",
@@ -4118,7 +4604,8 @@
    "south": "weathered_cut_copper",
    "east": "weathered_cut_copper",
    "west": "weathered_cut_copper"
-  }
+  },
+  "tint": []
  },
  {
   "name": "wet_sponge",
@@ -4131,7 +4618,8 @@
    "south": "wet_sponge",
    "east": "wet_sponge",
    "west": "wet_sponge"
-  }
+  },
+  "tint": []
  },
  {
   "name": "white_concrete",
@@ -4144,7 +4632,8 @@
    "south": "white_concrete",
    "east": "white_concrete",
    "west": "white_concrete"
-  }
+  },
+  "tint": []
  },
  {
   "name": "white_concrete_powder",
@@ -4157,7 +4646,22 @@
    "south": "white_concrete_powder",
    "east": "white_concrete_powder",
    "west": "white_concrete_powder"
-  }
+  },
+  "tint": []
+ },
+ {
+  "name": "white_glazed_terracotta",
+  "zh": "white_glazed_terracotta",
+  "root": "block",
+  "faces": {
+   "up": "white_glazed_terracotta",
+   "down": "white_glazed_terracotta",
+   "north": "white_glazed_terracotta",
+   "south": "white_glazed_terracotta",
+   "east": "white_glazed_terracotta",
+   "west": "white_glazed_terracotta"
+  },
+  "tint": []
  },
  {
   "name": "white_terracotta",
@@ -4170,7 +4674,8 @@
    "south": "white_terracotta",
    "east": "white_terracotta",
    "west": "white_terracotta"
-  }
+  },
+  "tint": []
  },
  {
   "name": "white_wool",
@@ -4183,7 +4688,8 @@
    "south": "white_wool",
    "east": "white_wool",
    "west": "white_wool"
-  }
+  },
+  "tint": []
  },
  {
   "name": "yellow_concrete",
@@ -4196,7 +4702,8 @@
    "south": "yellow_concrete",
    "east": "yellow_concrete",
    "west": "yellow_concrete"
-  }
+  },
+  "tint": []
  },
  {
   "name": "yellow_concrete_powder",
@@ -4209,7 +4716,22 @@
    "south": "yellow_concrete_powder",
    "east": "yellow_concrete_powder",
    "west": "yellow_concrete_powder"
-  }
+  },
+  "tint": []
+ },
+ {
+  "name": "yellow_glazed_terracotta",
+  "zh": "yellow_glazed_terracotta",
+  "root": "block",
+  "faces": {
+   "up": "yellow_glazed_terracotta",
+   "down": "yellow_glazed_terracotta",
+   "north": "yellow_glazed_terracotta",
+   "south": "yellow_glazed_terracotta",
+   "east": "yellow_glazed_terracotta",
+   "west": "yellow_glazed_terracotta"
+  },
+  "tint": []
  },
  {
   "name": "yellow_terracotta",
@@ -4222,7 +4744,8 @@
    "south": "yellow_terracotta",
    "east": "yellow_terracotta",
    "west": "yellow_terracotta"
-  }
+  },
+  "tint": []
  },
  {
   "name": "yellow_wool",
@@ -4235,6 +4758,7 @@
    "south": "yellow_wool",
    "east": "yellow_wool",
    "west": "yellow_wool"
-  }
+  },
+  "tint": []
  }
 ]

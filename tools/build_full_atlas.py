@@ -39,6 +39,18 @@ def main():
                 tile_index[png] = len(tiles)
                 tiles.append(png)
 
+    # 需要染色的贴图：草方块顶面是灰度图，游戏里靠 biome 上色（平原约 #91BD59）。
+    # 我们不做 biome，直接乘一个固定的草色，否则草方块顶面会是灰的。
+    GRASS_TINT = (0.57, 0.74, 0.35)
+    tint_pngs = set()
+    for b in blocks:
+        for face in b.get("tint") or []:
+            png = b["faces"].get(face)
+            if png:
+                tint_pngs.add(png)
+    if tint_pngs:
+        print("tint: %s" % ", ".join(sorted(tint_pngs)))
+
     rows = (len(tiles) + COLS - 1) // COLS
     atlas = Image.new("RGBA", (COLS * CELL, rows * CELL), (0, 0, 0, 0))
 
@@ -56,6 +68,12 @@ def main():
             else:
                 im = im.resize((16, 16), Image.NEAREST)
         arr = np.array(im)
+        if png in tint_pngs:
+            f = arr.astype(np.float32)
+            f[:, :, 0] *= GRASS_TINT[0]
+            f[:, :, 1] *= GRASS_TINT[1]
+            f[:, :, 2] *= GRASS_TINT[2]
+            arr = np.clip(f, 0, 255).astype(np.uint8)
         arr = np.pad(arr, ((PAD, PAD), (PAD, PAD), (0, 0)), mode="edge")
         atlas.paste(Image.fromarray(arr), ((i % COLS) * CELL, (i // COLS) * CELL))
 

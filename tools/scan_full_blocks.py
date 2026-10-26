@@ -118,6 +118,39 @@ def main():
             return True
         return False
 
+    def first_elements(name):
+        """沿父级链找第一个自己写 elements 的模型，返回它的 faces：{面: (贴图引用, tintindex)}。
+
+        为什么要看 elements：像草方块这种模型自己写了 elements，贴图槽名是
+        bottom / top / side（不是 down / up / north…），按槽名猜会猜错 ——
+        底面会退回 side，结果底面用了草边图。按 faces 里的 "#bottom" 这类引用
+        顺着贴图表解析才准。
+        """
+        cur = name
+        for _ in range(12):
+            j = read_json(model_path(cur))
+            if not j:
+                return None
+            els = j.get('elements')
+            if els:
+                faces = {}
+                for el in els:
+                    for face, data in (el.get('faces') or {}).items():
+                        if face in faces or not isinstance(data, dict):
+                            continue
+                        ref = data.get('texture')
+                        if not ref:
+                            continue
+                        faces[face] = (ref, data.get('tintindex'))
+                return faces
+            parent = j.get('parent', '')
+            if not parent:
+                return None
+            cur = parent.replace('minecraft:', '')
+            if cur.startswith('block/'):
+                cur = cur[6:]
+        return None
+
     def drop_variant(name):
         """同一个方块的不同朝向/开关状态/镜像变体只留一个，避免池子被重复占满。"""
         if re.search(r'_(horizontal|[xyz]|mirrored|inventory|on|lit|powered|conditional|triggered|awake|dormant|bloom|crafting|open|empty)$', name):
@@ -160,8 +193,26 @@ def main():
         if not tex:
             continue
 
+        element_faces = first_elements(name) or {}
         faces = {}
+        tint_faces = []
+
+        # 先按模型 elements 里的面引用取（草方块这类靠这个才对）
         for face in ('up', 'down', 'north', 'south', 'east', 'west'):
+            entry = element_faces.get(face)
+            if not entry:
+                continue
+            ref, tint = entry
+            png = resolve(ref, tex)
+            if png and ('assets/minecraft/textures/block/%s.png' % png) in names:
+                faces[face] = png
+                if tint is not None:
+                    tint_faces.append(face)
+
+        # 模型里没写这一面时，退回按贴图槽名猜（cube_all / cube_column 之类）
+        for face in ('up', 'down', 'north', 'south', 'east', 'west'):
+            if face in faces:
+                continue
             key = 'all' if 'all' in tex else face
             raw = tex.get(key) or tex.get('side') or tex.get('all') or tex.get('top') or tex.get('bottom')
             if not raw:
@@ -173,8 +224,9 @@ def main():
             continue
         if name in FACE_OVERRIDES:
             faces = dict(FACE_OVERRIDES[name])
+            tint_faces = []
         seq = chain(name) or []
-        candidates.append({'name': name, 'zh': zh_name(name), 'root': seq[-1][0] if seq else '', 'faces': faces})
+        candidates.append({'name': name, 'zh': zh_name(name), 'root': seq[-1][0] if seq else '', 'faces': faces, 'tint': tint_faces})
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, 'w', encoding='utf-8') as f:

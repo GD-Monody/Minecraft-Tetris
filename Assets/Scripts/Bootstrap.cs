@@ -107,6 +107,12 @@ namespace MinecraftTetris
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-sandtest") >= 0)
                 RunSandTest();
 
+            // -blocktest <方块英文名>：在场地高处摆三个该方块，用来肉眼核对六面贴图
+            var btArgv = System.Environment.GetCommandLineArgs();
+            int btAt = System.Array.IndexOf(btArgv, "-blocktest");
+            if (btAt >= 0 && btAt + 1 < btArgv.Length)
+                RunBlockTest(btArgv[btAt + 1]);
+
             // -shotat N：把自动截图的时间点从默认 6 秒改成 N 秒（验证落定方块等需要跑够时间）
             var argv = System.Environment.GetCommandLineArgs();
             int shotArg = System.Array.IndexOf(argv, "-shotat");
@@ -348,6 +354,33 @@ namespace MinecraftTetris
             bool moved = Gravity.Settle(_loop.Grid);
             _view.RefreshAll();
             Debug.Log("[sandtest] 重力结算=" + moved);
+        }
+
+        void RunBlockTest(string name)
+        {
+            int id = -1;
+            for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
+            {
+                if (BlockCatalog.Blocks[i].Name == name)
+                {
+                    id = i + 1;
+                    break;
+                }
+            }
+            if (id <= 0 || _loop == null || _view == null)
+            {
+                Debug.Log("[blocktest] 找不到方块 " + name);
+                return;
+            }
+
+            int cx = _loop.Grid.SizeX / 2;
+            int cz = _loop.Grid.SizeZ / 2;
+            int top = _loop.Grid.SizeY - 6;
+            _loop.Grid.Set(cx, top, cz, id);
+            _loop.Grid.Set(cx + 1, top, cz, id);
+            _loop.Grid.Set(cx, top - 1, cz, id);
+            _view.RefreshAll();
+            Debug.Log("[blocktest] " + name + " id=" + id);
         }
 
         void OnGravitySettled()
