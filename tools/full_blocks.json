@@ -1952,7 +1952,7 @@
   "zh": "grass_block_snow",
   "root": "block",
   "faces": {
-   "up": "grass_block_top",
+   "up": "snow",
    "down": "dirt",
    "north": "grass_block_snow",
    "south": "grass_block_snow",

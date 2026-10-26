@@ -22,6 +22,13 @@ FACE_OVERRIDES = {
         'north': 'piston_side', 'south': 'piston_side',
         'east': 'piston_side', 'west': 'piston_side',
     },
+    # 雪地草方块：资源包给模型写的 top 还是 grass_block_top（草绿），
+    # 游戏里是客户端在 snowy 状态下把顶面换成雪，所以这里手动改。
+    'grass_block_snow': {
+        'up': 'snow', 'down': 'dirt',
+        'north': 'grass_block_snow', 'south': 'grass_block_snow',
+        'east': 'grass_block_snow', 'west': 'grass_block_snow',
+    },
 }
 
 CUBE_ROOTS = {
