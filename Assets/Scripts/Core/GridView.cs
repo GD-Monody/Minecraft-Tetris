@@ -161,6 +161,12 @@ namespace MinecraftTetris
                 _cells[x, y, z] = go;
                 _cellVisual[x, y, z] = new Vector3(x, y, z);
             }
+            else if (!go.activeSelf)
+            {
+                // 这一格刚由空变成有：直接出现在格子里。
+                // 不复用上一次留下的视觉位置，否则会看到它从别处滑进来（硬降后尤其明显）。
+                _cellVisual[x, y, z] = new Vector3(x, y, z);
+            }
 
             int idx = blockId - 1;
             go.SetActive(true);
@@ -193,6 +199,31 @@ namespace MinecraftTetris
                 _cellVisual[m.ToX, m.ToY, m.ToZ] = new Vector3(m.FromX, m.FromY, m.FromZ);
                 go.transform.position = _cellVisual[m.ToX, m.ToY, m.ToZ];
             }
+        }
+
+        /// <summary>
+        /// 行消除之后整堆内容会往下补。为了让它是"滑下来"而不是原地换一张贴图，
+        /// 先给每个已经有内容的格子一个视觉起点（比目标高 n 行），随后 RefreshAll 换贴图，
+        /// 下一帧开始 Update 会把它们从高处追到自己的格子里。
+        /// </summary>
+        public void BeginCollapse(List<int> clearedRows)
+        {
+            if (clearedRows == null || clearedRows.Count == 0)
+                return;
+
+            for (int x = 0; x < Grid.SizeX; x++)
+                for (int y = 0; y < Grid.SizeY; y++)
+                    for (int z = 0; z < Grid.SizeZ; z++)
+                    {
+                        if (_cells[x, y, z] == null)
+                            continue;
+                        int below = 0;
+                        for (int i = 0; i < clearedRows.Count; i++)
+                            if (clearedRows[i] < y)
+                                below++;
+                        if (below > 0)
+                            _cellVisual[x, y, z] = new Vector3(x, y + below, z);
+                    }
         }
 
         bool InCells(int x, int y, int z)

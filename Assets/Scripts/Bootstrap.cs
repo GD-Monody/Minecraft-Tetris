@@ -422,7 +422,8 @@ namespace MinecraftTetris
         void OnLinesCleared(int lines)
         {
             _sfx.PlayClear(lines);
-            _view.RefreshAll();
+            // 视觉上的下移交给 OnRowsCleared（它拿得到具体清了哪几行），
+            // 这里只放音效，不要再 RefreshAll 一次，否则会对同一批格子做两遍。
         }
 
         void OnSpawned()
@@ -441,6 +442,13 @@ namespace MinecraftTetris
 
         void OnRowsCleared(System.Collections.Generic.List<int> rows, System.Collections.Generic.List<int> blocks)
         {
+            // 先给整堆一个"从上面滑下来"的视觉起点，再按新内容刷新贴图
+            if (_view != null)
+            {
+                _view.BeginCollapse(rows);
+                _view.RefreshAll();
+            }
+
             for (int i = 0; i < rows.Count; i++)
             {
                 int blockId = blocks[i];
