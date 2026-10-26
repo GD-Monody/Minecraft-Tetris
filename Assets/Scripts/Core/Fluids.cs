@@ -190,6 +190,20 @@ namespace MinecraftTetris
             Ensure(grid);
             if (!InBounds(x, y, z)) return;
 
+            // 方块落在水面上的情况：落点这一格是空的，水在它下面一格。
+            // 这时方块并没有"压到"水，但视觉上方块占住了水的位置，水被挤到方块上方去。
+            if (y > 0 && _amount[x, y - 1, z] > 0)
+            {
+                int bid = _id[x, y - 1, z];
+                int ba = _amount[x, y - 1, z];
+                if (TryPush(grid, x, y + 1, z, bid, ba))
+                {
+                    _amount[x, y - 1, z] = 0;
+                    _id[x, y - 1, z] = 0;
+                    Debug.Log("[fluids] 流体被方块挤到上面: " + x + "," + y + "," + z);
+                }
+            }
+
             int a = _amount[x, y, z];
             if (a <= 0)
                 return;
