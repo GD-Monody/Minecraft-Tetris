@@ -192,37 +192,57 @@ namespace MinecraftTetris
 
             // 方块落在水面上的情况：落点这一格是空的，水在它下面一格。
             // 这时方块并没有"压到"水，但视觉上方块占住了水的位置，水被挤到方块上方去。
-            if (y > 0 && _amount[x, y - 1, z] > 0)
+            // 落点下方「连着的一串水」：从紧贴方块那格往下数，连续几格水都算被方块压住。
+            // 只要中间断一格（空格或方块）就停，免得把隔着方块、埋得很深的水也翻上来。
+            int total = 0;
+            int ftype = 0;
+            int top = -1;
+            for (int ty = y - 1; ty >= 0; ty--)
             {
-                int bid = _id[x, y - 1, z];
-                int ba = _amount[x, y - 1, z];
-                bool placed = false;
+                if (_amount[x, ty, z] <= 0)
+                    break;
+                if (ftype == 0)
+                    ftype = _id[x, ty, z];
+                total += _amount[x, ty, z];
+                top = ty;
+            }
 
-                // 1) 方块正上方最近的一个空格
-                for (int ty = y + 1; ty < _sy && !placed; ty++)
+            if (total > 0)
+            {
+                // 先把这串水清掉（含 grid 里的水标记），方块下方不留半点占位
+                for (int ty = top; ty < y; ty++)
                 {
-                    if (grid.Get(x, ty, z) == 0)
-                        placed = TryPush(grid, x, ty, z, bid, ba);
+                    _amount[x, ty, z] = 0;
+                    _id[x, ty, z] = 0;
+                    grid.Set(x, ty, z, 0);
                 }
 
-                // 2) 正上方都堵着，往侧面找
-                if (!placed)
+                // 再从方块正上方往上，一个空格一个空格地摊回去（每格最多 MaxAmount 份）
+                int left = total;
+                for (int ty = y + 1; ty < _sy && left > 0; ty++)
                 {
-                    if (TryPush(grid, x - 1, y, z, bid, ba)) placed = true;
-                    else if (TryPush(grid, x + 1, y, z, bid, ba)) placed = true;
-                    else if (TryPush(grid, x, y, z - 1, bid, ba)) placed = true;
-                    else if (TryPush(grid, x, y, z + 1, bid, ba)) placed = true;
+                    if (grid.Get(x, ty, z) != 0)
+                        continue;
+                    int room = MaxAmount - _amount[x, ty, z];
+                    if (room <= 0)
+                        continue;
+                    int put = left < room ? left : room;
+                    _amount[x, ty, z] += put;
+                    _id[x, ty, z] = ftype;
+                    grid.Set(x, ty, z, ftype);
+                    left -= put;
                 }
 
-                // 3) 下面这格一律清空，不留半格水占位
-                _amount[x, y - 1, z] = 0;
-                _id[x, y - 1, z] = 0;
-                grid.Set(x, y - 1, z, 0);
+                // 正上方塞不下的，往侧面挪
+                if (left > 0)
+                {
+                    if (TryPush(grid, x - 1, y, z, ftype, left)) left = 0;
+                    else if (TryPush(grid, x + 1, y, z, ftype, left)) left = 0;
+                    else if (TryPush(grid, x, y, z - 1, ftype, left)) left = 0;
+                    else if (TryPush(grid, x, y, z + 1, ftype, left)) left = 0;
+                }
 
-                if (placed)
-                    Debug.Log("[fluids] 方块下面的水挪到上方: " + x + "," + y + "," + z);
-                else
-                    Debug.Log("[fluids] 方块下面的水四面都堵死，丢掉: " + x + "," + y + "," + z);
+                Debug.Log("[fluids] 方块下方 " + total + " 份水挪到上方，剩 " + left + " 份没放下: " + x + "," + y + "," + z);
             }
 
             int a = _amount[x, y, z];
