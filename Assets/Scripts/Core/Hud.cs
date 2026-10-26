@@ -194,18 +194,18 @@ namespace MinecraftTetris
 
         void DrawScorePanel()
         {
-            var panel = new Rect(14f, 14f, 246f, 150f);
+            var panel = new Rect(14f, 14f, 246f, 158f);
             DrawPanel(panel);
 
             float x = panel.x + 16f;
-            float y = panel.y + 12f;
+            float y = panel.y + 18f;
 
-            Text(new Rect(x, y, 80f, 20f), "分数", _label, _labelShadow);
+            Text(new Rect(x, y, 80f, 30f), "分数", _label, _labelShadow);
 
             float scale = 1f;
             if (_scoreFlash > 0f)
                 scale = 1f + _scoreFlash * 0.4f;
-            Rect valueRect = new Rect(x + 46f, y - 8f, 200f, 40f);
+            Rect valueRect = new Rect(x + 46f, y - 6f, 200f, 40f);
             GUI.matrix = Matrix4x4.TRS(new Vector3(valueRect.x, valueRect.y, 0f), Quaternion.identity,
                 new Vector3(scale, scale, 1f));
             GUIStyle scoreStyle = _scoreFlash > 0f
@@ -216,11 +216,11 @@ namespace MinecraftTetris
             GUI.matrix = Matrix4x4.identity;
 
             y += 46f;
-            Text(new Rect(x, y, 80f, 20f), "消除", _label, _labelShadow);
+            Text(new Rect(x, y, 80f, 30f), "消除", _label, _labelShadow);
             Text(new Rect(x + 46f, y - 3f, 200f, 26f), Loop.LinesCleared + " 行", _valueSmall, _valueSmallShadow);
 
             y += 34f;
-            Text(new Rect(x, y, 80f, 20f), "最高", _label, _labelShadow);
+            Text(new Rect(x, y, 80f, 30f), "最高", _label, _labelShadow);
             Text(new Rect(x + 46f, y - 3f, 200f, 26f), _best.ToString(), _valueSmall, _valueSmallShadow);
 
             DrawAccentLine(panel);
@@ -228,16 +228,16 @@ namespace MinecraftTetris
 
         void DrawNextPanel()
         {
-            var panel = new Rect(14f, 172f, 246f, 178f);
+            var panel = new Rect(14f, 180f, 246f, 184f);
             DrawPanel(panel);
 
-            Text(new Rect(panel.x + 16f, panel.y + 10f, 200f, 20f), "下一个", _label, _labelShadow);
+            Text(new Rect(panel.x + 16f, panel.y + 16f, 200f, 30f), "下一个", _label, _labelShadow);
 
-            var previewRect = new Rect(panel.x + 14f, panel.y + 34f, 112f, 112f);
+            var previewRect = new Rect(panel.x + 14f, panel.y + 40f, 112f, 112f);
             if (Preview != null && Preview.Texture != null)
                 GUI.DrawTexture(previewRect, Preview.Texture, ScaleMode.ScaleToFit, true);
 
-            Text(new Rect(panel.x + 134f, panel.y + 78f, 106f, 44f),
+            Text(new Rect(panel.x + 134f, panel.y + 84f, 106f, 44f),
                 Loop.Next != null ? Loop.Next.Label : "", _valueSmall, _valueSmallShadow);
 
             DrawAccentLine(panel);
