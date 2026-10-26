@@ -407,7 +407,7 @@ namespace MinecraftTetris
 
         public static int RandomBlockId()
         {
-            return UnityEngine.Random.Range(1, BlockCatalog.Blocks.Length + 1);
+            return BlockPools.NextRandomId();
         }
 
         bool CanPlace(Piece p, int dx, int dy, int dz)

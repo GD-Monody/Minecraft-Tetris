@@ -387,6 +387,7 @@ namespace MinecraftTetris
         {
             if (_view != null)
                 _view.RefreshAll();
+            Debug.Log("[gravity] 落定后有方块下移");
         }
 
         void OnPieceLocked(Piece piece)
