@@ -72,6 +72,12 @@ namespace MinecraftTetris
         public event Action GameOverEvent;
         public event Action GravitySettled;
         public event Action Spawned;
+        /// <summary>方块转了个 90°（true = 顺时针）。视图层用它播旋转动画。</summary>
+        public event Action<bool> PieceRotated;
+
+        /// <summary>最近一次重力结算里每一格怎么挪的，视图层照着播滑落。</summary>
+        public readonly System.Collections.Generic.List<GravityStep> LastGravityMoves
+            = new System.Collections.Generic.List<GravityStep>();
 
         public GameLoop(int sizeX, int sizeY, int sizeZ, int seed = 0)
         {
@@ -143,7 +149,10 @@ namespace MinecraftTetris
             Current.Cells = rotated;
 
             if (CanPlace(Current, 0, 0, 0))
+            {
+                PieceRotated?.Invoke(clockwise);
                 return true;
+            }
 
             // 简单踢墙：左右各试一格
             for (int k = -1; k <= 1; k += 2)
@@ -151,6 +160,7 @@ namespace MinecraftTetris
                 if (CanPlace(Current, k, 0, 0))
                 {
                     Current.OriginX += k;
+                    PieceRotated?.Invoke(clockwise);
                     return true;
                 }
             }
@@ -184,7 +194,8 @@ namespace MinecraftTetris
             PieceLocked?.Invoke(Current);
 
             // 沙子、沙砾这类会往下掉：先落到位，再判定满行
-            if (Gravity.Settle(Grid))
+            LastGravityMoves.Clear();
+            if (Gravity.Settle(Grid, LastGravityMoves))
                 GravitySettled?.Invoke();
 
             // 先记下这一轮要清的行和每行的代表材质，清完再派事件给粒子效果

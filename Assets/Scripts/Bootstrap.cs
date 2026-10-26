@@ -30,6 +30,8 @@ namespace MinecraftTetris
         int _titleShotIndex;
         static readonly float[] TitleShotTimes = { 0.4f, 1.3f, 2.5f, 3.4f, 4.2f };
         Camera _mainCam;
+        CameraRig _rig;
+        bool _camLogged;
         int _normalCullMask;
 
         void Start()
@@ -123,10 +125,11 @@ namespace MinecraftTetris
             _loop.LinesClearedEvent += OnLinesCleared;
             _loop.RowsCleared += OnRowsCleared;
             _loop.Spawned += OnSpawned;
+            _loop.PieceRotated += OnPieceRotated;
             _loop.GravitySettled += OnGravitySettled;
 
             _view.RefreshAll();
-            _view.RefreshPiece(_loop.Current);
+            _view.SnapPiece(_loop.Current);
             _nextPreview.Show(_loop.Next, _loop.NextBlockId);
 
             SetupScene();
@@ -139,6 +142,19 @@ namespace MinecraftTetris
 
             if (Input.GetKeyDown(KeyCode.F12))
                 CaptureShot("manual_shot.png");
+
+            if (!_camLogged && Time.time > 3f && _mainCam != null)
+            {
+                _camLogged = true;
+                Transform ct = _mainCam.transform;
+                Debug.Log("[cam] pos=" + ct.position + " euler=" + ct.eulerAngles
+                    + " up=" + ct.up + " fov=" + _mainCam.fieldOfView
+                    + " rigYaw=" + (_rig != null ? _rig.Yaw : -999f)
+                    + " rigPitch=" + (_rig != null ? _rig.Pitch : -999f)
+                    + " | bootEuler=" + transform.eulerAngles
+                    + " viewEuler=" + (_view != null ? _view.transform.eulerAngles : Vector3.zero)
+                    + " pieceRootEuler=" + (_view != null && _view.PieceRoot != null ? _view.PieceRoot.eulerAngles : Vector3.zero));
+            }
 
             if (_forceGameOverAt > 0f)
             {
@@ -232,7 +248,7 @@ namespace MinecraftTetris
             _particles.Clear();
             _paused = false;
             _view.RefreshAll();
-            _view.RefreshPiece(_loop.Current);
+            _view.SnapPiece(_loop.Current);
             _nextPreview.Show(_loop.Next, _loop.NextBlockId);
             if (_title != null)
                 _title.Show(false);
@@ -252,7 +268,7 @@ namespace MinecraftTetris
             _particles.Clear();
             _paused = false;
             _view.RefreshAll();
-            _view.RefreshPiece(_loop.Current);
+            _view.SnapPiece(_loop.Current);
             _nextPreview.Show(_loop.Next, _loop.NextBlockId);
             if (_title != null)
                 _title.Show(false);
@@ -386,7 +402,10 @@ namespace MinecraftTetris
         void OnGravitySettled()
         {
             if (_view != null)
+            {
+                _view.ApplyGravityMoves(_loop.LastGravityMoves);
                 _view.RefreshAll();
+            }
             Debug.Log("[gravity] 落定后有方块下移");
         }
 
@@ -408,10 +427,16 @@ namespace MinecraftTetris
 
         void OnSpawned()
         {
-            _view.RefreshPiece(_loop.Current);
+            _view.SnapPiece(_loop.Current);
             _nextPreview.Show(_loop.Next, _loop.NextBlockId);
             if (!_loop.GameOver)
                 GameSave.Save(_loop);
+        }
+
+        void OnPieceRotated(bool clockwise)
+        {
+            if (_view != null)
+                _view.RotatePieceVisual(clockwise);
         }
 
         void OnRowsCleared(System.Collections.Generic.List<int> rows, System.Collections.Generic.List<int> blocks)
@@ -460,6 +485,7 @@ namespace MinecraftTetris
             rig.Distance = Mathf.Max(SizeY * 1.05f, SizeZ * 1.8f);
 
             _mainCam = cam;
+            _rig = rig;
             _normalCullMask = cam.cullingMask;
         }
     }

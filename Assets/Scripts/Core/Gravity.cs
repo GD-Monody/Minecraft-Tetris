@@ -1,7 +1,15 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace MinecraftTetris
 {
+    /// <summary>一次重力下移：从哪格挪到哪格。视图层用它播滑落动画。</summary>
+    public struct GravityStep
+    {
+        public int FromX, FromY, FromZ;
+        public int ToX, ToY, ToZ;
+    }
+
     /// <summary>
     /// 重力方块（沙子、红沙、沙砾、可疑沙、混凝土粉末）的下落结算。
     /// 在方块落定写入网格之后、判定满行之前调用：
@@ -30,9 +38,9 @@ namespace MinecraftTetris
 
         /// <summary>
         /// 反复把会掉的方块往下挪一格，直到全场稳定。
-        /// 返回是否动过（调用方据此重绘）。
+        /// 返回是否动过（调用方据此重绘）；传了 moves 就把每一格的下移记进去。
         /// </summary>
-        public static bool Settle(Grid grid)
+        public static bool Settle(Grid grid, List<GravityStep> moves = null)
         {
             if (grid == null)
                 return false;
@@ -58,6 +66,14 @@ namespace MinecraftTetris
 
                             grid.Set(x, y - 1, z, b);
                             grid.Set(x, y, z, 0);
+                            if (moves != null)
+                            {
+                                moves.Add(new GravityStep
+                                {
+                                    FromX = x, FromY = y, FromZ = z,
+                                    ToX = x, ToY = y - 1, ToZ = z,
+                                });
+                            }
                             moved = true;
                             any = true;
                         }
