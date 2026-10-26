@@ -195,27 +195,46 @@ namespace MinecraftTetris
                 return;
 
             int id = _id[x, y, z];
-            bool moved = false;
+            string where = "none";
 
-            if (y + 1 < _sy)
+            // 1) 正上方空着：直接顶上去
+            if (TryPush(grid, x, y + 1, z, id, a))
+                where = "up";
+
+            // 2) 正上方是方块（水被压在方块底下）：渗到方块上面那一格去
+            if (where == "none" && y + 1 < _sy && grid.Get(x, y + 1, z) != 0 && TryPush(grid, x, y + 2, z, id, a))
+                where = "over";
+
+            // 3) 侧面找得到空位就往两边渗
+            if (where == "none")
             {
-                int up = grid.Get(x, y + 1, z);
-                if ((up == 0 || up == id) && _amount[x, y + 1, z] + a <= MaxAmount * 2)
-                {
-                    _amount[x, y + 1, z] += a;
-                    _id[x, y + 1, z] = id;
-                    grid.Set(x, y + 1, z, id);
-                    moved = true;
-                }
+                if (TryPush(grid, x - 1, y, z, id, a)) where = "left";
+                else if (TryPush(grid, x + 1, y, z, id, a)) where = "right";
+                else if (TryPush(grid, x, y, z - 1, id, a)) where = "back";
+                else if (TryPush(grid, x, y, z + 1, id, a)) where = "front";
             }
 
             _amount[x, y, z] = 0;
             _id[x, y, z] = 0;
 
-            if (moved)
-                Debug.Log("[fluids] 流体被方块顶上去了: " + x + "," + y + "," + z);
+            if (where == "none")
+                Debug.Log("[fluids] 流体被压没（四面都放不下）: " + x + "," + y + "," + z);
             else
-                Debug.Log("[fluids] 流体被压没（上方放不下）: " + x + "," + y + "," + z);
+                Debug.Log("[fluids] 流体被挤到 " + where + ": " + x + "," + y + "," + z);
+        }
+
+        /// <summary>把 a 份流体塞进某一格（那边是空或同类流体才塞得进去）。</summary>
+        static bool TryPush(Grid grid, int x, int y, int z, int id, int a)
+        {
+            if (!InBounds(x, y, z)) return false;
+            int cell = grid.Get(x, y, z);
+            if (cell != 0 && cell != id) return false;
+            if (_amount[x, y, z] + a > MaxAmount * 2) return false;
+
+            _amount[x, y, z] += a;
+            _id[x, y, z] = id;
+            grid.Set(x, y, z, id);
+            return true;
         }
 
         static int FindByName(string name)
