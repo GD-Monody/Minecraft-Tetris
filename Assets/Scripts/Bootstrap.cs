@@ -56,6 +56,12 @@ namespace MinecraftTetris
             _hud.OnRestartClick = RestartGame;
             _hud.OnResumeClick = OnResumeClick;
             _hud.OnQuitToTitleClick = QuitToTitle;
+            _hud.OnDevClear = DevClear;
+            _hud.OnDevWater = () => DevFluid(Fluids.WaterId);
+            _hud.OnDevLava = () => DevFluid(Fluids.LavaId);
+            _hud.OnDevSand = DevSand;
+            _hud.OnDevStopFluids = DevStopFluids;
+            _hud.DevMode = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-dev") >= 0;
 
             _nextPreview = gameObject.AddComponent<NextPreview>();
             _nextPreview.Init(_view);
@@ -150,6 +156,9 @@ namespace MinecraftTetris
 
             if (Input.GetKeyDown(KeyCode.F12))
                 CaptureShot("manual_shot.png");
+
+            if (Input.GetKeyDown(KeyCode.F1) && _hud != null)
+                _hud.DevMode = !_hud.DevMode;
 
             if (!_camLogged && Time.time > 3f && _mainCam != null)
             {
@@ -402,6 +411,99 @@ namespace MinecraftTetris
             _view.SnapPiece(_loop.Current);
             _view.RefreshAll();
             Debug.Log("[fluidtest] " + which + " id=" + id + " at " + cx + "," + top + "," + cz);
+        }
+
+        // ---- 调试面板用的小动作（F1 打开面板后点按钮） ----
+
+        void DevClear()
+        {
+            if (_loop == null)
+                return;
+            _loop.Restart();
+            Fluids.Reset();
+            ClearFluidCells();
+            if (_view != null)
+            {
+                _view.SnapPiece(_loop.Current);
+                _view.RefreshAll();
+            }
+            Debug.Log("[dev] 清场");
+        }
+
+        void DevFluid(int id)
+        {
+            if (_loop == null || id <= 0)
+                return;
+            int cx = _loop.Grid.SizeX / 2;
+            int cz = _loop.Grid.SizeZ / 2;
+            int y = _loop.Grid.SizeY - 6;
+            for (int i = -1; i <= 1; i++)
+            {
+                int x = cx + i;
+                if (!_loop.Grid.InBounds(x, y, cz))
+                    continue;
+                _loop.Grid.Set(x, y, cz, id);
+                Fluids.AddSource(_loop.Grid, x, y, cz, id);
+            }
+            if (_view != null)
+                _view.RefreshAll();
+            Debug.Log("[dev] 放流体 id=" + id + " y=" + y);
+        }
+
+        void DevSand()
+        {
+            if (_loop == null || _view == null)
+                return;
+            int id = -1;
+            for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
+            {
+                if (BlockCatalog.Blocks[i].Name == "sand")
+                {
+                    id = i + 1;
+                    break;
+                }
+            }
+            if (id <= 0)
+                return;
+            int cx = _loop.Grid.SizeX / 2;
+            int cz = _loop.Grid.SizeZ / 2;
+            int y = _loop.Grid.SizeY - 6;
+            for (int i = -1; i <= 1; i++)
+            {
+                int x = cx + i;
+                if (!_loop.Grid.InBounds(x, y, cz))
+                    continue;
+                _loop.Grid.Set(x, y, cz, id);
+            }
+            _view.RefreshAll();
+            bool moved = Gravity.Settle(_loop.Grid);
+            _view.RefreshAll();
+            Debug.Log("[dev] 放沙子 重力结算=" + moved);
+        }
+
+        void DevStopFluids()
+        {
+            if (_loop == null)
+                return;
+            Fluids.Reset();
+            ClearFluidCells();
+            if (_view != null)
+                _view.RefreshAll();
+            Debug.Log("[dev] 清掉所有流体");
+        }
+
+        void ClearFluidCells()
+        {
+            if (_loop == null)
+                return;
+            for (int x = 0; x < _loop.Grid.SizeX; x++)
+                for (int y = 0; y < _loop.Grid.SizeY; y++)
+                    for (int z = 0; z < _loop.Grid.SizeZ; z++)
+                    {
+                        int b = _loop.Grid.Get(x, y, z);
+                        if (b > 0 && Fluids.IsFluid(b))
+                            _loop.Grid.Set(x, y, z, 0);
+                    }
         }
 
         void RunBlockTest(string name)
