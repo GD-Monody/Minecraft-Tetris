@@ -116,7 +116,7 @@ namespace MinecraftTetris
             _btnStyle.border = new RectOffset(0, 0, 0, 0);
             // 不显式清掉 padding / contentOffset 的话，文字会贴着按钮上半部（继承 GUI.skin.button 的默认值）
             _btnStyle.padding = new RectOffset(0, 0, 0, 0);
-            _btnStyle.contentOffset = Vector2.zero;
+            _btnStyle.contentOffset = new Vector2(0f, 3f);
         }
 
         static Texture2D SolidTexture(Color c)
