@@ -70,6 +70,7 @@ namespace MinecraftTetris
         /// <summary>消除时触发：参数是被清的行号列表 + 每行取一个代表材质（粒子用）。</summary>
         public event Action<System.Collections.Generic.List<int>, System.Collections.Generic.List<int>> RowsCleared;
         public event Action GameOverEvent;
+        public event Action GravitySettled;
         public event Action Spawned;
 
         public GameLoop(int sizeX, int sizeY, int sizeZ, int seed = 0)
@@ -181,6 +182,10 @@ namespace MinecraftTetris
             }
 
             PieceLocked?.Invoke(Current);
+
+            // 沙子、沙砾这类会往下掉：先落到位，再判定满行
+            if (Gravity.Settle(Grid))
+                GravitySettled?.Invoke();
 
             // 先记下这一轮要清的行和每行的代表材质，清完再派事件给粒子效果
             var fullRows = new System.Collections.Generic.List<int>();

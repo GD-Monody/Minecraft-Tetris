@@ -104,6 +104,8 @@ namespace MinecraftTetris
             }
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-gameover") >= 0)
                 _forceGameOverAt = 1.5f;
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-sandtest") >= 0)
+                RunSandTest();
 
             // -shotat N：把自动截图的时间点从默认 6 秒改成 N 秒（验证落定方块等需要跑够时间）
             var argv = System.Environment.GetCommandLineArgs();
@@ -115,6 +117,7 @@ namespace MinecraftTetris
             _loop.LinesClearedEvent += OnLinesCleared;
             _loop.RowsCleared += OnRowsCleared;
             _loop.Spawned += OnSpawned;
+            _loop.GravitySettled += OnGravitySettled;
 
             _view.RefreshAll();
             _view.RefreshPiece(_loop.Current);
@@ -315,6 +318,42 @@ namespace MinecraftTetris
                 _title.Show(true);
                 _title.SkipIntro();
             }
+        }
+
+        void RunSandTest()
+        {
+            int sandId = -1;
+            for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
+            {
+                if (BlockCatalog.Blocks[i].Name == "sand")
+                {
+                    sandId = i + 1;
+                    break;
+                }
+            }
+            if (sandId <= 0 || _loop == null || _view == null)
+            {
+                Debug.Log("[sandtest] 找不到沙子方块");
+                return;
+            }
+
+            int cx = _loop.Grid.SizeX / 2;
+            int top = _loop.Grid.SizeY - 4;
+            _loop.Grid.Set(cx, top, 0, sandId);
+            _loop.Grid.Set(cx + 2, top, 0, sandId);
+            _loop.Grid.Set(cx + 3, top, 0, sandId);
+            _loop.Grid.Set(cx + 2, top + 1, 0, sandId);
+            _view.RefreshAll();
+
+            bool moved = Gravity.Settle(_loop.Grid);
+            _view.RefreshAll();
+            Debug.Log("[sandtest] 重力结算=" + moved);
+        }
+
+        void OnGravitySettled()
+        {
+            if (_view != null)
+                _view.RefreshAll();
         }
 
         void OnPieceLocked(Piece piece)
