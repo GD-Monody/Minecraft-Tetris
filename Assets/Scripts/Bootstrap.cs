@@ -43,6 +43,10 @@ namespace MinecraftTetris
 
             Fluids.Init();
 
+            // 水不写进网格，但攒满一格要能凑成一行；消行时那一格的水也一起清掉。
+            Grid.CountsAsFilled = (x, y, z) => Fluids.AmountAt(x, y, z) >= Fluids.MaxAmount;
+            Grid.OnCellCleared = (x, y, z) => Fluids.ClearCell(x, y, z);
+
             _loop = new GameLoop(SizeX, SizeY, SizeZ, (int)System.DateTime.Now.Ticks);
 
             _view = gameObject.AddComponent<GridView>();

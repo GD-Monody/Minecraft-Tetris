@@ -101,6 +101,22 @@ namespace MinecraftTetris.EditorTools
             }
             Check("图集格子全部在范围内", badTiles == 0);
 
+            // 水算满格：水不写进网格，但攒满一格要能凑成一行
+            Grid.CountsAsFilled = (x, y, z) => x == 2;
+            var gWater = new Grid(3, 3, 1);
+            gWater.Set(0, 0, 0, 1);
+            gWater.Set(1, 0, 0, 1);
+            Check("水攒满的那格能算满", gWater.IsRowFullPublic(0, 0));
+            Grid.CountsAsFilled = null;
+            Check("撤掉注入后这行就不满了", !gWater.IsRowFullPublic(0, 0));
+
+            // 消行时那一格的水要能被清掉
+            var gWater2 = new Grid(4, 4, 1);
+            Fluids.AddSource(gWater2, 1, 0, 0, Fluids.WaterId);
+            bool hadWater = Fluids.AmountAt(1, 0, 0) > 0;
+            Fluids.ClearCell(1, 0, 0);
+            Check("清掉一格水", hadWater && Fluids.AmountAt(1, 0, 0) == 0);
+
             sb.AppendLine();
             sb.AppendLine("通过 " + pass + " 项，失败 " + fail + " 项");
             Debug.Log("[MinecraftTetris 自检]\n" + sb);

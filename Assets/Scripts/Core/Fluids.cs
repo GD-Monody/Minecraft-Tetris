@@ -75,6 +75,15 @@ namespace MinecraftTetris
             return _amount[x, y, z];
         }
 
+        /// <summary>把一格的水直接清掉（消行时用）。</summary>
+        public static void ClearCell(int x, int y, int z)
+        {
+            if (_id == null || x < 0 || y < 0 || z < 0 || x >= _sx || y >= _sy || z >= _sz)
+                return;
+            _amount[x, y, z] = 0;
+            _id[x, y, z] = 0;
+        }
+
         /// <summary>某格是哪种流体（不是流体返回 0）。水不写 grid，渲染要靠这个判断画什么。</summary>
         public static int IdAt(int x, int y, int z)
         {

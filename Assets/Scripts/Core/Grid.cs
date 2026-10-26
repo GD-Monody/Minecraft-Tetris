@@ -11,6 +11,22 @@ namespace MinecraftTetris
         public readonly int SizeY;
         public readonly int SizeZ;
 
+        /// <summary>
+        /// 满行判定里"这一格算不算满"的额外来源。水不写进网格，
+        /// 但攒满一格的应该能凑成一行，所以由 Bootstrap 注入一条判断。
+        /// </summary>
+        public static System.Func<int, int, int, bool> CountsAsFilled;
+
+        /// <summary>某格被消掉时通知一声（用来把那一格的水也清掉）。</summary>
+        public static System.Action<int, int, int> OnCellCleared;
+
+        bool Filled(int x, int y, int z)
+        {
+            if (_cells[x, y, z] != 0)
+                return true;
+            return CountsAsFilled != null && CountsAsFilled(x, y, z);
+        }
+
         // 0 表示空，>0 是方块类型索引 + 1（存 int 方便以后加方块种类）
         readonly int[,,] _cells;
 
@@ -99,7 +115,7 @@ namespace MinecraftTetris
         public bool IsRowFullPublic(int y, int z)
         {
             for (int x = 0; x < SizeX; x++)
-                if (_cells[x, y, z] == 0)
+                if (!Filled(x, y, z))
                     return false;
             return true;
         }
@@ -123,6 +139,9 @@ namespace MinecraftTetris
                 for (int y = 0; y < SizeY; y++)
                     while (IsRowFull(y, z))
                     {
+                        if (OnCellCleared != null)
+                            for (int x = 0; x < SizeX; x++)
+                                OnCellCleared(x, y, z);
                         DropRowAbove(y, z);
                         cleared++;
                     }
@@ -142,7 +161,7 @@ namespace MinecraftTetris
         bool IsRowFull(int y, int z)
         {
             for (int x = 0; x < SizeX; x++)
-                if (_cells[x, y, z] == 0)
+                if (!Filled(x, y, z))
                     return false;
             return true;
         }
@@ -157,6 +176,10 @@ namespace MinecraftTetris
             {
                 while (IsLayerFull(y))
                 {
+                    if (OnCellCleared != null)
+                        for (int x = 0; x < SizeX; x++)
+                            for (int z = 0; z < SizeZ; z++)
+                                OnCellCleared(x, y, z);
                     DropLayerAbove(y);
                     cleared++;
                 }
@@ -168,7 +191,7 @@ namespace MinecraftTetris
         {
             for (int x = 0; x < SizeX; x++)
                 for (int z = 0; z < SizeZ; z++)
-                    if (_cells[x, y, z] == 0)
+                    if (!Filled(x, y, z))
                         return false;
             return true;
         }
