@@ -16,14 +16,6 @@ namespace MinecraftTetris
         public System.Action OnResumeClick;
         public System.Action OnQuitToTitleClick;
 
-        // 调试面板：按 F1 开关，或用 -dev 启动参数直接打开。
-        public bool DevMode;
-        public System.Action OnDevClear;
-        public System.Action OnDevWater;
-        public System.Action OnDevLava;
-        public System.Action OnDevSand;
-        public System.Action OnDevStopFluids;
-
         Font _font;
         int _best;
         int _lastScore;
@@ -169,36 +161,6 @@ namespace MinecraftTetris
             if (Loop.GameOver)
                 DrawGameOverPanel();
 
-            if (DevMode)
-                DrawDevPanel();
-        }
-
-        void DrawDevPanel()
-        {
-            float w = 250f;
-            float h = 252f;
-            var panel = new Rect(Screen.width - w - 16f, 16f, w, h);
-            DrawPanel(panel);
-
-            GUI.Label(new Rect(panel.x, panel.y + 10f, panel.width, 26f), "调试面板（F1 关闭）", _labelCenter);
-
-            float bw = w - 32f;
-            float bx = panel.x + 16f;
-            float by = panel.y + 44f;
-            if (GUI.Button(new Rect(bx, by, bw, 34f), "清场", _btnStyle))
-                if (OnDevClear != null) OnDevClear();
-            by += 40f;
-            if (GUI.Button(new Rect(bx, by, bw, 34f), "放水（中间三格）", _btnStyle))
-                if (OnDevWater != null) OnDevWater();
-            by += 40f;
-            if (GUI.Button(new Rect(bx, by, bw, 34f), "放岩浆（中间三格）", _btnStyle))
-                if (OnDevLava != null) OnDevLava();
-            by += 40f;
-            if (GUI.Button(new Rect(bx, by, bw, 34f), "放沙子（中间三格悬空）", _btnStyle))
-                if (OnDevSand != null) OnDevSand();
-            by += 40f;
-            if (GUI.Button(new Rect(bx, by, bw, 34f), "清掉所有流体", _btnStyle))
-                if (OnDevStopFluids != null) OnDevStopFluids();
         }
 
         void DrawGameOverPanel()
