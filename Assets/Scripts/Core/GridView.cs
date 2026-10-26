@@ -165,7 +165,10 @@ namespace MinecraftTetris
 
         public void SetCell(int x, int y, int z, int blockId)
         {
-            if (blockId <= 0)
+            // 水现在不往 grid 里写方块 id（它是纯视觉的"不完整方块"），
+            // 所以这里要单独看这一格的水量：没有方块但有水，也要画出来。
+            int fAmt = Fluids.AmountAt(x, y, z);
+            if (blockId <= 0 && fAmt <= 0)
             {
                 if (_cells[x, y, z] != null)
                     _cells[x, y, z].SetActive(false);
@@ -187,24 +190,42 @@ namespace MinecraftTetris
                 _cellVisual[x, y, z] = new Vector3(x, y, z);
             }
 
-            int idx = blockId - 1;
+            int idx;
+            Mesh mesh;
+            if (blockId > 0)
+            {
+                idx = blockId - 1;
+                mesh = _meshes[idx];
+            }
+            else
+            {
+                // 这一格没有方块，只有水：按水量选矮一点的 mesh
+                int fid = Fluids.IdAt(x, y, z);
+                if (fid <= 0)
+                {
+                    if (_cells[x, y, z] != null)
+                        _cells[x, y, z].SetActive(false);
+                    return;
+                }
+                idx = fid - 1;
+                mesh = _meshes[idx];
+                Mesh[] fluidLevels;
+                if (_fluidMeshes.TryGetValue(fid, out fluidLevels))
+                {
+                    int lv = fAmt;
+                    if (lv < 0) lv = 0;
+                    if (lv >= fluidLevels.Length) lv = fluidLevels.Length - 1;
+
+                    // 上面还压着水的格子属于水柱内部，画满格；只有最上面那层水才按水位压矮。
+                    if (Fluids.AmountAt(x, y + 1, z) > 0)
+                        lv = Fluids.MaxAmount;
+
+                    mesh = fluidLevels[lv];
+                }
+            }
+
             go.SetActive(true);
             go.transform.position = _cellVisual[x, y, z];
-            Mesh mesh = _meshes[idx];
-            Mesh[] fluidLevels;
-            if (Fluids.IsFluid(blockId) && _fluidMeshes.TryGetValue(blockId, out fluidLevels))
-            {
-                int lv = Fluids.AmountAt(x, y, z);
-                if (lv < 0) lv = 0;
-                if (lv >= fluidLevels.Length) lv = fluidLevels.Length - 1;
-
-                // 上面还压着水的格子属于水柱内部，画满格；只有最上面那层水才按水位压矮。
-                // 否则一列水里每层都矮一截，层与层之间就会漏出空缝，看着全是一格格的空隙。
-                if (Fluids.AmountAt(x, y + 1, z) > 0)
-                    lv = Fluids.MaxAmount;
-
-                mesh = fluidLevels[lv];
-            }
             go.GetComponent<MeshFilter>().sharedMesh = mesh;
             go.GetComponent<MeshRenderer>().sharedMaterial = _materials[idx];
         }

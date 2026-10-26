@@ -75,6 +75,14 @@ namespace MinecraftTetris
             return _amount[x, y, z];
         }
 
+        /// <summary>某格是哪种流体（不是流体返回 0）。水不写 grid，渲染要靠这个判断画什么。</summary>
+        public static int IdAt(int x, int y, int z)
+        {
+            if (_id == null || x < 0 || y < 0 || z < 0 || x >= _sx || y >= _sy || z >= _sz)
+                return 0;
+            return _id[x, y, z];
+        }
+
         /// <summary>旧接口：没流体返回 -1，有的话返回 0~7（8 份算 0，1 份算 7）。</summary>
         public static int DepthAt(int x, int y, int z)
         {
@@ -91,7 +99,6 @@ namespace MinecraftTetris
 
             _amount[x, y, z] = MaxAmount;
             _id[x, y, z] = id;
-            grid.Set(x, y, z, id);
         }
 
         /// <summary>每帧调用；真的推进了一步就返回 true（外面据此重画）。</summary>
@@ -130,8 +137,6 @@ namespace MinecraftTetris
                             _id[x, y - 1, z] = _id[x, y, z];
                             _amount[x, y, z] = 0;
                             _id[x, y, z] = 0;
-                            grid.Set(x, y - 1, z, _id[x, y - 1, z]);
-                            grid.Set(x, y, z, 0);
                             changed = true;
                             continue;
                         }
@@ -169,8 +174,6 @@ namespace MinecraftTetris
                                     _amount[x, y, z] = 0;
                                     _id[x, y, z] = 0;
                                 }
-                                grid.Set(bestX, y, bestZ, _id[bestX, y, bestZ]);
-                                grid.Set(x, y, z, _id[x, y, z]);
                                 changed = true;
                             }
                         }
@@ -229,7 +232,6 @@ namespace MinecraftTetris
                     int put = left < room ? left : room;
                     _amount[x, ty, z] += put;
                     _id[x, ty, z] = ftype;
-                    grid.Set(x, ty, z, ftype);
                     left -= put;
                 }
 
@@ -288,7 +290,6 @@ namespace MinecraftTetris
 
             _amount[x, y, z] += a;
             _id[x, y, z] = id;
-            grid.Set(x, y, z, id);
             return true;
         }
 
