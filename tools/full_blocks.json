@@ -2270,6 +2270,20 @@
   "tint": []
  },
  {
+  "name": "lava",
+  "zh": "lava",
+  "root": "manual",
+  "faces": {
+   "up": "lava_still",
+   "down": "lava_still",
+   "north": "lava_still",
+   "south": "lava_still",
+   "east": "lava_still",
+   "west": "lava_still"
+  },
+  "tint": []
+ },
+ {
   "name": "lime_concrete",
   "zh": "lime_concrete",
   "root": "block",
@@ -4534,6 +4548,20 @@
    "south": "warped_wart_block",
    "east": "warped_wart_block",
    "west": "warped_wart_block"
+  },
+  "tint": []
+ },
+ {
+  "name": "water",
+  "zh": "water",
+  "root": "manual",
+  "faces": {
+   "up": "water_still",
+   "down": "water_still",
+   "north": "water_still",
+   "south": "water_still",
+   "east": "water_still",
+   "west": "water_still"
   },
   "tint": []
  },

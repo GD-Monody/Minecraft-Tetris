@@ -71,6 +71,8 @@ namespace MinecraftTetris
         public event Action<System.Collections.Generic.List<int>, System.Collections.Generic.List<int>> RowsCleared;
         public event Action GameOverEvent;
         public event Action GravitySettled;
+        /// <summary>水/岩浆的流动范围变了，视图层要重画。</summary>
+        public event Action FluidChanged;
         public event Action Spawned;
         /// <summary>方块转了个 90°（true = 顺时针）。视图层用它播旋转动画。</summary>
         public event Action<bool> PieceRotated;
@@ -92,6 +94,10 @@ namespace MinecraftTetris
         {
             if (GameOver)
                 return;
+
+            // 水/岩浆一格一格漫开、一格一格退掉
+            if (Fluids.Tick(Grid, dt))
+                FluidChanged?.Invoke();
 
             if (input.Left)
                 TryMove(-1, 0, 0);
@@ -188,7 +194,13 @@ namespace MinecraftTetris
             {
                 Vector3Int c = Current.WorldCell(i);
                 if (Grid.InBounds(c.x, c.y, c.z))
+                {
                     Grid.Set(c.x, c.y, c.z, blockId);
+                    if (Fluids.IsFluid(blockId))
+                        Fluids.AddSource(Grid, c.x, c.y, c.z, blockId);
+                    else
+                        Fluids.OnSolidPlaced(Grid, c.x, c.y, c.z);
+                }
             }
 
             PieceLocked?.Invoke(Current);

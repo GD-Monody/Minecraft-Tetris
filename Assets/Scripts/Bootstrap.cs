@@ -41,6 +41,8 @@ namespace MinecraftTetris
             SizeZ = GameSettings.SizeZ;
             ApplyDebugSizeArgs();
 
+            Fluids.Init();
+
             _loop = new GameLoop(SizeX, SizeY, SizeZ, (int)System.DateTime.Now.Ticks);
 
             _view = gameObject.AddComponent<GridView>();
@@ -115,6 +117,11 @@ namespace MinecraftTetris
             if (btAt >= 0 && btAt + 1 < btArgv.Length)
                 RunBlockTest(btArgv[btAt + 1]);
 
+            // -fluidtest water|lava：在半空放一汪水/岩浆，看它流下来再漫开
+            int ftAt = System.Array.IndexOf(btArgv, "-fluidtest");
+            if (ftAt >= 0 && ftAt + 1 < btArgv.Length)
+                RunFluidTest(btArgv[ftAt + 1]);
+
             // -shotat N：把自动截图的时间点从默认 6 秒改成 N 秒（验证落定方块等需要跑够时间）
             var argv = System.Environment.GetCommandLineArgs();
             int shotArg = System.Array.IndexOf(argv, "-shotat");
@@ -127,6 +134,7 @@ namespace MinecraftTetris
             _loop.Spawned += OnSpawned;
             _loop.PieceRotated += OnPieceRotated;
             _loop.GravitySettled += OnGravitySettled;
+            _loop.FluidChanged += OnFluidChanged;
 
             _view.RefreshAll();
             _view.SnapPiece(_loop.Current);
@@ -244,6 +252,7 @@ namespace MinecraftTetris
         void StartNewGame()
         {
             GameSave.Clear();
+            Fluids.Reset();
             _loop.Restart();
             _particles.Clear();
             _paused = false;
@@ -259,6 +268,7 @@ namespace MinecraftTetris
 
         void ContinueGame()
         {
+            Fluids.Reset();
             if (!GameSave.TryLoad(_loop))
             {
                 StartNewGame();
@@ -372,6 +382,28 @@ namespace MinecraftTetris
             Debug.Log("[sandtest] 重力结算=" + moved);
         }
 
+        void RunFluidTest(string which)
+        {
+            if (_loop == null || _view == null)
+                return;
+            int id = which == "lava" ? Fluids.LavaId : Fluids.WaterId;
+            if (id <= 0)
+            {
+                Debug.Log("[fluidtest] 没找到 " + which);
+                return;
+            }
+            int cx = _loop.Grid.SizeX / 2;
+            int cz = _loop.Grid.SizeZ / 2;
+            int top = _loop.Grid.SizeY - 5;
+            _loop.Restart();                       // 先清场，免得旧存档把地方占满看不见水
+            Fluids.Reset();
+            _loop.Grid.Set(cx, top, cz, id);
+            Fluids.AddSource(_loop.Grid, cx, top, cz, id);
+            _view.SnapPiece(_loop.Current);
+            _view.RefreshAll();
+            Debug.Log("[fluidtest] " + which + " id=" + id + " at " + cx + "," + top + "," + cz);
+        }
+
         void RunBlockTest(string name)
         {
             int id = -1;
@@ -407,6 +439,12 @@ namespace MinecraftTetris
                 _view.RefreshAll();
             }
             Debug.Log("[gravity] 落定后有方块下移");
+        }
+
+        void OnFluidChanged()
+        {
+            if (_view != null)
+                _view.RefreshAll();
         }
 
         void OnPieceLocked(Piece piece)

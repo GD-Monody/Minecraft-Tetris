@@ -42,6 +42,9 @@ def main():
     # 需要染色的贴图：草方块顶面是灰度图，游戏里靠 biome 上色（平原约 #91BD59）。
     # 我们不做 biome，直接乘一个固定的草色，否则草方块顶面会是灰的。
     GRASS_TINT = (0.57, 0.74, 0.35)
+    # 水同理：water_still 是灰度图，游戏里靠 biome 水色（约 #3F76E4）染色。
+    # 不染的话水流出来是灰白的，看着不像水。岩浆是彩色图，不能染。
+    WATER_TINT = (0.25, 0.46, 0.89)
     tint_pngs = set()
     for b in blocks:
         for face in b.get("tint") or []:
@@ -73,6 +76,12 @@ def main():
             f[:, :, 0] *= GRASS_TINT[0]
             f[:, :, 1] *= GRASS_TINT[1]
             f[:, :, 2] *= GRASS_TINT[2]
+            arr = np.clip(f, 0, 255).astype(np.uint8)
+        elif png.startswith("water_"):
+            f = arr.astype(np.float32)
+            f[:, :, 0] *= WATER_TINT[0]
+            f[:, :, 1] *= WATER_TINT[1]
+            f[:, :, 2] *= WATER_TINT[2]
             arr = np.clip(f, 0, 255).astype(np.uint8)
         arr = np.pad(arr, ((PAD, PAD), (PAD, PAD), (0, 0)), mode="edge")
         atlas.paste(Image.fromarray(arr), ((i % COLS) * CELL, (i // COLS) * CELL))

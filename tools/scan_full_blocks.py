@@ -31,6 +31,21 @@ FACE_OVERRIDES = {
     },
 }
 
+# 流体方块：MC 里没有 cube 模型（model 里只写了个粒子纹理），
+# 也没法从模型推六面，所以整条链路手动指定，直接进候选。
+MANUAL_BLOCKS = {
+    'water': {
+        'up': 'water_still', 'down': 'water_still',
+        'north': 'water_still', 'south': 'water_still',
+        'east': 'water_still', 'west': 'water_still',
+    },
+    'lava': {
+        'up': 'lava_still', 'down': 'lava_still',
+        'north': 'lava_still', 'south': 'lava_still',
+        'east': 'lava_still', 'west': 'lava_still',
+    },
+}
+
 CUBE_ROOTS = {
     'cube_all', 'cube', 'cube_column', 'cube_column_horizontal',
     'cube_bottom_top', 'cube_top', 'cube_directional',
@@ -189,6 +204,12 @@ def main():
 
     candidates = []
     for name in models:
+        if name in MANUAL_BLOCKS:
+            candidates.append({
+                'name': name, 'zh': zh_name(name), 'root': 'manual',
+                'faces': dict(MANUAL_BLOCKS[name]), 'tint': [],
+            })
+            continue
         if any(w in name for w in EXCLUDE_WORDS):
             continue
         if drop_variant(name):
