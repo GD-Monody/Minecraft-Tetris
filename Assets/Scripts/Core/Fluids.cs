@@ -231,6 +231,7 @@ namespace MinecraftTetris
 
                 // 向下：水位不涨，可以一直落
                 var below = new Vector3Int(p.x, p.y - 1, p.z);
+                bool wentDown = false;
                 if (CanFlowInto(grid, below.x, below.y, below.z))
                 {
                     int bd;
@@ -239,8 +240,14 @@ namespace MinecraftTetris
                         _depth[below] = d;
                         _ids[below] = id;
                         _queue.Enqueue(below);
+                        wentDown = true;
                     }
                 }
+
+                // MC 里水柱下落途中不往两边铺，只有落不下去了（落地或被挡住）才横向流。
+                // 不这么写的话，水从高处掉下来的每一层都会横着铺一圈，看着像一层层的水膜。
+                if (wentDown)
+                    continue;
 
                 // 水平：水位 +1，超过 7 就不再往外流
                 if (d >= MaxSpread)

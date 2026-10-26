@@ -24,6 +24,9 @@ namespace MinecraftTetris
         Mesh[] _meshes;
         Material[] _materials;
 
+        /// <summary>流体（水/岩浆）按水位分档的矮方块 mesh：blockId -> [level0..levelMax]。</summary>
+        readonly Dictionary<int, Mesh[]> _fluidMeshes = new Dictionary<int, Mesh[]>();
+
         float _pieceYaw;
         float _pieceYawTarget;
 
@@ -70,7 +73,26 @@ namespace MinecraftTetris
                 BlockDef def = BlockCatalog.Blocks[i];
                 _meshes[i] = BlockMesh.Build(def);
                 _materials[i] = BlockMesh.GetMaterial(def);
+
+                // 流体另外做几档高度的矮方块：水位越浅，水面越低，才像 MC 里流过来的水
+                if (Fluids.IsFluid(i + 1))
+                {
+                    var levels = new Mesh[Fluids.MaxSpread + 1];
+                    for (int lv = 0; lv <= Fluids.MaxSpread; lv++)
+                        levels[lv] = BlockMesh.BuildFluid(def, FluidHeight(lv));
+                    _fluidMeshes[i + 1] = levels;
+                }
             }
+        }
+
+        /// <summary>水位 0 是水源（满格），之后每级矮一点，到最外圈只剩一层薄水面。</summary>
+        static float FluidHeight(int level)
+        {
+            if (level <= 0)
+                return 1f;
+            // 每级浅一点，但不至于一上来就薄成一片：最外圈还剩 0.35 左右，看得出是水面
+            float t = 1f - level * 0.09f;
+            return Mathf.Clamp(t, 0.35f, 1f);
         }
 
         int CountNullMaterials()
@@ -171,7 +193,16 @@ namespace MinecraftTetris
             int idx = blockId - 1;
             go.SetActive(true);
             go.transform.position = _cellVisual[x, y, z];
-            go.GetComponent<MeshFilter>().sharedMesh = _meshes[idx];
+            Mesh mesh = _meshes[idx];
+            Mesh[] fluidLevels;
+            if (Fluids.IsFluid(blockId) && _fluidMeshes.TryGetValue(blockId, out fluidLevels))
+            {
+                int lv = Fluids.DepthAt(x, y, z);
+                if (lv < 0) lv = 0;
+                if (lv >= fluidLevels.Length) lv = fluidLevels.Length - 1;
+                mesh = fluidLevels[lv];
+            }
+            go.GetComponent<MeshFilter>().sharedMesh = mesh;
             go.GetComponent<MeshRenderer>().sharedMaterial = _materials[idx];
         }
 

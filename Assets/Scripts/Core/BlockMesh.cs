@@ -128,6 +128,67 @@ namespace MinecraftTetris
             return mesh;
         }
 
+        /// <summary>
+        /// 流体专用的方块：底还在格子底部，顶面按高度往下压。
+        /// MC 里流动水的水面会随水位（离水源的距离）变低，水才像"一滩流过来的水"，
+        /// 而不是一堆齐平的蓝方块。height 是 0~1 的占比。
+        /// </summary>
+        public static Mesh BuildFluid(BlockDef def, float height)
+        {
+            float top = -Half + Mathf.Clamp01(height) * (2f * Half);
+
+            var verts = new List<Vector3>(24);
+            var uvs = new List<Vector2>(24);
+            var tris = new List<int>(36);
+
+            // 上面（+y）——水面
+            Quad(verts, uvs, tris, def.Up,
+                new Vector3(-Half, top, Half),
+                new Vector3(Half, top, Half),
+                new Vector3(Half, top, -Half),
+                new Vector3(-Half, top, -Half));
+
+            // 下面（-y）
+            Quad(verts, uvs, tris, def.Down,
+                new Vector3(-Half, -Half, -Half),
+                new Vector3(Half, -Half, -Half),
+                new Vector3(Half, -Half, Half),
+                new Vector3(-Half, -Half, Half));
+
+            // 四面：底在格子底部，顶在 top
+            Quad(verts, uvs, tris, def.South,
+                new Vector3(-Half, -Half, Half),
+                new Vector3(Half, -Half, Half),
+                new Vector3(Half, top, Half),
+                new Vector3(-Half, top, Half));
+
+            Quad(verts, uvs, tris, def.North,
+                new Vector3(Half, -Half, -Half),
+                new Vector3(-Half, -Half, -Half),
+                new Vector3(-Half, top, -Half),
+                new Vector3(Half, top, -Half));
+
+            Quad(verts, uvs, tris, def.East,
+                new Vector3(Half, -Half, Half),
+                new Vector3(Half, -Half, -Half),
+                new Vector3(Half, top, -Half),
+                new Vector3(Half, top, Half));
+
+            Quad(verts, uvs, tris, def.West,
+                new Vector3(-Half, -Half, -Half),
+                new Vector3(-Half, -Half, Half),
+                new Vector3(-Half, top, Half),
+                new Vector3(-Half, top, -Half));
+
+            Mesh mesh = new Mesh();
+            mesh.SetVertices(verts);
+            mesh.SetUVs(0, uvs);
+            mesh.SetTriangles(tris, 0);
+            mesh.RecalculateNormals();
+            mesh.RecalculateTangents();
+            return mesh;
+        }
+
         static void Quad(List<Vector3> v, List<Vector2> uv, List<int> t, Tile tile,
                          Vector3 a, Vector3 b, Vector3 c, Vector3 d)
         {
