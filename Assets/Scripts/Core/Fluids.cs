@@ -196,12 +196,33 @@ namespace MinecraftTetris
             {
                 int bid = _id[x, y - 1, z];
                 int ba = _amount[x, y - 1, z];
-                if (TryPush(grid, x, y + 1, z, bid, ba))
+                bool placed = false;
+
+                // 1) 方块正上方最近的一个空格
+                for (int ty = y + 1; ty < _sy && !placed; ty++)
                 {
-                    _amount[x, y - 1, z] = 0;
-                    _id[x, y - 1, z] = 0;
-                    Debug.Log("[fluids] 流体被方块挤到上面: " + x + "," + y + "," + z);
+                    if (grid.Get(x, ty, z) == 0)
+                        placed = TryPush(grid, x, ty, z, bid, ba);
                 }
+
+                // 2) 正上方都堵着，往侧面找
+                if (!placed)
+                {
+                    if (TryPush(grid, x - 1, y, z, bid, ba)) placed = true;
+                    else if (TryPush(grid, x + 1, y, z, bid, ba)) placed = true;
+                    else if (TryPush(grid, x, y, z - 1, bid, ba)) placed = true;
+                    else if (TryPush(grid, x, y, z + 1, bid, ba)) placed = true;
+                }
+
+                // 3) 下面这格一律清空，不留半格水占位
+                _amount[x, y - 1, z] = 0;
+                _id[x, y - 1, z] = 0;
+                grid.Set(x, y - 1, z, 0);
+
+                if (placed)
+                    Debug.Log("[fluids] 方块下面的水挪到上方: " + x + "," + y + "," + z);
+                else
+                    Debug.Log("[fluids] 方块下面的水四面都堵死，丢掉: " + x + "," + y + "," + z);
             }
 
             int a = _amount[x, y, z];
