@@ -77,8 +77,8 @@ namespace MinecraftTetris
                 // 流体另外做几档高度的矮方块：水位越浅，水面越低，才像 MC 里流过来的水
                 if (Fluids.IsFluid(i + 1))
                 {
-                    var levels = new Mesh[Fluids.MaxSpread + 1];
-                    for (int lv = 0; lv <= Fluids.MaxSpread; lv++)
+                    var levels = new Mesh[Fluids.MaxAmount + 1];
+                    for (int lv = 0; lv <= Fluids.MaxAmount; lv++)
                         levels[lv] = BlockMesh.BuildFluid(def, FluidHeight(lv));
                     _fluidMeshes[i + 1] = levels;
                 }
@@ -86,13 +86,10 @@ namespace MinecraftTetris
         }
 
         /// <summary>水位 0 是水源（满格），之后每级矮一点，到最外圈只剩一层薄水面。</summary>
-        static float FluidHeight(int level)
+        static float FluidHeight(int amount)
         {
-            if (level <= 0)
-                return 1f;
-            // 每级浅一点，但不至于一上来就薄成一片：最外圈还剩 0.35 左右，看得出是水面
-            float t = 1f - level * 0.09f;
-            return Mathf.Clamp(t, 0.35f, 1f);
+            // 8 份 = 满格；摊开以后按份数给高度，1 份就是 1/8 薄薄一层
+            return Mathf.Clamp01((float)amount / Fluids.MaxAmount);
         }
 
         int CountNullMaterials()
@@ -197,14 +194,14 @@ namespace MinecraftTetris
             Mesh[] fluidLevels;
             if (Fluids.IsFluid(blockId) && _fluidMeshes.TryGetValue(blockId, out fluidLevels))
             {
-                int lv = Fluids.DepthAt(x, y, z);
+                int lv = Fluids.AmountAt(x, y, z);
                 if (lv < 0) lv = 0;
                 if (lv >= fluidLevels.Length) lv = fluidLevels.Length - 1;
 
                 // 上面还压着水的格子属于水柱内部，画满格；只有最上面那层水才按水位压矮。
                 // 否则一列水里每层都矮一截，层与层之间就会漏出空缝，看着全是一格格的空隙。
-                if (Fluids.DepthAt(x, y + 1, z) >= 0)
-                    lv = 0;
+                if (Fluids.AmountAt(x, y + 1, z) > 0)
+                    lv = Fluids.MaxAmount;
 
                 mesh = fluidLevels[lv];
             }

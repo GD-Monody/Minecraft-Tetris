@@ -1,56 +1,37 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace MinecraftTetris
 {
     /// <summary>
-    /// 水和岩浆的流动，按 Minecraft 现在的规则来（不是早期那种"无限蔓延"）。
+    /// 水和岩浆：定体积模型（不是"无限蔓延"）。
     ///
-    /// MC 的水流规则（这里实现的是核心那几条）：
-    /// - 每个流体格有个"水位"：0 是水源，1~7 是一格一格流出去的水，数字越大离源越远。
-    /// - 水平每流一格水位 +1，到 7 就不再往外流 —— 所以一片水最多往外铺 7 格，
-    ///   不会像早期版本那样顺着地形一路铺到天边。
-    /// - 向下流不涨水位：水从高处落下来，落地以后还能再往外铺 7 格。
-    /// - 水不会往上流。
-    /// - 水源被方块压住、或者水路被截断时，没源供水的那部分会逐格退掉（干涸）。
-    ///
-    /// 实现方式：每次"应不应该有水"变化时，从所有水源做一遍多源 BFS 算出每格的水位，
-    /// 再和场上的实际格子对一遍：缺的排队填、多的排队退，每 tick 只填几格退几格，
-    /// 看起来就是水一格一格漫过去、一格一格退回来。
+    /// 每格流体按"份"记，一格最多 8 份：
+    /// - 一满格方块 = 8 份；摊开以后 1 份就是 1/8 高的一层薄水。
+    /// - 每 0.1 秒推进一次：能往下落就整格落下去（份数不变），落不下去就在四邻之间均分
+    ///   （把两边差的一半分过去），所以总份数始终不变，水不会无中生有。
+    /// - 画的时候按份数给高度，8 份满格、1 份就薄薄一层，看起来就是水摊开变浅。
     /// </summary>
     public static class Fluids
     {
+        /// <summary>一格最多 8 份（8 份 = 满格）。</summary>
+        public const int MaxAmount = 8;
+
+        /// <summary>兼容旧代码：8 份算 level 0，1 份算 level 7。</summary>
+        public const int MaxSpread = 7;
+
+        const float TickInterval = 0.1f;
+
         static int _waterId = -1;
         static int _lavaId = -1;
 
-        /// <summary>水平最多流 7 格（MC 的 level 1~7）。</summary>
-        public const int MaxSpread = 7;
-
-        const float FillPerSecond = 24f;   // 每秒最多铺几格（看起来是漫过去）
-        const float DrainPerSecond = 12f;  // 每秒最多退几格
-
-        struct Source
-        {
-            public int X, Y, Z;
-            public int Id;
-        }
-
-        static readonly List<Source> _sources = new List<Source>();
-
-        // 按 MC 规则算出来的"这里应该是几级水"（0=源，1~7=流动水）
-        static readonly Dictionary<Vector3Int, int> _depth = new Dictionary<Vector3Int, int>();
-        static readonly Dictionary<Vector3Int, int> _ids = new Dictionary<Vector3Int, int>();
-
-        static readonly List<Vector3Int> _cellsToFill = new List<Vector3Int>();
-        static readonly List<Vector3Int> _cellsToDrain = new List<Vector3Int>();
-        static float _fillCredit, _drainCredit;
-
-        static readonly Queue<Vector3Int> _queue = new Queue<Vector3Int>();
+        static int[,,] _amount;   // 每格几份（0 表示没有流体）
+        static int[,,] _id;       // 每格是哪种流体（0 表示没有）
+        static int _sx, _sy, _sz;
+        static float _timer;
 
         public static int WaterId { get { return _waterId; } }
         public static int LavaId { get { return _lavaId; } }
 
-        /// <summary>从方块表里认出水和岩浆的编号（名字从 jar 里来，永远是 water / lava）。</summary>
         public static void Init()
         {
             _waterId = FindByName("water");
@@ -58,122 +39,141 @@ namespace MinecraftTetris
             Debug.Log("[fluids] water=" + _waterId + " lava=" + _lavaId);
         }
 
-        static int FindByName(string name)
-        {
-            for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
-                if (BlockCatalog.Blocks[i].Name == name)
-                    return i + 1;
-            return -1;
-        }
-
         public static bool IsFluid(int blockId)
         {
             return blockId > 0 && (blockId == _waterId || blockId == _lavaId);
         }
 
-        /// <summary>这个格子的水位（0 是源，1~7 是流动水，-1 表示这格不该有水）。给渲染用。</summary>
-        /// <summary>这一格是哪种流体（水/岩浆的 blockId），不是流体返回 0。</summary>
-        static int IdAt(int x, int y, int z)
-        {
-            int id;
-            return _ids.TryGetValue(new Vector3Int(x, y, z), out id) ? id : 0;
-        }
-
-        public static int DepthAt(int x, int y, int z)
-        {
-            int d;
-            return _depth.TryGetValue(new Vector3Int(x, y, z), out d) ? d : -1;
-        }
-
         public static void Reset()
         {
-            _sources.Clear();
-            _depth.Clear();
-            _ids.Clear();
-            _cellsToFill.Clear();
-            _cellsToDrain.Clear();
-            _fillCredit = 0f;
-            _drainCredit = 0f;
+            _amount = null;
+            _id = null;
+            _timer = 0f;
         }
 
-        /// <summary>流体方块落定：登记成新的水源，并立刻重算一次流动范围。</summary>
-        public static void AddSource(Grid grid, int x, int y, int z, int blockId)
+        static void Ensure(Grid grid)
         {
-            _sources.Add(new Source { X = x, Y = y, Z = z, Id = blockId });
-            Rebuild(grid);
+            if (_amount != null && _sx == grid.SizeX && _sy == grid.SizeY && _sz == grid.SizeZ)
+                return;
+
+            _sx = grid.SizeX;
+            _sy = grid.SizeY;
+            _sz = grid.SizeZ;
+            _amount = new int[_sx, _sy, _sz];
+            _id = new int[_sx, _sy, _sz];
         }
 
-        /// <summary>
-        /// 固体方块压到某个格子上：这一格原来有流体的话，把它顶到上面一格去（被方块挤起来，体积不丢），
-        /// 顶不上去（上方也是方块 / 顶到场地边界）才让它消失，然后重算整片。
-        /// </summary>
-        public static void OnSolidPlaced(Grid grid, int x, int y, int z)
+        static bool InBounds(int x, int y, int z)
         {
-            int id = IdAt(x, y, z);
-
-            // 被压这一格原来的源要删掉（它已经不是源的位置了）
-            for (int i = _sources.Count - 1; i >= 0; i--)
-            {
-                Source s0 = _sources[i];
-                if (s0.X == x && s0.Y == y && s0.Z == z)
-                    _sources.RemoveAt(i);
-            }
-
-            bool moved = false;
-            if (id > 0)
-            {
-                int ux = x, uy = y + 1, uz = z;
-                if (CanFlowInto(grid, ux, uy, uz))
-                {
-                    // 挤到上面一格，并且当水源继续往外流（被方块挡住，只会往两边走）
-                    _sources.Add(new Source { X = ux, Y = uy, Z = uz, Id = id });
-                    moved = true;
-                }
-            }
-
-            Rebuild(grid);
-            if (moved)
-                Debug.Log("[fluids] 流体被方块顶上去了: " + x + "," + y + "," + z);
-            else if (id > 0)
-                Debug.Log("[fluids] 流体被压没（上方放不下）: " + x + "," + y + "," + z);
+            return _amount != null && x >= 0 && y >= 0 && z >= 0 && x < _sx && y < _sy && z < _sz;
         }
 
-        /// <summary>每帧推进：填几格、退几格。返回 true 表示画面需要刷新。</summary>
+        /// <summary>这一格有几份流体（0~8）。渲染用。</summary>
+        public static int AmountAt(int x, int y, int z)
+        {
+            if (!InBounds(x, y, z)) return 0;
+            return _amount[x, y, z];
+        }
+
+        /// <summary>旧接口：没流体返回 -1，有的话返回 0~7（8 份算 0，1 份算 7）。</summary>
+        public static int DepthAt(int x, int y, int z)
+        {
+            int a = AmountAt(x, y, z);
+            if (a <= 0) return -1;
+            return Mathf.Clamp(MaxAmount - a, 0, MaxSpread);
+        }
+
+        /// <summary>往这一格放一满格流体（8 份）。</summary>
+        public static void AddSource(Grid grid, int x, int y, int z, int id)
+        {
+            Ensure(grid);
+            if (!InBounds(x, y, z)) return;
+
+            _amount[x, y, z] = MaxAmount;
+            _id[x, y, z] = id;
+            grid.Set(x, y, z, id);
+        }
+
+        /// <summary>每帧调用；真的推进了一步就返回 true（外面据此重画）。</summary>
         public static bool Tick(Grid grid, float dt)
+        {
+            Ensure(grid);
+            if (_amount == null) return false;
+
+            _timer += dt;
+            if (_timer < TickInterval) return false;
+            _timer = 0f;
+
+            bool changed = Step(grid);
+            return changed;
+        }
+
+        static bool Step(Grid grid)
         {
             bool changed = false;
 
-            if (_cellsToFill.Count > 0)
+            // 从下往上扫：先把能落下去的都落下去，落不下去的再往两边分
+            for (int y = 0; y < _sy; y++)
             {
-                _fillCredit += FillPerSecond * dt;
-                while (_fillCredit >= 1f && _cellsToFill.Count > 0)
+                for (int x = 0; x < _sx; x++)
                 {
-                    _fillCredit -= 1f;
-                    int idx = _cellsToFill.Count - 1;
-                    Vector3Int cell = _cellsToFill[idx];
-                    _cellsToFill.RemoveAt(idx);
-                    if (grid.IsFree(cell.x, cell.y, cell.z))
+                    for (int z = 0; z < _sz; z++)
                     {
-                        grid.Set(cell.x, cell.y, cell.z, WantedId(cell));
-                        changed = true;
-                    }
-                }
-            }
+                        int a = _amount[x, y, z];
+                        if (a <= 0)
+                            continue;
 
-            if (_cellsToDrain.Count > 0)
-            {
-                _drainCredit += DrainPerSecond * dt;
-                while (_drainCredit >= 1f && _cellsToDrain.Count > 0)
-                {
-                    _drainCredit -= 1f;
-                    int idx = _cellsToDrain.Count - 1;
-                    Vector3Int cell = _cellsToDrain[idx];
-                    _cellsToDrain.RemoveAt(idx);
-                    int cur = grid.Get(cell.x, cell.y, cell.z);
-                    if (IsFluid(cur))
-                    {
-                        grid.Set(cell.x, cell.y, cell.z, 0);
-                        changed = true;
+                        // 1) 正下方是空的：整格落下去（份数不变）
+                        if (y > 0 && _amount[x, y - 1, z] == 0 && grid.Get(x, y - 1, z) == 0)
+                        {
+                            _amount[x, y - 1, z] = a;
+                            _id[x, y - 1, z] = _id[x, y, z];
+                            _amount[x, y, z] = 0;
+                            _id[x, y, z] = 0;
+                            grid.Set(x, y - 1, z, _id[x, y - 1, z]);
+                            grid.Set(x, y, z, 0);
+                            changed = true;
+                            continue;
+                        }
+
+                        // 2) 落不下去：在四个邻居里找份数最少的那格，把差的一半分过去
+                        int bestX = -1, bestZ = -1, best = a;
+                        for (int k = 0; k < 4; k++)
+                        {
+                            int nx = x + (k == 0 ? -1 : k == 1 ? 1 : 0);
+                            int nz = z + (k == 2 ? -1 : k == 3 ? 1 : 0);
+                            if (!InBounds(nx, y, nz))
+                                continue;
+                            int cell = grid.Get(nx, y, nz);
+                            if (cell != 0 && cell != _id[x, y, z])
+                                continue;   // 那边是方块，进不去
+                            int na = _amount[nx, y, nz];
+                            if (na < best)
+                            {
+                                best = na;
+                                bestX = nx;
+                                bestZ = nz;
+                            }
+                        }
+
+                        if (bestX >= 0)
+                        {
+                            int transfer = (a - best + 1) / 2;
+                            if (transfer > 0)
+                            {
+                                _amount[bestX, y, bestZ] += transfer;
+                                _id[bestX, y, bestZ] = _id[x, y, z];
+                                _amount[x, y, z] -= transfer;
+                                if (_amount[x, y, z] <= 0)
+                                {
+                                    _amount[x, y, z] = 0;
+                                    _id[x, y, z] = 0;
+                                }
+                                grid.Set(bestX, y, bestZ, _id[bestX, y, bestZ]);
+                                grid.Set(x, y, z, _id[x, y, z]);
+                                changed = true;
+                            }
+                        }
                     }
                 }
             }
@@ -181,119 +181,52 @@ namespace MinecraftTetris
             return changed;
         }
 
-        static int WantedId(Vector3Int cell)
-        {
-            int id;
-            return _ids.TryGetValue(cell, out id) ? id : _waterId;
-        }
-
-        /// <summary>从所有水源重算"按 MC 规则应该有哪些流体格、各是几级水"。</summary>
-        public static void Rebuild(Grid grid)
-        {
-            _depth.Clear();
-            _ids.Clear();
-
-            for (int i = 0; i < _sources.Count; i++)
-                SpreadFrom(grid, _sources[i]);
-
-            // 和场上实际格子对一遍：缺的排队填，多的排队退
-            _cellsToFill.Clear();
-            _cellsToDrain.Clear();
-
-            foreach (KeyValuePair<Vector3Int, int> kv in _depth)
-            {
-                Vector3Int cell = kv.Key;
-                int cur = grid.Get(cell.x, cell.y, cell.z);
-                if (cur == 0)
-                    _cellsToFill.Add(cell);
-                else if (IsFluid(cur) && cur != WantedId(cell))
-                    _cellsToDrain.Add(cell);   // 水和岩浆撞上了：先把旧的退掉，下一轮再填
-            }
-
-            for (int x = 0; x < grid.SizeX; x++)
-                for (int y = 0; y < grid.SizeY; y++)
-                    for (int z = 0; z < grid.SizeZ; z++)
-                    {
-                        int cur = grid.Get(x, y, z);
-                        if (!IsFluid(cur))
-                            continue;
-                        var cell = new Vector3Int(x, y, z);
-                        if (!_depth.ContainsKey(cell) && !_cellsToDrain.Contains(cell))
-                            _cellsToDrain.Add(cell);
-                    }
-        }
-
-        /// <summary>水能流过的地方：空格，或者本来就是一格流体（水可以接着往前铺）。</summary>
-        static bool CanFlowInto(Grid grid, int x, int y, int z)
-        {
-            if (!grid.InBounds(x, y, z))
-                return false;
-            int cur = grid.Get(x, y, z);
-            return cur == 0 || IsFluid(cur);
-        }
-
         /// <summary>
-        /// 从水源按 MC 的水位规则铺开：向下不涨水位，水平每格 +1，涨到 7 就停。
-        /// 多源一起算时取"更近的那个源"的水位（这就是 MC 里水流合并的逻辑）。
+        /// 方块压到某个格子上：这一格原来的流体顶到上面一格去（份数不变，被挤起来），
+        /// 上面也是方块或者到顶了才真消失。
         /// </summary>
-        static void SpreadFrom(Grid grid, Source src)
+        public static void OnSolidPlaced(Grid grid, int x, int y, int z)
         {
-            var start = new Vector3Int(src.X, src.Y, src.Z);
-            int startDepth;
-            if (_depth.TryGetValue(start, out startDepth) && startDepth <= 0)
-                return;   // 这里已经有更近的水源了
-            _depth[start] = 0;
-            _ids[start] = src.Id;
-            _queue.Clear();
-            _queue.Enqueue(start);
+            Ensure(grid);
+            if (!InBounds(x, y, z)) return;
 
-            while (_queue.Count > 0)
+            int a = _amount[x, y, z];
+            if (a <= 0)
+                return;
+
+            int id = _id[x, y, z];
+            bool moved = false;
+
+            if (y + 1 < _sy)
             {
-                Vector3Int p = _queue.Dequeue();
-                int d = _depth[p];
-                int id = _ids[p];
-
-                // 向下：水位不涨，可以一直落
-                var below = new Vector3Int(p.x, p.y - 1, p.z);
-                bool wentDown = false;
-                if (CanFlowInto(grid, below.x, below.y, below.z))
+                int up = grid.Get(x, y + 1, z);
+                if ((up == 0 || up == id) && _amount[x, y + 1, z] + a <= MaxAmount * 2)
                 {
-                    int bd;
-                    if (!_depth.TryGetValue(below, out bd) || bd > d)
-                    {
-                        _depth[below] = d;
-                        _ids[below] = id;
-                        _queue.Enqueue(below);
-                        wentDown = true;
-                    }
-                }
-
-                // MC 里水柱下落途中不往两边铺，只有落不下去了（落地或被挡住）才横向流。
-                // 不这么写的话，水从高处掉下来的每一层都会横着铺一圈，看着像一层层的水膜。
-                if (wentDown)
-                    continue;
-
-                // 水平：水位 +1，超过 7 就不再往外流
-                if (d >= MaxSpread)
-                    continue;
-
-                int nd = d + 1;
-                for (int i = 0; i < 4; i++)
-                {
-                    int nx = p.x + (i == 0 ? 1 : i == 1 ? -1 : 0);
-                    int nz = p.z + (i == 2 ? 1 : i == 3 ? -1 : 0);
-                    if (!CanFlowInto(grid, nx, p.y, nz))
-                        continue;
-                    var n = new Vector3Int(nx, p.y, nz);
-                    int old;
-                    if (!_depth.TryGetValue(n, out old) || old > nd)
-                    {
-                        _depth[n] = nd;
-                        _ids[n] = id;
-                        _queue.Enqueue(n);
-                    }
+                    _amount[x, y + 1, z] += a;
+                    _id[x, y + 1, z] = id;
+                    grid.Set(x, y + 1, z, id);
+                    moved = true;
                 }
             }
+
+            _amount[x, y, z] = 0;
+            _id[x, y, z] = 0;
+
+            if (moved)
+                Debug.Log("[fluids] 流体被方块顶上去了: " + x + "," + y + "," + z);
+            else
+                Debug.Log("[fluids] 流体被压没（上方放不下）: " + x + "," + y + "," + z);
+        }
+
+        static int FindByName(string name)
+        {
+            var blocks = BlockCatalog.Blocks;
+            for (int i = 0; i < blocks.Length; i++)
+            {
+                if (blocks[i].Name == name)
+                    return i + 1;
+            }
+            return -1;
         }
     }
 }
