@@ -172,13 +172,20 @@ namespace MinecraftTetris
                             }
                         }
 
-                        // 2) 本格没满就一律不往两边流。以前是"把差的一半分给最少的那个邻居"，
-                        //    结果水永远攒不满一格，全被摊成一份一份的薄片。
-                        if (a < MaxAmount)
+                        // 2) 横向只从「已经落到底」的水往外铺：下方是方块、或者已经是最底层。
+                        //    这样叠着的水只有最底那一层会往旁边散，上面几层靠往下落来补。
+                        bool resting = (y == 0) || grid.Get(x, y - 1, z) != 0;
+                        if (!resting)
                             continue;
 
-                        // 3) 满了才往四邻流，一个 tick 只流 1 份（MC 的水是逐格降一级）
-                        int bestX = -1, bestZ = -1, best = a;
+                        // 3) 吸附：邻居最多涨到本格的一半。挑最少、且比一半还少的那个邻居，
+                        //    一个 tick 只给 1 份 —— 水是慢慢渗开的，不是一下摊平。
+                        //    1 份的水一半是 0，谁都满足不了，所以边上的薄水就停在那儿了。
+                        int half = a / 2;
+                        if (half <= 0)
+                            continue;
+
+                        int bestX = -1, bestZ = -1, best = half;
                         for (int k = 0; k < 4; k++)
                         {
                             int nx = x + (k == 0 ? -1 : k == 1 ? 1 : 0);
@@ -199,19 +206,15 @@ namespace MinecraftTetris
 
                         if (bestX >= 0)
                         {
-                            int transfer = 1;
-                            if (a > 0)
+                            _amount[bestX, y, bestZ] += 1;
+                            _id[bestX, y, bestZ] = _id[x, y, z];
+                            _amount[x, y, z] = a - 1;
+                            if (_amount[x, y, z] <= 0)
                             {
-                                _amount[bestX, y, bestZ] += transfer;
-                                _id[bestX, y, bestZ] = _id[x, y, z];
-                                _amount[x, y, z] -= transfer;
-                                if (_amount[x, y, z] <= 0)
-                                {
-                                    _amount[x, y, z] = 0;
-                                    _id[x, y, z] = 0;
-                                }
-                                changed = true;
+                                _amount[x, y, z] = 0;
+                                _id[x, y, z] = 0;
                             }
+                            changed = true;
                         }
                     }
                 }
@@ -221,9 +224,9 @@ namespace MinecraftTetris
         }
 
         /// <summary>
-        /// 方块落定在某一格：把这一格原来的流体清掉（重叠即消失）。
-        /// 注意这里**不再**把方块下方的水搬到上方 —— 水不占格子，方块落下去就是穿过它，
-        /// 水留在原处就行；之前那套搬运会把整条水柱"吸"到方块头上，是 bug。
+        /// 方块落定在某一格：水不占格子，方块落下来就直接占住这一格，
+        /// 原来那格水被搬到上方去 —— 先和正上方原有的水合成一滴，装满一格再往上一格；
+        /// 上面全满才试四个侧面，都满才丢掉。
         /// </summary>
         public static void OnSolidPlaced(Grid grid, int x, int y, int z)
         {
@@ -237,50 +240,46 @@ namespace MinecraftTetris
                 _amount[x, y, z] = 0;
                 _id[x, y, z] = 0;
 
-                // 只挤被方块压住的这一格：先挤到正上方，上方不行再试四个侧面，
-                // 四处都塞不进去才算丢掉。以前是把整条连续水柱都往方块上方搬，
-                // 看起来就是「整个水流被吸上去」，那是 bug。
-                // 往上找第一格「网格里是空的」的位置再放：竖着落下来的方块（I 形、转过的 L 等）
-                // 它自己就占着 y+1，直接塞 y+1 会失败，水就被判成「四处都满」丢掉了。
-                int targetY = -1;
-                for (int ty = y + 1; ty < _sy; ty++)
+                // 把这一格的水往上搬：和上方原本的水合成一滴（一格最多 8 份），
+                // 装满一格就再往上找一格。竖着落下来的方块（I 形、转过的 L）自己占着上面几格，
+                // 所以只认「网格里是空的」那格，等于把水送到方块堆的最上面。
+                int left = a;
+                for (int ty = y + 1; ty < _sy && left > 0; ty++)
                 {
-                    if (grid.Get(x, ty, z) == 0)
-                    {
-                        targetY = ty;
-                        break;
-                    }
+                    if (grid.Get(x, ty, z) != 0)
+                        continue;
+                    left = PushInto(grid, x, ty, z, ftype, left);
                 }
 
-                if (targetY >= 0 && TryPush(grid, x, targetY, z, ftype, a))
+                // 上面全满了，再试四个侧面
+                if (left > 0)
                 {
-                    Debug.Log("[fluids] 方块压住水，挤到上方: " + x + "," + y + "," + z + " -> y=" + targetY);
+                    left = PushInto(grid, x + 1, y, z, ftype, left);
+                    left = PushInto(grid, x - 1, y, z, ftype, left);
+                    left = PushInto(grid, x, y, z + 1, ftype, left);
+                    left = PushInto(grid, x, y, z - 1, ftype, left);
                 }
-                else if (TryPush(grid, x + 1, y, z, ftype, a)
-                      || TryPush(grid, x - 1, y, z, ftype, a)
-                      || TryPush(grid, x, y, z + 1, ftype, a)
-                      || TryPush(grid, x, y, z - 1, ftype, a))
-                {
-                    Debug.Log("[fluids] 方块压住水，挤到旁边: " + x + "," + y + "," + z);
-                }
-                else
-                {
-                    Debug.Log("[fluids] 方块压住水，四处都满了，丢掉: " + x + "," + y + "," + z);
-                }
+
+                if (left > 0)
+                    Debug.Log("[fluids] 方块压住水，四处都满了，丢掉 " + left + " 份: " + x + "," + y + "," + z);
+
             }
         }
 
-        /// <summary>把 a 份流体塞进某一格（那边是空或同类流体才塞得进去）。</summary>
-        static bool TryPush(Grid grid, int x, int y, int z, int id, int a)
+        /// <summary>往那一格塞最多 a 份流体，返回还剩几份没塞进去。</summary>
+        static int PushInto(Grid grid, int x, int y, int z, int id, int a)
         {
-            if (!InBounds(x, y, z)) return false;
+            if (a <= 0) return 0;
+            if (!InBounds(x, y, z)) return a;
             int cell = grid.Get(x, y, z);
-            if (cell != 0 && cell != id) return false;
-            if (_amount[x, y, z] + a > MaxAmount) return false;
+            if (cell != 0 && cell != id) return a;
+            int room = MaxAmount - _amount[x, y, z];
+            if (room <= 0) return a;
 
-            _amount[x, y, z] += a;
+            int put = a < room ? a : room;
+            _amount[x, y, z] += put;
             _id[x, y, z] = id;
-            return true;
+            return a - put;
         }
 
         static int FindByName(string name)

@@ -117,7 +117,7 @@ namespace MinecraftTetris.EditorTools
             Fluids.ClearCell(1, 0, 0);
             Check("清掉一格水", hadWater && Fluids.AmountAt(1, 0, 0) == 0);
 
-            // 水竖向合并：三格各 1 份（1/8），上下叠着应该并到最下面那格共 3 份（3/8）
+            // 水竖向合并：三格各 1 份（1/8），上下叠着要先并下去，再按「摊成一片」的规则铺开
             var gMerge = new Grid(3, 6, 2);
             Fluids.Tick(gMerge, 0f);   // 只为触发 Ensure 建表
             Fluids.SetAmount(1, 2, 0, 1, Fluids.WaterId);
@@ -125,8 +125,15 @@ namespace MinecraftTetris.EditorTools
             Fluids.SetAmount(1, 0, 0, 1, Fluids.WaterId);
             for (int mi = 0; mi < 8; mi++)
                 Fluids.Tick(gMerge, 0.2f);
-            Check("上下三份 1/8 的水并成一格 3/8",
-                Fluids.AmountAt(1, 0, 0) == 3 && Fluids.AmountAt(1, 1, 0) == 0 && Fluids.AmountAt(1, 2, 0) == 0);
+            Check("上下三份 1/8 的水并到最底一格（上面两层清空）",
+                Fluids.AmountAt(1, 1, 0) == 0 && Fluids.AmountAt(1, 2, 0) == 0);
+
+            int mergeTotal = 0;
+            for (int mx = 0; mx < 3; mx++)
+                for (int my = 0; my < 6; my++)
+                    for (int mz = 0; mz < 2; mz++)
+                        mergeTotal += Fluids.AmountAt(mx, my, mz);
+            Check("水的总量守恒（还是 3 份，摊开不凭空增减）", mergeTotal == 3);
 
             sb.AppendLine();
             sb.AppendLine("通过 " + pass + " 项，失败 " + fail + " 项");
