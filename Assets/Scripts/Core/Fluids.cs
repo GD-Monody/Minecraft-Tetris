@@ -139,18 +139,34 @@ namespace MinecraftTetris
                         if (a <= 0)
                             continue;
 
-                        // 1) 正下方是空的：整格落下去（份数不变）
-                        if (y > 0 && _amount[x, y - 1, z] == 0 && grid.Get(x, y - 1, z) == 0)
+                        // 1) 正下方不是方块：把水往下面灌，灌满后剩下的才留在这格。
+                        //    这样上下叠着的几个 1/8 会自己并成一柱（3 个 1/8 就是 3/8 高），
+                        //    而不是每层各留一片 1/8 的薄水。
+                        if (y > 0 && grid.Get(x, y - 1, z) == 0)
                         {
-                            _amount[x, y - 1, z] = a;
-                            _id[x, y - 1, z] = _id[x, y, z];
-                            _amount[x, y, z] = 0;
-                            _id[x, y, z] = 0;
-                            changed = true;
-                            continue;
+                            int room = MaxAmount - _amount[x, y - 1, z];
+                            if (room > 0)
+                            {
+                                int move = a < room ? a : room;
+                                _amount[x, y - 1, z] += move;
+                                _id[x, y - 1, z] = _id[x, y, z];
+                                _amount[x, y, z] -= move;
+                                if (_amount[x, y, z] <= 0)
+                                {
+                                    _amount[x, y, z] = 0;
+                                    _id[x, y, z] = 0;
+                                }
+                                changed = true;
+                                continue;
+                            }
                         }
 
-                        // 2) 落不下去：在四个邻居里找份数最少的那格，把差的一半分过去
+                        // 2) 本格没满就一律不往两边流。以前是"把差的一半分给最少的那个邻居"，
+                        //    结果水永远攒不满一格，全被摊成一份一份的薄片。
+                        if (a < MaxAmount)
+                            continue;
+
+                        // 3) 满了才往四邻流，一个 tick 只流 1 份（MC 的水是逐格降一级）
                         int bestX = -1, bestZ = -1, best = a;
                         for (int k = 0; k < 4; k++)
                         {
@@ -172,8 +188,8 @@ namespace MinecraftTetris
 
                         if (bestX >= 0)
                         {
-                            int transfer = (a - best + 1) / 2;
-                            if (transfer > 0)
+                            int transfer = 1;
+                            if (a > 0)
                             {
                                 _amount[bestX, y, bestZ] += transfer;
                                 _id[bestX, y, bestZ] = _id[x, y, z];
