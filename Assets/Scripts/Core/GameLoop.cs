@@ -276,9 +276,16 @@ namespace MinecraftTetris
             for (int i = 0; i < cells.Length; i++)
                 maxX = Mathf.Max(maxX, cells[i].x);
 
+            int maxY = 0;
+            for (int i = 0; i < cells.Length; i++)
+                maxY = Mathf.Max(maxY, cells[i].y);
+
             int width = maxX + 1;
             int ox = (Grid.SizeX - width) / 2;
-            int oy = Grid.SizeY - 3;
+            // 按方块自身高度算出生高度：让最高的那一格贴着场地顶部。
+            // 写死 SizeY - 3 的话，高个子方块（工坊画的大 L、竖条）一出生就顶出场地，
+            // 被 CanPlace 判成放不下，游戏直接结束。
+            int oy = Mathf.Max(0, Grid.SizeY - 1 - maxY);
             int oz = (Grid.SizeZ - 1) / 2;
             Current = new Piece(cells, entry.Label, entry.Type, blockId, ox, oy, oz);
             _fallTimer = 0f;
