@@ -117,6 +117,17 @@ namespace MinecraftTetris.EditorTools
             Fluids.ClearCell(1, 0, 0);
             Check("清掉一格水", hadWater && Fluids.AmountAt(1, 0, 0) == 0);
 
+            // 水竖向合并：三格各 1 份（1/8），上下叠着应该并到最下面那格共 3 份（3/8）
+            var gMerge = new Grid(3, 6, 2);
+            Fluids.Tick(gMerge, 0f);   // 只为触发 Ensure 建表
+            Fluids.SetAmount(1, 2, 0, 1, Fluids.WaterId);
+            Fluids.SetAmount(1, 1, 0, 1, Fluids.WaterId);
+            Fluids.SetAmount(1, 0, 0, 1, Fluids.WaterId);
+            for (int mi = 0; mi < 8; mi++)
+                Fluids.Tick(gMerge, 0.2f);
+            Check("上下三份 1/8 的水并成一格 3/8",
+                Fluids.AmountAt(1, 0, 0) == 3 && Fluids.AmountAt(1, 1, 0) == 0 && Fluids.AmountAt(1, 2, 0) == 0);
+
             sb.AppendLine();
             sb.AppendLine("通过 " + pass + " 项，失败 " + fail + " 项");
             Debug.Log("[MinecraftTetris 自检]\n" + sb);

@@ -75,6 +75,17 @@ namespace MinecraftTetris
             return _amount[x, y, z];
         }
 
+        /// <summary>直接设某格的份数（只给自检用，正常流程走 AddSource / Step）。</summary>
+        public static void SetAmount(int x, int y, int z, int amount, int id)
+        {
+            if (_amount == null || x < 0 || y < 0 || z < 0 || x >= _sx || y >= _sy || z >= _sz)
+                return;
+            if (amount < 0) amount = 0;
+            if (amount > MaxAmount) amount = MaxAmount;
+            _amount[x, y, z] = amount;
+            _id[x, y, z] = amount > 0 ? id : 0;
+        }
+
         /// <summary>把一格的水直接清掉（消行时用）。</summary>
         public static void ClearCell(int x, int y, int z)
         {
