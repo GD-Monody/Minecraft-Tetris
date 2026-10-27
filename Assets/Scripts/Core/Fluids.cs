@@ -240,9 +240,21 @@ namespace MinecraftTetris
                 // 只挤被方块压住的这一格：先挤到正上方，上方不行再试四个侧面，
                 // 四处都塞不进去才算丢掉。以前是把整条连续水柱都往方块上方搬，
                 // 看起来就是「整个水流被吸上去」，那是 bug。
-                if (TryPush(grid, x, y + 1, z, ftype, a))
+                // 往上找第一格「网格里是空的」的位置再放：竖着落下来的方块（I 形、转过的 L 等）
+                // 它自己就占着 y+1，直接塞 y+1 会失败，水就被判成「四处都满」丢掉了。
+                int targetY = -1;
+                for (int ty = y + 1; ty < _sy; ty++)
                 {
-                    Debug.Log("[fluids] 方块压住水，挤到上方: " + x + "," + y + "," + z);
+                    if (grid.Get(x, ty, z) == 0)
+                    {
+                        targetY = ty;
+                        break;
+                    }
+                }
+
+                if (targetY >= 0 && TryPush(grid, x, targetY, z, ftype, a))
+                {
+                    Debug.Log("[fluids] 方块压住水，挤到上方: " + x + "," + y + "," + z + " -> y=" + targetY);
                 }
                 else if (TryPush(grid, x + 1, y, z, ftype, a)
                       || TryPush(grid, x - 1, y, z, ftype, a)
