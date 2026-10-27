@@ -212,14 +212,11 @@ namespace MinecraftTetris
                 Mesh[] fluidLevels;
                 if (_fluidMeshes.TryGetValue(fid, out fluidLevels))
                 {
+                    // 每格只按自己那格的份数画高度：1 份就是 1/8 的薄水，8 份才是满格。
+                    // （以前"上面压着水就画满格"会把 3 个 1/8 拼成 1 个满格，看起来水凭空变多。）
                     int lv = fAmt;
                     if (lv < 0) lv = 0;
                     if (lv >= fluidLevels.Length) lv = fluidLevels.Length - 1;
-
-                    // 上面还压着水的格子属于水柱内部，画满格；只有最上面那层水才按水位压矮。
-                    if (Fluids.AmountAt(x, y + 1, z) > 0)
-                        lv = Fluids.MaxAmount;
-
                     mesh = fluidLevels[lv];
                 }
             }
