@@ -257,6 +257,7 @@ namespace MinecraftTetris
         {
             GameSave.Clear();
             Fluids.Reset();
+            Fluids.Prepare(_loop.Grid);
             _loop.Restart();
             _particles.Clear();
             _paused = false;
@@ -272,7 +273,6 @@ namespace MinecraftTetris
 
         void ContinueGame()
         {
-            Fluids.Reset();
             if (!GameSave.TryLoad(_loop))
             {
                 StartNewGame();

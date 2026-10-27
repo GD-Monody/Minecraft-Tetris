@@ -51,6 +51,13 @@ namespace MinecraftTetris
             _timer = 0f;
         }
 
+        /// <summary>按当前场地尺寸把流体数组准备好。Reset 之后、往格子里写流体之前要调一次，
+        /// 否则数组是空的，SetAmount 会直接返回。</summary>
+        public static void Prepare(Grid grid)
+        {
+            Ensure(grid);
+        }
+
         static void Ensure(Grid grid)
         {
             if (_amount != null && _sx == grid.SizeX && _sy == grid.SizeY && _sz == grid.SizeZ)

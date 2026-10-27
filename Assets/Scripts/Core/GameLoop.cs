@@ -345,6 +345,8 @@ namespace MinecraftTetris
             public int[] curCellsX;
             public int[] curCellsY;
             public float fallTimer;
+            // 流体（水/岩浆）每 5 个数一组：x, y, z, 份数, 类型
+            public int[] fluids;
         }
 
         public string SerializeState()
@@ -387,6 +389,27 @@ namespace MinecraftTetris
                 }
             }
 
+            // 流体也要一并存下来，否则退出到主界面再“继续游戏”时水/岩浆会凭空消失
+            var fluidList = new System.Collections.Generic.List<int>();
+            for (int y = 0; y < Grid.SizeY; y++)
+            {
+                for (int z = 0; z < Grid.SizeZ; z++)
+                {
+                    for (int x = 0; x < Grid.SizeX; x++)
+                    {
+                        int amt = Fluids.AmountAt(x, y, z);
+                        if (amt <= 0)
+                            continue;
+                        fluidList.Add(x);
+                        fluidList.Add(y);
+                        fluidList.Add(z);
+                        fluidList.Add(amt);
+                        fluidList.Add(Fluids.IdAt(x, y, z));
+                    }
+                }
+            }
+            d.fluids = fluidList.ToArray();
+
             return JsonUtility.ToJson(d);
         }
 
@@ -406,6 +429,16 @@ namespace MinecraftTetris
                 return false;
 
             Grid.Import(d.cells);
+
+            // 把存档里的流体还原（老存档没有 fluids 字段，那就当场上没流体）
+            Fluids.Reset();
+            Fluids.Prepare(Grid);
+            if (d.fluids != null)
+            {
+                for (int i = 0; i + 4 < d.fluids.Length; i += 5)
+                    Fluids.SetAmount(d.fluids[i], d.fluids[i + 1], d.fluids[i + 2], d.fluids[i + 3], d.fluids[i + 4]);
+            }
+
             Score = d.score;
             LinesCleared = d.lines;
             GameOver = false;
