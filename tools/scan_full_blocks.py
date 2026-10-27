@@ -27,17 +27,17 @@ FACE_OVERRIDES = {
     # 南瓜类：MC 的模型继承 cube_column / orientable，down 也用的是 pumpkin_top（带梗的顶面）。
     # 原版看不到底面，但这里的方块底面朝外，露着梗不像话，所以底面改用侧面的竖条纹。
     'pumpkin': {
-        'up': 'pumpkin_top', 'down': 'pumpkin_side',
+        'up': 'pumpkin_top', 'down': 'pumpkin_top_nostem',
         'north': 'pumpkin_side', 'south': 'pumpkin_side',
         'east': 'pumpkin_side', 'west': 'pumpkin_side',
     },
     'carved_pumpkin': {
-        'up': 'pumpkin_top', 'down': 'pumpkin_side',
+        'up': 'pumpkin_top', 'down': 'pumpkin_top_nostem',
         'north': 'carved_pumpkin', 'south': 'pumpkin_side',
         'east': 'pumpkin_side', 'west': 'pumpkin_side',
     },
     'jack_o_lantern': {
-        'up': 'pumpkin_top', 'down': 'pumpkin_side',
+        'up': 'pumpkin_top', 'down': 'pumpkin_top_nostem',
         'north': 'jack_o_lantern', 'south': 'pumpkin_side',
         'east': 'pumpkin_side', 'west': 'pumpkin_side',
     },

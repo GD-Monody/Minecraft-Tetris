@@ -551,7 +551,7 @@
   "root": "block",
   "faces": {
    "up": "pumpkin_top",
-   "down": "pumpkin_top",
+   "down": "pumpkin_top_nostem",
    "north": "carved_pumpkin",
    "south": "pumpkin_side",
    "east": "pumpkin_side",
@@ -2177,7 +2177,7 @@
   "root": "block",
   "faces": {
    "up": "pumpkin_top",
-   "down": "pumpkin_top",
+   "down": "pumpkin_top_nostem",
    "north": "jack_o_lantern",
    "south": "pumpkin_side",
    "east": "pumpkin_side",
@@ -3269,7 +3269,7 @@
   "root": "block",
   "faces": {
    "up": "pumpkin_top",
-   "down": "pumpkin_top",
+   "down": "pumpkin_top_nostem",
    "north": "pumpkin_side",
    "south": "pumpkin_side",
    "east": "pumpkin_side",

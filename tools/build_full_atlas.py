@@ -20,6 +20,12 @@ CELL = 18
 FACES = ("up", "down", "north", "south", "east", "west")
 
 
+LOCAL_TILES = {
+    # 自己做的贴图：南瓜顶面去掉梗，用来当南瓜的底面（原版 down 也写的是 pumpkin_top，会露出梗）
+    "pumpkin_top_nostem": os.path.join(ROOT, "tools", "textures", "pumpkin_top_nostem.png"),
+}
+
+
 def main():
     with open(BLOCKS_JSON, encoding="utf-8") as f:
         blocks = json.load(f)
@@ -59,9 +65,12 @@ def main():
 
     for i, png in enumerate(tiles):
         path = "assets/minecraft/textures/block/%s.png" % png
-        if path not in names:
+        if png in LOCAL_TILES:
+            im = Image.open(LOCAL_TILES[png]).convert("RGBA")
+        elif path in names:
+            im = Image.open(io.BytesIO(z.read(path))).convert("RGBA")
+        else:
             continue
-        im = Image.open(io.BytesIO(z.read(path))).convert("RGBA")
         if im.size != (16, 16):
             # 动画贴图是 16 x (16*帧数) 的竖排帧（命令方块、海晶石、绯红菌柄这些）。
             # 直接把整张压成 16x16 会把所有帧叠在一起，看起来就是「图案重复好几份」。
