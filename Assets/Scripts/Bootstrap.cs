@@ -455,10 +455,13 @@ namespace MinecraftTetris
         void OnPieceLocked(Piece piece)
         {
             _sfx.PlayPlace(BlockCatalog.Of(piece.BlockId));
+            // 保住朝向：旋转过的方块，落定那一瞬间如果朝向归零，看起来就是“啪”地转了一下。
+            float yaw = _view.PieceYawDegrees % 360f;
             for (int i = 0; i < piece.Cells.Length; i++)
             {
                 Vector3Int c = piece.WorldCell(i);
                 _view.SetCell(c.x, c.y, c.z, piece.BlockId);
+                _view.SetCellRotation(c.x, c.y, c.z, yaw);
             }
         }
 

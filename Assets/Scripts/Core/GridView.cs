@@ -188,6 +188,8 @@ namespace MinecraftTetris
                 // 这一格刚由空变成有：直接出现在格子里。
                 // 不复用上一次留下的视觉位置，否则会看到它从别处滑进来（硬降后尤其明显）。
                 _cellVisual[x, y, z] = new Vector3(x, y, z);
+                // 朝向也归零：这个物体以前可能装过别的方块、被转过去过。
+                go.transform.rotation = Quaternion.identity;
             }
 
             int idx;
@@ -231,6 +233,23 @@ namespace MinecraftTetris
         /// 沙子塌落这类"整格位移"：把 from 格的显示对象搬到 to 格，
         /// 视觉上还留在 from，下一帧开始自己滑过去。
         /// </summary>
+        /// <summary>落定时把方块当时的朝向记到这一格：旋转过的方块落下去要保持下落时的朝向。</summary>
+        public void SetCellRotation(int x, int y, int z, float yawDegrees)
+        {
+            if (!InCells(x, y, z))
+                return;
+            GameObject go = _cells[x, y, z];
+            if (go == null)
+                return;
+            go.transform.rotation = Quaternion.Euler(0f, yawDegrees, 0f);
+        }
+
+        /// <summary>当前方块的目标朝向（角度）。落定时用它给格子记朝向。</summary>
+        public float PieceYawDegrees
+        {
+            get { return _pieceYawTarget; }
+        }
+
         public void ApplyGravityMoves(List<GravityStep> moves)
         {
             if (moves == null || moves.Count == 0)
