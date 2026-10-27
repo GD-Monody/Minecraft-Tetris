@@ -45,7 +45,14 @@ namespace MinecraftTetris
 
         public bool IsFree(int x, int y, int z)
         {
-            return InBounds(x, y, z) && _cells[x, y, z] == 0;
+            if (x < 0 || x >= SizeX || z < 0 || z >= SizeZ || y < 0)
+                return false;
+
+            // 场地顶部以上算空：新方块在框外生成、往下掉进来的时候要能穿过这一段。
+            if (y >= SizeY)
+                return true;
+
+            return _cells[x, y, z] == 0;
         }
 
         public int Get(int x, int y, int z)

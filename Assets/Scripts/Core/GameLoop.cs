@@ -190,6 +190,18 @@ namespace MinecraftTetris
         void LockPiece()
         {
             int blockId = Current.BlockId;
+
+            // 落定时还有格子在场地顶部之外，说明已经堆到顶了，这才是真正的游戏结束。
+            for (int i = 0; i < Current.Cells.Length; i++)
+            {
+                if (Current.WorldCell(i).y >= Grid.SizeY)
+                {
+                    GameOver = true;
+                    GameOverEvent?.Invoke();
+                    return;
+                }
+            }
+
             for (int i = 0; i < Current.Cells.Length; i++)
             {
                 Vector3Int c = Current.WorldCell(i);
@@ -276,16 +288,15 @@ namespace MinecraftTetris
             for (int i = 0; i < cells.Length; i++)
                 maxX = Mathf.Max(maxX, cells[i].x);
 
-            int maxY = 0;
+            int minY = 0;
             for (int i = 0; i < cells.Length; i++)
-                maxY = Mathf.Max(maxY, cells[i].y);
+                minY = Mathf.Min(minY, cells[i].y);
 
             int width = maxX + 1;
             int ox = (Grid.SizeX - width) / 2;
-            // 按方块自身高度算出生高度：让最高的那一格贴着场地顶部。
-            // 写死 SizeY - 3 的话，高个子方块（工坊画的大 L、竖条）一出生就顶出场地，
-            // 被 CanPlace 判成放不下，游戏直接结束。
-            int oy = Mathf.Max(0, Grid.SizeY - 1 - maxY);
+            // 在框外生成：让方块最低的那一格正好落在场地顶部（y = SizeY），整块都在框上方，
+            // 然后往下掉进来。IsFree 把顶部以上算作空，所以这一段不会判成放不下。
+            int oy = Grid.SizeY - minY;
             int oz = (Grid.SizeZ - 1) / 2;
             Current = new Piece(cells, entry.Label, entry.Type, blockId, ox, oy, oz);
             _fallTimer = 0f;
