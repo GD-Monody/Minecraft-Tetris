@@ -205,9 +205,29 @@ namespace MinecraftTetris
 
             if (_amount[x, y, z] > 0)
             {
-                Debug.Log("[fluids] 方块占住水格，清掉: " + x + "," + y + "," + z);
+                int a = _amount[x, y, z];
+                int ftype = _id[x, y, z];
                 _amount[x, y, z] = 0;
                 _id[x, y, z] = 0;
+
+                // 只挤被方块压住的这一格：先挤到正上方，上方不行再试四个侧面，
+                // 四处都塞不进去才算丢掉。以前是把整条连续水柱都往方块上方搬，
+                // 看起来就是「整个水流被吸上去」，那是 bug。
+                if (TryPush(grid, x, y + 1, z, ftype, a))
+                {
+                    Debug.Log("[fluids] 方块压住水，挤到上方: " + x + "," + y + "," + z);
+                }
+                else if (TryPush(grid, x + 1, y, z, ftype, a)
+                      || TryPush(grid, x - 1, y, z, ftype, a)
+                      || TryPush(grid, x, y, z + 1, ftype, a)
+                      || TryPush(grid, x, y, z - 1, ftype, a))
+                {
+                    Debug.Log("[fluids] 方块压住水，挤到旁边: " + x + "," + y + "," + z);
+                }
+                else
+                {
+                    Debug.Log("[fluids] 方块压住水，四处都满了，丢掉: " + x + "," + y + "," + z);
+                }
             }
         }
 
