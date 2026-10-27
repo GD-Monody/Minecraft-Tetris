@@ -202,24 +202,39 @@ namespace MinecraftTetris
                 }
             }
 
+            bool fluidPiece = Fluids.IsFluid(blockId);
+
+            // 第一步：整块方块先占位（水方块只登记流体，不占格）。
             for (int i = 0; i < Current.Cells.Length; i++)
             {
                 Vector3Int c = Current.WorldCell(i);
-                if (Grid.InBounds(c.x, c.y, c.z))
+                if (!Grid.InBounds(c.x, c.y, c.z))
+                    continue;
+
+                if (fluidPiece)
                 {
-                    if (Fluids.IsFluid(blockId))
-                    {
-                        // 水方块落定后只作为流体存在（份数记在 Fluids 里）。
-                        // 不能再往网格里写一份：网格一块 + 流体一块，渲染就是两份水，
-                        // 看起来「体积凭空翻倍」。
-                        Grid.Set(c.x, c.y, c.z, 0);
-                        Fluids.AddSource(Grid, c.x, c.y, c.z, blockId);
-                    }
-                    else
-                    {
-                        Grid.Set(c.x, c.y, c.z, blockId);
+                    // 水方块落定后只作为流体存在（份数记在 Fluids 里）。
+                    // 不能再往网格里写一份：网格一块 + 流体一块，渲染就是两份水，
+                    // 看起来「体积凭空翻倍」。
+                    Grid.Set(c.x, c.y, c.z, 0);
+                    Fluids.AddSource(Grid, c.x, c.y, c.z, blockId);
+                }
+                else
+                {
+                    Grid.Set(c.x, c.y, c.z, blockId);
+                }
+            }
+
+            // 第二步：整块都占好位之后再挤走被压住的流体。
+            // 顺序反了的话，先挤出来的流体会落进还没占位的其它格子里，
+            // 等那些格被填上，流体就卡在方块内部了（岩浆那块就是这么来的）。
+            if (!fluidPiece)
+            {
+                for (int i = 0; i < Current.Cells.Length; i++)
+                {
+                    Vector3Int c = Current.WorldCell(i);
+                    if (Grid.InBounds(c.x, c.y, c.z))
                         Fluids.OnSolidPlaced(Grid, c.x, c.y, c.z);
-                    }
                 }
             }
 
