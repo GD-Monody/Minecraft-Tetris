@@ -401,7 +401,6 @@ namespace MinecraftTetris
             int top = _loop.Grid.SizeY - 5;
             _loop.Restart();                       // 先清场，免得旧存档把地方占满看不见水
             Fluids.Reset();
-            _loop.Grid.Set(cx, top, cz, id);
             Fluids.AddSource(_loop.Grid, cx, top, cz, id);
             _view.SnapPiece(_loop.Current);
             _view.RefreshAll();

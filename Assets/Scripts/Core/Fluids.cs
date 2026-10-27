@@ -194,99 +194,21 @@ namespace MinecraftTetris
         }
 
         /// <summary>
-        /// 方块压到某个格子上：这一格原来的流体顶到上面一格去（份数不变，被挤起来），
-        /// 上面也是方块或者到顶了才真消失。
+        /// 方块落定在某一格：把这一格原来的流体清掉（重叠即消失）。
+        /// 注意这里**不再**把方块下方的水搬到上方 —— 水不占格子，方块落下去就是穿过它，
+        /// 水留在原处就行；之前那套搬运会把整条水柱"吸"到方块头上，是 bug。
         /// </summary>
         public static void OnSolidPlaced(Grid grid, int x, int y, int z)
         {
             Ensure(grid);
             if (!InBounds(x, y, z)) return;
 
-            // 方块落在水面上的情况：落点这一格是空的，水在它下面一格。
-            // 这时方块并没有"压到"水，但视觉上方块占住了水的位置，水被挤到方块上方去。
-            // 落点下方「连着的一串水」：从紧贴方块那格往下数，连续几格水都算被方块压住。
-            // 只要中间断一格（空格或方块）就停，免得把隔着方块、埋得很深的水也翻上来。
-            int total = 0;
-            int ftype = 0;
-            int top = -1;
-            for (int ty = y - 1; ty >= 0; ty--)
+            if (_amount[x, y, z] > 0)
             {
-                if (_amount[x, ty, z] <= 0)
-                    break;
-                if (ftype == 0)
-                    ftype = _id[x, ty, z];
-                total += _amount[x, ty, z];
-                top = ty;
+                Debug.Log("[fluids] 方块占住水格，清掉: " + x + "," + y + "," + z);
+                _amount[x, y, z] = 0;
+                _id[x, y, z] = 0;
             }
-
-            if (total > 0)
-            {
-                // 先把这串水清掉（含 grid 里的水标记），方块下方不留半点占位
-                for (int ty = top; ty < y; ty++)
-                {
-                    _amount[x, ty, z] = 0;
-                    _id[x, ty, z] = 0;
-                    grid.Set(x, ty, z, 0);
-                }
-
-                // 再从方块正上方往上，一个空格一个空格地摊回去（每格最多 MaxAmount 份）
-                int left = total;
-                for (int ty = y + 1; ty < _sy && left > 0; ty++)
-                {
-                    if (grid.Get(x, ty, z) != 0)
-                        continue;
-                    int room = MaxAmount - _amount[x, ty, z];
-                    if (room <= 0)
-                        continue;
-                    int put = left < room ? left : room;
-                    _amount[x, ty, z] += put;
-                    _id[x, ty, z] = ftype;
-                    left -= put;
-                }
-
-                // 正上方塞不下的，往侧面挪
-                if (left > 0)
-                {
-                    if (TryPush(grid, x - 1, y, z, ftype, left)) left = 0;
-                    else if (TryPush(grid, x + 1, y, z, ftype, left)) left = 0;
-                    else if (TryPush(grid, x, y, z - 1, ftype, left)) left = 0;
-                    else if (TryPush(grid, x, y, z + 1, ftype, left)) left = 0;
-                }
-
-                Debug.Log("[fluids] 方块下方 " + total + " 份水挪到上方，剩 " + left + " 份没放下: " + x + "," + y + "," + z);
-            }
-
-            int a = _amount[x, y, z];
-            if (a <= 0)
-                return;
-
-            int id = _id[x, y, z];
-            string where = "none";
-
-            // 1) 正上方空着：直接顶上去
-            if (TryPush(grid, x, y + 1, z, id, a))
-                where = "up";
-
-            // 2) 正上方是方块（水被压在方块底下）：渗到方块上面那一格去
-            if (where == "none" && y + 1 < _sy && grid.Get(x, y + 1, z) != 0 && TryPush(grid, x, y + 2, z, id, a))
-                where = "over";
-
-            // 3) 侧面找得到空位就往两边渗
-            if (where == "none")
-            {
-                if (TryPush(grid, x - 1, y, z, id, a)) where = "left";
-                else if (TryPush(grid, x + 1, y, z, id, a)) where = "right";
-                else if (TryPush(grid, x, y, z - 1, id, a)) where = "back";
-                else if (TryPush(grid, x, y, z + 1, id, a)) where = "front";
-            }
-
-            _amount[x, y, z] = 0;
-            _id[x, y, z] = 0;
-
-            if (where == "none")
-                Debug.Log("[fluids] 流体被压没（四面都放不下）: " + x + "," + y + "," + z);
-            else
-                Debug.Log("[fluids] 流体被挤到 " + where + ": " + x + "," + y + "," + z);
         }
 
         /// <summary>把 a 份流体塞进某一格（那边是空或同类流体才塞得进去）。</summary>
@@ -295,7 +217,7 @@ namespace MinecraftTetris
             if (!InBounds(x, y, z)) return false;
             int cell = grid.Get(x, y, z);
             if (cell != 0 && cell != id) return false;
-            if (_amount[x, y, z] + a > MaxAmount * 2) return false;
+            if (_amount[x, y, z] + a > MaxAmount) return false;
 
             _amount[x, y, z] += a;
             _id[x, y, z] = id;
