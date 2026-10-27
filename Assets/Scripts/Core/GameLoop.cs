@@ -195,11 +195,19 @@ namespace MinecraftTetris
                 Vector3Int c = Current.WorldCell(i);
                 if (Grid.InBounds(c.x, c.y, c.z))
                 {
-                    Grid.Set(c.x, c.y, c.z, blockId);
                     if (Fluids.IsFluid(blockId))
+                    {
+                        // 水方块落定后只作为流体存在（份数记在 Fluids 里）。
+                        // 不能再往网格里写一份：网格一块 + 流体一块，渲染就是两份水，
+                        // 看起来「体积凭空翻倍」。
+                        Grid.Set(c.x, c.y, c.z, 0);
                         Fluids.AddSource(Grid, c.x, c.y, c.z, blockId);
+                    }
                     else
+                    {
+                        Grid.Set(c.x, c.y, c.z, blockId);
                         Fluids.OnSolidPlaced(Grid, c.x, c.y, c.z);
+                    }
                 }
             }
 
