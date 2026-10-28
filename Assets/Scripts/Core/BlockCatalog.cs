@@ -83,12 +83,18 @@ namespace MinecraftTetris
         }
 
         /// <summary>
-        /// TNT 炸不掉的方块。原版里这几个的爆炸抗性极高（TNT 的爆炸威力只有 4）：
-        /// 基岩 3600000、黑曜石和哭泣的黑曜石 1200，所以原版 TNT 也炸不动它们。
+        /// TNT 炸不掉的方块。原版里这些的爆炸抗性高到 TNT 威力（4）打不动：
+        /// 基岩和三种命令方块是 3600000，黑曜石、哭泣的黑曜石、远古残骸、下界合金块、
+        /// 强化深板岩是 1200。
+        ///
+        /// 没把结构方块列进来：它的抗性在原版也是 3600000，但在这里它是要被炸掉才有戏的
+        /// 游戏道具（TNT 是它的两个触发点之一），炸不动就废了一半。
         /// </summary>
         static readonly string[] BlastProofNames =
         {
             "bedrock", "obsidian", "crying_obsidian",
+            "ancient_debris", "netherite_block", "reinforced_deepslate",
+            "command_block", "chain_command_block", "repeating_command_block",
         };
 
         static bool[] _blastProof;

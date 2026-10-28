@@ -531,19 +531,39 @@ namespace MinecraftTetris.EditorTools
             Check("被消行带走的 TNT 会哑火", Tnt.PrimedCells.Count == 0);
             Tnt.Reset();
 
-            // 炸不掉的方块：基岩 / 黑曜石 / 哭泣的黑曜石（原版 TNT 也炸不动它们）
+            // 炸不掉的方块：基岩、三种命令方块、黑曜石、哭泣的黑曜石、远古残骸、
+            // 下界合金块、强化深板岩（原版 TNT 也炸不动它们）
             int bedrockForBlast = 0, obsidianId = 0, cryingObsidianId = 0;
+            int ancientDebrisId = 0, netheriteBlockId = 0, reinforcedDeepslateId = 0;
+            int commandBlockId = 0, chainCommandBlockId = 0, repeatingCommandBlockId = 0;
             for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
             {
                 string n = BlockCatalog.Blocks[i].Name;
                 if (n == "bedrock") bedrockForBlast = i + 1;
                 else if (n == "obsidian") obsidianId = i + 1;
                 else if (n == "crying_obsidian") cryingObsidianId = i + 1;
+                else if (n == "ancient_debris") ancientDebrisId = i + 1;
+                else if (n == "netherite_block") netheriteBlockId = i + 1;
+                else if (n == "reinforced_deepslate") reinforcedDeepslateId = i + 1;
+                else if (n == "command_block") commandBlockId = i + 1;
+                else if (n == "chain_command_block") chainCommandBlockId = i + 1;
+                else if (n == "repeating_command_block") repeatingCommandBlockId = i + 1;
             }
             Check("黑曜石和哭泣的黑曜石都在方块表里", obsidianId > 0 && cryingObsidianId > 0);
+            Check("抗爆的那几种都在方块表里",
+                ancientDebrisId > 0 && netheriteBlockId > 0 && reinforcedDeepslateId > 0 &&
+                commandBlockId > 0 && chainCommandBlockId > 0 && repeatingCommandBlockId > 0);
             Check("基岩炸不掉", BlockCatalog.IsBlastProof(bedrockForBlast));
             Check("黑曜石炸不掉", BlockCatalog.IsBlastProof(obsidianId));
             Check("哭泣的黑曜石炸不掉", BlockCatalog.IsBlastProof(cryingObsidianId));
+            Check("远古残骸炸不掉", BlockCatalog.IsBlastProof(ancientDebrisId));
+            Check("下界合金块炸不掉", BlockCatalog.IsBlastProof(netheriteBlockId));
+            Check("强化深板岩炸不掉", BlockCatalog.IsBlastProof(reinforcedDeepslateId));
+            Check("命令方块炸不掉",
+                BlockCatalog.IsBlastProof(commandBlockId) &&
+                BlockCatalog.IsBlastProof(chainCommandBlockId) &&
+                BlockCatalog.IsBlastProof(repeatingCommandBlockId));
+            Check("结构方块故意留成炸得掉", !BlockCatalog.IsBlastProof(BlockCatalog.StructureId));
             Check("普通方块炸得掉", !BlockCatalog.IsBlastProof(stoneId));
             Check("空格子不算炸不掉", !BlockCatalog.IsBlastProof(0));
 
@@ -553,11 +573,13 @@ namespace MinecraftTetris.EditorTools
             gBlast.Set(3, 5, 0, obsidianId);        // 爆炸半径内
             gBlast.Set(4, 6, 0, stoneId);            // 爆炸半径内
             gBlast.Set(4, 3, 0, cryingObsidianId);  // 爆炸半径边缘
+            gBlast.Set(5, 4, 0, netheriteBlockId);  // 爆炸半径内
             Tnt.Reset();
             Tnt.PrimeContact(gBlast);
             Tnt.Tick(gBlast, Tnt.FuseSeconds);
             Check("爆炸后黑曜石还在", gBlast.Get(3, 5, 0) == obsidianId);
             Check("爆炸后哭泣的黑曜石还在", gBlast.Get(4, 3, 0) == cryingObsidianId);
+            Check("爆炸后下界合金块还在", gBlast.Get(5, 4, 0) == netheriteBlockId);
             Check("爆炸后普通方块照炸", gBlast.Get(4, 6, 0) == 0);
             Tnt.Reset();
 
