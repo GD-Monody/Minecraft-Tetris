@@ -148,6 +148,23 @@ namespace MinecraftTetris
             if (System.Array.IndexOf(btArgv, "-pitchtest") >= 0)
                 RunPitchTest();
 
+            // 凡是「摆一个场面给你看」的开关，都自动跳过标题界面。
+            // 不这么做的话：标题显示时相机的 cullingMask 是 0（画面里只有菜单，场地是空的），
+            // 而按空格开始游戏又会 Grid.Clear() 把刚摆好的场面一起清掉 —— 单给 -tnttest 什么都看不见。
+            string[] sceneTests =
+            {
+                "-sandtest", "-reacttest", "-tnttest",
+                "-blocktest", "-fluidtest", "-yawtest", "-pitchtest",
+            };
+            for (int i = 0; i < sceneTests.Length; i++)
+            {
+                if (System.Array.IndexOf(btArgv, sceneTests[i]) >= 0)
+                {
+                    _title.Visible = false;
+                    break;
+                }
+            }
+
             // -shotat N：把自动截图的时间点从默认 6 秒改成 N 秒（验证落定方块等需要跑够时间）
             var argv = System.Environment.GetCommandLineArgs();
             int shotArg = System.Array.IndexOf(argv, "-shotat");
