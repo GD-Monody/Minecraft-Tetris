@@ -480,13 +480,14 @@ namespace MinecraftTetris
             }
 
             int stoneId = 1;
+            int obsidianId = 0, cryingId = 0, bedrockId = 0;
             for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
             {
-                if (BlockCatalog.Blocks[i].Name == "stone")
-                {
-                    stoneId = i + 1;
-                    break;
-                }
+                string n = BlockCatalog.Blocks[i].Name;
+                if (n == "stone") stoneId = i + 1;
+                else if (n == "obsidian") obsidianId = i + 1;
+                else if (n == "crying_obsidian") cryingId = i + 1;
+                else if (n == "bedrock") bedrockId = i + 1;
             }
 
             int cx = _loop.Grid.SizeX / 2;
@@ -511,9 +512,22 @@ namespace MinecraftTetris
                 }
             }
 
+            // 靶子里混三种「炸不掉」的方块：原版 TNT 也炸不动它们。
+            // 位置都挑在爆炸半径 2 之内（dx²+dy² ≤ 4），炸完能直接看出谁留下来了。
+            //   左  (-2, 0) 黑曜石
+            //   上  ( 0, 2) 哭泣的黑曜石
+            //   右  ( 2, 0) 基岩
+            if (obsidianId > 0 && _loop.Grid.InBounds(cx - 2, cy, cz))
+                _loop.Grid.Set(cx - 2, cy, cz, obsidianId);
+            if (cryingId > 0 && _loop.Grid.InBounds(cx, cy + 2, cz))
+                _loop.Grid.Set(cx, cy + 2, cz, cryingId);
+            if (bedrockId > 0 && _loop.Grid.InBounds(cx + 2, cy, cz))
+                _loop.Grid.Set(cx + 2, cy, cz, bedrockId);
+
             _view.RefreshAll();
             int fired = Tnt.PrimeContact(_loop.Grid);
-            Debug.Log("[tnttest] 点着 " + fired + " 颗，引信 " + Tnt.FuseSeconds + " 秒");
+            Debug.Log("[tnttest] 点着 " + fired + " 颗，引信 " + Tnt.FuseSeconds + " 秒" +
+                      "；靶子里左=黑曜石 上=哭泣黑曜石 右=基岩，炸完看这三个还在不在");
         }
 
         /// <summary>调试用：摆一块原木，结算一次长树叶，肉眼核对树叶贴图和生长位置。</summary>
