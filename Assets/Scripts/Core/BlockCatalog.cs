@@ -79,6 +79,42 @@ namespace MinecraftTetris
             return blockId > 0 && blockId == BedrockId;
         }
 
+        /// <summary>
+        /// TNT 炸不掉的方块。原版里这几个的爆炸抗性极高（TNT 的爆炸威力只有 4）：
+        /// 基岩 3600000、黑曜石和哭泣的黑曜石 1200，所以原版 TNT 也炸不动它们。
+        /// </summary>
+        static readonly string[] BlastProofNames =
+        {
+            "bedrock", "obsidian", "crying_obsidian",
+        };
+
+        static bool[] _blastProof;
+
+        /// <summary>这一格是不是炸不掉的（在爆炸范围内也会保留）。</summary>
+        public static bool IsBlastProof(int blockId)
+        {
+            if (blockId <= 0)
+                return false;
+
+            if (_blastProof == null)
+            {
+                _blastProof = new bool[Blocks.Length + 1];
+                for (int i = 0; i < Blocks.Length; i++)
+                {
+                    for (int k = 0; k < BlastProofNames.Length; k++)
+                    {
+                        if (Blocks[i].Name == BlastProofNames[k])
+                        {
+                            _blastProof[i + 1] = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return blockId <= _blastProof.Length && _blastProof[blockId];
+        }
+
         static int FindId(string name)
         {
             for (int i = 0; i < Blocks.Length; i++)

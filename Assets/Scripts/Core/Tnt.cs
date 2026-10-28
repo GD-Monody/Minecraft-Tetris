@@ -310,6 +310,11 @@ namespace MinecraftTetris
                             continue;
                         }
 
+                        // 原版里 TNT 炸不动的方块：基岩、黑曜石、哭泣的黑曜石。
+                        // 留着不动，也不计分（没被炸掉就不该给分）。
+                        if (BlockCatalog.IsBlastProof(id))
+                            continue;
+
                         grid.Set(x, y, z, 0);
                         blast.Cells.Add(new Vector3Int(x, y, z));
                         blast.Blocks.Add(id);

@@ -531,6 +531,36 @@ namespace MinecraftTetris.EditorTools
             Check("被消行带走的 TNT 会哑火", Tnt.PrimedCells.Count == 0);
             Tnt.Reset();
 
+            // 炸不掉的方块：基岩 / 黑曜石 / 哭泣的黑曜石（原版 TNT 也炸不动它们）
+            int bedrockForBlast = 0, obsidianId = 0, cryingObsidianId = 0;
+            for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
+            {
+                string n = BlockCatalog.Blocks[i].Name;
+                if (n == "bedrock") bedrockForBlast = i + 1;
+                else if (n == "obsidian") obsidianId = i + 1;
+                else if (n == "crying_obsidian") cryingObsidianId = i + 1;
+            }
+            Check("黑曜石和哭泣的黑曜石都在方块表里", obsidianId > 0 && cryingObsidianId > 0);
+            Check("基岩炸不掉", BlockCatalog.IsBlastProof(bedrockForBlast));
+            Check("黑曜石炸不掉", BlockCatalog.IsBlastProof(obsidianId));
+            Check("哭泣的黑曜石炸不掉", BlockCatalog.IsBlastProof(cryingObsidianId));
+            Check("普通方块炸得掉", !BlockCatalog.IsBlastProof(stoneId));
+            Check("空格子不算炸不掉", !BlockCatalog.IsBlastProof(0));
+
+            var gBlast = new Grid(10, 20, 1);
+            gBlast.Set(4, 5, 0, Tnt.TntId);
+            gBlast.Set(5, 5, 0, Tnt.RedstoneId);
+            gBlast.Set(3, 5, 0, obsidianId);        // 爆炸半径内
+            gBlast.Set(4, 6, 0, stoneId);            // 爆炸半径内
+            gBlast.Set(4, 3, 0, cryingObsidianId);  // 爆炸半径边缘
+            Tnt.Reset();
+            Tnt.PrimeContact(gBlast);
+            Tnt.Tick(gBlast, Tnt.FuseSeconds);
+            Check("爆炸后黑曜石还在", gBlast.Get(3, 5, 0) == obsidianId);
+            Check("爆炸后哭泣的黑曜石还在", gBlast.Get(4, 3, 0) == cryingObsidianId);
+            Check("爆炸后普通方块照炸", gBlast.Get(4, 6, 0) == 0);
+            Tnt.Reset();
+
             // 原木长树叶
             Foliage.Init();
             int oakLog = -1, oakLeaves = -1, strippedOak = -1, crimsonStem = -1, bamboo = -1;
