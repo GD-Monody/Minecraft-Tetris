@@ -362,6 +362,7 @@ namespace MinecraftTetris
             "mangrove_leaves",
             "cherry_leaves",
             "pale_oak_leaves",
+            "bedrock",
         };
 
         public static readonly string[] NamesZh =
@@ -717,6 +718,7 @@ namespace MinecraftTetris
             "红树树叶",
             "樱花树叶",
             "苍白橡树树叶",
+            "基岩",
         };
 
         // 每个方块六个面：up, down, north, south, east, west 对应的图集格子编号
@@ -1073,6 +1075,7 @@ namespace MinecraftTetris
             427, 427, 427, 427, 427, 427,
             428, 428, 428, 428, 428, 428,
             429, 429, 429, 429, 429, 429,
+            430, 430, 430, 430, 430, 430,
         };
     }
 }

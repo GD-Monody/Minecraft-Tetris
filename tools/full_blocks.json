@@ -4914,5 +4914,19 @@
    "west": "pale_oak_leaves"
   },
   "tint": []
+ },
+ {
+  "name": "bedrock",
+  "zh": "基岩",
+  "root": "manual",
+  "faces": {
+   "up": "bedrock",
+   "down": "bedrock",
+   "north": "bedrock",
+   "south": "bedrock",
+   "east": "bedrock",
+   "west": "bedrock"
+  },
+  "tint": []
  }
 ]

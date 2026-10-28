@@ -560,6 +560,7 @@ namespace MinecraftTetris
             "grass",   // mangrove_leaves
             "grass",   // cherry_leaves
             "grass",   // pale_oak_leaves
+            "stone",   // bedrock
         };
     }
 }

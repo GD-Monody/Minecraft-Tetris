@@ -79,10 +79,11 @@ EXCLUDE_WORDS = (
 # 扫描规则排除、但玩法需要用到的方块，扫完追加在末尾。
 # 树叶的模型根是 leaves（不在 CUBE_ROOTS 里），而且 EXCLUDE_WORDS 里就特意排除了 leaves，
 # 所以自动扫描永远扫不到。「原木长树叶」需要真的树叶方块，这里手工补 9 种。
+# 基岩同理：EXCLUDE_WORDS 里有 bedrock（当初是为了跳过不可破坏方块）。
 #
 # 追加在末尾而不是插在中间：方块编号 = 数组下标，插中间会让所有后续方块编号平移，
 # 老存档的网格数据会全变成别的方块。
-LEAF_BLOCKS = [
+EXTRA_BLOCKS = [
     ('oak_leaves', '橡树树叶'),
     ('spruce_leaves', '云杉树叶'),
     ('birch_leaves', '白桦树叶'),
@@ -92,6 +93,8 @@ LEAF_BLOCKS = [
     ('mangrove_leaves', '红树树叶'),
     ('cherry_leaves', '樱花树叶'),
     ('pale_oak_leaves', '苍白橡树树叶'),
+    # 基岩：消除时钉在原地不跟着下落，但本身可以被消掉
+    ('bedrock', '基岩'),
 ]
 
 
@@ -291,16 +294,16 @@ def main():
         seq = chain(name) or []
         candidates.append({'name': name, 'zh': zh_name(name), 'root': seq[-1][0] if seq else '', 'faces': faces, 'tint': tint_faces})
 
-    # 手工补的方块（树叶），见文件头 LEAF_BLOCKS 的说明
-    for leaf_name, leaf_zh in LEAF_BLOCKS:
-        if not ('assets/minecraft/textures/block/%s.png' % leaf_name) in names:
-            print('跳过（jar 里没有贴图）: %s' % leaf_name)
+    # 手工补的方块（树叶 / 基岩），见文件头 EXTRA_BLOCKS 的说明
+    for extra_name, extra_zh in EXTRA_BLOCKS:
+        if not ('assets/minecraft/textures/block/%s.png' % extra_name) in names:
+            print('跳过（jar 里没有贴图）: %s' % extra_name)
             continue
         candidates.append({
-            'name': leaf_name,
-            'zh': leaf_zh,
+            'name': extra_name,
+            'zh': extra_zh,
             'root': 'manual',
-            'faces': {f: leaf_name for f in ('up', 'down', 'north', 'south', 'east', 'west')},
+            'faces': {f: extra_name for f in ('up', 'down', 'north', 'south', 'east', 'west')},
             'tint': [],
         })
 
