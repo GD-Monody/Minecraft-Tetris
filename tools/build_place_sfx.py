@@ -95,6 +95,7 @@ GROUPS = [
     ("suspicious_sand", "block.suspicious_sand.place"),
     ("snow", "block.snow.place"),
     ("coral_block", "block.coral_block.place"),
+    ("glass", "block.glass.place"),
     # 液体：原版是拿桶倒出来的声音
     ("fluid_water", "item.bucket.empty"),
     ("fluid_lava", "item.bucket.empty_lava"),
@@ -104,6 +105,8 @@ GROUPS = [
 # 用 fullmatch 匹配，所以写 alternation 时要把全名写清楚；被规则顶掉的方块
 # 会落到最后的兜底 stone，脚本会打印「哪些方块走了兜底」以便核对。
 RULES = [
+    # 玻璃：原版有单独的一组（清亮的叮声），别落到 stone 兜底
+    ("glass", "glass"),
     # 26.2 的新材质族，先占位，别被下面的通用规则吃掉
     ("potent_sulfur", "potent_sulfur"),
     ("sulfur|sulfur_bricks|chiseled_sulfur|polished_sulfur", "sulfur"),

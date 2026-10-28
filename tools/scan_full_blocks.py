@@ -95,6 +95,9 @@ EXTRA_BLOCKS = [
     ('pale_oak_leaves', '苍白橡树树叶'),
     # 基岩：消除时钉在原地不跟着下落，但本身可以被消掉
     ('bedrock', '基岩'),
+    # 玻璃：模型根是 cube_all，但 EXCLUDE_WORDS 里有 glass（透明方块单独渲染）。
+    # 压碎机制要用到它，所以手工补一条，排在最后，老存档编号不动。
+    ('glass', '玻璃'),
 ]
 
 

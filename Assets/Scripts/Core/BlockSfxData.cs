@@ -9,7 +9,7 @@ namespace MinecraftTetris
     /// </summary>
     public static class BlockSfxData
     {
-        public const int GroupCount = 60;
+        public const int GroupCount = 61;
 
         /// <summary>组名，下标即方块表里的组编号。</summary>
         public static readonly string[] Groups =
@@ -72,6 +72,7 @@ namespace MinecraftTetris
             "suspicious_sand",
             "snow",
             "coral_block",
+            "glass",
             "fluid_water",
             "fluid_lava",
         };
@@ -137,6 +138,7 @@ namespace MinecraftTetris
             new[] { "block_suspicious_sand_place1", "block_suspicious_sand_place2", "block_suspicious_sand_place3", "block_suspicious_sand_place4", "block_suspicious_sand_place5" },   // suspicious_sand
             new[] { "dig_snow1", "dig_snow2", "dig_snow3", "dig_snow4" },   // snow
             new[] { "dig_coral1", "dig_coral2", "dig_coral3", "dig_coral4" },   // coral_block
+            new[] { "dig_stone1", "dig_stone2", "dig_stone3", "dig_stone4" },   // glass
             new[] { "item_bucket_empty1", "item_bucket_empty1", "item_bucket_empty2", "item_bucket_empty3" },   // fluid_water
             new[] { "item_bucket_empty_lava1", "item_bucket_empty_lava2", "item_bucket_empty_lava3" },   // fluid_lava
         };
@@ -202,6 +204,7 @@ namespace MinecraftTetris
             1f,   // suspicious_sand
             1f,   // snow
             1f,   // coral_block
+            1f,   // glass
             1f,   // fluid_water
             1f,   // fluid_lava
         };
@@ -561,6 +564,7 @@ namespace MinecraftTetris
             "grass",   // cherry_leaves
             "grass",   // pale_oak_leaves
             "stone",   // bedrock
+            "glass",   // glass
         };
     }
 }

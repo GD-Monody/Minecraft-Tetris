@@ -4928,5 +4928,19 @@
    "west": "bedrock"
   },
   "tint": []
+ },
+ {
+  "name": "glass",
+  "zh": "玻璃",
+  "root": "manual",
+  "faces": {
+   "up": "glass",
+   "down": "glass",
+   "north": "glass",
+   "south": "glass",
+   "east": "glass",
+   "west": "glass"
+  },
+  "tint": []
  }
 ]
