@@ -717,16 +717,25 @@ namespace MinecraftTetris
             }
         }
 
-        /// <summary>把「哪些格子正在烧引信」同步给视图层，顺手让它闪白（6 Hz 方波）。</summary>
+        /// <summary>
+        /// 把「哪些格子正在烧引信」同步给视图层，顺手让它闪白。
+        ///
+        /// 频率照抄原版：MC 的 TntRenderer 是用引信 tick 数算的（`fuse / 5 % 2`），
+        /// 每 5 tick 换一次贴图 —— 0.25 秒白、0.25 秒原色，也就是 2 Hz 方波。
+        /// 相位按「已经烧了多久」算而不是跟全局时钟走：每颗 TNT 从点着那一刻开始白，
+        /// 连锁点着的几颗各自错开，不会全场同时闪成一片。
+        /// </summary>
         void SyncTntFlash()
         {
             if (_view == null)
                 return;
 
-            bool on = Mathf.Repeat(Time.unscaledTime * 6f, 1f) < 0.5f;
             System.Collections.Generic.List<Tnt.Primed> primed = Tnt.PrimedCells;
             for (int i = 0; i < primed.Count; i++)
-                _view.SetCellFlash(primed[i].X, primed[i].Y, primed[i].Z, on);
+            {
+                Tnt.Primed p = primed[i];
+                _view.SetCellFlash(p.X, p.Y, p.Z, Tnt.FlashOn(p.Total - p.Fuse));
+            }
         }
 
         /// <summary>

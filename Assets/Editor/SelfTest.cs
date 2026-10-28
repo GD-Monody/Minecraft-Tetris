@@ -475,6 +475,32 @@ namespace MinecraftTetris.EditorTools
             Check("点着之后那一格还是 TNT（原地烧引信）", gTnt.Get(4, 5, 0) == Tnt.TntId);
             Check("引信进度从 0 开始", Mathf.Abs(Tnt.FuseProgress(4, 5, 0)) < 0.01f);
 
+            // 数一段时间里闪白翻转了几次（1 ms 步长采样，够精确到 0.25 秒的边界）
+            int CountFlashes(float seconds)
+            {
+                int flips = 0;
+                int steps = Mathf.RoundToInt(seconds * 1000f);
+                bool prev = Tnt.FlashOn(0f);
+                for (int ms = 1; ms <= steps; ms++)
+                {
+                    bool now = Tnt.FlashOn(ms / 1000f);
+                    if (now != prev)
+                    {
+                        flips++;
+                        prev = now;
+                    }
+                }
+                return flips;
+            }
+
+            // 闪白节奏：照原版 TntRenderer 的 fuse/5%2，每 0.25 秒翻一次，点火瞬间是白
+            Check("闪白半周期是 0.25 秒（原版 5 tick）", Mathf.Approximately(Tnt.FlashHalfPeriod, 0.25f));
+            Check("点火瞬间是白的", Tnt.FlashOn(0f) && Tnt.FlashOn(0.24f));
+            Check("0.25 秒后翻成原色", !Tnt.FlashOn(0.25f) && !Tnt.FlashOn(0.49f));
+            Check("0.5 秒后又是白的", Tnt.FlashOn(0.5f) && Tnt.FlashOn(0.74f));
+            Check("一秒内只翻 4 次（不是每秒闪十几次）",
+                CountFlashes(1f) == 4 && CountFlashes(2.4f) == 9);
+
             Check("引信没烧完不爆炸",
                 !Tnt.Tick(gTnt, Tnt.FuseSeconds * 0.4f) && gTnt.Get(4, 5, 0) == Tnt.TntId);
             Check("引信烧完爆炸", Tnt.Tick(gTnt, Tnt.FuseSeconds) && Tnt.LastBlasts.Count == 1);

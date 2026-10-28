@@ -26,6 +26,19 @@ namespace MinecraftTetris
         public const float ChainFuseMax = 0.55f;
 
         /// <summary>
+        /// 闪白的半周期：0.25 秒白、0.25 秒原色。
+        /// 原版 `TntRenderer` 是按引信 tick 数算 `fuse / 5 % 2`，5 tick @ 20 TPS 正好 0.25 秒。
+        /// </summary>
+        public const float FlashHalfPeriod = 0.25f;
+
+        /// <summary>引信烧了 elapsed 秒时，这一帧该不该画成白的（每 0.25 秒翻转一次，点火瞬间是白）。</summary>
+        public static bool FlashOn(float elapsed)
+        {
+            int step = Mathf.FloorToInt(elapsed / FlashHalfPeriod);
+            return (step & 1) == 0;
+        }
+
+        /// <summary>
         /// 爆炸半径（格）。按球形判距离：
         /// z = 1 的场地上只有 dz = 0 那一层，实际是一个半径 2 的圆，约 13 格；
         /// 场地深到 z ≥ 2 才会炸出完整的一团。
