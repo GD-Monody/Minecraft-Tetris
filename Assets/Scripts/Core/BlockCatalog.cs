@@ -26,12 +26,18 @@ namespace MinecraftTetris
         public readonly Tile South;
         public readonly Tile East;
         public readonly Tile West;
-        public readonly string PlaceSfx;
+
+        /// <summary>
+        /// 放置音效分组名，对应 BlockSfxData.Groups（也就是 MC 原版的 SoundType）。
+        /// 同一种材质的所有方块共用一个组，比如所有木板都是 "wood"。
+        /// </summary>
+        public readonly string PlaceSfxGroup;
+
         public readonly bool Transparent;
 
         public BlockDef(string name, string nameZh,
                         Tile up, Tile down, Tile north, Tile south, Tile east, Tile west,
-                        string placeSfx, bool transparent)
+                        string placeSfxGroup, bool transparent)
         {
             Name = name;
             NameZh = nameZh;
@@ -41,7 +47,7 @@ namespace MinecraftTetris
             South = south;
             East = east;
             West = west;
-            PlaceSfx = placeSfx;
+            PlaceSfxGroup = placeSfxGroup;
             Transparent = transparent;
         }
     }
@@ -86,21 +92,18 @@ namespace MinecraftTetris
                     name,
                     BlockCatalogData.NamesZh[i],
                     tiles[0], tiles[1], tiles[2], tiles[3], tiles[4], tiles[5],
-                    SfxFor(name),
+                    PlaceSfxGroupOf(i),
                     IsTransparent(name));
             }
             return defs;
         }
 
-        static string SfxFor(string name)
+        /// <summary>放置音效分组，数据在 BlockSfxData（由 tools/build_place_sfx.py 生成）。</summary>
+        static string PlaceSfxGroupOf(int index)
         {
-            if (name.Contains("glass") || name.Contains("coral"))
-                return "place_glass";
-            if (name.Contains("log") || name.Contains("wood") || name.Contains("planks") ||
-                name.Contains("stem") || name.Contains("hyphae") || name.Contains("mosaic") ||
-                name.Contains("bamboo") || name.Contains("barrel") || name.Contains("bookshelf"))
-                return "place_wood";
-            return "place_stone";
+            if (index < 0 || index >= BlockSfxData.BlockGroup.Length)
+                return "stone";
+            return BlockSfxData.BlockGroup[index];
         }
 
         static bool IsTransparent(string name)

@@ -16,7 +16,6 @@ namespace MinecraftTetris
         public System.Action OnResumeClick;
         public System.Action OnQuitToTitleClick;
 
-        Font _font;
         int _best;
         int _lastScore;
         float _scoreFlash;
@@ -48,8 +47,6 @@ namespace MinecraftTetris
 
         void Awake()
         {
-            _font = Font.CreateDynamicFontFromOSFont(
-                new[] { "Microsoft YaHei", "SimHei", "Arial" }, 20);
             _best = PlayerPrefs.GetInt("best_score", 0);
             _lastScore = 0;
         }
@@ -97,7 +94,7 @@ namespace MinecraftTetris
             _btnActive = SolidTexture(new Color(0.10f, 0.12f, 0.15f, 0.98f));
 
             _btnStyle = new GUIStyle(GUI.skin.button);
-            _btnStyle.fontSize = 18;
+            _btnStyle.fontSize = UiSkin.Size(18);
             _btnStyle.alignment = TextAnchor.MiddleCenter;
             _btnStyle.normal.background = _btnNormal;
             _btnStyle.hover.background = _btnHover;
@@ -108,7 +105,7 @@ namespace MinecraftTetris
             _btnStyle.border = new RectOffset(0, 0, 0, 0);
             // 不显式清掉 padding / contentOffset 的话，文字会贴着按钮上半部（继承 GUI.skin.button 的默认值）
             _btnStyle.padding = new RectOffset(0, 0, 0, 0);
-            _btnStyle.contentOffset = new Vector2(0f, 3f);
+            _btnStyle.contentOffset = new Vector2(0f, UiSkin.P(3f));
         }
 
         static Texture2D SolidTexture(Color c)
@@ -122,7 +119,7 @@ namespace MinecraftTetris
         GUIStyle MakeStyle(int size, Color color)
         {
             var s = new GUIStyle(GUI.skin.label);
-            s.fontSize = size;
+            s.fontSize = UiSkin.Size(size);
             s.normal.textColor = color;
             s.alignment = TextAnchor.UpperLeft;
             return s;
@@ -140,8 +137,7 @@ namespace MinecraftTetris
             if (Hidden)
                 return;
 
-            if (_font != null)
-                GUI.skin.font = _font;
+            UiSkin.Apply();
 
             EnsureStyles();
 
@@ -161,6 +157,8 @@ namespace MinecraftTetris
             if (Loop.GameOver)
                 DrawGameOverPanel();
 
+            // 必须放在最后：光标拖尾要压在暂停 / 结束面板之上
+            CursorTrail.DrawLast();
         }
 
         void DrawGameOverPanel()
@@ -169,22 +167,23 @@ namespace MinecraftTetris
             GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
             GUI.color = Color.white;
 
-            float w = Mathf.Clamp(Screen.width * 0.34f, 380f, 560f);
-            float h = 312f;
+            float w = Mathf.Clamp(Screen.width * 0.34f, UiSkin.P(380f), UiSkin.P(560f));
+            float h = UiSkin.P(312f);
             var panel = new Rect((Screen.width - w) * 0.5f, (Screen.height - h) * 0.5f, w, h);
             DrawPanel(panel);
 
-            Text(new Rect(panel.x, panel.y + 22f, panel.width, 58f), "游戏结束", _gameOverTitle, _gameOverTitleShadow);
-            GUI.Label(new Rect(panel.x, panel.y + 90f, panel.width, 28f), "按 R 重开", _labelCenter);
+            Text(new Rect(panel.x, panel.y + UiSkin.P(22f), panel.width, UiSkin.P(58f)),
+                "游戏结束", _gameOverTitle, _gameOverTitleShadow);
+            GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(90f), panel.width, UiSkin.P(28f)), "按 R 重开", _labelCenter);
 
-            float bw = Mathf.Min(w - 100f, 220f);
-            var btn = new Rect(panel.x + (panel.width - bw) * 0.5f, panel.y + 150f, bw, 46f);
+            float bw = Mathf.Min(w - UiSkin.P(100f), UiSkin.P(220f));
+            var btn = new Rect(panel.x + (panel.width - bw) * 0.5f, panel.y + UiSkin.P(150f), bw, UiSkin.P(46f));
             if (GUI.Button(btn, "再来一局", _btnStyle))
             {
                 if (OnRestartClick != null)
                     OnRestartClick();
             }
-            var btn2 = new Rect(panel.x + (panel.width - bw) * 0.5f, panel.y + 212f, bw, 46f);
+            var btn2 = new Rect(panel.x + (panel.width - bw) * 0.5f, panel.y + UiSkin.P(212f), bw, UiSkin.P(46f));
             if (GUI.Button(btn2, "退出到主界面", _btnStyle))
             {
                 if (OnQuitToTitleClick != null)
@@ -194,50 +193,54 @@ namespace MinecraftTetris
 
         void DrawScorePanel()
         {
-            var panel = new Rect(14f, 14f, 246f, 158f);
+            var panel = new Rect(UiSkin.P(14f), UiSkin.P(14f), UiSkin.P(246f), UiSkin.P(158f));
             DrawPanel(panel);
 
-            float x = panel.x + 16f;
-            float y = panel.y + 18f;
+            float x = panel.x + UiSkin.P(16f);
+            float y = panel.y + UiSkin.P(18f);
 
-            Text(new Rect(x, y, 80f, 30f), "分数", _label, _labelShadow);
+            Text(new Rect(x, y, UiSkin.P(80f), UiSkin.P(30f)), "分数", _label, _labelShadow);
 
             float scale = 1f;
             if (_scoreFlash > 0f)
                 scale = 1f + _scoreFlash * 0.4f;
-            Rect valueRect = new Rect(x + 46f, y - 6f, 200f, 40f);
+            Rect valueRect = new Rect(x + UiSkin.P(46f), y - UiSkin.P(6f), UiSkin.P(200f), UiSkin.P(40f));
             GUI.matrix = Matrix4x4.TRS(new Vector3(valueRect.x, valueRect.y, 0f), Quaternion.identity,
                 new Vector3(scale, scale, 1f));
             GUIStyle scoreStyle = _scoreFlash > 0f
                 ? MakeStyle(30, Color.Lerp(ValueColor, FlashColor, _scoreFlash / 0.4f))
                 : _value;
-            GUI.Label(new Rect(1f, 2f, 200f, 40f), Loop.Score.ToString(), _valueShadow);
-            GUI.Label(new Rect(0f, 0f, 200f, 40f), Loop.Score.ToString(), scoreStyle);
+            GUI.Label(new Rect(1f, 2f, UiSkin.P(200f), UiSkin.P(40f)), Loop.Score.ToString(), _valueShadow);
+            GUI.Label(new Rect(0f, 0f, UiSkin.P(200f), UiSkin.P(40f)), Loop.Score.ToString(), scoreStyle);
             GUI.matrix = Matrix4x4.identity;
 
-            y += 46f;
-            Text(new Rect(x, y, 80f, 30f), "消除", _label, _labelShadow);
-            Text(new Rect(x + 46f, y - 3f, 200f, 26f), Loop.LinesCleared + " 行", _valueSmall, _valueSmallShadow);
+            y += UiSkin.P(46f);
+            Text(new Rect(x, y, UiSkin.P(80f), UiSkin.P(30f)), "消除", _label, _labelShadow);
+            Text(new Rect(x + UiSkin.P(46f), y - UiSkin.P(3f), UiSkin.P(200f), UiSkin.P(26f)),
+                Loop.LinesCleared + " 行", _valueSmall, _valueSmallShadow);
 
-            y += 34f;
-            Text(new Rect(x, y, 80f, 30f), "最高", _label, _labelShadow);
-            Text(new Rect(x + 46f, y - 3f, 200f, 26f), _best.ToString(), _valueSmall, _valueSmallShadow);
+            y += UiSkin.P(34f);
+            Text(new Rect(x, y, UiSkin.P(80f), UiSkin.P(30f)), "最高", _label, _labelShadow);
+            Text(new Rect(x + UiSkin.P(46f), y - UiSkin.P(3f), UiSkin.P(200f), UiSkin.P(26f)),
+                _best.ToString(), _valueSmall, _valueSmallShadow);
 
             DrawAccentLine(panel);
         }
 
         void DrawNextPanel()
         {
-            var panel = new Rect(14f, 180f, 246f, 184f);
+            var panel = new Rect(UiSkin.P(14f), UiSkin.P(180f), UiSkin.P(246f), UiSkin.P(184f));
             DrawPanel(panel);
 
-            Text(new Rect(panel.x + 16f, panel.y + 16f, 200f, 30f), "下一个", _label, _labelShadow);
+            Text(new Rect(panel.x + UiSkin.P(16f), panel.y + UiSkin.P(16f), UiSkin.P(200f), UiSkin.P(30f)),
+                "下一个", _label, _labelShadow);
 
-            var previewRect = new Rect(panel.x + 14f, panel.y + 40f, 112f, 112f);
+            var previewRect = new Rect(panel.x + UiSkin.P(14f), panel.y + UiSkin.P(40f),
+                UiSkin.P(112f), UiSkin.P(112f));
             if (Preview != null && Preview.Texture != null)
                 GUI.DrawTexture(previewRect, Preview.Texture, ScaleMode.ScaleToFit, true);
 
-            Text(new Rect(panel.x + 134f, panel.y + 84f, 106f, 44f),
+            Text(new Rect(panel.x + UiSkin.P(134f), panel.y + UiSkin.P(84f), UiSkin.P(106f), UiSkin.P(44f)),
                 Loop.Next != null ? Loop.Next.Label : "", _valueSmall, _valueSmallShadow);
 
             DrawAccentLine(panel);
@@ -249,30 +252,30 @@ namespace MinecraftTetris
             GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
             GUI.color = Color.white;
 
-            float w = Mathf.Clamp(Screen.width * 0.24f, 300f, 440f);
-            float h = 262f;
+            float w = Mathf.Clamp(Screen.width * 0.24f, UiSkin.P(300f), UiSkin.P(440f));
+            float h = UiSkin.P(262f);
             var panel = new Rect((Screen.width - w) * 0.5f, (Screen.height - h) * 0.5f, w, h);
             DrawPanel(panel);
 
-            GUI.Label(new Rect(panel.x, panel.y + 16f, panel.width, 42f), "已暂停", _pauseTitle);
+            GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(16f), panel.width, UiSkin.P(42f)), "已暂停", _pauseTitle);
 
-            float bw = w - 80f;
+            float bw = w - UiSkin.P(80f);
             float bx = panel.x + (panel.width - bw) * 0.5f;
-            float by = panel.y + 74f;
+            float by = panel.y + UiSkin.P(74f);
 
-            if (GUI.Button(new Rect(bx, by, bw, 40f), "继续游戏", _btnStyle))
+            if (GUI.Button(new Rect(bx, by, bw, UiSkin.P(40f)), "继续游戏", _btnStyle))
             {
                 if (OnResumeClick != null)
                     OnResumeClick();
             }
-            by += 52f;
-            if (GUI.Button(new Rect(bx, by, bw, 40f), "重新开始", _btnStyle))
+            by += UiSkin.P(52f);
+            if (GUI.Button(new Rect(bx, by, bw, UiSkin.P(40f)), "重新开始", _btnStyle))
             {
                 if (OnRestartClick != null)
                     OnRestartClick();
             }
-            by += 52f;
-            if (GUI.Button(new Rect(bx, by, bw, 40f), "退出到主界面", _btnStyle))
+            by += UiSkin.P(52f);
+            if (GUI.Button(new Rect(bx, by, bw, UiSkin.P(40f)), "退出到主界面", _btnStyle))
             {
                 if (OnQuitToTitleClick != null)
                     OnQuitToTitleClick();
@@ -281,8 +284,10 @@ namespace MinecraftTetris
 
         void DrawCenterText(string text)
         {
-            GUI.Label(new Rect(Screen.width / 2f - 200f, Screen.height / 2f - 40f, 400f, 40f), text, _centerShadow);
-            GUI.Label(new Rect(Screen.width / 2f - 200f, Screen.height / 2f - 42f, 400f, 40f), text, _center);
+            GUI.Label(new Rect(Screen.width / 2f - UiSkin.P(200f), Screen.height / 2f - UiSkin.P(40f),
+                UiSkin.P(400f), UiSkin.P(40f)), text, _centerShadow);
+            GUI.Label(new Rect(Screen.width / 2f - UiSkin.P(200f), Screen.height / 2f - UiSkin.P(42f),
+                UiSkin.P(400f), UiSkin.P(40f)), text, _center);
         }
 
         static string TypeLabel(PieceType t)

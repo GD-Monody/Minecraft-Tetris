@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace MinecraftTetris
@@ -10,6 +11,8 @@ namespace MinecraftTetris
     /// - 每 0.1 秒推进一次：能往下落就整格落下去（份数不变），落不下去就在四邻之间均分
     ///   （把两边差的一半分过去），所以总份数始终不变，水不会无中生有。
     /// - 画的时候按份数给高度，8 份满格、1 份就薄薄一层，看起来就是水摊开变浅。
+    /// - 水和岩浆相遇会结晶成石头：满格的岩浆是"源"，遇水变黑曜石；不满格的是流动岩浆，
+    ///   遇水变原石。反应时参与的那一格水整格被消耗，见 React。
     /// </summary>
     public static class Fluids
     {
@@ -21,22 +24,48 @@ namespace MinecraftTetris
 
         const float TickInterval = 0.1f;
 
+        /// <summary>一次水岩浆反应：岩浆那格变成固体，参与反应的水整格被消耗。</summary>
+        public struct Reaction
+        {
+            /// <summary>产物的位置（原来的岩浆格）。</summary>
+            public int X, Y, Z;
+            /// <summary>产物方块编号：黑曜石或原石。</summary>
+            public int BlockId;
+            /// <summary>被消耗掉的那一格水。</summary>
+            public int WaterX, WaterY, WaterZ;
+        }
+
+        /// <summary>最近一个 tick 里发生的反应。视图层拿它刷格子、撒碎屑。</summary>
+        public static readonly List<Reaction> LastReactions = new List<Reaction>();
+
         static int _waterId = -1;
         static int _lavaId = -1;
+        static int _obsidianId = -1;
+        static int _cobbleId = -1;
 
         static int[,,] _amount;   // 每格几份（0 表示没有流体）
         static int[,,] _id;       // 每格是哪种流体（0 表示没有）
         static int _sx, _sy, _sz;
         static float _timer;
 
+        // 六向邻居：下、上、左、右、后、前
+        static readonly int[] NeighborDx = { 0, 0, -1, 1, 0, 0 };
+        static readonly int[] NeighborDy = { -1, 1, 0, 0, 0, 0 };
+        static readonly int[] NeighborDz = { 0, 0, 0, 0, -1, 1 };
+
         public static int WaterId { get { return _waterId; } }
         public static int LavaId { get { return _lavaId; } }
+        public static int ObsidianId { get { return _obsidianId; } }
+        public static int CobbleId { get { return _cobbleId; } }
 
         public static void Init()
         {
             _waterId = FindByName("water");
             _lavaId = FindByName("lava");
-            Debug.Log("[fluids] water=" + _waterId + " lava=" + _lavaId);
+            _obsidianId = FindByName("obsidian");
+            _cobbleId = FindByName("cobblestone");
+            Debug.Log("[fluids] water=" + _waterId + " lava=" + _lavaId
+                + " obsidian=" + _obsidianId + " cobblestone=" + _cobbleId);
         }
 
         public static bool IsFluid(int blockId)
@@ -49,6 +78,7 @@ namespace MinecraftTetris
             _amount = null;
             _id = null;
             _timer = 0f;
+            LastReactions.Clear();
         }
 
         /// <summary>按当前场地尺寸把流体数组准备好。Reset 之后、往格子里写流体之前要调一次，
@@ -118,14 +148,35 @@ namespace MinecraftTetris
             return Mathf.Clamp(MaxAmount - a, 0, MaxSpread);
         }
 
-        /// <summary>往这一格放一满格流体（8 份）。</summary>
-        public static void AddSource(Grid grid, int x, int y, int z, int id)
+        /// <summary>
+        /// 往这一格放一满格流体（8 份）。
+        /// 如果这格已经是另一种流体——水方块落进岩浆、或者反过来——就地结晶：
+        /// 满格的岩浆变黑曜石、不满的变原石，两种流体一起消失。
+        /// 返回产物方块编号，没结晶返回 0。
+        /// </summary>
+        public static int AddSource(Grid grid, int x, int y, int z, int id)
         {
             Ensure(grid);
-            if (!InBounds(x, y, z)) return;
+            if (!InBounds(x, y, z)) return 0;
+
+            int existing = _id[x, y, z];
+            if (_amount[x, y, z] > 0 && existing != 0 && existing != id)
+            {
+                // 岩浆那格剩几份决定产物；落进来本身就是岩浆时按 8 份水源算
+                int lavaAmount = existing == _lavaId ? _amount[x, y, z] : MaxAmount;
+                int product = lavaAmount >= MaxAmount ? _obsidianId : _cobbleId;
+                if (product > 0)
+                {
+                    grid.Set(x, y, z, product);
+                    _amount[x, y, z] = 0;
+                    _id[x, y, z] = 0;
+                    return product;
+                }
+            }
 
             _amount[x, y, z] = MaxAmount;
             _id[x, y, z] = id;
+            return 0;
         }
 
         /// <summary>每帧调用；真的推进了一步就返回 true（外面据此重画）。</summary>
@@ -138,8 +189,80 @@ namespace MinecraftTetris
             if (_timer < TickInterval) return false;
             _timer = 0f;
 
-            bool changed = Step(grid);
+            LastReactions.Clear();
+
+            // 先结晶再流动：这一 tick 新结出来的石头立刻就能挡住水。
+            bool changed = React(grid);
+            if (Step(grid))
+                changed = true;
             return changed;
+        }
+
+        /// <summary>
+        /// 水岩浆成石：岩浆格和六向相邻的水相遇就结晶。
+        /// 满 8 份的是岩浆源，变黑曜石；不满的是流动岩浆，变原石。
+        /// 产物直接写进网格（固体，会挡路、能凑满行），那格流体清空；
+        /// 参与反应的水整格被消耗，这样场地里的水只减不增。
+        /// </summary>
+        static bool React(Grid grid)
+        {
+            if (_lavaId <= 0 || _waterId <= 0)
+                return false;
+            if (_obsidianId <= 0 && _cobbleId <= 0)
+                return false;
+
+            bool any = false;
+
+            for (int y = 0; y < _sy; y++)
+            {
+                for (int x = 0; x < _sx; x++)
+                {
+                    for (int z = 0; z < _sz; z++)
+                    {
+                        if (_id[x, y, z] != _lavaId || _amount[x, y, z] <= 0)
+                            continue;
+
+                        // 六向里找一格水。斜对角不算，和 MC 一致。
+                        int wx = -1, wy = -1, wz = -1;
+                        for (int k = 0; k < 6; k++)
+                        {
+                            int nx = x + NeighborDx[k];
+                            int ny = y + NeighborDy[k];
+                            int nz = z + NeighborDz[k];
+                            if (!InBounds(nx, ny, nz))
+                                continue;
+                            if (_id[nx, ny, nz] != _waterId || _amount[nx, ny, nz] <= 0)
+                                continue;
+                            wx = nx; wy = ny; wz = nz;
+                            break;
+                        }
+
+                        if (wx < 0)
+                            continue;
+
+                        int product = _amount[x, y, z] >= MaxAmount ? _obsidianId : _cobbleId;
+                        if (product <= 0)
+                            continue;   // 方块表里没有这个产物，就不反应，别写个空编号进去
+
+                        grid.Set(x, y, z, product);
+                        _amount[x, y, z] = 0;
+                        _id[x, y, z] = 0;
+
+                        _amount[wx, wy, wz] = 0;
+                        _id[wx, wy, wz] = 0;
+
+                        LastReactions.Add(new Reaction
+                        {
+                            X = x, Y = y, Z = z,
+                            BlockId = product,
+                            WaterX = wx, WaterY = wy, WaterZ = wz,
+                        });
+                        any = true;
+                    }
+                }
+            }
+
+            return any;
         }
 
         static bool Step(Grid grid)

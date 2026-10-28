@@ -1,10 +1,19 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace MinecraftTetris
 {
     /// <summary>
-    /// 音效：放下按材质选放置音，单行/层消除用获得经验，多行/层用升级。
-    /// 文件在 Assets/Resources/Sfx/ 下。
+    /// 音效。放置音完全照 MC 原版来：
+    ///
+    /// - 原版是 **按材质分组** 的（SoundType），同一种材质的所有方块共用一个组，
+    ///   比如所有木板都响 dig/wood*，所有石头系都响 dig/stone*，羊毛是 dig/cloth*。
+    ///   分组数据在 BlockSfxData（由 tools/build_place_sfx.py 从 MC 的 sounds.json 生成）。
+    /// - 每个组有好几个录音变体（3~8 个），原版是随机挑一个播，这里也一样；
+    ///   再加一点音高抖动，连续放同一块就不会像复读机。
+    /// - 个别组在 sounds.json 里自带音量（竹木 0.9、泥 0.5、压实泥 0.3…），照原样乘上。
+    ///
+    /// 文件在 Assets/Resources/Sfx/（界面音、消除音）和 Sfx/Place/（各组的放置音）下。
     /// </summary>
     public class SfxPlayer : MonoBehaviour
     {
@@ -12,60 +21,141 @@ namespace MinecraftTetris
         public bool Enabled = true;
         public float Volume = 0.8f;
 
-        AudioSource _source;
-        AudioClip _placeStone;
-        AudioClip _placeWood;
-        AudioClip _placeGlass;
+        /// <summary>放置音的音高抖动幅度（±）。MC 每次放置的 pitch 都有细微随机。</summary>
+        public float PitchJitter = 0.06f;
+
+        // 几个 AudioSource 轮着用：PlayOneShot 不会互相打断，但 pitch 是挂在 AudioSource 上的，
+        // 共用一个源的话改 pitch 会把正在响的那一下也带歪，所以轮转着来。
+        const int VoiceCount = 6;
+
+        AudioSource[] _voices;
+        int _nextVoice;
+
+        AudioClip _fallbackPlace;      // 组里没素材时兜底用
+        AudioClip[][] _placeClips;     // 按组下标
+        float[] _placeVolume;
+        Dictionary<string, int> _groupIndex;
+
         AudioClip _pickupXp;
         AudioClip _levelup;
-
-        void Play(AudioClip clip)
-        {
-            if (clip == null || !Enabled || _source == null)
-                return;
-            _source.PlayOneShot(clip, Mathf.Clamp01(Volume));
-        }
+        AudioClip _fizz;
 
         void Awake()
         {
-            _source = gameObject.AddComponent<AudioSource>();
-            _source.playOnAwake = false;
-
-            _placeStone = Load("place_stone");
-            _placeWood = Load("place_wood");
-            _placeGlass = Load("place_glass");
-            _pickupXp = Load("pickup_xp");
-            _levelup = Load("levelup");
-        }
-
-        static AudioClip Load(string name)
-        {
-            return Resources.Load<AudioClip>("Sfx/" + name);
-        }
-
-        public void PlayPlace(BlockDef def)
-        {
-            AudioClip clip;
-            switch (def.PlaceSfx)
+            _voices = new AudioSource[VoiceCount];
+            for (int i = 0; i < VoiceCount; i++)
             {
-                case "place_wood":
-                    clip = _placeWood;
-                    break;
-                case "place_glass":
-                    clip = _placeGlass;
-                    break;
-                default:
-                    clip = _placeStone;
-                    break;
+                AudioSource source = gameObject.AddComponent<AudioSource>();
+                source.playOnAwake = false;
+                _voices[i] = source;
             }
 
-            Play(clip);
+            _fallbackPlace = Load("Sfx/place_stone");
+            _pickupXp = Load("Sfx/pickup_xp");
+            _levelup = Load("Sfx/levelup");
+            _fizz = Load("Sfx/fizz");
+
+            LoadPlaceGroups();
+        }
+
+        void LoadPlaceGroups()
+        {
+            int count = BlockSfxData.GroupCount;
+            _placeClips = new AudioClip[count][];
+            _placeVolume = new float[count];
+            _groupIndex = new Dictionary<string, int>(count);
+
+            int total = 0;
+            for (int g = 0; g < count; g++)
+            {
+                string group = BlockSfxData.Groups[g];
+                _groupIndex[group] = g;
+                _placeVolume[g] = BlockSfxData.GroupVolume[g];
+
+                string[] names = BlockSfxData.GroupClips[g];
+                var clips = new List<AudioClip>(names.Length);
+                for (int i = 0; i < names.Length; i++)
+                {
+                    AudioClip clip = Load("Sfx/Place/" + names[i]);
+                    if (clip != null)
+                        clips.Add(clip);
+                }
+
+                if (clips.Count == 0)
+                    Debug.LogWarning("[sfx] 放置音组没有素材: " + group);
+
+                _placeClips[g] = clips.ToArray();
+                total += clips.Count;
+            }
+
+            Debug.Log("[sfx] 放置音 " + count + " 组 / " + total + " 个 clip");
+        }
+
+        static AudioClip Load(string path)
+        {
+            return Resources.Load<AudioClip>(path);
+        }
+
+        void Play(AudioClip clip, float volume, float pitch)
+        {
+            if (clip == null || !Enabled || _voices == null)
+                return;
+
+            AudioSource source = _voices[_nextVoice];
+            _nextVoice = (_nextVoice + 1) % _voices.Length;
+            source.pitch = pitch;
+            source.PlayOneShot(clip, Mathf.Clamp01(Volume * volume));
+        }
+
+        void Play(AudioClip clip)
+        {
+            Play(clip, 1f, 1f);
+        }
+
+        /// <summary>按组下标播一次放置音。</summary>
+        void PlayPlaceGroup(int group)
+        {
+            if (_placeClips == null)
+                return;
+
+            if (group >= 0 && group < _placeClips.Length)
+            {
+                AudioClip[] clips = _placeClips[group];
+                if (clips != null && clips.Length > 0)
+                {
+                    float pitch = 1f + Random.Range(-PitchJitter, PitchJitter);
+                    Play(clips[Random.Range(0, clips.Length)], _placeVolume[group], pitch);
+                    return;
+                }
+            }
+
+            // 素材缺失时退回老的石头音，别让游戏变哑巴
+            if (_fallbackPlace != null)
+                Play(_fallbackPlace, 1f, 1f + Random.Range(-PitchJitter, PitchJitter));
+        }
+
+        /// <summary>放下一个方块：按它所属的 MC 材质组选音效。</summary>
+        public void PlayPlace(BlockDef def)
+        {
+            int group = 0;   // 0 是 stone，查不到组就用石头声
+            if (def != null && def.PlaceSfxGroup != null && _groupIndex != null)
+                _groupIndex.TryGetValue(def.PlaceSfxGroup, out group);
+            PlayPlaceGroup(group);
         }
 
         public void PlayClear(int lines)
         {
             AudioClip clip = lines >= 2 ? _levelup : _pickupXp;
             Play(clip);
+        }
+
+        /// <summary>水浇到岩浆上结晶时的嘶声（MC 的 random.fizz）。素材缺的时候退回石头音。</summary>
+        public void PlayFizz()
+        {
+            if (_fizz != null)
+                Play(_fizz);
+            else
+                PlayPlaceGroup(0);
         }
     }
 }

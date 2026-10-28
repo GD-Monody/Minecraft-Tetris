@@ -11,6 +11,7 @@ namespace MinecraftTetris
         const string SizeYKey = "size.y";
         const string SizeZKey = "size.z";
         const string ElimModeKey = "elim.mode";
+        const string FallSpeedKey = "fall.speed";
 
         public const int MinSizeX = 5;
         public const int MaxSizeX = 20;
@@ -23,6 +24,14 @@ namespace MinecraftTetris
         public const int ElimRows = 0;
         /// <summary>层消：整个 x × z 平面填满才消。</summary>
         public const int ElimLayer = 1;
+
+        /// <summary>
+        /// 下限取 0.01 而不是 0：0 意味着永远掉不下来，没意义；(0, 2] 里最小的两位小数就是 0.01。
+        /// </summary>
+        public const float MinFallSpeed = 0.01f;
+        /// <summary>上限 2 倍速（0.4 秒一格）。</summary>
+        public const float MaxFallSpeed = 2f;
+        public const float DefaultFallSpeed = 1f;
 
         public static int SizeX
         {
@@ -42,6 +51,33 @@ namespace MinecraftTetris
         public static int ElimMode
         {
             get { return Mathf.Clamp(PlayerPrefs.GetInt(ElimModeKey, ElimRows), ElimRows, ElimLayer); }
+        }
+
+        /// <summary>
+        /// 下落速度倍率，范围 (0, 2]，两位小数。1 = 标准（0.8 秒一格），越大掉得越快。
+        /// 3D 场地要前后看落点，1 倍速经常来不及，所以做成可调。
+        /// </summary>
+        public static float FallSpeed
+        {
+            get { return ClampFallSpeed(PlayerPrefs.GetFloat(FallSpeedKey, DefaultFallSpeed)); }
+        }
+
+        /// <summary>夹到 (0, 2] 上并四舍五入到两位小数。</summary>
+        public static float ClampFallSpeed(float v)
+        {
+            if (float.IsNaN(v))
+                return DefaultFallSpeed;
+            v = Mathf.Clamp(v, MinFallSpeed, MaxFallSpeed);
+            return Mathf.Round(v * 100f) / 100f;
+        }
+
+        /// <summary>
+        /// 改下落速度。不清存档——它不影响已有局面的合法性，中途改了立刻生效就行。
+        /// </summary>
+        public static void SetFallSpeed(float v)
+        {
+            PlayerPrefs.SetFloat(FallSpeedKey, ClampFallSpeed(v));
+            PlayerPrefs.Save();
         }
 
         public static void SetSize(int x, int y, int z)

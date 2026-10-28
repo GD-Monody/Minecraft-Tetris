@@ -27,8 +27,11 @@ namespace MinecraftTetris
         /// <summary>流体（水/岩浆）按水位分档的矮方块 mesh：blockId -> [level0..levelMax]。</summary>
         readonly Dictionary<int, Mesh[]> _fluidMeshes = new Dictionary<int, Mesh[]>();
 
-        float _pieceYaw;
-        float _pieceYawTarget;
+        // 下落中方块的朝向。逻辑层存的是整数旋转矩阵（Piece.Rot），这里存它的四元数形式，
+        // 每帧拿目标值做球面插值，看起来就是方块原地转过去的。
+        // 三根轴（面内 / 俯视 / 前后翻）都走同一个四元数，不用再分开记角度。
+        Quaternion _pieceRot = Quaternion.identity;
+        Quaternion _pieceRotTarget = Quaternion.identity;
 
         // 追赶速度：越大越快贴到位。16 大约 0.1 秒走完 80%
         const float Smooth = 16f;
@@ -142,8 +145,8 @@ namespace MinecraftTetris
             // 正在下落的方块：位置追目标，朝向也慢慢转到新角度
             if (_pieceCells == null)
                 return;
-            _pieceYaw = Mathf.LerpAngle(_pieceYaw, _pieceYawTarget, k * 1.4f);
-            Quaternion rot = Quaternion.Euler(0f, _pieceYaw, 0f);
+            _pieceRot = Quaternion.Slerp(_pieceRot, _pieceRotTarget, k * 1.4f);
+            Quaternion rot = _pieceRot;
             for (int i = 0; i < _pieceCells.Length; i++)
             {
                 GameObject go = _pieceCells[i];
@@ -194,6 +197,7 @@ namespace MinecraftTetris
 
             int idx;
             Mesh mesh;
+            bool isFluid = false;
             if (blockId > 0)
             {
                 idx = blockId - 1;
@@ -201,6 +205,7 @@ namespace MinecraftTetris
             }
             else
             {
+                isFluid = true;
                 // 这一格没有方块，只有水：按水量选矮一点的 mesh
                 int fid = Fluids.IdAt(x, y, z);
                 if (fid <= 0)
@@ -225,6 +230,13 @@ namespace MinecraftTetris
 
             go.SetActive(true);
             go.transform.position = _cellVisual[x, y, z];
+            if (isFluid)
+            {
+                // 水/岩浆是一块矮方块（高度 = 水位），不是正方体。
+                // 一旦继承了上一次落定时留下的面内旋转（roll），它就会从「一片水面」立成「一片竖墙」。
+                // 水面永远是水平的，所以流体格子不吃任何旋转。
+                go.transform.rotation = Quaternion.identity;
+            }
             go.GetComponent<MeshFilter>().sharedMesh = mesh;
             go.GetComponent<MeshRenderer>().sharedMaterial = _materials[idx];
         }
@@ -234,20 +246,31 @@ namespace MinecraftTetris
         /// 视觉上还留在 from，下一帧开始自己滑过去。
         /// </summary>
         /// <summary>落定时把方块当时的朝向记到这一格：旋转过的方块落下去要保持下落时的朝向。</summary>
-        public void SetCellRotation(int x, int y, int z, float yawDegrees)
+        public void SetCellRotation(int x, int y, int z, Quaternion rotation)
         {
             if (!InCells(x, y, z))
                 return;
             GameObject go = _cells[x, y, z];
             if (go == null)
                 return;
-            go.transform.rotation = Quaternion.Euler(0f, yawDegrees, 0f);
+            // 这一格如果装的是流体（网格里没有方块、但有水量），朝向要丢掉：
+            // 水是矮方块，随便一点角度都会让它变成竖着的切片。
+            bool isFluid = Grid.Get(x, y, z) <= 0 && Fluids.AmountAt(x, y, z) > 0;
+            go.transform.rotation = CellRotation(isFluid, rotation);
         }
 
-        /// <summary>当前方块的目标朝向（角度）。落定时用它给格子记朝向。</summary>
-        public float PieceYawDegrees
+        /// <summary>
+        /// 某一格该用的朝向。流体一律不转——它比正方体矮，任何角度都会让它立起来变成竖切片。
+        /// </summary>
+        public static Quaternion CellRotation(bool isFluid, Quaternion rotation)
         {
-            get { return _pieceYawTarget; }
+            return isFluid ? Quaternion.identity : rotation;
+        }
+
+        /// <summary>当前方块的目标朝向（四元数）。</summary>
+        public Quaternion PieceRotationQuaternion
+        {
+            get { return _pieceRotTarget; }
         }
 
         public void ApplyGravityMoves(List<GravityStep> moves)
@@ -312,6 +335,8 @@ namespace MinecraftTetris
 
             int n = piece.Cells.Length;
             EnsurePieceCapacity(n);
+            // 朝向直接取逻辑层算好的，不做账：三组旋转键怎么按，这里都不会累积误差
+            _pieceRotTarget = piece.Rot.ToQuaternion();
 
             int idx = piece.BlockId - 1;
             if (idx < 0 || idx >= _meshes.Length)
@@ -352,14 +377,16 @@ namespace MinecraftTetris
                 if (_pieceCells[i] != null)
                     _pieceCells[i].transform.position = _pieceVisual[i];
             }
-            _pieceYaw = 0f;
-            _pieceYawTarget = 0f;
+            _pieceRotTarget = piece.Rot.ToQuaternion();
+            _pieceRot = _pieceRotTarget;
         }
 
-        /// <summary>方块转了个 90°：视觉上让格子转过去。</summary>
-        public void RotatePieceVisual(bool clockwise)
+        /// <summary>
+        /// 方块转了个 90°。视图层的朝向现在是每帧跟着 Piece.Rot 走的（见 RefreshPiece），
+        /// 所以这里只是留着给调试看，不用再自己累加角度。
+        /// </summary>
+        public void RotatePieceVisual(RotationAxis axis, bool clockwise)
         {
-            _pieceYawTarget += clockwise ? 90f : -90f;
         }
 
         void HidePiece()

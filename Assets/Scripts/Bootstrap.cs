@@ -48,6 +48,7 @@ namespace MinecraftTetris
             Grid.OnCellCleared = (x, y, z) => Fluids.ClearCell(x, y, z);
 
             _loop = new GameLoop(SizeX, SizeY, SizeZ, (int)System.DateTime.Now.Ticks);
+            _loop.FallSpeed = GameSettings.FallSpeed;
 
             _view = gameObject.AddComponent<GridView>();
             _view.Setup(_loop.Grid);
@@ -68,6 +69,9 @@ namespace MinecraftTetris
             _particles = gameObject.AddComponent<ParticleBurst>();
             _particles.Init(_view);
 
+            // 光标深蓝荧光拖尾（纯 IMGUI 绘制，不参与游戏逻辑）
+            gameObject.AddComponent<CursorTrail>();
+
             _title = gameObject.AddComponent<TitleScreen>();
             _title.HasContinue = GameSave.HasSave;
             _title.OnStartGame += StartNewGame;
@@ -76,6 +80,7 @@ namespace MinecraftTetris
             _title.OnSfxChanged += OnSfxChanged;
             _title.OnKeysChanged += OnKeysChanged;
             _title.OnSizeApplied += OnSizeApplied;
+            _title.OnFallSpeedChanged += OnFallSpeedChanged;
             _sfx.Enabled = _title.SfxEnabled;
 
             // 命令行带 -auto 时跳过开始界面，方便自动化截图与调试
@@ -114,6 +119,8 @@ namespace MinecraftTetris
                 _forceGameOverAt = 1.5f;
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-sandtest") >= 0)
                 RunSandTest();
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-reacttest") >= 0)
+                RunReactTest();
 
             // -blocktest <方块英文名>：在场地高处摆三个该方块，用来肉眼核对六面贴图
             var btArgv = System.Environment.GetCommandLineArgs();
@@ -125,6 +132,14 @@ namespace MinecraftTetris
             int ftAt = System.Array.IndexOf(btArgv, "-fluidtest");
             if (ftAt >= 0 && ftAt + 1 < btArgv.Length)
                 RunFluidTest(btArgv[ftAt + 1]);
+
+            // -yawtest：摆一个 I 型，一份不转、一份俯视转 90°，看画面里形状对不对
+            if (System.Array.IndexOf(btArgv, "-yawtest") >= 0)
+                RunYawTest();
+
+            // -pitchtest：摆三个 T 型，分别是不转 / 往背面翻 / 往正面翻，看前后翻对不对
+            if (System.Array.IndexOf(btArgv, "-pitchtest") >= 0)
+                RunPitchTest();
 
             // -shotat N：把自动截图的时间点从默认 6 秒改成 N 秒（验证落定方块等需要跑够时间）
             var argv = System.Environment.GetCommandLineArgs();
@@ -139,6 +154,7 @@ namespace MinecraftTetris
             _loop.PieceRotated += OnPieceRotated;
             _loop.GravitySettled += OnGravitySettled;
             _loop.FluidChanged += OnFluidChanged;
+            _loop.FluidReacted += OnFluidReacted;
 
             _view.RefreshAll();
             _view.SnapPiece(_loop.Current);
@@ -259,6 +275,7 @@ namespace MinecraftTetris
             Fluids.Reset();
             Fluids.Prepare(_loop.Grid);
             _loop.Restart();
+            _loop.FallSpeed = GameSettings.FallSpeed;
             _particles.Clear();
             _paused = false;
             _view.RefreshAll();
@@ -323,6 +340,13 @@ namespace MinecraftTetris
         {
             if (_sfx != null)
                 _sfx.Enabled = enabled;
+        }
+
+        /// <summary>下落速度改完立刻生效，不用重开一局。</summary>
+        void OnFallSpeedChanged()
+        {
+            if (_loop != null)
+                _loop.FallSpeed = GameSettings.FallSpeed;
         }
 
         void OnKeysChanged()
@@ -407,8 +431,118 @@ namespace MinecraftTetris
             Debug.Log("[fluidtest] " + which + " id=" + id + " at " + cx + "," + top + "," + cz);
         }
 
-        // ---- 调试面板用的小动作（F1 打开面板后点按钮） ----
+        /// <summary>
+        /// 调试用：摆一个 I 型，复制两份，一份不转、一份俯视转 90°，
+        /// 两半都停在半空，跑起来看是不是「一块竖着插进场地、一块平贴着玩家」。
+        /// 用 -auto -size 10 20 6 -yawtest -shotat 4 看截图。
+        /// </summary>
+        void RunYawTest()
+        {
+            if (_loop == null || _view == null)
+                return;
 
+            _loop.Restart();
+            Fluids.Reset();
+            Fluids.Prepare(_loop.Grid);
+
+            // 别让它掉下去，停在半空看形状
+            _loop.FallInterval = 1000f;
+
+            int y = _loop.Grid.SizeY - 6;
+            int zBack = Mathf.Max(0, _loop.Grid.SizeZ - 4);
+
+            // 左边：不转，沿 x 展开、贴着最前面（直接写进网格，当作已落定）
+            for (int i = 0; i < 4 && 1 + i < _loop.Grid.SizeX; i++)
+                _loop.Grid.Set(1 + i, y, 0, 1);
+            _view.RefreshAll();
+
+            // 右边：同样一个 I 型，俯视转 90° → 应该变成沿 z 展开的竖板
+            var turned = new Piece(Tetromino.GetShape(PieceType.I), "I", PieceType.I, 1, 6, y, zBack);
+            _loop.Current = turned;
+            bool ok = _loop.TryRotateYaw(true);
+            Debug.Log("[yawtest] 场地=" + _loop.Grid.SizeX + "x" + _loop.Grid.SizeY + "x" + _loop.Grid.SizeZ
+                + " 旋转成功=" + ok + " rot=" + turned.Rot
+                + " origin=" + turned.OriginX + "," + turned.OriginY + "," + turned.OriginZ);
+            _view.SnapPiece(_loop.Current);
+            _view.RefreshAll();
+        }
+
+        /// <summary>
+        /// 调试用：三个 T 型排一排——不转（立着）、往背面翻（躺平，沿 z 铺开两格）、往正面翻。
+        /// 用 -auto -size 10 20 6 -pitchtest -shotat 4 看截图。
+        /// </summary>
+        void RunPitchTest()
+        {
+            if (_loop == null || _view == null)
+                return;
+
+            _loop.FallInterval = 1000f;
+            int y = _loop.Grid.SizeY - 6;
+
+            PlaceProbePiece(PieceType.T, 1, 1, 0);
+            PlaceProbePiece(PieceType.T, 2, 4, 1);
+            PlaceProbePiece(PieceType.T, 3, 7, -1);
+            _view.RefreshAll();
+
+            Debug.Log("[pitchtest] 场地=" + _loop.Grid.SizeX + "x" + _loop.Grid.SizeY + "x" + _loop.Grid.SizeZ
+                + " y=" + y + "（x=1 不转；x=4 往背面翻；x=7 往正面翻）");
+        }
+
+        /// <summary>把一块指定朝向的方块直接写进网格，当作已落定（调试铺场景用）。dir：1 背面，-1 正面，0 不转。</summary>
+        void PlaceProbePiece(PieceType type, int blockId, int x, int dir)
+        {
+            int y = _loop.Grid.SizeY - 6;
+            int z = Mathf.Max(0, _loop.Grid.SizeZ - 4);
+            var p = new Piece(type, blockId, x, y, z);
+            if (dir > 0)
+                p.Rot = p.Rot.Rotate(RotationAxis.Pitch, true);
+            else if (dir < 0)
+                p.Rot = p.Rot.Rotate(RotationAxis.Pitch, false);
+
+            for (int i = 0; i < p.Cells.Length; i++)
+            {
+                Vector3Int c = p.WorldCell(i);
+                if (_loop.Grid.InBounds(c.x, c.y, c.z))
+                    _loop.Grid.Set(c.x, c.y, c.z, p.BlockId);
+            }
+        }
+
+        /// <summary>
+        /// 调试用：一次摆两组对照，跑起来看水岩浆怎么结晶。
+        /// 左边是满格岩浆紧挨着一格水（该变黑曜石），右边是 3 份的流动岩浆上面压着水（该变原石）。
+        /// </summary>
+        void RunReactTest()
+        {
+            if (_loop == null || _view == null)
+                return;
+            if (Fluids.WaterId <= 0 || Fluids.LavaId <= 0)
+            {
+                Debug.Log("[reacttest] 没找到水或岩浆");
+                return;
+            }
+
+            _loop.Restart();
+            Fluids.Reset();
+            Fluids.Prepare(_loop.Grid);
+
+            int cx = _loop.Grid.SizeX / 2;
+            int cz = _loop.Grid.SizeZ / 2;
+
+            // 左：满格岩浆 + 紧邻的水
+            Fluids.AddSource(_loop.Grid, cx - 2, 0, cz, Fluids.LavaId);
+            Fluids.AddSource(_loop.Grid, cx - 1, 0, cz, Fluids.WaterId);
+
+            // 右：流动岩浆（3 份）+ 上面压着的水（5 份）
+            Fluids.AddSource(_loop.Grid, cx + 1, 0, cz, Fluids.LavaId);
+            Fluids.SetAmount(cx + 1, 0, cz, 3, Fluids.LavaId);
+            Fluids.SetAmount(cx + 1, 1, cz, 5, Fluids.WaterId);
+
+            _view.SnapPiece(_loop.Current);
+            _view.RefreshAll();
+            Debug.Log("[reacttest] 左边满格岩浆+水（预期黑曜石），右边流动岩浆+水（预期原石）");
+        }
+
+        // ---- 调试面板用的小动作（F1 打开面板后点按钮） ----
         void RunBlockTest(string name)
         {
             int id = -1;
@@ -452,16 +586,51 @@ namespace MinecraftTetris
                 _view.RefreshAll();
         }
 
+        /// <summary>
+        /// 水岩浆结晶：把那几格换成黑曜石 / 原石，冒一点碎屑，播 MC 的嘶声（random.fizz）。
+        /// </summary>
+        void OnFluidReacted(System.Collections.Generic.List<Fluids.Reaction> reactions)
+        {
+            if (reactions == null || reactions.Count == 0)
+                return;
+
+            for (int i = 0; i < reactions.Count; i++)
+            {
+                Fluids.Reaction r = reactions[i];
+                if (_view != null)
+                    _view.SetCell(r.X, r.Y, r.Z, r.BlockId);
+            }
+
+            if (_sfx != null)
+                _sfx.PlayFizz();
+
+            if (_particles != null)
+            {
+                for (int i = 0; i < reactions.Count; i++)
+                {
+                    Fluids.Reaction r = reactions[i];
+                    _particles.EmitCell(r.X, r.Y, r.Z, r.BlockId, 2);
+                }
+            }
+        }
+
         void OnPieceLocked(Piece piece)
         {
             _sfx.PlayPlace(BlockCatalog.Of(piece.BlockId));
             // 保住朝向：旋转过的方块，落定那一瞬间如果朝向归零，看起来就是“啪”地转了一下。
-            float yaw = _view.PieceYawDegrees % 360f;
+            // 朝向直接从方块身上取（逻辑层的整数矩阵转四元数），不读视图层的动画状态——
+            // 同一帧里"转完立刻硬降"也能拿到正确角度。
+            Quaternion rot = piece.Rot.ToQuaternion();
             for (int i = 0; i < piece.Cells.Length; i++)
             {
                 Vector3Int c = piece.WorldCell(i);
-                _view.SetCell(c.x, c.y, c.z, piece.BlockId);
-                _view.SetCellRotation(c.x, c.y, c.z, yaw);
+                // 按网格里实际是什么来画，而不是按方块自己的编号：
+                // 水方块落进岩浆那格会当场结晶成黑曜石/原石，网格里已经不是水了。
+                int cellId = _loop.Grid.InBounds(c.x, c.y, c.z)
+                    ? _loop.Grid.Get(c.x, c.y, c.z)
+                    : piece.BlockId;
+                _view.SetCell(c.x, c.y, c.z, cellId);
+                _view.SetCellRotation(c.x, c.y, c.z, rot);
             }
         }
 
@@ -480,10 +649,10 @@ namespace MinecraftTetris
                 GameSave.Save(_loop);
         }
 
-        void OnPieceRotated(bool clockwise)
+        void OnPieceRotated(RotationAxis axis, bool clockwise)
         {
             if (_view != null)
-                _view.RotatePieceVisual(clockwise);
+                _view.RotatePieceVisual(axis, clockwise);
         }
 
         void OnRowsCleared(System.Collections.Generic.List<int> rows, System.Collections.Generic.List<int> blocks)
