@@ -24,6 +24,12 @@ namespace MinecraftTetris
         Mesh[] _meshes;
         Material[] _materials;
 
+        /// <summary>TNT 引信闪白用的纯白材质（Unlit/Color，不吃贴图）。</summary>
+        Material _flashMaterial;
+
+        /// <summary>哪些格子现在该画成白闪（点着的 TNT）。SetCell 重建时也要照着它选材质。</summary>
+        bool[,,] _flashing;
+
         /// <summary>流体（水/岩浆）按水位分档的矮方块 mesh：blockId -> [level0..levelMax]。</summary>
         readonly Dictionary<int, Mesh[]> _fluidMeshes = new Dictionary<int, Mesh[]>();
 
@@ -44,6 +50,7 @@ namespace MinecraftTetris
             Grid = grid;
             _cells = new GameObject[grid.SizeX, grid.SizeY, grid.SizeZ];
             _cellVisual = new Vector3[grid.SizeX, grid.SizeY, grid.SizeZ];
+            _flashing = new bool[grid.SizeX, grid.SizeY, grid.SizeZ];
             BuildResources();
 
             _pieceRoot = new GameObject("Piece").transform;
@@ -238,7 +245,77 @@ namespace MinecraftTetris
                 go.transform.rotation = Quaternion.identity;
             }
             go.GetComponent<MeshFilter>().sharedMesh = mesh;
-            go.GetComponent<MeshRenderer>().sharedMaterial = _materials[idx];
+            // 点着的 TNT 画白闪。这里也要判一次：RefreshAll / SetCell 会重设材质，
+            // 只在 SetCellFlash 里改一次的话，下一次重建就丢了。
+            // 顺手把「这一格已经不是 TNT 了」的旧标记清掉，否则下一块落到这里会莫名其妙是白的。
+            bool wantFlash = _flashing != null && _flashing[x, y, z];
+            if (wantFlash && (isFluid || !Tnt.IsTnt(blockId)))
+            {
+                _flashing[x, y, z] = false;
+                wantFlash = false;
+            }
+            go.GetComponent<MeshRenderer>().sharedMaterial = wantFlash ? FlashMaterial : _materials[idx];
+        }
+
+        /// <summary>把一格画成白闪（TNT 引信）或还原。</summary>
+        public void SetCellFlash(int x, int y, int z, bool on)
+        {
+            if (!InCells(x, y, z) || _flashing == null)
+                return;
+            if (_flashing[x, y, z] == on)
+                return;
+            _flashing[x, y, z] = on;
+
+            GameObject go = _cells[x, y, z];
+            if (go == null || !go.activeSelf)
+                return;
+
+            int id = Grid.Get(x, y, z);
+            if (id <= 0)
+                return;
+            go.GetComponent<MeshRenderer>().sharedMaterial = on ? FlashMaterial : _materials[id - 1];
+        }
+
+        /// <summary>清掉所有闪白标记（重开一局时用）。</summary>
+        public void ClearFlash()
+        {
+            if (_flashing == null)
+                return;
+            for (int x = 0; x < Grid.SizeX; x++)
+                for (int y = 0; y < Grid.SizeY; y++)
+                    for (int z = 0; z < Grid.SizeZ; z++)
+                        if (_flashing[x, y, z])
+                            SetCellFlash(x, y, z, false);
+        }
+
+        /// <summary>
+        /// 纯白材质。克隆 BorderMat 而不是 Shader.Find：BorderMat 是 Resources 里的资源、
+        /// 引用了内置 Unlit/Color，构建版才会把那个 shader 打进包；
+        /// 只调 Shader.Find 的话，构建版里往往拿到 null（shader 没有任何资源引用会被裁掉）。
+        /// </summary>
+        Material FlashMaterial
+        {
+            get
+            {
+                if (_flashMaterial != null)
+                    return _flashMaterial;
+
+                Material baseMat = Resources.Load<Material>("BorderMat");
+                if (baseMat != null)
+                {
+                    _flashMaterial = new Material(baseMat);
+                }
+                else
+                {
+                    Shader shader = Shader.Find("Unlit/Color");
+                    if (shader != null)
+                        _flashMaterial = new Material(shader);
+                }
+
+                if (_flashMaterial != null)
+                    _flashMaterial.color = Color.white;
+                return _flashMaterial;
+            }
         }
 
         /// <summary>

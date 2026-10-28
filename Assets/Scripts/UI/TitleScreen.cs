@@ -15,7 +15,7 @@ namespace MinecraftTetris
         [Serializable]
         class TitleMeta { public CharMeta[] chars; }
 
-        enum SettingsPage { Main, Keys, Size, Workshop, Speed }
+        enum SettingsPage { Main, Keys, Size, Workshop, Speed, Music }
 
         struct Mote
         {
@@ -40,6 +40,8 @@ namespace MinecraftTetris
         public event Action OnKeysChanged;
         public event Action OnSizeApplied;
         public event Action OnFallSpeedChanged;
+        /// <summary>音乐音量改了（0 = 关），主程序据此换算成播放器的音量。</summary>
+        public event Action OnMusicChanged;
 
         const string SfxKey = "sfx_enabled";
 
@@ -76,6 +78,8 @@ namespace MinecraftTetris
         int _tmpY = 20;
         int _tmpZ = 1;
         float _tmpSpeed = 1f;
+        /// <summary>音乐音量页里正在编辑的值（0~1）。</summary>
+        float _tmpMusic = 0.45f;
 
         // 时间轴（秒）
         const float MadeEnd = 0.8f;
@@ -125,8 +129,9 @@ namespace MinecraftTetris
         public void OpenSettingsPage(int page)
         {
             ShowSettings = true;
-            _page = (SettingsPage)Mathf.Clamp(page, 0, (int)SettingsPage.Speed);
+            _page = (SettingsPage)Mathf.Clamp(page, 0, (int)SettingsPage.Music);
             _tmpSpeed = GameSettings.FallSpeed;
+            _tmpMusic = GameSettings.MusicVolume;
             _capturingAction = -1;
             _tmpX = GameSettings.SizeX;
             _tmpY = GameSettings.SizeY;
@@ -364,6 +369,9 @@ namespace MinecraftTetris
                 case SettingsPage.Speed:
                     DrawSettingsSpeed();
                     break;
+                case SettingsPage.Music:
+                    DrawSettingsMusic();
+                    break;
             }
         }
 
@@ -371,7 +379,7 @@ namespace MinecraftTetris
         {
             float w = UiSkin.P(420f);
             // 按钮数 × 54 + 上下留白；加一项就跟着涨，不然会压到「返回」上
-            float h = UiSkin.P(440f);
+            float h = UiSkin.P(494f);
             Rect panel = CenterPanel(w, h);
             DrawPanel(panel);
 
@@ -408,6 +416,16 @@ namespace MinecraftTetris
             {
                 _tmpSpeed = GameSettings.FallSpeed;
                 _page = SettingsPage.Speed;
+            }
+            y += step;
+
+            string musicName = GameSettings.MusicVolume <= 0.005f
+                ? "音乐：关"
+                : "音乐：" + Mathf.RoundToInt(GameSettings.MusicVolume * 100f) + "%";
+            if (GUI.Button(new Rect(bx, y, bw, bh), musicName, _btnStyle))
+            {
+                _tmpMusic = GameSettings.MusicVolume;
+                _page = SettingsPage.Music;
             }
             y += step;
 
@@ -601,6 +619,70 @@ namespace MinecraftTetris
                 GameSettings.SetFallSpeed(_tmpSpeed);
                 if (OnFallSpeedChanged != null)
                     OnFallSpeedChanged();
+            }
+
+            if (GUI.Button(new Rect(bx + rowW - UiSkin.P(190f), bottomY, UiSkin.P(190f), bh), "返回", _btnStyle))
+                _page = SettingsPage.Main;
+        }
+
+        /// <summary>
+        /// 音乐音量。曲库是从 MC 原版里提的那些常速曲，随机播放；
+        /// 这里只管音量，0% 就是关。
+        /// </summary>
+        void DrawSettingsMusic()
+        {
+            float w = UiSkin.P(500f);
+            float h = UiSkin.P(380f);
+            Rect panel = CenterPanel(w, h);
+            DrawPanel(panel);
+
+            GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(14f), w, UiSkin.P(44f)), "音乐音量", _panelTitleStyle);
+
+            float rowW = UiSkin.P(400f);
+            float bx = panel.x + (w - rowW) * 0.5f;
+
+            float v = GameSettings.ClampMusicVolume(_tmpMusic);
+            string shown = v <= 0.005f ? "静音" : Mathf.RoundToInt(v * 100f) + "%";
+            GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(66f), w, UiSkin.P(56f)), shown, _bigValueStyle);
+
+            bool changed = false;
+            float btnW = UiSkin.P(110f);
+            float gap = UiSkin.P(16f);
+            float bh = UiSkin.P(42f);
+            float rowBtnW = btnW * 3f + gap * 2f;
+            float btnX = panel.x + (w - rowBtnW) * 0.5f;
+            float btnY = panel.y + UiSkin.P(126f);
+
+            if (GUI.Button(new Rect(btnX, btnY, btnW, bh), "−10%", _btnStyle)) { v -= 0.1f; changed = true; }
+            if (GUI.Button(new Rect(btnX + btnW + gap, btnY, btnW, bh), "静音", _btnStyle)) { v = 0f; changed = true; }
+            if (GUI.Button(new Rect(btnX + (btnW + gap) * 2f, btnY, btnW, bh), "+10%", _btnStyle)) { v += 0.1f; changed = true; }
+
+            if (changed)
+            {
+                _tmpMusic = GameSettings.ClampMusicVolume(v);
+                GameSettings.SetMusicVolume(_tmpMusic);
+                if (OnMusicChanged != null)
+                    OnMusicChanged();
+            }
+
+            // 一行一句，短到不会折行（折行会撑破 Rect、压到底部按钮上）
+            float lineH = UiSkin.P(28f);
+            float y = panel.y + UiSkin.P(176f);
+            GUI.Label(new Rect(bx, y, rowW, lineH), "原版曲库，随机播放，两首之间留一段静默", _hintStyle);
+            y += lineH;
+            GUI.Label(new Rect(bx, y, rowW, lineH), "标题界面用菜单曲，进游戏换成常速曲", _hintStyle);
+            y += lineH;
+            GUI.Label(new Rect(bx, y, rowW, lineH), "0% = 关闭音乐（放置音效另算）", _hintStyle);
+            y += lineH;
+            GUI.Label(new Rect(bx, y, rowW, lineH), "按 Esc 暂停时音乐一起暂停", _hintStyle);
+
+            float bottomY = panel.y + h - UiSkin.P(62f);
+            if (GUI.Button(new Rect(bx, bottomY, UiSkin.P(190f), bh), "恢复默认", _btnStyle))
+            {
+                _tmpMusic = GameSettings.DefaultMusicVolume;
+                GameSettings.SetMusicVolume(_tmpMusic);
+                if (OnMusicChanged != null)
+                    OnMusicChanged();
             }
 
             if (GUI.Button(new Rect(bx + rowW - UiSkin.P(190f), bottomY, UiSkin.P(190f), bh), "返回", _btnStyle))

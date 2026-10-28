@@ -16,6 +16,7 @@ namespace MinecraftTetris
         GridView _view;
         KeyboardInput _input;
         SfxPlayer _sfx;
+        MusicPlayer _music;
         Hud _hud;
         TitleScreen _title;
         NextPreview _nextPreview;
@@ -55,6 +56,8 @@ namespace MinecraftTetris
 
             _input = gameObject.AddComponent<KeyboardInput>();
             _sfx = gameObject.AddComponent<SfxPlayer>();
+            _music = gameObject.AddComponent<MusicPlayer>();
+            _music.SetVolume(GameSettings.MusicVolume);
 
             _hud = gameObject.AddComponent<Hud>();
             _hud.Loop = _loop;
@@ -81,6 +84,7 @@ namespace MinecraftTetris
             _title.OnKeysChanged += OnKeysChanged;
             _title.OnSizeApplied += OnSizeApplied;
             _title.OnFallSpeedChanged += OnFallSpeedChanged;
+            _title.OnMusicChanged += OnMusicChanged;
             _sfx.Enabled = _title.SfxEnabled;
 
             // 命令行带 -auto 时跳过开始界面，方便自动化截图与调试
@@ -121,6 +125,9 @@ namespace MinecraftTetris
                 RunSandTest();
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-reacttest") >= 0)
                 RunReactTest();
+            // -tnttest：场上摆一颗 TNT + 一块红石，看引信闪白、爆炸范围和连锁
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-tnttest") >= 0)
+                RunTntTest();
 
             // -blocktest <方块英文名>：在场地高处摆三个该方块，用来肉眼核对六面贴图
             var btArgv = System.Environment.GetCommandLineArgs();
@@ -155,6 +162,8 @@ namespace MinecraftTetris
             _loop.GravitySettled += OnGravitySettled;
             _loop.FluidChanged += OnFluidChanged;
             _loop.FluidReacted += OnFluidReacted;
+            _loop.TntPrimed += OnTntPrimed;
+            _loop.TntExploded += OnTntExploded;
 
             _view.RefreshAll();
             _view.SnapPiece(_loop.Current);
@@ -218,12 +227,21 @@ namespace MinecraftTetris
                     _hud.Hidden = true;
                 if (_mainCam != null)
                     _mainCam.cullingMask = 0;
+                if (_music != null)
+                {
+                    // 标题界面永远不该是「暂停」状态：从暂停里退回标题时，
+                    // 这之后 Update 会一路 return，没人再去解暂停，音乐会一直卡着。
+                    _music.SetPaused(false);
+                    _music.SetMenuMode(true);
+                }
                 if (_title.AnyInputPressed())
                     StartNewGame();
                 return;
             }
             if (_hud != null)
                 _hud.Hidden = false;
+            if (_music != null)
+                _music.SetMenuMode(false);
             if (_mainCam != null && _mainCam.cullingMask != _normalCullMask)
                 _mainCam.cullingMask = _normalCullMask;
 
@@ -232,6 +250,8 @@ namespace MinecraftTetris
 
             if (_hud != null)
                 _hud.Paused = _paused;
+            if (_music != null)
+                _music.SetPaused(_paused);
 
             if (_loop.GameOver)
             {
@@ -246,6 +266,7 @@ namespace MinecraftTetris
 
             _loop.Tick(Time.deltaTime, _input.Read());
             _view.RefreshPiece(_loop.Current);
+            SyncTntFlash();
 
             // 调试用：-demo 启动时在自动截图前炸一把粒子，方便截图看效果
             if (_demoMode && !_demoBurst && Time.time > 5.2f)
@@ -279,6 +300,7 @@ namespace MinecraftTetris
             _particles.Clear();
             _paused = false;
             _view.RefreshAll();
+            _view.ClearFlash();
             _view.SnapPiece(_loop.Current);
             _nextPreview.Show(_loop.Next, _loop.NextBlockId);
             if (_title != null)
@@ -297,8 +319,10 @@ namespace MinecraftTetris
             }
 
             _particles.Clear();
+            Tnt.Reset();
             _paused = false;
             _view.RefreshAll();
+            _view.ClearFlash();
             _view.SnapPiece(_loop.Current);
             _nextPreview.Show(_loop.Next, _loop.NextBlockId);
             if (_title != null)
@@ -347,6 +371,13 @@ namespace MinecraftTetris
         {
             if (_loop != null)
                 _loop.FallSpeed = GameSettings.FallSpeed;
+        }
+
+        /// <summary>音乐音量改完立刻生效（0 = 关）。</summary>
+        void OnMusicChanged()
+        {
+            if (_music != null)
+                _music.SetVolume(GameSettings.MusicVolume);
         }
 
         void OnKeysChanged()
@@ -408,6 +439,57 @@ namespace MinecraftTetris
             bool moved = Gravity.Settle(_loop.Grid);
             _view.RefreshAll();
             Debug.Log("[sandtest] 重力结算=" + moved);
+        }
+
+        /// <summary>调试用：摆一颗 TNT 挨一块红石，周围铺一圈石头当靶子，看引信闪白和爆炸范围。</summary>
+        void RunTntTest()
+        {
+            if (_loop == null || _view == null)
+                return;
+
+            int tntId = Tnt.TntId;
+            int redId = Tnt.RedstoneId;
+            if (tntId <= 0 || redId <= 0)
+            {
+                Debug.Log("[tnttest] 方块表里找不到 TNT / 红石块");
+                return;
+            }
+
+            int stoneId = 1;
+            for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
+            {
+                if (BlockCatalog.Blocks[i].Name == "stone")
+                {
+                    stoneId = i + 1;
+                    break;
+                }
+            }
+
+            int cx = _loop.Grid.SizeX / 2;
+            int cy = Mathf.Min(6, Mathf.Max(2, _loop.Grid.SizeY - 4));
+            int cz = _loop.Grid.SizeZ / 2;
+
+            // 红石就在 TNT 右边一格：接触即点火
+            _loop.Grid.Set(cx, cy, cz, tntId);
+            _loop.Grid.Set(cx + 1, cy, cz, redId);
+
+            // 周围铺一圈石头，炸掉多少一眼能看出来
+            for (int dx = -2; dx <= 2; dx++)
+            {
+                for (int dy = -1; dy <= 2; dy++)
+                {
+                    if ((dx == 0 && dy == 0) || (dx == 1 && dy == 0))
+                        continue;
+                    int x = cx + dx;
+                    int y = cy + dy;
+                    if (_loop.Grid.InBounds(x, y, cz) && _loop.Grid.Get(x, y, cz) == 0)
+                        _loop.Grid.Set(x, y, cz, stoneId);
+                }
+            }
+
+            _view.RefreshAll();
+            int fired = Tnt.PrimeContact(_loop.Grid);
+            Debug.Log("[tnttest] 点着 " + fired + " 颗，引信 " + Tnt.FuseSeconds + " 秒");
         }
 
         void RunFluidTest(string which)
@@ -584,6 +666,50 @@ namespace MinecraftTetris
         {
             if (_view != null)
                 _view.RefreshAll();
+        }
+
+        /// <summary>TNT 点着了：引信声 + 开始闪白（闪白本身每帧在 SyncTntFlash 里刷）。</summary>
+        void OnTntPrimed(Vector3Int cell)
+        {
+            if (_sfx != null)
+                _sfx.PlayFuse();
+        }
+
+        /// <summary>
+        /// TNT 炸了：音效 + 震屏 + 撒碎块。
+        /// 被炸掉的格子不用在这里 SetCell —— GameLoop 紧随其后会派 FluidChanged，
+        /// 那一路是全场 RefreshAll，格子已经清空了。
+        /// </summary>
+        void OnTntExploded(Tnt.Blast blast)
+        {
+            if (_sfx != null)
+                _sfx.PlayExplode();
+
+            if (_rig != null)
+                _rig.Shake(0.6f);
+
+            if (_particles == null || blast.Cells == null)
+                return;
+
+            // 一次爆炸能掀掉几十格，每格都撒三片会把粒子池撑爆：按步长抽样，总量封顶约 24 格
+            int step = Mathf.Max(1, blast.Cells.Count / 24);
+            for (int i = 0; i < blast.Cells.Count; i += step)
+            {
+                Vector3Int c = blast.Cells[i];
+                _particles.EmitCell(c.x, c.y, c.z, blast.Blocks[i], 2);
+            }
+        }
+
+        /// <summary>把「哪些格子正在烧引信」同步给视图层，顺手让它闪白（6 Hz 方波）。</summary>
+        void SyncTntFlash()
+        {
+            if (_view == null)
+                return;
+
+            bool on = Mathf.Repeat(Time.unscaledTime * 6f, 1f) < 0.5f;
+            System.Collections.Generic.List<Tnt.Primed> primed = Tnt.PrimedCells;
+            for (int i = 0; i < primed.Count; i++)
+                _view.SetCellFlash(primed[i].X, primed[i].Y, primed[i].Z, on);
         }
 
         /// <summary>

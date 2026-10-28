@@ -435,6 +435,101 @@ namespace MinecraftTetris.EditorTools
                 made == Fluids.ObsidianId && gLava4.Get(1, 0, 0) == Fluids.ObsidianId);
             Check("同格结晶后不剩流体", Fluids.AmountAt(1, 0, 0) == 0);
 
+            // TNT：红石接触点火 → 引信 → 爆炸 → 连锁
+            Tnt.Init();
+            Check("方块表里能找到 TNT 和红石块", Tnt.TntId > 0 && Tnt.RedstoneId > 0);
+            Check("TNT 不在普通随机池里（按件数控制出现频率）",
+                System.Array.IndexOf(BlockPools.Normal, Tnt.TntId) < 0);
+            Check("红石块仍在普通池里（偶尔自然出现也能点火）",
+                System.Array.IndexOf(BlockPools.Normal, Tnt.RedstoneId) >= 0);
+
+            int stoneId = 1;
+            for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
+            {
+                if (BlockCatalog.Blocks[i].Name == "stone")
+                {
+                    stoneId = i + 1;
+                    break;
+                }
+            }
+
+            var gTnt0 = new Grid(6, 6, 1);
+            gTnt0.Set(1, 1, 0, Tnt.TntId);
+            Tnt.Reset();
+            Check("没挨着红石的 TNT 不会自己烧起来",
+                Tnt.PrimeContact(gTnt0) == 0 && Tnt.PrimedCells.Count == 0);
+
+            var gTnt = new Grid(10, 20, 1);
+            for (int dx = -3; dx <= 3; dx++)
+            {
+                for (int dy = -3; dy <= 3; dy++)
+                {
+                    if (dx != 0 || dy != 0)
+                        gTnt.Set(4 + dx, 5 + dy, 0, stoneId);
+                }
+            }
+            gTnt.Set(4, 5, 0, Tnt.TntId);
+            gTnt.Set(5, 5, 0, Tnt.RedstoneId);
+            Tnt.Reset();
+            Check("TNT 和红石挨着就点火", Tnt.PrimeContact(gTnt) == 1 && Tnt.PrimedCells.Count == 1);
+            Check("点着之后那一格还是 TNT（原地烧引信）", gTnt.Get(4, 5, 0) == Tnt.TntId);
+            Check("引信进度从 0 开始", Mathf.Abs(Tnt.FuseProgress(4, 5, 0)) < 0.01f);
+
+            Check("引信没烧完不爆炸",
+                !Tnt.Tick(gTnt, Tnt.FuseSeconds * 0.4f) && gTnt.Get(4, 5, 0) == Tnt.TntId);
+            Check("引信烧完爆炸", Tnt.Tick(gTnt, Tnt.FuseSeconds) && Tnt.LastBlasts.Count == 1);
+            Check("爆心那格被清空", gTnt.Get(4, 5, 0) == 0);
+            Check("半径内的方块被炸掉", gTnt.Get(5, 5, 0) == 0 && gTnt.Get(4, 6, 0) == 0);
+            Check("半径外的方块留着", gTnt.Get(7, 5, 0) == stoneId);
+
+            // 连锁：第一颗炸到第二颗，第二颗被点着而不是直接消失
+            var gChain = new Grid(10, 20, 1);
+            gChain.Set(2, 5, 0, Tnt.TntId);
+            gChain.Set(3, 5, 0, Tnt.TntId);
+            gChain.Set(2, 6, 0, Tnt.RedstoneId);
+            Tnt.Reset();
+            Check("连锁测试：只有挨着红石的那颗先烧", Tnt.PrimeContact(gChain) == 1);
+            Tnt.Tick(gChain, Tnt.FuseSeconds);
+            Check("爆炸把隔壁的 TNT 点着（连锁）", Tnt.PrimedCells.Count == 1 && gChain.Get(3, 5, 0) == Tnt.TntId);
+            Tnt.Tick(gChain, 1f);
+            Check("连锁的第二颗也炸了", Tnt.LastBlasts.Count >= 1 && gChain.Get(3, 5, 0) == 0);
+
+            // 哑火：点着的 TNT 被消行带走之后不能在原坐标炸
+            var gDead = new Grid(6, 6, 1);
+            gDead.Set(2, 2, 0, Tnt.TntId);
+            gDead.Set(3, 2, 0, Tnt.RedstoneId);
+            Tnt.Reset();
+            Tnt.PrimeContact(gDead);
+            gDead.Set(2, 2, 0, 0);
+            Tnt.Tick(gDead, 0.05f);
+            Check("被消行带走的 TNT 会哑火", Tnt.PrimedCells.Count == 0);
+            Tnt.Reset();
+
+            // 背景音乐：文件齐、是流式导入、不是空文件，音量换算对
+            int missingMusic = 0;
+            for (int i = 0; i < MusicPlayer.GameTrackPaths.Length; i++)
+            {
+                if (Resources.Load<AudioClip>(MusicPlayer.GameTrackPaths[i]) == null)
+                    missingMusic++;
+            }
+            Check("游戏曲库 " + MusicPlayer.GameTrackPaths.Length + " 首全在", missingMusic == 0);
+            for (int i = 0; i < MusicPlayer.MenuTrackPaths.Length; i++)
+            {
+                if (Resources.Load<AudioClip>(MusicPlayer.MenuTrackPaths[i]) == null)
+                    missingMusic++;
+            }
+            Check("菜单曲库也在", missingMusic == 0);
+
+            AudioClip song = Resources.Load<AudioClip>(MusicPlayer.GameTrackPaths[0]);
+            Check("曲子不是空文件（时长 > 60 秒）", song != null && song.length > 60f);
+            Check("音乐按流式导入（不整首解码进内存）",
+                song != null && song.loadType == AudioClipLoadType.Streaming);
+
+            Check("音乐音量夹到 0~1 且保留两位小数",
+                Mathf.Approximately(GameSettings.ClampMusicVolume(0.456f), 0.46f) &&
+                Mathf.Approximately(GameSettings.ClampMusicVolume(-1f), 0f) &&
+                Mathf.Approximately(GameSettings.ClampMusicVolume(9f), 1f));
+
             // UI 字体与字号放大
             Font font = Resources.Load<Font>(UiSkin.FontPath);
             Check("内置字体 Resources/" + UiSkin.FontPath + " 能加载", font != null);

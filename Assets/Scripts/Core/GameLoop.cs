@@ -162,6 +162,10 @@ namespace MinecraftTetris
         /// <summary>水岩浆结晶了（黑曜石 / 原石），视图层刷那几格并撒碎屑。</summary>
         public event Action<System.Collections.Generic.List<Fluids.Reaction>> FluidReacted;
         public event Action Spawned;
+        /// <summary>TNT 被点着了：参数是那一格的坐标。视图层播引信音、开始闪白。</summary>
+        public event Action<Vector3Int> TntPrimed;
+        /// <summary>TNT 炸了：参数是这一处的爆心与被炸掉的格子。</summary>
+        public event Action<Tnt.Blast> TntExploded;
         /// <summary>方块转了个 90°：参数是绕哪个轴 + 是否顺时针。视图层用它播旋转动画。</summary>
         public event Action<RotationAxis, bool> PieceRotated;
 
@@ -190,6 +194,26 @@ namespace MinecraftTetris
                     FluidReacted?.Invoke(Fluids.LastReactions);
                 FluidChanged?.Invoke();
             }
+
+            // TNT：引信烧完就炸。炸完上面的沙 / 沙砾要重新塌一次，
+            // 所以这里不能只当视觉事件，得再跑一遍重力结算。
+            if (Tnt.Tick(Grid, dt))
+            {
+                for (int i = 0; i < Tnt.LastBlasts.Count; i++)
+                {
+                    Tnt.Blast b = Tnt.LastBlasts[i];
+                    Score += b.Cells.Count * Tnt.ScorePerBlock;
+                    TntExploded?.Invoke(b);
+                }
+
+                // 爆炸范围里的水被吹掉了，视图层要重画
+                FluidChanged?.Invoke();
+
+                LastGravityMoves.Clear();
+                if (Gravity.Settle(Grid, LastGravityMoves))
+                    GravitySettled?.Invoke();
+            }
+            FlushTntPrimed();
 
             if (input.Left)
                 TryMove(-1, 0, 0);
@@ -484,7 +508,22 @@ namespace MinecraftTetris
                     RowsCleared?.Invoke(fullRows, rowBlocks);
             }
 
+            // 这一块落定之后再扫 TNT 有没有被红石挨着。放在消行之后：
+            // 消行会把整排往下挪，先点火的话记下的坐标就错位了。
+            Tnt.PrimeContact(Grid);
+            FlushTntPrimed();
+
             SpawnNext();
+        }
+
+        /// <summary>把这一帧新点着的 TNT 派给视图层，然后清掉待发列表。</summary>
+        void FlushTntPrimed()
+        {
+            if (Tnt.LastPrimed.Count == 0)
+                return;
+            for (int i = 0; i < Tnt.LastPrimed.Count; i++)
+                TntPrimed?.Invoke(Tnt.LastPrimed[i]);
+            Tnt.LastPrimed.Clear();
         }
 
         void SpawnNext()
@@ -694,6 +733,7 @@ namespace MinecraftTetris
         public void Restart()
         {
             Grid.Clear();
+            Tnt.Reset();
             Score = 0;
             LinesCleared = 0;
             GameOver = false;

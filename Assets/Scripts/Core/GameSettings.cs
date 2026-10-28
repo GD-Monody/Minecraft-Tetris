@@ -12,6 +12,7 @@ namespace MinecraftTetris
         const string SizeZKey = "size.z";
         const string ElimModeKey = "elim.mode";
         const string FallSpeedKey = "fall.speed";
+        const string MusicVolumeKey = "music.volume";
 
         public const int MinSizeX = 5;
         public const int MaxSizeX = 20;
@@ -77,6 +78,30 @@ namespace MinecraftTetris
         public static void SetFallSpeed(float v)
         {
             PlayerPrefs.SetFloat(FallSpeedKey, ClampFallSpeed(v));
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>背景音乐音量上限（1 = 满）。默认 0.45：音乐是垫底的，不能盖过放置音。</summary>
+        public const float DefaultMusicVolume = 0.45f;
+
+        /// <summary>背景音乐音量 0 ~ 1，0 = 关。两位小数。</summary>
+        public static float MusicVolume
+        {
+            get { return ClampMusicVolume(PlayerPrefs.GetFloat(MusicVolumeKey, DefaultMusicVolume)); }
+        }
+
+        public static float ClampMusicVolume(float v)
+        {
+            if (float.IsNaN(v))
+                return DefaultMusicVolume;
+            v = Mathf.Clamp01(v);
+            return Mathf.Round(v * 100f) / 100f;
+        }
+
+        /// <summary>改音乐音量。和下落速度一样不清存档——纯听感，和局面无关。</summary>
+        public static void SetMusicVolume(float v)
+        {
+            PlayerPrefs.SetFloat(MusicVolumeKey, ClampMusicVolume(v));
             PlayerPrefs.Save();
         }
 

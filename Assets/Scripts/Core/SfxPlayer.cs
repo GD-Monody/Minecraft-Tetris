@@ -40,6 +40,10 @@ namespace MinecraftTetris
         AudioClip _levelup;
         AudioClip _fizz;
 
+        // TNT：引信是 random.fuse，爆炸是 random.explode1~4 随机一个
+        AudioClip _fuse;
+        AudioClip[] _explode;
+
         void Awake()
         {
             _voices = new AudioSource[VoiceCount];
@@ -54,6 +58,15 @@ namespace MinecraftTetris
             _pickupXp = Load("Sfx/pickup_xp");
             _levelup = Load("Sfx/levelup");
             _fizz = Load("Sfx/fizz");
+
+            _fuse = Load("Sfx/tnt_fuse");
+            _explode = new[]
+            {
+                Load("Sfx/tnt_explode1"),
+                Load("Sfx/tnt_explode2"),
+                Load("Sfx/tnt_explode3"),
+                Load("Sfx/tnt_explode4"),
+            };
 
             LoadPlaceGroups();
         }
@@ -156,6 +169,24 @@ namespace MinecraftTetris
                 Play(_fizz);
             else
                 PlayPlaceGroup(0);
+        }
+
+        /// <summary>TNT 被点着：引信「嘶——」。</summary>
+        public void PlayFuse()
+        {
+            if (_fuse != null)
+                Play(_fuse, 0.9f, 1f + Random.Range(-0.03f, 0.03f));
+        }
+
+        /// <summary>爆炸。原版 random.explode1~4 随机一个，音高也抖一点。</summary>
+        public void PlayExplode()
+        {
+            if (_explode == null || _explode.Length == 0)
+                return;
+
+            AudioClip clip = _explode[Random.Range(0, _explode.Length)];
+            if (clip != null)
+                Play(clip, 1f, 1f + Random.Range(-0.05f, 0.05f));
         }
     }
 }
