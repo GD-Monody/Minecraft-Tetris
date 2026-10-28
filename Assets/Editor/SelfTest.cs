@@ -971,6 +971,139 @@ namespace MinecraftTetris.EditorTools
             Check("极小窗口有缩放下限，不会算出 0 或负数",
                 tiny.scale >= 0.5f && tiny.width > 0f && tiny.height > 0f && tiny.gap >= 0f);
 
+            // ---------- 特殊方块机制开关 ----------
+            Check("机制开关一共十项", GameSettings.MechCount == 10);
+
+            int mechSand = 0, mechLog = 0, mechObsidian = 0;
+            for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
+            {
+                string bn = BlockCatalog.Blocks[i].Name;
+                if (bn == "sand") mechSand = i + 1;
+                else if (bn == "oak_log") mechLog = i + 1;
+                else if (bn == "obsidian") mechObsidian = i + 1;
+            }
+
+            // TNT 爆炸与接触点火
+            var gMechTnt = new Grid(6, 6, 1);
+            gMechTnt.Set(2, 0, 0, Tnt.TntId);
+            gMechTnt.Set(3, 0, 0, Tnt.RedstoneId);
+            Tnt.Reset();
+            Check("开关全开时 TNT 挨着红石块会被点着", Tnt.PrimeContact(gMechTnt) == 1);
+            Tnt.Reset();
+
+            GameSettings.SetMech(GameSettings.MechKind.TntExplode, false);
+            Check("关掉 TNT 爆炸就点不着", Tnt.PrimeContact(gMechTnt) == 0);
+            GameSettings.SetMech(GameSettings.MechKind.TntExplode, true);
+            Tnt.Reset();
+
+            GameSettings.SetMech(GameSettings.MechKind.ContactIgnite, false);
+            Check("关掉接触点火就点不着", Tnt.PrimeContact(gMechTnt) == 0);
+            GameSettings.SetMech(GameSettings.MechKind.ContactIgnite, true);
+            Tnt.Reset();
+            Check("开关拨回来又能点着", Tnt.PrimeContact(gMechTnt) == 1);
+            Tnt.Reset();
+
+            // 沙子下落
+            var gMechSand = new Grid(5, 6, 1);
+            gMechSand.Set(2, 4, 0, mechSand);
+            GameSettings.SetMech(GameSettings.MechKind.SandFall, false);
+            Check("关掉沙子下落，沙子留在原地",
+                !Gravity.Settle(gMechSand) && gMechSand.Get(2, 4, 0) == mechSand);
+            GameSettings.SetMech(GameSettings.MechKind.SandFall, true);
+            Check("开关拨回来沙子会掉", Gravity.Settle(gMechSand) && gMechSand.Get(2, 0, 0) == mechSand);
+
+            // 原木长树叶
+            var gMechLeaf = new Grid(9, 9, 1);
+            var mechLeafPiece = new Piece(PieceType.O, mechLog, 4, 4, 0);
+            // 树叶只从「网格里还是原木」的格子长，所以先把那块原木摆进网格
+            for (int i = 0; i < mechLeafPiece.Cells.Length; i++)
+            {
+                Vector3Int lc = mechLeafPiece.WorldCell(i);
+                gMechLeaf.Set(lc.x, lc.y, lc.z, mechLog);
+            }
+            Foliage.Init();
+            GameSettings.SetMech(GameSettings.MechKind.LeafGrow, false);
+            Check("关掉原木长叶就不长", Foliage.Grow(gMechLeaf, mechLeafPiece) == 0);
+            GameSettings.SetMech(GameSettings.MechKind.LeafGrow, true);
+            Check("开关拨回来原木会发芽", Foliage.Grow(gMechLeaf, mechLeafPiece) > 0);
+
+            // 水与岩浆流动
+            Fluids.Reset();
+            var gMechFluid = new Grid(6, 6, 1);
+            Fluids.Prepare(gMechFluid);
+            Fluids.SetAmount(3, 3, 0, 8, Fluids.WaterId);
+            GameSettings.SetMech(GameSettings.MechKind.WaterFlow, false);
+            GameSettings.SetMech(GameSettings.MechKind.LavaFlow, false);
+            Check("关掉水/岩浆流动，流体不动", !Fluids.Tick(gMechFluid, 1f));
+            GameSettings.SetMech(GameSettings.MechKind.WaterFlow, true);
+            GameSettings.SetMech(GameSettings.MechKind.LavaFlow, true);
+            Check("开关拨回来水会流", Fluids.Tick(gMechFluid, 1f));
+            Fluids.Reset();
+
+            // 结构方块还原
+            Structure.Reset();
+            var gMechStruct = new Grid(9, 9, 1);
+            gMechStruct.Set(4, 4, 0, BlockCatalog.StructureId);
+            gMechStruct.Set(4, 5, 0, mechSand);
+            Structure.Remember(gMechStruct, 4, 4, 0);
+            int mechMem = Structure.Memories.Count;
+            var structPiece = new Piece(PieceType.O, BlockCatalog.StructureId, 6, 1, 0);
+            GameSettings.SetMech(GameSettings.MechKind.StructureRestore, false);
+            Structure.RememberFromPiece(gMechStruct, structPiece);
+            Check("关掉结构方块还原就不记事", Structure.Memories.Count == mechMem);
+            Check("关掉还原时被消也不触发",
+                !Structure.NotifyCleared(gMechStruct, 4, 4, 0) && !Structure.Busy);
+            GameSettings.SetMech(GameSettings.MechKind.StructureRestore, true);
+            Structure.Reset();
+
+            // 基岩锚定与防爆
+            GameSettings.SetMech(GameSettings.MechKind.BedrockAnchor, false);
+            Check("关掉基岩钉住，基岩不再锚定", !BlockCatalog.IsAnchor(BlockCatalog.BedrockId));
+            GameSettings.SetMech(GameSettings.MechKind.BedrockAnchor, true);
+            Check("开关拨回来基岩还是钉子", BlockCatalog.IsAnchor(BlockCatalog.BedrockId));
+
+            GameSettings.SetMech(GameSettings.MechKind.BlastProof, false);
+            Check("关掉防爆开关，黑曜石也能炸掉", mechObsidian > 0 && !BlockCatalog.IsBlastProof(mechObsidian));
+            GameSettings.SetMech(GameSettings.MechKind.BlastProof, true);
+            Check("开关拨回来黑曜石还是炸不掉", mechObsidian > 0 && BlockCatalog.IsBlastProof(mechObsidian));
+
+            // ---------- 玻璃被压碎 ----------
+            int glassId = BlockCatalog.GlassId;
+            Check("方块表里有玻璃", glassId > 0);
+
+            var gGlass = new Grid(5, 5, 1);
+            gGlass.Set(2, 0, 0, glassId);
+            Check("玻璃上面没东西就不碎", Glass.Crush(gGlass) == 0);
+
+            gGlass.Set(2, 1, 0, mechSand);
+            Check("上面压着方块，玻璃就碎", Glass.Crush(gGlass) == 1 && gGlass.Get(2, 0, 0) == 0);
+            Check("碎掉的格子记在 LastCrushed 里",
+                Glass.LastCrushed.Count == 1 && Glass.LastCrushed[0].x == 2 && Glass.LastCrushed[0].y == 0);
+
+            Gravity.Settle(gGlass);
+            Check("玻璃碎完，上面的沙落到底", gGlass.Get(2, 0, 0) == mechSand);
+
+            var gGlassOff = new Grid(5, 5, 1);
+            gGlassOff.Set(2, 0, 0, glassId);
+            gGlassOff.Set(2, 1, 0, mechSand);
+            GameSettings.SetMech(GameSettings.MechKind.GlassCrush, false);
+            Check("关掉玻璃压碎就不碎",
+                Glass.Crush(gGlassOff) == 0 && gGlassOff.Get(2, 0, 0) == glassId);
+            GameSettings.SetMech(GameSettings.MechKind.GlassCrush, true);
+
+            var gGlassStack = new Grid(5, 6, 1);
+            gGlassStack.Set(2, 0, 0, glassId);
+            gGlassStack.Set(2, 1, 0, glassId);
+            gGlassStack.Set(2, 2, 0, mechSand);
+            int glassCrushed = Glass.Crush(gGlassStack);
+            Gravity.Settle(gGlassStack);
+            Check("叠起来的玻璃一起碎，沙一路落到底",
+                glassCrushed == 2 && CountFilled(gGlassStack) == 1 && gGlassStack.Get(2, 0, 0) == mechSand);
+
+            // 拨回全开，别把开关状态留给玩家
+            for (int i = 0; i < GameSettings.MechCount; i++)
+                GameSettings.SetMech((GameSettings.MechKind)i, true);
+
             sb.AppendLine();
             sb.AppendLine("通过 " + pass + " 项，失败 " + fail + " 项");
             Debug.Log("[MinecraftTetris 自检]\n" + sb);

@@ -15,10 +15,13 @@ namespace MinecraftTetris
         [Serializable]
         class TitleMeta { public CharMeta[] chars; }
 
-        enum SettingsPage { Main, Keys, Size, Workshop, Speed, Music, Guide }
+        enum SettingsPage { Main, Keys, Size, Workshop, Speed, Music, Guide, Mech }
 
         /// <summary>「特殊方块」说明页在 SettingsPage 里的下标，调试开关要用。</summary>
         public const int PageGuide = (int)SettingsPage.Guide;
+
+        /// <summary>「特殊方块机制开关」页的下标。</summary>
+        public const int PageMech = (int)SettingsPage.Mech;
 
         struct Mote
         {
@@ -134,11 +137,11 @@ namespace MinecraftTetris
             _t = 99f;
         }
 
-        /// <summary>调试用：直接打开某个设置页（0 主页面 / 1 按键 / 2 尺寸）。</summary>
+        /// <summary>调试用：直接打开某个设置页（0 主页面 / 1 按键 / 2 尺寸…）。</summary>
         public void OpenSettingsPage(int page)
         {
             ShowSettings = true;
-            _page = (SettingsPage)Mathf.Clamp(page, 0, (int)SettingsPage.Guide);
+            _page = (SettingsPage)Mathf.Clamp(page, 0, (int)SettingsPage.Mech);
             _tmpSpeed = GameSettings.FallSpeed;
             _tmpMusic = GameSettings.MusicVolume;
             _capturingAction = -1;
@@ -386,6 +389,9 @@ namespace MinecraftTetris
                 case SettingsPage.Guide:
                     DrawGuide();
                     break;
+                case SettingsPage.Mech:
+                    DrawSettingsMech();
+                    break;
             }
         }
 
@@ -393,7 +399,7 @@ namespace MinecraftTetris
         {
             float w = UiSkin.P(420f);
             // 按钮数 × 54 + 上下留白；加一项就跟着涨，不然会压到「返回」上
-            float h = UiSkin.P(602f);
+            float h = UiSkin.P(580f);
             Rect panel = CenterPanel(w, h);
             DrawPanel(panel);
 
@@ -459,20 +465,50 @@ namespace MinecraftTetris
             }
             y += step;
 
-            // 基岩不掉落，落下来就是一根永久柱子，默认关；想玩就自己开
-            string bedrockName = GameSettings.BedrockInPool ? "基岩进池：开" : "基岩进池：关";
-            if (GUI.Button(new Rect(bx, y, bw, bh), bedrockName, _btnStyle))
-                GameSettings.SetBedrockInPool(!GameSettings.BedrockInPool);
-            y += step;
-
-            // 结构方块会记住一片构造、被消时还原，对局面的影响比普通方块大，默认关
-            string structureName = GameSettings.StructureInPool ? "结构方块进池：开" : "结构方块进池：关";
-            if (GUI.Button(new Rect(bx, y, bw, bh), structureName, _btnStyle))
-                GameSettings.SetStructureInPool(!GameSettings.StructureInPool);
+            // 特殊方块各机制的开关（TNT 炸不炸、沙子落不落…）都收在这一页里，
+            // 原来「基岩进池」「结构方块进池」两个开关已经去掉：方块常驻池，行为由机制开关决定
+            if (GUI.Button(new Rect(bx, y, bw, bh), "特殊方块开关", _btnStyle))
+                _page = SettingsPage.Mech;
             y += UiSkin.P(62f);
 
             if (GUI.Button(new Rect(bx, y, bw, bh), "返回", _btnStyle))
                 ShowSettings = false;
+        }
+
+        /// <summary>
+        /// 特殊方块机制开关。十项排一列，关掉只是这种方块不再按特殊规则动，
+        /// 方块本身还在池子里（改成不进池会让玩家在场上再也见不到它）。
+        /// </summary>
+        void DrawSettingsMech()
+        {
+            float rowH = UiSkin.P(38f);
+            float rowGap = UiSkin.P(8f);
+            float w = UiSkin.P(560f);
+            float h = UiSkin.P(80f) + GameSettings.MechCount * (rowH + rowGap) + UiSkin.P(100f);
+            Rect panel = CenterPanel(w, h);
+            DrawPanel(panel);
+
+            GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(12f), w, UiSkin.P(40f)), "特殊方块机制", _panelTitleStyle);
+
+            float bw = UiSkin.P(360f);
+            float bx = panel.x + (w - bw) * 0.5f;
+            float y = panel.y + UiSkin.P(66f);
+
+            for (int i = 0; i < GameSettings.MechCount; i++)
+            {
+                GameSettings.MechKind kind = (GameSettings.MechKind)i;
+                bool on = GameSettings.Mech(kind);
+                string label = GameSettings.MechLabel(kind) + (on ? "：开" : "：关");
+                if (GUI.Button(new Rect(bx, y, bw, rowH), label, _btnStyle))
+                    GameSettings.SetMech(kind, !on);
+                y += rowH + rowGap;
+            }
+
+            GUI.Label(new Rect(panel.x, y - UiSkin.P(2f), w, UiSkin.P(28f)),
+                "关掉只是这种方块不再按特殊规则动，方块照常出现", _guideNoteStyle);
+
+            if (GUI.Button(new Rect(bx, panel.y + h - UiSkin.P(58f), bw, UiSkin.P(42f)), "返回", _btnStyle))
+                _page = SettingsPage.Main;
         }
 
         void DrawSettingsKeys()
@@ -829,13 +865,13 @@ namespace MinecraftTetris
                 {
                     Ids = new[] { BlockCatalog.StructureId },
                     Title = "结构方块",
-                    Desc = "落定记住整场，被消行、消层或炸掉时，场上一格格收掉再按记忆掉回来。默认不进池。",
+                    Desc = "落定记住整场，被消行、消层或炸掉时，场上一格格收掉再按记忆掉回来。",
                 },
                 new GuideItem
                 {
                     Ids = new[] { BlockCatalog.BedrockId },
                     Title = "基岩",
-                    Desc = "不随消除下落，也炸不掉，默认不进池。",
+                    Desc = "不随消除下落，也炸不掉。",
                 },
                 new GuideItem
                 {
@@ -873,6 +909,12 @@ namespace MinecraftTetris
                 },
                 new GuideItem
                 {
+                    Ids = new[] { BlockCatalog.GlassId },
+                    Title = "玻璃",
+                    Desc = "上面压着方块就碎，碎完上方的方块接着往下掉。",
+                },
+                new GuideItem
+                {
                     Ids = new[] { FindBlock("oak_log") },
                     Title = "原木",
                     Desc = "落定以后，周围的空位会长出同种树叶。",
@@ -885,15 +927,16 @@ namespace MinecraftTetris
             EnsureGuideItems();
 
             float w = UiSkin.P(1060f);
-            float h = UiSkin.P(710f);
+            // 十一项排两列、每列六行；再往下就压到「返回」上了
+            float h = UiSkin.P(804f);
             Rect panel = CenterPanel(w, h);
             DrawPanel(panel);
 
             GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(14f), w, UiSkin.P(44f)), "特殊方块", _panelTitleStyle);
             GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(60f), w, UiSkin.P(24f)),
-                "只列和原版不一样、或者第一次玩容易搞错的机制", _guideNoteStyle);
+                "只列和原版不一样、或者第一次玩容易搞错的机制；每一项都能在设置里单独关掉", _guideNoteStyle);
 
-            const int perCol = 5;
+            const int perCol = 6;
             float colW = UiSkin.P(470f);
             float rowH = UiSkin.P(104f);
             float top = panel.y + UiSkin.P(104f);

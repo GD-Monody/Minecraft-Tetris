@@ -125,6 +125,12 @@ namespace MinecraftTetris
                 _title.Visible = true;
                 _title.OpenSettingsPage(TitleScreen.PageGuide);
             }
+            // -mechsettings：直接打开「特殊方块机制」开关页，截图核对用
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-mechsettings") >= 0)
+            {
+                _title.Visible = true;
+                _title.OpenSettingsPage(TitleScreen.PageMech);
+            }
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-pause") >= 0)
             {
                 _title.Visible = false;
@@ -152,6 +158,9 @@ namespace MinecraftTetris
                 RunStructureTest();
             }
 
+            // -glasstest：玻璃柱上压沙，看玻璃被压碎、沙落下来
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-glasstest") >= 0)
+                RunGlassTest();
             // -blocktest <方块英文名>：在场地高处摆三个该方块，用来肉眼核对六面贴图
             var btArgv = System.Environment.GetCommandLineArgs();
             int btAt = System.Array.IndexOf(btArgv, "-blocktest");
@@ -177,7 +186,7 @@ namespace MinecraftTetris
             string[] sceneTests =
             {
                 "-sandtest", "-reacttest", "-tnttest", "-leaftest", "-bedrocktest", "-structuretest",
-                "-blocktest", "-fluidtest", "-yawtest", "-pitchtest",
+                "-blocktest", "-fluidtest", "-yawtest", "-pitchtest", "-glasstest",
             };
             for (int i = 0; i < sceneTests.Length; i++)
             {
@@ -205,6 +214,7 @@ namespace MinecraftTetris
             _loop.TntPrimed += OnTntPrimed;
             _loop.TntExploded += OnTntExploded;
             _loop.FoliageGrew += OnFoliageGrew;
+            _loop.GlassCrushed += OnGlassCrushed;
 
             _view.RefreshAll();
             _view.SnapPiece(_loop.Current);
@@ -484,6 +494,85 @@ namespace MinecraftTetris
             bool moved = Gravity.Settle(_loop.Grid);
             _view.RefreshAll();
             Debug.Log("[sandtest] 重力结算=" + moved);
+        }
+
+        /// <summary>
+        /// 玻璃被压碎：三根玻璃柱上各压两块沙，跑一次「压碎 + 重力」，
+        /// 看玻璃一层层碎掉、沙落到柱脚原来的位置。
+        /// </summary>
+        void RunGlassTest()
+        {
+            if (_loop == null || _view == null)
+                return;
+
+            int glassId = BlockCatalog.GlassId;
+            int sandId = 0, stoneId = 0;
+            for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
+            {
+                if (BlockCatalog.Blocks[i].Name == "sand")
+                    sandId = i + 1;
+                else if (BlockCatalog.Blocks[i].Name == "stone")
+                    stoneId = i + 1;
+            }
+            if (glassId <= 0 || sandId <= 0)
+            {
+                Debug.Log("[glasstest] 方块表里缺玻璃或沙子");
+                return;
+            }
+
+            _loop.Restart();
+            Fluids.Reset();
+            Tnt.Reset();
+            Structure.Reset();
+
+            Grid grid = _loop.Grid;
+            int cx = grid.SizeX / 2;
+            int cz = grid.SizeZ / 2;
+            int yBase = Mathf.Clamp(grid.SizeY / 6, 2, 4);
+
+            // 底下一层石头当基座，三根玻璃柱立在上面，柱顶各压两块沙。
+            // 有基座才看得出「玻璃碎完，沙落回地面」；不然沙会停在半空（下面本来就是空的）。
+            for (int i = -2; i <= 2; i += 2)
+            {
+                Put(grid, cx + i, 0, cz, stoneId);
+                Put(grid, cx + i, yBase, cz, glassId);
+                Put(grid, cx + i, yBase + 1, cz, glassId);
+                Put(grid, cx + i, yBase + 2, cz, sandId);
+                Put(grid, cx + i, yBase + 3, cz, sandId);
+            }
+
+            _view.SnapPiece(_loop.Current);
+            _view.RefreshAll();
+
+            // 先让玩家看清「玻璃上压着沙」，一秒半后再压碎，不然一进场就是结果
+            StartCoroutine(CrushGlassSoon(1.5f));
+        }
+
+        /// <summary>演示用：等一会儿再压碎，让画面先停在场上有玻璃的状态。</summary>
+        System.Collections.IEnumerator CrushGlassSoon(float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            if (_loop == null || _view == null)
+                yield break;
+
+            int crushed = CrushAllGlass();
+            _view.RefreshAll();
+            Debug.Log("[glasstest] 压碎 " + crushed + " 格玻璃，沙落回基座");
+        }
+
+        /// <summary>演示用：反复「压碎 + 重力」，直到没有玻璃再碎（等价于落定时那套循环）。</summary>
+        int CrushAllGlass()
+        {
+            int total = 0;
+            for (int guard = 0; guard < 64; guard++)
+            {
+                int n = Glass.Crush(_loop.Grid);
+                if (n == 0)
+                    break;
+                total += n;
+                Gravity.Settle(_loop.Grid);
+            }
+            return total;
         }
 
         /// <summary>调试用：摆一颗 TNT 挨一块红石，周围铺一圈石头当靶子，看引信闪白和爆炸范围。</summary>
@@ -1012,6 +1101,30 @@ namespace MinecraftTetris
             {
                 Vector3Int c = Foliage.LastGrown[i];
                 _view.SetCell(c.x, c.y, c.z, _loop.Grid.Get(c.x, c.y, c.z));
+            }
+        }
+
+        /// <summary>
+        /// 玻璃被压碎：脆响一声，格子清掉，撒几片碎块。
+        /// 下落的东西上面已经由 GameLoop 重新结算过，这里只负责画面与声音。
+        /// </summary>
+        void OnGlassCrushed()
+        {
+            if (_sfx != null)
+                _sfx.PlayGlassBreak();
+
+            if (_rig != null)
+                _rig.Shake(0.08f);
+
+            if (_view == null)
+                return;
+
+            for (int i = 0; i < _loop.LastGlassCrushed.Count; i++)
+            {
+                Vector3Int c = _loop.LastGlassCrushed[i];
+                _view.SetCell(c.x, c.y, c.z, 0);
+                if (_particles != null)
+                    _particles.EmitCell(c.x, c.y, c.z, BlockCatalog.GlassId, 2);
             }
         }
 

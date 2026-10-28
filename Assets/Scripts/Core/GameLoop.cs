@@ -168,6 +168,12 @@ namespace MinecraftTetris
         public event Action<Tnt.Blast> TntExploded;
         /// <summary>原木长出了树叶：视图层照着 Foliage.LastGrown 刷那几格。</summary>
         public event Action FoliageGrew;
+        /// <summary>玻璃被压碎了：视图层照着 LastGlassCrushed 刷那几格、播音效、撒碎块。</summary>
+        public event Action GlassCrushed;
+
+        /// <summary>最近一次落定里压碎的玻璃格子（可以有两轮以上，越靠下越先碎）。</summary>
+        public readonly System.Collections.Generic.List<Vector3Int> LastGlassCrushed
+            = new System.Collections.Generic.List<Vector3Int>();
         /// <summary>方块转了个 90°：参数是绕哪个轴 + 是否顺时针。视图层用它播旋转动画。</summary>
         public event Action<RotationAxis, bool> PieceRotated;
 
@@ -483,6 +489,11 @@ namespace MinecraftTetris
             if (!fluidPiece && Foliage.Grow(Grid, Current) > 0)
                 FoliageGrew?.Invoke();
 
+            // 玻璃被压着就碎。放在判满行之前：玻璃碎了上面的沙会接着掉，
+            // 掉下来的方块可能正好补满一行，晚一步判就得多等一块。
+            if (!fluidPiece)
+                CrushGlass();
+
             // 先记下这一轮要清的行和每行的代表材质，清完再派事件给粒子效果
             var fullRows = new System.Collections.Generic.List<int>();
             var rowBlocks = new System.Collections.Generic.List<int>();
@@ -532,6 +543,32 @@ namespace MinecraftTetris
             FlushTntPrimed();
 
             SpawnNext();
+        }
+
+        /// <summary>
+        /// 把被压着的玻璃压碎，碎完再落一次重力。
+        ///
+        /// 为什么是个循环：玻璃上面压着沙，沙掉下来又压到下一层玻璃，一次落定里能连碎好几层。
+        /// 每一轮至少碎掉一格玻璃，玻璃总数有限，所以循环一定会停；64 轮只是保险。
+        /// </summary>
+        void CrushGlass()
+        {
+            LastGlassCrushed.Clear();
+
+            bool any = false;
+            for (int guard = 0; guard < 64; guard++)
+            {
+                if (Glass.Crush(Grid, LastGlassCrushed) == 0)
+                    break;
+
+                any = true;
+                LastGravityMoves.Clear();
+                if (Gravity.Settle(Grid, LastGravityMoves))
+                    GravitySettled?.Invoke();
+            }
+
+            if (any)
+                GlassCrushed?.Invoke();
         }
 
         /// <summary>把这一帧新点着的 TNT 派给视图层，然后清掉待发列表。</summary>

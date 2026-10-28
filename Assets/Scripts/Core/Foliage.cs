@@ -105,7 +105,7 @@ namespace MinecraftTetris
         public static int GrowAround(Grid grid, int x, int y, int z, int logId)
         {
             int leafId = LeafIdFor(logId);
-            if (leafId <= 0 || grid == null)
+            if (leafId <= 0 || grid == null || !GameSettings.LeavesGrow)
                 return 0;
 
             _candidates.Clear();

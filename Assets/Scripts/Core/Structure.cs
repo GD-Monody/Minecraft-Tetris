@@ -203,6 +203,9 @@ namespace MinecraftTetris
         {
             if (grid == null || piece == null)
                 return;
+            // 设置里关掉「结构方块还原」：照样能落、能拼，就是不记事
+            if (!GameSettings.StructureRestores)
+                return;
             if (!IsStructure(piece.BlockId))
                 return;
 
@@ -228,7 +231,7 @@ namespace MinecraftTetris
         /// </summary>
         public static bool NotifyCleared(Grid grid, int x, int y, int z)
         {
-            if (grid == null || !grid.InBounds(x, y, z))
+            if (grid == null || !GameSettings.StructureRestores || !grid.InBounds(x, y, z))
                 return false;
 
             if (!IsStructure(grid.Get(x, y, z)))
@@ -261,6 +264,9 @@ namespace MinecraftTetris
         public static void Tick(Grid grid, float dt)
         {
             if (grid == null)
+                return;
+            // 中途关了「结构方块还原」：正在放的动画原地冻住，开关打开还能接着放完
+            if (!GameSettings.StructureRestores)
                 return;
 
             while (_active == null && _pending.Count > 0)

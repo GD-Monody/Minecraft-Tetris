@@ -44,6 +44,9 @@ namespace MinecraftTetris
         AudioClip _fuse;
         AudioClip[] _explode;
 
+        // 玻璃被压碎：MC 的 block.glass.break
+        AudioClip _glassBreak;
+
         void Awake()
         {
             _voices = new AudioSource[VoiceCount];
@@ -60,6 +63,7 @@ namespace MinecraftTetris
             _fizz = Load("Sfx/fizz");
 
             _fuse = Load("Sfx/tnt_fuse");
+            _glassBreak = Load("Sfx/break_glass");
             _explode = new[]
             {
                 Load("Sfx/tnt_explode1"),
@@ -167,6 +171,15 @@ namespace MinecraftTetris
         {
             if (_fizz != null)
                 Play(_fizz);
+            else
+                PlayPlaceGroup(0);
+        }
+
+        /// <summary>玻璃被压碎。素材缺的时候退回石头音，别让这一下没声音。</summary>
+        public void PlayGlassBreak()
+        {
+            if (_glassBreak != null)
+                Play(_glassBreak, 0.85f, 1f + Random.Range(-0.06f, 0.06f));
             else
                 PlayPlaceGroup(0);
         }

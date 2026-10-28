@@ -24,9 +24,9 @@ namespace MinecraftTetris
         static int _lavaId = -1;
         static int _tntId = -1;
         static int _redstoneId = -1;
-        /// <summary>基岩编号。只有设置里打开「基岩进池」才有值，否则一直是 -1 = 永远抽不到。</summary>
+        /// <summary>基岩编号。基岩常驻特殊池。</summary>
         static int _bedrockId = -1;
-        /// <summary>结构方块编号。同基岩，默认不进池。</summary>
+        /// <summary>结构方块编号。同样常驻特殊池。</summary>
         static int _structureId = -1;
         static int _count;
         /// <summary>抽到 TNT 之后，下一次抽必然给红石块 —— 见 NextRandomId。</summary>
@@ -93,18 +93,16 @@ namespace MinecraftTetris
                 }
                 if (n == "bedrock")
                 {
-                    // 基岩消除时不下落，掉下来就是一根永久柱子，属于纯增难度的方块，
-                    // 默认不给。设置里打开才记编号，没打开就连编号都没有 = 永远抽不到。
-                    if (GameSettings.BedrockInPool)
-                        _bedrockId = i + 1;
+                    // 基岩消除时不下落，掉下来就是一根柱子。要不要这个行为由设置页的
+                    // 「基岩钉住不动」开关决定；方块本身常驻特殊池，不然关掉开关就等于把它从游戏里删了。
+                    _bedrockId = i + 1;
                     continue;
                 }
                 if (n == "structure_block")
                 {
                     // 结构方块是「道具」：落定时记住一片构造，被消掉时还原。
-                    // 默认不给玩家抽到，否则场上会莫名其妙冒出构造块。
-                    if (GameSettings.StructureInPool)
-                        _structureId = i + 1;
+                    // 一样常驻特殊池，还原与否交给「结构方块还原」开关。
+                    _structureId = i + 1;
                     continue;
                 }
                 if (n.EndsWith("_leaves"))
@@ -143,9 +141,8 @@ namespace MinecraftTetris
             _count++;
             if (_special.Length > 0 && _count % SpecialEvery == 0)
             {
-                // 特殊方块里：水 30%、岩浆 20%、TNT 20%，剩下的是沙类。
-                // 基岩 12% / 结构方块 10% 从沙类那一份里扣，而且只有设置里打开了才有。
-                // 写成累加式：关掉哪个开关，分给它的那份就自动还给沙类。
+                // 特殊方块里：水 30%、岩浆 20%、TNT 20%、基岩 12%、结构方块 10%，剩下的是沙类。
+                // 基岩和结构方块常驻；其它机制关不关都不影响池子，关掉只是行为变普通。
                 float r = Random.value;
                 float acc = 0f;
 

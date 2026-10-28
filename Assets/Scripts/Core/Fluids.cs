@@ -185,6 +185,10 @@ namespace MinecraftTetris
             Ensure(grid);
             if (_amount == null) return false;
 
+            // 设置里两种流体都关掉了：连计时都不走，省的每隔一段时间白算一遍
+            if (!GameSettings.WaterFlows && !GameSettings.LavaFlows)
+                return false;
+
             _timer += dt;
             if (_timer < TickInterval) return false;
             _timer = 0f;
@@ -198,6 +202,16 @@ namespace MinecraftTetris
             return changed;
         }
 
+        /// <summary>这种流体现在允不允许流动（设置页的「水会流动」「岩浆会流动」）。</summary>
+        static bool CanFlow(int id)
+        {
+            if (id == _waterId && _waterId > 0)
+                return GameSettings.WaterFlows;
+            if (id == _lavaId && _lavaId > 0)
+                return GameSettings.LavaFlows;
+            return true;
+        }
+
         /// <summary>
         /// 水岩浆成石：岩浆格和六向相邻的水相遇就结晶。
         /// 满 8 份的是岩浆源，变黑曜石；不满的是流动岩浆，变原石。
@@ -209,6 +223,9 @@ namespace MinecraftTetris
             if (_lavaId <= 0 || _waterId <= 0)
                 return false;
             if (_obsidianId <= 0 && _cobbleId <= 0)
+                return false;
+            // 结晶是水和岩浆两边的规则，只要有一种被关掉，这一对就不成立
+            if (!GameSettings.WaterFlows || !GameSettings.LavaFlows)
                 return false;
 
             bool any = false;
@@ -278,6 +295,9 @@ namespace MinecraftTetris
                     {
                         int a = _amount[x, y, z];
                         if (a <= 0)
+                            continue;
+                        // 设置里关掉的流体停在原地，既不往下灌也不往两边分
+                        if (!CanFlow(_id[x, y, z]))
                             continue;
 
                         // 1) 正下方不是方块：把水往下面灌，灌满后剩下的才留在这格。

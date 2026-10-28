@@ -76,10 +76,16 @@ namespace MinecraftTetris
         /// <summary>结构方块的编号（0 = 表里没这个方块）。落定时记住构造，被消时还原。</summary>
         public static readonly int StructureId = FindId("structure_block");
 
-        /// <summary>这一格是不是「消除时不下落」的锚点方块（目前只有基岩）。</summary>
+        /// <summary>玻璃的编号（0 = 表里没这个方块）。上面压着方块就会碎，见 Glass.cs。</summary>
+        public static readonly int GlassId = FindId("glass");
+
+        /// <summary>
+        /// 这一格是不是「消除时不下落」的锚点方块（目前只有基岩）。
+        /// 设置里关掉「基岩钉住不动」之后，基岩和普通方块一样跟着走。
+        /// </summary>
         public static bool IsAnchor(int blockId)
         {
-            return blockId > 0 && blockId == BedrockId;
+            return blockId > 0 && blockId == BedrockId && GameSettings.BedrockAnchors;
         }
 
         /// <summary>
@@ -99,10 +105,10 @@ namespace MinecraftTetris
 
         static bool[] _blastProof;
 
-        /// <summary>这一格是不是炸不掉的（在爆炸范围内也会保留）。</summary>
+        /// <summary>这一格是不是炸不掉的（在爆炸范围内也会保留）。设置里关掉「防爆方块」之后一律炸得掉。</summary>
         public static bool IsBlastProof(int blockId)
         {
-            if (blockId <= 0)
+            if (blockId <= 0 || !GameSettings.BlastProofOn)
                 return false;
 
             if (_blastProof == null)

@@ -13,8 +13,6 @@ namespace MinecraftTetris
         const string ElimModeKey = "elim.mode";
         const string FallSpeedKey = "fall.speed";
         const string MusicVolumeKey = "music.volume";
-        const string BedrockInPoolKey = "pool.bedrock";
-        const string StructureInPoolKey = "pool.structure";
 
         public const int MinSizeX = 5;
         public const int MaxSizeX = 20;
@@ -125,41 +123,77 @@ namespace MinecraftTetris
             GameSave.Clear();
         }
 
-        /// <summary>
-        /// 基岩要不要进方块池。默认关：基岩消除时不下落，掉下一块就是一根永久柱子，
-        /// 属于「纯增难度」的方块，不该默认塞给玩家。打开后会从特殊池里出，
-        /// 大约 1% 的方块是基岩。
-        /// </summary>
-        public static bool BedrockInPool
-        {
-            get { return PlayerPrefs.GetInt(BedrockInPoolKey, 0) != 0; }
-        }
+        // ---------- 特殊方块机制开关 ----------
 
         /// <summary>
-        /// 改基岩开关。不改存档——开关只影响以后抽到什么，不影响已经摆好的局面。
-        /// 池子是静态缓存的（BlockPools），所以这里要重建一次。
+        /// 特殊方块各机制的开关。默认全开。
+        ///
+        /// 关掉的含义是「这块砖不再按特殊规则动」，方块本身照常进池：
+        /// TNT 关掉就成一块普通砖，沙子关掉就不下落，玻璃关掉就压不碎。
+        /// 这样玩家想玩哪种规则自己挑，池子里也不会突然少一批方块。
         /// </summary>
-        public static void SetBedrockInPool(bool on)
+        public enum MechKind
         {
-            PlayerPrefs.SetInt(BedrockInPoolKey, on ? 1 : 0);
+            TntExplode = 0,
+            ContactIgnite = 1,
+            SandFall = 2,
+            LeafGrow = 3,
+            WaterFlow = 4,
+            LavaFlow = 5,
+            StructureRestore = 6,
+            BedrockAnchor = 7,
+            BlastProof = 8,
+            GlassCrush = 9,
+        }
+
+        /// <summary>开关总数。设置页和自检都按它遍历。</summary>
+        public const int MechCount = 10;
+
+        static readonly string[] MechKeys =
+        {
+            "mech.tnt", "mech.ignite", "mech.sand", "mech.leaves", "mech.water",
+            "mech.lava", "mech.structure", "mech.bedrock", "mech.blastproof", "mech.glass",
+        };
+
+        static readonly string[] MechLabels =
+        {
+            "TNT 爆炸", "接触点火", "沙子与沙砾下落", "原木长树叶", "水会流动",
+            "岩浆会流动", "结构方块还原", "基岩钉住不动", "防爆方块炸不掉", "玻璃被压碎",
+        };
+
+        public static string MechLabel(MechKind kind)
+        {
+            int i = (int)kind;
+            return i >= 0 && i < MechLabels.Length ? MechLabels[i] : "";
+        }
+
+        public static bool Mech(MechKind kind)
+        {
+            int i = (int)kind;
+            if (i < 0 || i >= MechKeys.Length)
+                return true;
+            return PlayerPrefs.GetInt(MechKeys[i], 1) != 0;
+        }
+
+        public static void SetMech(MechKind kind, bool on)
+        {
+            int i = (int)kind;
+            if (i < 0 || i >= MechKeys.Length)
+                return;
+            PlayerPrefs.SetInt(MechKeys[i], on ? 1 : 0);
             PlayerPrefs.Save();
-            BlockPools.Build();
+            // 机制开关不影响已经摆好的局面，也不影响池子里有什么，所以不清存档、不重建池
         }
 
-        /// <summary>
-        /// 结构方块要不要进方块池。默认关：它是「道具」不是「砖」，
-        /// 落定时会记住一片构造，被消掉时整片还原，对局面的影响比普通方块大得多。
-        /// </summary>
-        public static bool StructureInPool
-        {
-            get { return PlayerPrefs.GetInt(StructureInPoolKey, 0) != 0; }
-        }
-
-        public static void SetStructureInPool(bool on)
-        {
-            PlayerPrefs.SetInt(StructureInPoolKey, on ? 1 : 0);
-            PlayerPrefs.Save();
-            BlockPools.Build();
-        }
+        public static bool TntExplodes { get { return Mech(MechKind.TntExplode); } }
+        public static bool ContactIgnites { get { return Mech(MechKind.ContactIgnite); } }
+        public static bool SandFalls { get { return Mech(MechKind.SandFall); } }
+        public static bool LeavesGrow { get { return Mech(MechKind.LeafGrow); } }
+        public static bool WaterFlows { get { return Mech(MechKind.WaterFlow); } }
+        public static bool LavaFlows { get { return Mech(MechKind.LavaFlow); } }
+        public static bool StructureRestores { get { return Mech(MechKind.StructureRestore); } }
+        public static bool BedrockAnchors { get { return Mech(MechKind.BedrockAnchor); } }
+        public static bool BlastProofOn { get { return Mech(MechKind.BlastProof); } }
+        public static bool GlassCrushes { get { return Mech(MechKind.GlassCrush); } }
     }
 }

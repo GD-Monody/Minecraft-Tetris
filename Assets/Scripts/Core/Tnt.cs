@@ -156,7 +156,8 @@ namespace MinecraftTetris
         public static bool Prime(Grid grid, int x, int y, int z, float fuse)
         {
             Init();
-            if (grid == null || !grid.InBounds(x, y, z))
+            // 设置里关掉「TNT 爆炸」：点着了也不炸，连引信都不给
+            if (grid == null || !GameSettings.TntExplodes || !grid.InBounds(x, y, z))
                 return false;
             if (grid.Get(x, y, z) != _tntId)
                 return false;
@@ -175,7 +176,8 @@ namespace MinecraftTetris
         public static int PrimeContact(Grid grid)
         {
             Init();
-            if (grid == null || _tntId <= 0)
+            // 爆炸关了自然点不着；「接触点火」关了则红石块和岩浆都失去作用
+            if (grid == null || _tntId <= 0 || !GameSettings.TntExplodes || !GameSettings.ContactIgnites)
                 return 0;
 
             int fired = 0;
@@ -242,6 +244,15 @@ namespace MinecraftTetris
         {
             _blasts.Clear();
             _newlyPrimed.Clear();
+
+            // 中途关掉「TNT 爆炸」：已经点着的引信直接掐灭，不会留到开关重新打开时再炸
+            if (!GameSettings.TntExplodes)
+            {
+                if (_primed.Count > 0)
+                    _primed.Clear();
+                return false;
+            }
+
             if (_primed.Count == 0)
                 return false;
 

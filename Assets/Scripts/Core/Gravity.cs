@@ -42,7 +42,8 @@ namespace MinecraftTetris
         /// </summary>
         public static bool Settle(Grid grid, List<GravityStep> moves = null)
         {
-            if (grid == null)
+            // 设置里关掉「沙子与沙砾下落」：沙类就成普通方块，停在半空不动
+            if (grid == null || !GameSettings.SandFalls)
                 return false;
 
             bool any = false;
