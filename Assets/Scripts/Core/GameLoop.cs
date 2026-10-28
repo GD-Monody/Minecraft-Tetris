@@ -198,6 +198,10 @@ namespace MinecraftTetris
                 if (Fluids.LastReactions.Count > 0)
                     FluidReacted?.Invoke(Fluids.LastReactions);
                 FluidChanged?.Invoke();
+
+                // 岩浆淌到 TNT 旁边就点着。流体不写网格，落定时那一次扫描看不见，
+                // 只能等它动过之后再补扫一遍（水面挨着不算，Tnt 里只认岩浆）。
+                Tnt.PrimeContact(Grid);
             }
 
             // TNT：引信烧完就炸。炸完上面的沙 / 沙砾要重新塌一次，

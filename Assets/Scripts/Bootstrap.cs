@@ -558,9 +558,20 @@ namespace MinecraftTetris
                     _loop.Grid.Set(x, y, cz, ids[i]);
             }
 
+            // 再摆一组：一颗 TNT 左边挨着岩浆。岩浆不写网格，得靠「流体淌动后再扫一遍」点火，
+            // 这里把岩浆放好，下面 PrimeContact 就等价于岩浆漫过来那一刻
+            int lavaTntX = cx - 4;
+            if (_loop.Grid.InBounds(lavaTntX, cy, cz) && _loop.Grid.InBounds(lavaTntX - 1, cy, cz))
+            {
+                if (_loop.Grid.Get(lavaTntX, cy, cz) == 0)
+                    _loop.Grid.Set(lavaTntX, cy, cz, tntId);
+                if (_loop.Grid.Get(lavaTntX - 1, cy, cz) == 0)
+                    Fluids.AddSource(_loop.Grid, lavaTntX - 1, cy, cz, Fluids.LavaId);
+            }
+
             _view.RefreshAll();
             int fired = Tnt.PrimeContact(_loop.Grid);
-            Debug.Log("[tnttest] 点着 " + fired + " 颗，引信 " + Tnt.FuseSeconds + " 秒" +
+            Debug.Log("[tnttest] 点着 " + fired + " 颗（右边那颗靠红石块，左边那颗靠岩浆），引信 " + Tnt.FuseSeconds + " 秒" +
                       "；靶子里左=黑曜石 上=哭泣黑曜石 右=基岩 左上=远古残骸 右上=下界合金块" +
                       " 左下=强化深板岩 右下=命令方块，炸完看这七个还在不在");
         }

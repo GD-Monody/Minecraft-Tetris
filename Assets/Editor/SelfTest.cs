@@ -531,6 +531,22 @@ namespace MinecraftTetris.EditorTools
             Check("被消行带走的 TNT 会哑火", Tnt.PrimedCells.Count == 0);
             Tnt.Reset();
 
+            // 岩浆也能点着 TNT（原版如此）。岩浆不写网格，判定走 Fluids。
+            var gLavaTnt = new Grid(8, 6, 1);
+            gLavaTnt.Set(2, 2, 0, Tnt.TntId);
+            Fluids.Reset();
+            Fluids.Prepare(gLavaTnt);
+            Fluids.SetAmount(3, 2, 0, 8, Fluids.LavaId);
+            Tnt.Reset();
+            Check("岩浆挨着 TNT 也会点火", Tnt.PrimeContact(gLavaTnt) == 1);
+            Tnt.Reset();
+            Fluids.Reset();
+            Fluids.Prepare(gLavaTnt);
+            Fluids.SetAmount(3, 2, 0, 8, Fluids.WaterId);
+            Check("水挨着 TNT 不点火", Tnt.PrimeContact(gLavaTnt) == 0);
+            Tnt.Reset();
+            Fluids.Reset();
+
             // 炸不掉的方块：基岩、三种命令方块、黑曜石、哭泣的黑曜石、远古残骸、
             // 下界合金块、强化深板岩（原版 TNT 也炸不动它们）
             int bedrockForBlast = 0, obsidianId = 0, cryingObsidianId = 0;
@@ -550,7 +566,7 @@ namespace MinecraftTetris.EditorTools
                 else if (n == "repeating_command_block") repeatingCommandBlockId = i + 1;
             }
             Check("黑曜石和哭泣的黑曜石都在方块表里", obsidianId > 0 && cryingObsidianId > 0);
-            Check("抗爆的那几种都在方块表里",
+            Check("防爆的那几种都在方块表里",
                 ancientDebrisId > 0 && netheriteBlockId > 0 && reinforcedDeepslateId > 0 &&
                 commandBlockId > 0 && chainCommandBlockId > 0 && repeatingCommandBlockId > 0);
             Check("基岩炸不掉", BlockCatalog.IsBlastProof(bedrockForBlast));

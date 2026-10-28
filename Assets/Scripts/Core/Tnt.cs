@@ -10,10 +10,12 @@ namespace MinecraftTetris
     /// 这里让方块留在网格里原地闪，引信烧完再炸。留在网格里意味着它占位、能挡方块，
     /// 好处是坐标不会因为重力 / 消行而错位——代价是被消行带走时这颗就哑了（Tick 里会发现并丢掉）。
     ///
-    /// 只在两种时机点火：
-    /// - 有方块落定之后扫一遍全场（见 PrimeContact），找「TNT 六向挨着红石块」的格子；
+    /// 只在三种时机点火：
+    /// - 有方块落定之后扫一遍全场（见 PrimeContact），找「TNT 六向挨着红石块或岩浆」的格子；
     ///   扫全场而不是只看刚落下的那几格，是因为接触可能由「新放的红石」或「新放的 TNT」任一方造成，
     ///   而且重力塌落之后位置也变了，全场扫描一次（最多 2000 格）比追踪每个来源省事得多。
+    /// - 岩浆淌动之后（GameLoop 在 Fluids.Tick 返回变化时再调一次 PrimeContact），
+    ///   因为岩浆是流体、不占网格，只有在它漫到 TNT 旁边那一刻才看得见接触。
     /// - 爆炸时炸到别的 TNT，给一个很短的引信，形成连锁。
     /// </summary>
     public static class Tnt
@@ -167,13 +169,13 @@ namespace MinecraftTetris
         }
 
         /// <summary>
-        /// 全场扫一遍，把所有「TNT 和红石块六向相接（含同格）」的 TNT 点着。
-        /// 每次方块落定后调用一次；返回这一轮点着了几个。
+        /// 全场扫一遍，把所有「TNT 六向挨着红石块或岩浆（含同格）」的 TNT 点着。
+        /// 方块落定后调用一次；岩浆淌动后也调用一次（见 GameLoop.Tick）。返回这一轮点着了几个。
         /// </summary>
         public static int PrimeContact(Grid grid)
         {
             Init();
-            if (grid == null || _tntId <= 0 || _redstoneId <= 0)
+            if (grid == null || _tntId <= 0)
                 return 0;
 
             int fired = 0;
@@ -187,7 +189,7 @@ namespace MinecraftTetris
                             continue;
                         if (IsPrimed(x, y, z))
                             continue;
-                        if (!TouchesRedstone(grid, x, y, z))
+                        if (!TouchesIgniter(grid, x, y, z))
                             continue;
                         if (Prime(grid, x, y, z, FuseSeconds))
                             fired++;
@@ -195,6 +197,25 @@ namespace MinecraftTetris
                 }
             }
             return fired;
+        }
+
+        static bool TouchesIgniter(Grid grid, int x, int y, int z)
+        {
+            return TouchesRedstone(grid, x, y, z) || TouchesLava(x, y, z);
+        }
+
+        /// <summary>岩浆不写网格（走 Fluids 的份数模型），所以这里查 Fluids 而不是查 Grid。</summary>
+        static bool TouchesLava(int x, int y, int z)
+        {
+            return LavaAt(x, y, z)
+                || LavaAt(x - 1, y, z) || LavaAt(x + 1, y, z)
+                || LavaAt(x, y - 1, z) || LavaAt(x, y + 1, z)
+                || LavaAt(x, y, z - 1) || LavaAt(x, y, z + 1);
+        }
+
+        static bool LavaAt(int x, int y, int z)
+        {
+            return Fluids.AmountAt(x, y, z) > 0 && Fluids.IdAt(x, y, z) == Fluids.LavaId;
         }
 
         static bool TouchesRedstone(Grid grid, int x, int y, int z)
