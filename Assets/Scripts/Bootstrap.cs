@@ -51,6 +51,10 @@ namespace MinecraftTetris
             _loop = new GameLoop(SizeX, SizeY, SizeZ, (int)System.DateTime.Now.Ticks);
             _loop.FallSpeed = GameSettings.FallSpeed;
 
+            // 结构方块的还原动画：搭好一格画一格，清掉一格擦一格
+            Structure.CellRebuilt += OnStructureCellRebuilt;
+            Structure.CellCleared += OnStructureCellCleared;
+
             _view = gameObject.AddComponent<GridView>();
             _view.Setup(_loop.Grid);
 
@@ -134,6 +138,9 @@ namespace MinecraftTetris
             // -bedrocktest：底层铺满，左列中间夹基岩、右列同样高度作对照
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-bedrocktest") >= 0)
                 RunBedrockTest();
+            // -structuretest：摆一块结构方块和周围一圈方块，立刻触发一次还原动画
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-structuretest") >= 0)
+                RunStructureTest();
 
             // -blocktest <方块英文名>：在场地高处摆三个该方块，用来肉眼核对六面贴图
             var btArgv = System.Environment.GetCommandLineArgs();
@@ -159,7 +166,7 @@ namespace MinecraftTetris
             // 而按空格开始游戏又会 Grid.Clear() 把刚摆好的场面一起清掉 —— 单给 -tnttest 什么都看不见。
             string[] sceneTests =
             {
-                "-sandtest", "-reacttest", "-tnttest", "-leaftest", "-bedrocktest",
+                "-sandtest", "-reacttest", "-tnttest", "-leaftest", "-bedrocktest", "-structuretest",
                 "-blocktest", "-fluidtest", "-yawtest", "-pitchtest",
             };
             for (int i = 0; i < sceneTests.Length; i++)
@@ -619,6 +626,65 @@ namespace MinecraftTetris
                       "），落一块方块就会消掉底层，然后看两列的区别");
         }
 
+        /// <summary>
+        /// 调试用：摆一块结构方块和周围一圈不同材质的方块，立刻触发一次还原，
+        /// 看「先整体清空、再一格一格搭回来」的动画。搭完结构方块自己消失。
+        /// </summary>
+        void RunStructureTest()
+        {
+            if (_loop == null || _view == null)
+                return;
+
+            int structureId = BlockCatalog.StructureId;
+            if (structureId <= 0)
+            {
+                Debug.Log("[structuretest] 方块表里找不到 structure_block");
+                return;
+            }
+
+            // 挑几个颜色差别大的，搭建顺序一眼能看出来
+            int stoneId = 0, leavesId = 0, sandId = 0, dirtId = 0;
+            for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
+            {
+                string n = BlockCatalog.Blocks[i].Name;
+                if (n == "stone") stoneId = i + 1;
+                else if (n == "oak_leaves") leavesId = i + 1;
+                else if (n == "sand") sandId = i + 1;
+                else if (n == "dirt") dirtId = i + 1;
+            }
+
+            Grid grid = _loop.Grid;
+            int cx = grid.SizeX / 2;
+            int cy = Mathf.Min(8, Mathf.Max(3, grid.SizeY - 8));
+            int cz = grid.SizeZ / 2;
+
+            // 3×3 一圈摆成不同材质
+            Put(grid, cx, cy, cz, structureId);
+            Put(grid, cx - 1, cy, cz, stoneId);
+            Put(grid, cx + 1, cy, cz, leavesId);
+            Put(grid, cx, cy - 1, cz, sandId);
+            Put(grid, cx, cy + 1, cz, dirtId);
+            Put(grid, cx - 1, cy + 1, cz, stoneId);
+            Put(grid, cx + 1, cy + 1, cz, leavesId);
+            Put(grid, cx - 1, cy - 1, cz, sandId);
+            Put(grid, cx + 1, cy - 1, cz, dirtId);
+
+            // 手动拍一次记忆（正常流程里是落定时自动记的），然后立刻触发还原
+            Structure.Memory m = Structure.Remember(grid, cx, cy, cz);
+            _view.RefreshAll();
+
+            bool queued = Structure.Trigger(grid, cx, cy, cz);
+            Debug.Log("[structuretest] 中心 (" + cx + "," + cy + "," + cz + ") 结构方块，" +
+                      "记忆 " + (m != null ? m.Blocks.Length : 0) + " 格，触发还原=" + queued +
+                      "；先整片清空，再一格一格搭回来，搭完结构方块自己消失");
+        }
+
+        static void Put(Grid grid, int x, int y, int z, int id)
+        {
+            if (id > 0 && grid.InBounds(x, y, z))
+                grid.Set(x, y, z, id);
+        }
+
         void RunFluidTest(string which)
         {
             if (_loop == null || _view == null)
@@ -825,6 +891,25 @@ namespace MinecraftTetris
                 Vector3Int c = blast.Cells[i];
                 _particles.EmitCell(c.x, c.y, c.z, blast.Blocks[i], 2);
             }
+        }
+
+        /// <summary>
+        /// 结构方块还原：搭好一格就画出来。
+        /// 只动这一格，所以不需要整场重画。
+        /// </summary>
+        void OnStructureCellRebuilt(int x, int y, int z, int blockId)
+        {
+            if (_view == null)
+                return;
+            _view.SetCell(x, y, z, blockId);
+        }
+
+        /// <summary>结构方块还原：那一格被清掉了（先清空整片，或最后结构方块自己消失）。</summary>
+        void OnStructureCellCleared(int x, int y, int z)
+        {
+            if (_view == null)
+                return;
+            _view.SetCell(x, y, z, 0);
         }
 
         /// <summary>

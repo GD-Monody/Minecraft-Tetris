@@ -189,6 +189,9 @@ namespace MinecraftTetris
             if (GameOver)
                 return;
 
+            // 结构方块的还原动画：被消掉之后先把那一片清空，再一格一格搭回来
+            Structure.Tick(Grid, dt);
+
             // 水/岩浆一格一格漫开、一格一格退掉；相遇的会结晶成石头
             if (Fluids.Tick(Grid, dt))
             {
@@ -462,6 +465,10 @@ namespace MinecraftTetris
 
             PieceLocked?.Invoke(Current);
 
+            // 结构方块落定 → 记住周围这一片的构造，之后被消掉时还原回来
+            if (!fluidPiece)
+                Structure.RememberFromPiece(Grid, Current);
+
             // 沙子、沙砾这类会往下掉：先落到位，再判定满行
             LastGravityMoves.Clear();
             if (Gravity.Settle(Grid, LastGravityMoves))
@@ -591,6 +598,8 @@ namespace MinecraftTetris
             public float fallTimer;
             // 流体（水/岩浆）每 5 个数一组：x, y, z, 份数, 类型
             public int[] fluids;
+            // 结构方块的记忆：每条 10 个头 + 一串方块 id，见 Structure.SerializeMemories
+            public int[] structures;
         }
 
         public string SerializeState()
@@ -655,6 +664,9 @@ namespace MinecraftTetris
             }
             d.fluids = fluidList.ToArray();
 
+            // 结构方块的记忆也要存：只存网格的话，读档回来结构方块就成了个哑方块
+            d.structures = Structure.SerializeMemories();
+
             return JsonUtility.ToJson(d);
         }
 
@@ -707,6 +719,10 @@ namespace MinecraftTetris
             }
 
             _fallTimer = d.fallTimer;
+
+            // 结构方块的记忆。老存档没有这个字段 → 当场没有记忆（读作 null）
+            Structure.DeserializeMemories(d.structures);
+
             return true;
         }
 
@@ -741,6 +757,7 @@ namespace MinecraftTetris
         {
             Grid.Clear();
             Tnt.Reset();
+            Structure.Reset();
             Score = 0;
             LinesCleared = 0;
             GameOver = false;

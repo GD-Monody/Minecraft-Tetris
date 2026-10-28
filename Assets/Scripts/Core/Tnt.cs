@@ -315,6 +315,10 @@ namespace MinecraftTetris
                         if (BlockCatalog.IsBlastProof(id))
                             continue;
 
+                        // 结构方块被炸掉了 → 排一次还原（要在清掉这一格之前判断，
+                        // 清完就读不到它是什么了）
+                        Structure.NotifyCleared(grid, x, y, z);
+
                         grid.Set(x, y, z, 0);
                         blast.Cells.Add(new Vector3Int(x, y, z));
                         blast.Blocks.Add(id);

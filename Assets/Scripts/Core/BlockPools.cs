@@ -26,10 +26,9 @@ namespace MinecraftTetris
         static int _redstoneId = -1;
         /// <summary>基岩编号。只有设置里打开「基岩进池」才有值，否则一直是 -1 = 永远抽不到。</summary>
         static int _bedrockId = -1;
+        /// <summary>结构方块编号。同基岩，默认不进池。</summary>
+        static int _structureId = -1;
         static int _count;
-
-        /// <summary>特殊池里给基岩的份量（仅当设置里打开时生效）。约 1/12 × 15% ≈ 1% 的方块。</summary>
-        public const float BedrockChance = 0.15f;
         /// <summary>抽到 TNT 之后，下一次抽必然给红石块 —— 见 NextRandomId。</summary>
         static bool _forceRedstone;
 
@@ -65,6 +64,7 @@ namespace MinecraftTetris
             _tntId = -1;
             _redstoneId = -1;
             _bedrockId = -1;
+            _structureId = -1;
             _forceRedstone = false;
             for (int i = 0; i < blocks.Length; i++)
             {
@@ -99,6 +99,14 @@ namespace MinecraftTetris
                         _bedrockId = i + 1;
                     continue;
                 }
+                if (n == "structure_block")
+                {
+                    // 结构方块是「道具」：落定时记住一片构造，被消掉时还原。
+                    // 默认不给玩家抽到，否则场上会莫名其妙冒出构造块。
+                    if (GameSettings.StructureInPool)
+                        _structureId = i + 1;
+                    continue;
+                }
                 if (n.EndsWith("_leaves"))
                 {
                     // 树叶是原木长出来的，不该当成一整块方块的材质掉下来
@@ -114,7 +122,8 @@ namespace MinecraftTetris
             _count = 0;
             Debug.Log("[pools] 普通 " + _normal.Length + " 种 / 特殊 " + _special.Length +
                       " 种 / 水 " + _waterId + " 岩浆 " + _lavaId +
-                      " / TNT " + _tntId + " 红石 " + _redstoneId + " 基岩 " + _bedrockId);
+                      " / TNT " + _tntId + " 红石 " + _redstoneId +
+                      " 基岩 " + _bedrockId + " 结构 " + _structureId);
         }
 
         /// <summary>抽一个材质编号。每隔 SpecialEvery 个方块抽一次特殊池，水和岩浆在特殊池里占比较高。</summary>
@@ -134,20 +143,41 @@ namespace MinecraftTetris
             _count++;
             if (_special.Length > 0 && _count % SpecialEvery == 0)
             {
-                // 特殊方块里：水 30%、岩浆 20%、TNT 20%、基岩 15%（设置里打开才有）、
-                // 剩下 15% 给沙类
+                // 特殊方块里：水 30%、岩浆 20%、TNT 20%，剩下的是沙类。
+                // 基岩 12% / 结构方块 10% 从沙类那一份里扣，而且只有设置里打开了才有。
+                // 写成累加式：关掉哪个开关，分给它的那份就自动还给沙类。
                 float r = Random.value;
-                if (_waterId > 0 && r < 0.30f)
-                    return _waterId;
-                if (_lavaId > 0 && r < 0.50f)
-                    return _lavaId;
-                if (_tntId > 0 && r < 0.70f)
+                float acc = 0f;
+
+                if (_waterId > 0)
                 {
-                    _forceRedstone = true;
-                    return _tntId;
+                    acc += 0.30f;
+                    if (r < acc) return _waterId;
                 }
-                if (_bedrockId > 0 && r < 0.70f + BedrockChance)
-                    return _bedrockId;
+                if (_lavaId > 0)
+                {
+                    acc += 0.20f;
+                    if (r < acc) return _lavaId;
+                }
+                if (_tntId > 0)
+                {
+                    acc += 0.20f;
+                    if (r < acc)
+                    {
+                        _forceRedstone = true;
+                        return _tntId;
+                    }
+                }
+                if (_bedrockId > 0)
+                {
+                    acc += 0.12f;
+                    if (r < acc) return _bedrockId;
+                }
+                if (_structureId > 0)
+                {
+                    acc += 0.10f;
+                    if (r < acc) return _structureId;
+                }
                 return _special[Random.Range(0, _special.Length)];
             }
             if (_normal.Length == 0)

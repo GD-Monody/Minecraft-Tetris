@@ -73,6 +73,9 @@ namespace MinecraftTetris
         /// </summary>
         public static readonly int BedrockId = FindId("bedrock");
 
+        /// <summary>结构方块的编号（0 = 表里没这个方块）。落定时记住构造，被消时还原。</summary>
+        public static readonly int StructureId = FindId("structure_block");
+
         /// <summary>这一格是不是「消除时不下落」的锚点方块（目前只有基岩）。</summary>
         public static bool IsAnchor(int blockId)
         {

@@ -149,6 +149,10 @@ namespace MinecraftTetris
                         if (OnCellCleared != null)
                             for (int x = 0; x < SizeX; x++)
                                 OnCellCleared(x, y, z);
+                        // 结构方块被这一行带走了 → 排一次还原。
+                        // 放在搬移之前：搬完之后那一格已经不是它了，读不到就没法判断。
+                        for (int x = 0; x < SizeX; x++)
+                            Structure.NotifyCleared(this, x, y, z);
                         DropRowAbove(y, z);
                         cleared++;
                     }
@@ -212,6 +216,10 @@ namespace MinecraftTetris
                         for (int x = 0; x < SizeX; x++)
                             for (int z = 0; z < SizeZ; z++)
                                 OnCellCleared(x, y, z);
+                    // 同上：搬移之前先看这一层里有没有结构方块
+                    for (int x = 0; x < SizeX; x++)
+                        for (int z = 0; z < SizeZ; z++)
+                            Structure.NotifyCleared(this, x, y, z);
                     DropLayerAbove(y);
                     cleared++;
                 }

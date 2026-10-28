@@ -14,6 +14,7 @@ namespace MinecraftTetris
         const string FallSpeedKey = "fall.speed";
         const string MusicVolumeKey = "music.volume";
         const string BedrockInPoolKey = "pool.bedrock";
+        const string StructureInPoolKey = "pool.structure";
 
         public const int MinSizeX = 5;
         public const int MaxSizeX = 20;
@@ -141,6 +142,22 @@ namespace MinecraftTetris
         public static void SetBedrockInPool(bool on)
         {
             PlayerPrefs.SetInt(BedrockInPoolKey, on ? 1 : 0);
+            PlayerPrefs.Save();
+            BlockPools.Build();
+        }
+
+        /// <summary>
+        /// 结构方块要不要进方块池。默认关：它是「道具」不是「砖」，
+        /// 落定时会记住一片构造，被消掉时整片还原，对局面的影响比普通方块大得多。
+        /// </summary>
+        public static bool StructureInPool
+        {
+            get { return PlayerPrefs.GetInt(StructureInPoolKey, 0) != 0; }
+        }
+
+        public static void SetStructureInPool(bool on)
+        {
+            PlayerPrefs.SetInt(StructureInPoolKey, on ? 1 : 0);
             PlayerPrefs.Save();
             BlockPools.Build();
         }

@@ -379,7 +379,7 @@ namespace MinecraftTetris
         {
             float w = UiSkin.P(420f);
             // 按钮数 × 54 + 上下留白；加一项就跟着涨，不然会压到「返回」上
-            float h = UiSkin.P(548f);
+            float h = UiSkin.P(602f);
             Rect panel = CenterPanel(w, h);
             DrawPanel(panel);
 
@@ -449,6 +449,12 @@ namespace MinecraftTetris
             string bedrockName = GameSettings.BedrockInPool ? "基岩进池：开" : "基岩进池：关";
             if (GUI.Button(new Rect(bx, y, bw, bh), bedrockName, _btnStyle))
                 GameSettings.SetBedrockInPool(!GameSettings.BedrockInPool);
+            y += step;
+
+            // 结构方块会记住一片构造、被消时还原，对局面的影响比普通方块大，默认关
+            string structureName = GameSettings.StructureInPool ? "结构方块进池：开" : "结构方块进池：关";
+            if (GUI.Button(new Rect(bx, y, bw, bh), structureName, _btnStyle))
+                GameSettings.SetStructureInPool(!GameSettings.StructureInPool);
             y += UiSkin.P(62f);
 
             if (GUI.Button(new Rect(bx, y, bw, bh), "返回", _btnStyle))

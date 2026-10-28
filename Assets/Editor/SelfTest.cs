@@ -738,6 +738,61 @@ namespace MinecraftTetris.EditorTools
                 System.Array.IndexOf(BlockPools.Normal, bedrockId) < 0 &&
                 System.Array.IndexOf(BlockPools.Special, bedrockId) < 0);
 
+            // 结构方块：记忆 → 触发 → 还原（先整片清空，再一格一格搭回来，最后自己消失）
+            int structureId = BlockCatalog.StructureId;
+            Check("方块表里有结构方块", structureId > 0);
+            Check("结构方块能认出来", Structure.IsStructure(structureId));
+            Check("石头不是结构方块", !Structure.IsStructure(stoneId));
+
+            Structure.Reset();
+            var gStruct = new Grid(9, 9, 1);
+            gStruct.Set(4, 1, 0, structureId);
+            gStruct.Set(3, 1, 0, stoneId);
+            gStruct.Set(5, 1, 0, stoneId);
+            gStruct.Set(4, 0, 0, stoneId);
+            Structure.Memory mem = Structure.Remember(gStruct, 4, 1, 0);
+            Check("记住了一片构造", mem != null && mem.Blocks.Length == 9);
+            Check("记忆的范围是 3×3（z=1 的场地）", mem != null && mem.SizeX == 3 && mem.SizeY == 3 && mem.SizeZ == 1);
+            Check("记忆里存的是当时那一片", mem != null &&
+                Structure.BlockAt(mem, 3, 1, 0) == stoneId &&
+                Structure.BlockAt(mem, 4, 1, 0) == structureId);
+            Check("同一格不会记两次", Structure.Remember(gStruct, 4, 1, 0) == mem && Structure.Memories.Count == 1);
+
+            // 消行触发还原：把结构方块所在的那一行填满，消掉它
+            for (int x = 0; x < 9; x++)
+            {
+                if (gStruct.Get(x, 1, 0) == 0)
+                    gStruct.Set(x, 1, 0, stoneId);
+            }
+            Check("满行会触发结构方块的还原", gStruct.ClearFullRows() == 1);
+            Check("还原已经排队", Structure.Busy);
+
+            // 还原动画：先整片清空，再一格一格搭回来
+            Structure.Tick(gStruct, Structure.StepInterval * 2f);
+            Check("还原是逐格的：第一层搭回来了，上面那层还空着",
+                gStruct.Get(4, 0, 0) == stoneId &&
+                gStruct.Get(3, 1, 0) == 0 && gStruct.Get(4, 1, 0) == 0);
+
+            for (int i = 0; i < 40; i++)
+                Structure.Tick(gStruct, Structure.StepInterval * 2f);
+            Check("搭完之后构造回来了", gStruct.Get(3, 1, 0) == stoneId && gStruct.Get(5, 1, 0) == stoneId);
+            Check("结构方块自己消失了", gStruct.Get(4, 1, 0) == 0);
+            Check("记忆也一并清掉了", Structure.Memories.Count == 0 && !Structure.Busy);
+
+            // 存档：记忆要能跟着局面一起存
+            Structure.Reset();
+            var gStructSave = new Grid(9, 9, 1);
+            gStructSave.Set(4, 4, 0, structureId);
+            gStructSave.Set(3, 4, 0, stoneId);
+            Structure.Remember(gStructSave, 4, 4, 0);
+            int[] dumped = Structure.SerializeMemories();
+            Structure.Reset();
+            Structure.DeserializeMemories(dumped);
+            Check("结构方块的记忆能存档", Structure.Memories.Count == 1 &&
+                Structure.BlockAt(Structure.Memories[0], 3, 4, 0) == stoneId &&
+                Structure.BlockAt(Structure.Memories[0], 4, 4, 0) == structureId);
+            Structure.Reset();
+
             // 背景音乐：文件齐、是流式导入、不是空文件，音量换算对
             int missingMusic = 0;
             for (int i = 0; i < MusicPlayer.GameTrackPaths.Length; i++)
