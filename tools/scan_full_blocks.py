@@ -76,6 +76,24 @@ EXCLUDE_WORDS = (
     'barrier', 'light', 'structure_void', 'bedrock',
 )
 
+# 扫描规则排除、但玩法需要用到的方块，扫完追加在末尾。
+# 树叶的模型根是 leaves（不在 CUBE_ROOTS 里），而且 EXCLUDE_WORDS 里就特意排除了 leaves，
+# 所以自动扫描永远扫不到。「原木长树叶」需要真的树叶方块，这里手工补 9 种。
+#
+# 追加在末尾而不是插在中间：方块编号 = 数组下标，插中间会让所有后续方块编号平移，
+# 老存档的网格数据会全变成别的方块。
+LEAF_BLOCKS = [
+    ('oak_leaves', '橡树树叶'),
+    ('spruce_leaves', '云杉树叶'),
+    ('birch_leaves', '白桦树叶'),
+    ('jungle_leaves', '丛林树叶'),
+    ('acacia_leaves', '金合欢树叶'),
+    ('dark_oak_leaves', '深色橡树树叶'),
+    ('mangrove_leaves', '红树树叶'),
+    ('cherry_leaves', '樱花树叶'),
+    ('pale_oak_leaves', '苍白橡树树叶'),
+]
+
 
 def main():
     z = zipfile.ZipFile(JAR)
@@ -272,6 +290,19 @@ def main():
             tint_faces = []
         seq = chain(name) or []
         candidates.append({'name': name, 'zh': zh_name(name), 'root': seq[-1][0] if seq else '', 'faces': faces, 'tint': tint_faces})
+
+    # 手工补的方块（树叶），见文件头 LEAF_BLOCKS 的说明
+    for leaf_name, leaf_zh in LEAF_BLOCKS:
+        if not ('assets/minecraft/textures/block/%s.png' % leaf_name) in names:
+            print('跳过（jar 里没有贴图）: %s' % leaf_name)
+            continue
+        candidates.append({
+            'name': leaf_name,
+            'zh': leaf_zh,
+            'root': 'manual',
+            'faces': {f: leaf_name for f in ('up', 'down', 'north', 'south', 'east', 'west')},
+            'tint': [],
+        })
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, 'w', encoding='utf-8') as f:

@@ -4788,5 +4788,131 @@
    "west": "yellow_wool"
   },
   "tint": []
+ },
+ {
+  "name": "oak_leaves",
+  "zh": "橡树树叶",
+  "root": "manual",
+  "faces": {
+   "up": "oak_leaves",
+   "down": "oak_leaves",
+   "north": "oak_leaves",
+   "south": "oak_leaves",
+   "east": "oak_leaves",
+   "west": "oak_leaves"
+  },
+  "tint": []
+ },
+ {
+  "name": "spruce_leaves",
+  "zh": "云杉树叶",
+  "root": "manual",
+  "faces": {
+   "up": "spruce_leaves",
+   "down": "spruce_leaves",
+   "north": "spruce_leaves",
+   "south": "spruce_leaves",
+   "east": "spruce_leaves",
+   "west": "spruce_leaves"
+  },
+  "tint": []
+ },
+ {
+  "name": "birch_leaves",
+  "zh": "白桦树叶",
+  "root": "manual",
+  "faces": {
+   "up": "birch_leaves",
+   "down": "birch_leaves",
+   "north": "birch_leaves",
+   "south": "birch_leaves",
+   "east": "birch_leaves",
+   "west": "birch_leaves"
+  },
+  "tint": []
+ },
+ {
+  "name": "jungle_leaves",
+  "zh": "丛林树叶",
+  "root": "manual",
+  "faces": {
+   "up": "jungle_leaves",
+   "down": "jungle_leaves",
+   "north": "jungle_leaves",
+   "south": "jungle_leaves",
+   "east": "jungle_leaves",
+   "west": "jungle_leaves"
+  },
+  "tint": []
+ },
+ {
+  "name": "acacia_leaves",
+  "zh": "金合欢树叶",
+  "root": "manual",
+  "faces": {
+   "up": "acacia_leaves",
+   "down": "acacia_leaves",
+   "north": "acacia_leaves",
+   "south": "acacia_leaves",
+   "east": "acacia_leaves",
+   "west": "acacia_leaves"
+  },
+  "tint": []
+ },
+ {
+  "name": "dark_oak_leaves",
+  "zh": "深色橡树树叶",
+  "root": "manual",
+  "faces": {
+   "up": "dark_oak_leaves",
+   "down": "dark_oak_leaves",
+   "north": "dark_oak_leaves",
+   "south": "dark_oak_leaves",
+   "east": "dark_oak_leaves",
+   "west": "dark_oak_leaves"
+  },
+  "tint": []
+ },
+ {
+  "name": "mangrove_leaves",
+  "zh": "红树树叶",
+  "root": "manual",
+  "faces": {
+   "up": "mangrove_leaves",
+   "down": "mangrove_leaves",
+   "north": "mangrove_leaves",
+   "south": "mangrove_leaves",
+   "east": "mangrove_leaves",
+   "west": "mangrove_leaves"
+  },
+  "tint": []
+ },
+ {
+  "name": "cherry_leaves",
+  "zh": "樱花树叶",
+  "root": "manual",
+  "faces": {
+   "up": "cherry_leaves",
+   "down": "cherry_leaves",
+   "north": "cherry_leaves",
+   "south": "cherry_leaves",
+   "east": "cherry_leaves",
+   "west": "cherry_leaves"
+  },
+  "tint": []
+ },
+ {
+  "name": "pale_oak_leaves",
+  "zh": "苍白橡树树叶",
+  "root": "manual",
+  "faces": {
+   "up": "pale_oak_leaves",
+   "down": "pale_oak_leaves",
+   "north": "pale_oak_leaves",
+   "south": "pale_oak_leaves",
+   "east": "pale_oak_leaves",
+   "west": "pale_oak_leaves"
+  },
+  "tint": []
  }
 ]

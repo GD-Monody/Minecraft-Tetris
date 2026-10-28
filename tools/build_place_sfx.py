@@ -125,6 +125,10 @@ RULES = [
     ("pumpkin|carved_pumpkin|jack_o_lantern|melon", "wood"),
     (r".*_log|.*_wood|.*_planks|.*_stem|.*_hyphae", "wood"),
 
+    # 树叶：原版是 SoundType.GRASS（和草方块同一组），哪棵树上长的都一样。
+    # 不写这条会落到兜底的 stone，踩到树叶会响成石头。
+    (r".*_leaves", "grass"),
+
     # 羊毛 / 混凝土 / 陶瓦
     (r".*_wool", "wool"),
     (r".*_concrete_powder", "sand"),

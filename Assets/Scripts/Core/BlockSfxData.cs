@@ -551,6 +551,15 @@ namespace MinecraftTetris
             "stone",   // yellow_glazed_terracotta
             "stone",   // yellow_terracotta
             "wool",   // yellow_wool
+            "grass",   // oak_leaves
+            "grass",   // spruce_leaves
+            "grass",   // birch_leaves
+            "grass",   // jungle_leaves
+            "grass",   // acacia_leaves
+            "grass",   // dark_oak_leaves
+            "grass",   // mangrove_leaves
+            "grass",   // cherry_leaves
+            "grass",   // pale_oak_leaves
         };
     }
 }

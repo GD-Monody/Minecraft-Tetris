@@ -60,6 +60,20 @@ def main():
     if tint_pngs:
         print("tint: %s" % ", ".join(sorted(tint_pngs)))
 
+    # 树叶：原版贴图是灰度图，靠 biome 的 foliage 色上色（和草方块顶面一个道理）。
+    # 不染的话树叶会是灰白的。樱花和苍白橡树的贴图本身带色，不在这个表里。
+    # 颜色取原版平原 / 各树种的近似值。
+    FOLIAGE = (0.47, 0.67, 0.18)      # 橡树 / 丛林 / 金合欢 / 深色橡树 / 红树
+    LEAF_TINT = {
+        "oak_leaves": FOLIAGE,
+        "jungle_leaves": FOLIAGE,
+        "acacia_leaves": FOLIAGE,
+        "dark_oak_leaves": FOLIAGE,
+        "mangrove_leaves": FOLIAGE,
+        "spruce_leaves": (0.38, 0.60, 0.38),
+        "birch_leaves": (0.50, 0.65, 0.33),
+    }
+
     rows = (len(tiles) + COLS - 1) // COLS
     atlas = Image.new("RGBA", (COLS * CELL, rows * CELL), (0, 0, 0, 0))
 
@@ -91,6 +105,13 @@ def main():
             f[:, :, 0] *= WATER_TINT[0]
             f[:, :, 1] *= WATER_TINT[1]
             f[:, :, 2] *= WATER_TINT[2]
+            arr = np.clip(f, 0, 255).astype(np.uint8)
+        if png in LEAF_TINT:
+            t = LEAF_TINT[png]
+            f = arr.astype(np.float32)
+            f[:, :, 0] *= t[0]
+            f[:, :, 1] *= t[1]
+            f[:, :, 2] *= t[2]
             arr = np.clip(f, 0, 255).astype(np.uint8)
         arr = np.pad(arr, ((PAD, PAD), (PAD, PAD), (0, 0)), mode="edge")
         atlas.paste(Image.fromarray(arr), ((i % COLS) * CELL, (i // COLS) * CELL))

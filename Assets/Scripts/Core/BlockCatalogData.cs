@@ -353,6 +353,15 @@ namespace MinecraftTetris
             "yellow_glazed_terracotta",
             "yellow_terracotta",
             "yellow_wool",
+            "oak_leaves",
+            "spruce_leaves",
+            "birch_leaves",
+            "jungle_leaves",
+            "acacia_leaves",
+            "dark_oak_leaves",
+            "mangrove_leaves",
+            "cherry_leaves",
+            "pale_oak_leaves",
         };
 
         public static readonly string[] NamesZh =
@@ -699,6 +708,15 @@ namespace MinecraftTetris
             "yellow_glazed_terracotta",
             "yellow_terracotta",
             "yellow_wool",
+            "橡树树叶",
+            "云杉树叶",
+            "白桦树叶",
+            "丛林树叶",
+            "金合欢树叶",
+            "深色橡树树叶",
+            "红树树叶",
+            "樱花树叶",
+            "苍白橡树树叶",
         };
 
         // 每个方块六个面：up, down, north, south, east, west 对应的图集格子编号
@@ -1046,6 +1064,15 @@ namespace MinecraftTetris
             418, 418, 418, 418, 418, 418,
             419, 419, 419, 419, 419, 419,
             420, 420, 420, 420, 420, 420,
+            421, 421, 421, 421, 421, 421,
+            422, 422, 422, 422, 422, 422,
+            423, 423, 423, 423, 423, 423,
+            424, 424, 424, 424, 424, 424,
+            425, 425, 425, 425, 425, 425,
+            426, 426, 426, 426, 426, 426,
+            427, 427, 427, 427, 427, 427,
+            428, 428, 428, 428, 428, 428,
+            429, 429, 429, 429, 429, 429,
         };
     }
 }
