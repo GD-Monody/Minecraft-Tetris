@@ -631,6 +631,83 @@ namespace MinecraftTetris.EditorTools
             Check("石头方块不会长叶子",
                 Foliage.Grow(gStone, stonePiece) == 0 && Foliage.LastGrown.Count == 0);
 
+            // 基岩：消除时钉在原地不跟着下落，但自己被消掉时照样消失
+            int bedrockId = BlockCatalog.BedrockId;
+            Check("方块表里有基岩", bedrockId > 0 && BlockCatalog.Of(bedrockId).Name == "bedrock");
+            Check("基岩不算重力方块（不会自己塌）", !Gravity.IsFalling(bedrockId));
+
+            // 行消：底层铺满，左列第 1 格是基岩、上面压两块石头；右列一样高但没有基岩
+            var gBed = new Grid(5, 7, 1);
+            for (int x = 0; x < 5; x++)
+                gBed.Set(x, 0, 0, stoneId);
+            gBed.Set(0, 1, 0, bedrockId);
+            gBed.Set(0, 2, 0, stoneId);
+            gBed.Set(0, 3, 0, stoneId);
+            gBed.Set(4, 1, 0, stoneId);
+            gBed.Set(4, 2, 0, stoneId);
+            gBed.Set(4, 3, 0, stoneId);
+
+            Check("底层填满时判为可消行", gBed.IsRowFullPublic(0, 0));
+            Check("底层确实消掉了一行", gBed.ClearFullRows() == 1);
+            Check("基岩没跟着下落", gBed.Get(0, 1, 0) == bedrockId);
+            Check("基岩上面的方块被它托住",
+                gBed.Get(0, 2, 0) == stoneId && gBed.Get(0, 3, 0) == stoneId);
+            Check("基岩下方留出了空位（它悬空了）", gBed.Get(0, 0, 0) == 0);
+            Check("没有基岩的那一列整体下移一格",
+                gBed.Get(4, 0, 0) == stoneId && gBed.Get(4, 1, 0) == stoneId && gBed.Get(4, 2, 0) == stoneId);
+            Check("下移后那一列顶上留空", gBed.Get(4, 3, 0) == 0);
+
+            // 基岩自己所在的行被消：它该一起消失，上面的方块落下来填坑
+            var gBedGone = new Grid(5, 4, 1);
+            for (int x = 0; x < 5; x++)
+                gBedGone.Set(x, 0, 0, x == 2 ? bedrockId : stoneId);
+            gBedGone.Set(2, 1, 0, stoneId);
+            Check("含基岩的满行照样能消", gBedGone.ClearFullRows() == 1);
+            Check("基岩被消掉之后不留残余", gBedGone.Get(2, 0, 0) == stoneId);
+            Check("基岩原来的位置由上方方块补上", gBedGone.Get(2, 1, 0) == 0);
+
+            // 层消：同一套规则
+            var gBedLayer = new Grid(3, 6, 2);
+            for (int x = 0; x < 3; x++)
+                for (int z = 0; z < 2; z++)
+                    gBedLayer.Set(x, 0, z, stoneId);
+            gBedLayer.Set(0, 1, 0, bedrockId);
+            gBedLayer.Set(0, 2, 0, stoneId);
+            gBedLayer.Set(2, 1, 1, stoneId);
+            Check("整层填满时判为可消层", gBedLayer.IsLayerFullPublic(0));
+            Check("层消清掉了一层", gBedLayer.ClearFullLayers() == 1);
+            Check("层消时基岩也不下落", gBedLayer.Get(0, 1, 0) == bedrockId);
+            Check("层消时基岩上方被托住", gBedLayer.Get(0, 2, 0) == stoneId);
+            Check("层消时没有基岩的那列下落一格", gBedLayer.Get(2, 0, 1) == stoneId);
+
+            // 沙子落在基岩上要停住，不能穿过去
+            // 沙子放 y=4 而不是 y=5：Gravity.Settle 只扫 y < SizeY-1，场地最顶格不参与
+            int sandId = 0;
+            for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
+            {
+                if (BlockCatalog.Blocks[i].Name == "sand")
+                {
+                    sandId = i + 1;
+                    break;
+                }
+            }
+            var gBedSand = new Grid(3, 6, 1);
+            gBedSand.Set(1, 0, 0, bedrockId);
+            gBedSand.Set(1, 4, 0, sandId);
+            Gravity.Settle(gBedSand);
+            Check("沙子落到基岩上就停住", gBedSand.Get(1, 1, 0) == sandId && gBedSand.Get(1, 0, 0) == bedrockId);
+
+            // 存档：基岩编号就是个普通 int，来回一趟不能变
+            var gBedSave = new Grid(4, 4, 1);
+            gBedSave.Set(2, 1, 0, bedrockId);
+            gBedSave.Set(1, 1, 0, stoneId);
+            var gBedLoad = new Grid(4, 4, 1);
+            gBedLoad.Import(gBedSave.Export());
+            Check("基岩能跟着存档来回", gBedLoad.Get(2, 1, 0) == bedrockId && gBedLoad.Get(1, 1, 0) == stoneId);
+            Check("基岩不进普通 / 特殊材质池",
+                System.Array.IndexOf(BlockPools.Normal, bedrockId) < 0 &&
+                System.Array.IndexOf(BlockPools.Special, bedrockId) < 0);
+
             // 背景音乐：文件齐、是流式导入、不是空文件，音量换算对
             int missingMusic = 0;
             for (int i = 0; i < MusicPlayer.GameTrackPaths.Length; i++)

@@ -379,7 +379,7 @@ namespace MinecraftTetris
         {
             float w = UiSkin.P(420f);
             // 按钮数 × 54 + 上下留白；加一项就跟着涨，不然会压到「返回」上
-            float h = UiSkin.P(494f);
+            float h = UiSkin.P(548f);
             Rect panel = CenterPanel(w, h);
             DrawPanel(panel);
 
@@ -443,6 +443,12 @@ namespace MinecraftTetris
                 _tmpZ = GameSettings.SizeZ;
                 _page = SettingsPage.Size;
             }
+            y += step;
+
+            // 基岩不掉落，落下来就是一根永久柱子，默认关；想玩就自己开
+            string bedrockName = GameSettings.BedrockInPool ? "基岩进池：开" : "基岩进池：关";
+            if (GUI.Button(new Rect(bx, y, bw, bh), bedrockName, _btnStyle))
+                GameSettings.SetBedrockInPool(!GameSettings.BedrockInPool);
             y += UiSkin.P(62f);
 
             if (GUI.Button(new Rect(bx, y, bw, bh), "返回", _btnStyle))

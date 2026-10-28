@@ -131,6 +131,9 @@ namespace MinecraftTetris
             // -leaftest：摆一块原木并让它长树叶
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-leaftest") >= 0)
                 RunLeafTest();
+            // -bedrocktest：底层铺满，左列中间夹基岩、右列同样高度作对照
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-bedrocktest") >= 0)
+                RunBedrockTest();
 
             // -blocktest <方块英文名>：在场地高处摆三个该方块，用来肉眼核对六面贴图
             var btArgv = System.Environment.GetCommandLineArgs();
@@ -156,7 +159,7 @@ namespace MinecraftTetris
             // 而按空格开始游戏又会 Grid.Clear() 把刚摆好的场面一起清掉 —— 单给 -tnttest 什么都看不见。
             string[] sceneTests =
             {
-                "-sandtest", "-reacttest", "-tnttest", "-leaftest",
+                "-sandtest", "-reacttest", "-tnttest", "-leaftest", "-bedrocktest",
                 "-blocktest", "-fluidtest", "-yawtest", "-pitchtest",
             };
             for (int i = 0; i < sceneTests.Length; i++)
@@ -550,6 +553,56 @@ namespace MinecraftTetris
             int grown = Foliage.Grow(_loop.Grid, piece);
             _view.RefreshAll();
             Debug.Log("[leaftest] 长叶 " + grown + " 片：" + Foliage.LastGrown.Count);
+        }
+
+        /// <summary>
+        /// 调试用：底层铺满一整行，左列中间夹一块基岩，右列同样高度但没有基岩。
+        /// 随便落一块方块触发消行后：左列整摞停在原处（基岩钉住，上面的被它托着），
+        /// 右列整体下移一格 —— 两列一比就知道「基岩不下落」是什么效果。
+        /// </summary>
+        void RunBedrockTest()
+        {
+            if (_loop == null || _view == null)
+                return;
+
+            int bedrockId = BlockCatalog.BedrockId;
+            if (bedrockId <= 0)
+            {
+                Debug.Log("[bedrocktest] 方块表里找不到基岩");
+                return;
+            }
+
+            int stoneId = 1;
+            for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
+            {
+                if (BlockCatalog.Blocks[i].Name == "stone")
+                {
+                    stoneId = i + 1;
+                    break;
+                }
+            }
+
+            Grid grid = _loop.Grid;
+            int cz = grid.SizeZ / 2;
+            int lastX = grid.SizeX - 1;
+
+            // 底层铺满：下一块落定时这一行会被消掉
+            for (int x = 0; x < grid.SizeX; x++)
+                grid.Set(x, 0, cz, stoneId);
+
+            // 左列：基岩夹在中间，上面压两块石头
+            grid.Set(0, 1, cz, bedrockId);
+            grid.Set(0, 2, cz, stoneId);
+            grid.Set(0, 3, cz, stoneId);
+
+            // 右列：一样高，但没有基岩，纯对照
+            grid.Set(lastX, 1, cz, stoneId);
+            grid.Set(lastX, 2, cz, stoneId);
+            grid.Set(lastX, 3, cz, stoneId);
+
+            _view.RefreshAll();
+            Debug.Log("[bedrocktest] 底层铺满 + 左列基岩（x=0）+ 右列对照（x=" + lastX +
+                      "），落一块方块就会消掉底层，然后看两列的区别");
         }
 
         void RunFluidTest(string which)

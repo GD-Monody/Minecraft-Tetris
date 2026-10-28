@@ -13,6 +13,7 @@ namespace MinecraftTetris
         const string ElimModeKey = "elim.mode";
         const string FallSpeedKey = "fall.speed";
         const string MusicVolumeKey = "music.volume";
+        const string BedrockInPoolKey = "pool.bedrock";
 
         public const int MinSizeX = 5;
         public const int MaxSizeX = 20;
@@ -121,6 +122,27 @@ namespace MinecraftTetris
             PlayerPrefs.Save();
             // 消除规则变了，旧存档里的局面按新规则继续容易出错，清掉
             GameSave.Clear();
+        }
+
+        /// <summary>
+        /// 基岩要不要进方块池。默认关：基岩消除时不下落，掉下一块就是一根永久柱子，
+        /// 属于「纯增难度」的方块，不该默认塞给玩家。打开后会从特殊池里出，
+        /// 大约 1% 的方块是基岩。
+        /// </summary>
+        public static bool BedrockInPool
+        {
+            get { return PlayerPrefs.GetInt(BedrockInPoolKey, 0) != 0; }
+        }
+
+        /// <summary>
+        /// 改基岩开关。不改存档——开关只影响以后抽到什么，不影响已经摆好的局面。
+        /// 池子是静态缓存的（BlockPools），所以这里要重建一次。
+        /// </summary>
+        public static void SetBedrockInPool(bool on)
+        {
+            PlayerPrefs.SetInt(BedrockInPoolKey, on ? 1 : 0);
+            PlayerPrefs.Save();
+            BlockPools.Build();
         }
     }
 }

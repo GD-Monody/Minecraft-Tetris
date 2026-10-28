@@ -66,6 +66,29 @@ namespace MinecraftTetris
 
         public static readonly BlockDef[] Blocks = BuildBlocks();
 
+        /// <summary>
+        /// 基岩的编号（0 = 表里没这个方块）。消除时它钉在原地不跟着下落，
+        /// 但自己所在的那一行被消掉时照样消失。
+        /// 声明在 Blocks 之后：静态字段按文本顺序初始化，放前面会读到还没建好的表。
+        /// </summary>
+        public static readonly int BedrockId = FindId("bedrock");
+
+        /// <summary>这一格是不是「消除时不下落」的锚点方块（目前只有基岩）。</summary>
+        public static bool IsAnchor(int blockId)
+        {
+            return blockId > 0 && blockId == BedrockId;
+        }
+
+        static int FindId(string name)
+        {
+            for (int i = 0; i < Blocks.Length; i++)
+            {
+                if (Blocks[i].Name == name)
+                    return i + 1;
+            }
+            return 0;
+        }
+
         public static BlockDef Of(int blockId)
         {
             int index = blockId - 1;

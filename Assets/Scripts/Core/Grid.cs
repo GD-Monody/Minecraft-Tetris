@@ -155,14 +155,39 @@ namespace MinecraftTetris
             return cleared;
         }
 
+        /// <summary>
+        /// 行消：把 y 上方同一 z 的方块整体下落一格，但基岩留在原位。
+        ///
+        /// 原来是「整行往上搬一格」，碰到基岩有两个问题：基岩被一起搬走（它该钉住），
+        /// 基岩上方的方块又会直接穿过它落下来（它该被托住）。
+        /// 改成逐格判断「下面那格空不空」：基岩自己不落（它占着格子），
+        /// 上方的方块就自然停在它上面。
+        /// 从下往上扫：先落低的，高的那一格才看得见刚空出来的位置。
+        /// </summary>
         void DropRowAbove(int y, int z)
         {
-            for (int yy = y; yy < SizeY - 1; yy++)
-                for (int x = 0; x < SizeX; x++)
-                    _cells[x, yy, z] = _cells[x, yy + 1, z];
-
+            // 先把被消的这一行清掉。原来的写法是「把上一行整体搬下来覆盖它」，
+            // 换成逐格下落之后没有东西覆盖了，得自己清 —— 不清的话这一行还是满的，
+            // 调用方的 while (IsRowFull(y)) 会永远转下去。
             for (int x = 0; x < SizeX; x++)
-                _cells[x, SizeY - 1, z] = 0;
+                _cells[x, y, z] = 0;
+
+            for (int yy = y + 1; yy < SizeY; yy++)
+            {
+                for (int x = 0; x < SizeX; x++)
+                {
+                    int id = _cells[x, yy, z];
+                    if (id == 0 || BlockCatalog.IsAnchor(id))
+                        continue;
+
+                    // 下面是基岩或别的方块就落不下去，这一格和它上面的一摞都停住
+                    if (_cells[x, yy - 1, z] != 0)
+                        continue;
+
+                    _cells[x, yy - 1, z] = id;
+                    _cells[x, yy, z] = 0;
+                }
+            }
         }
 
         bool IsRowFull(int y, int z)
@@ -219,16 +244,31 @@ namespace MinecraftTetris
             return 0;
         }
 
+        /// <summary>层消版的下落，规则和 DropRowAbove 一样：基岩钉住，上面的一摞停在它上面。</summary>
         void DropLayerAbove(int y)
         {
-            for (int yy = y; yy < SizeY - 1; yy++)
-                for (int x = 0; x < SizeX; x++)
-                    for (int z = 0; z < SizeZ; z++)
-                        _cells[x, yy, z] = _cells[x, yy + 1, z];
-
+            // 同 DropRowAbove：被消的这一层要先自己清空
             for (int x = 0; x < SizeX; x++)
                 for (int z = 0; z < SizeZ; z++)
-                    _cells[x, SizeY - 1, z] = 0;
+                    _cells[x, y, z] = 0;
+
+            for (int yy = y + 1; yy < SizeY; yy++)
+            {
+                for (int x = 0; x < SizeX; x++)
+                {
+                    for (int z = 0; z < SizeZ; z++)
+                    {
+                        int id = _cells[x, yy, z];
+                        if (id == 0 || BlockCatalog.IsAnchor(id))
+                            continue;
+                        if (_cells[x, yy - 1, z] != 0)
+                            continue;
+
+                        _cells[x, yy - 1, z] = id;
+                        _cells[x, yy, z] = 0;
+                    }
+                }
+            }
         }
     }
 }
