@@ -627,8 +627,8 @@ namespace MinecraftTetris
         }
 
         /// <summary>
-        /// 调试用：摆一块结构方块和周围一圈不同材质的方块，立刻触发一次还原，
-        /// 看「先整体清空、再一格一格搭回来」的动画。搭完结构方块自己消失。
+        /// 调试用：摆一块结构方块和周围一圈不同材质的方块，再在场地两头各摆一格，
+        /// 立刻触发一次还原，看「整场从下往上一波扫回去」的动画。扫完结构方块自己消失。
         /// </summary>
         void RunStructureTest()
         {
@@ -669,14 +669,21 @@ namespace MinecraftTetris
             Put(grid, cx - 1, cy - 1, cz, sandId);
             Put(grid, cx + 1, cy - 1, cz, dirtId);
 
+            // 场地两头各放一格：记忆拍的是整场，不只是结构方块身边那一圈
+            Put(grid, 0, 0, cz, stoneId);
+            Put(grid, grid.SizeX - 1, Mathf.Min(grid.SizeY - 1, cy + 2), cz, leavesId);
+
             // 手动拍一次记忆（正常流程里是落定时自动记的），然后立刻触发还原
             Structure.Memory m = Structure.Remember(grid, cx, cy, cz);
+
+            // 记忆拍完再补一格：还原时要被抹掉，回滚范围一眼能看出来
+            Put(grid, Mathf.Max(0, cx - 2), Mathf.Min(grid.SizeY - 1, cy + 3), cz, sandId);
             _view.RefreshAll();
 
             bool queued = Structure.Trigger(grid, cx, cy, cz);
-            Debug.Log("[structuretest] 中心 (" + cx + "," + cy + "," + cz + ") 结构方块，" +
-                      "记忆 " + (m != null ? m.Blocks.Length : 0) + " 格，触发还原=" + queued +
-                      "；先整片清空，再一格一格搭回来，搭完结构方块自己消失");
+            Debug.Log("[structuretest] 中心 (" + cx + "," + cy + "," + cz + ") 结构方块，记忆整场 " +
+                      (m != null ? m.Blocks.Length : 0) + " 格，触发还原=" + queued +
+                      "；从下往上一波扫回去，记忆之后补的那格也会被抹掉");
         }
 
         static void Put(Grid grid, int x, int y, int z, int id)

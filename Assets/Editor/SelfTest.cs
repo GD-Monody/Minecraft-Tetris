@@ -738,7 +738,7 @@ namespace MinecraftTetris.EditorTools
                 System.Array.IndexOf(BlockPools.Normal, bedrockId) < 0 &&
                 System.Array.IndexOf(BlockPools.Special, bedrockId) < 0);
 
-            // 结构方块：记忆 → 触发 → 还原（先整片清空，再一格一格搭回来，最后自己消失）
+            // 结构方块：落定时记住整块场地 → 被消掉时从下往上一波扫回去
             int structureId = BlockCatalog.StructureId;
             Check("方块表里有结构方块", structureId > 0);
             Check("结构方块能认出来", Structure.IsStructure(structureId));
@@ -746,51 +746,124 @@ namespace MinecraftTetris.EditorTools
 
             Structure.Reset();
             var gStruct = new Grid(9, 9, 1);
-            gStruct.Set(4, 1, 0, structureId);
-            gStruct.Set(3, 1, 0, stoneId);
-            gStruct.Set(5, 1, 0, stoneId);
-            gStruct.Set(4, 0, 0, stoneId);
-            Structure.Memory mem = Structure.Remember(gStruct, 4, 1, 0);
-            Check("记住了一片构造", mem != null && mem.Blocks.Length == 9);
-            Check("记忆的范围是 3×3（z=1 的场地）", mem != null && mem.SizeX == 3 && mem.SizeY == 3 && mem.SizeZ == 1);
-            Check("记忆里存的是当时那一片", mem != null &&
-                Structure.BlockAt(mem, 3, 1, 0) == stoneId &&
-                Structure.BlockAt(mem, 4, 1, 0) == structureId);
-            Check("同一格不会记两次", Structure.Remember(gStruct, 4, 1, 0) == mem && Structure.Memories.Count == 1);
+            gStruct.Set(0, 0, 0, stoneId);      // 场地角落：记的是整场，不只是身边那一圈
+            gStruct.Set(2, 4, 0, sandId);
+            gStruct.Set(4, 4, 0, structureId);
+            gStruct.Set(4, 3, 0, stoneId);
+            Structure.Memory mem = Structure.Remember(gStruct, 4, 4, 0);
+            Check("记忆覆盖整块场地", mem != null && mem.Blocks.Length == 81);
+            Check("记忆范围就是整场", mem != null && mem.SizeX == 9 && mem.SizeY == 9 && mem.SizeZ == 1);
+            Check("记忆里存的是当时整场的样子", mem != null &&
+                Structure.BlockAt(mem, 0, 0, 0) == stoneId &&
+                Structure.BlockAt(mem, 2, 4, 0) == sandId &&
+                Structure.BlockAt(mem, 4, 4, 0) == structureId);
+            Check("同一块只记一条", Structure.Memories.Count == 1);
 
-            // 消行触发还原：把结构方块所在的那一行填满，消掉它
-            for (int x = 0; x < 9; x++)
-            {
-                if (gStruct.Get(x, 1, 0) == 0)
-                    gStruct.Set(x, 1, 0, stoneId);
-            }
-            Check("满行会触发结构方块的还原", gStruct.ClearFullRows() == 1);
-            Check("还原已经排队", Structure.Busy);
+            Structure.Memory again = Structure.Remember(gStruct, 4, 4, 0);
+            Check("同一格再记一次，旧的那条让位", again != null && again != mem && Structure.Memories.Count == 1);
 
-            // 还原动画：先整片清空，再一格一格搭回来
-            Structure.Tick(gStruct, Structure.StepInterval * 2f);
-            Check("还原是逐格的：第一层搭回来了，上面那层还空着",
-                gStruct.Get(4, 0, 0) == stoneId &&
-                gStruct.Get(3, 1, 0) == 0 && gStruct.Get(4, 1, 0) == 0);
-
-            for (int i = 0; i < 40; i++)
-                Structure.Tick(gStruct, Structure.StepInterval * 2f);
-            Check("搭完之后构造回来了", gStruct.Get(3, 1, 0) == stoneId && gStruct.Get(5, 1, 0) == stoneId);
-            Check("结构方块自己消失了", gStruct.Get(4, 1, 0) == 0);
-            Check("记忆也一并清掉了", Structure.Memories.Count == 0 && !Structure.Busy);
-
-            // 存档：记忆要能跟着局面一起存
+            // 一整块 4 格结构方块只记一条：消掉任意一格只触发一次
             Structure.Reset();
-            var gStructSave = new Grid(9, 9, 1);
-            gStructSave.Set(4, 4, 0, structureId);
-            gStructSave.Set(3, 4, 0, stoneId);
-            Structure.Remember(gStructSave, 4, 4, 0);
+            var gQuad = new Grid(10, 10, 1);
+            var quad = new Piece(PieceType.O, structureId, 4, 2, 0);
+            for (int i = 0; i < quad.Cells.Length; i++)
+            {
+                Vector3Int qc = quad.WorldCell(i);
+                if (gQuad.InBounds(qc.x, qc.y, qc.z))
+                    gQuad.Set(qc.x, qc.y, qc.z, structureId);
+            }
+            Structure.RememberFromPiece(gQuad, quad);
+            Check("4 格结构方块只记一条记忆", Structure.Memories.Count == 1 &&
+                Structure.Memories[0].Cells.Length == 12);
+
+            int finishes = 0;
+            System.Action<int, int, int> countFinish = (fx, fy, fz) => { finishes++; };
+            Structure.Finished += countFinish;
+            for (int x = 0; x < 10; x++)
+            {
+                if (gQuad.Get(x, 2, 0) == 0)
+                    gQuad.Set(x, 2, 0, stoneId);
+            }
+            Check("满行会触发结构方块的还原", gQuad.ClearFullRows() == 1);
+            Check("还原已经排队", Structure.Busy);
+            for (int i = 0; i < 80; i++)
+                Structure.Tick(gQuad, Structure.StepInterval * 2f);
+            Structure.Finished -= countFinish;
+            Check("一条记忆只还原一次", finishes == 1);
+            Check("还原完结构方块自己消失了，记忆也清掉了",
+                gQuad.Get(4, 2, 0) == 0 && gQuad.Get(5, 2, 0) == 0 &&
+                Structure.Memories.Count == 0 && !Structure.Busy);
+
+            // 回滚：记忆之后才落下来的东西，扫到的时候要被抹掉
+            Structure.Reset();
+            var gRoll = new Grid(6, 6, 1);
+            gRoll.Set(1, 0, 0, stoneId);
+            gRoll.Set(2, 1, 0, structureId);
+            Structure.Remember(gRoll, 2, 1, 0);
+            gRoll.Set(4, 0, 0, sandId);
+            Structure.Trigger(gRoll, 2, 1, 0);
+            for (int i = 0; i < 80; i++)
+                Structure.Tick(gRoll, Structure.StepInterval * 2f);
+            Check("还原把记忆之后补的方块抹掉", gRoll.Get(4, 0, 0) == 0);
+            Check("还原把记忆里的构造放回来", gRoll.Get(1, 0, 0) == stoneId);
+            Check("这条记忆删掉了", Structure.Memories.Count == 0 && !Structure.Busy);
+
+            // 一波一波扫：刚起步时上面那格还没轮到
+            Structure.Reset();
+            var gWave = new Grid(3, 6, 1);
+            gWave.Set(1, 0, 0, stoneId);
+            gWave.Set(1, 2, 0, structureId);
+            Structure.Remember(gWave, 1, 2, 0);
+            gWave.Set(1, 4, 0, sandId);      // 记忆之后才有的，在上方
+            Structure.Trigger(gWave, 1, 2, 0);
+            Structure.Tick(gWave, Structure.StepInterval * 1.01f);
+            Check("还原从下往上扫：上面那格还没轮到", gWave.Get(1, 4, 0) == sandId);
+            for (int i = 0; i < 80; i++)
+                Structure.Tick(gWave, Structure.StepInterval * 2f);
+            Check("扫完之后上面那格也按记忆抹掉了", gWave.Get(1, 4, 0) == 0 && !Structure.Busy);
+
+            // 存档：新格式带 -2 前缀，快照和触发格一起存
+            Structure.Reset();
+            var gSave = new Grid(7, 5, 1);
+            gSave.Set(6, 2, 0, stoneId);       // 场地最右边也要存下来
+            gSave.Set(3, 1, 0, structureId);
+            gSave.Set(3, 2, 0, sandId);
+            Structure.Remember(gSave, 3, 1, 0);
             int[] dumped = Structure.SerializeMemories();
+            Check("新存档带版本前缀", dumped.Length > 0 && dumped[0] == -2);
             Structure.Reset();
             Structure.DeserializeMemories(dumped);
             Check("结构方块的记忆能存档", Structure.Memories.Count == 1 &&
-                Structure.BlockAt(Structure.Memories[0], 3, 4, 0) == stoneId &&
+                Structure.Memories[0].Blocks.Length == 35 &&
+                Structure.BlockAt(Structure.Memories[0], 6, 2, 0) == stoneId &&
+                Structure.BlockAt(Structure.Memories[0], 3, 2, 0) == sandId);
+            Check("触发格跟着记忆一起存", Structure.Memories[0].Cells.Length == 3 &&
+                Structure.Memories[0].Cells[0] == 3 && Structure.Memories[0].Cells[1] == 1);
+
+            // 老存档（没有版本前缀，范围是 3×3×3）也要能读，读回来照样能还原
+            int[] legacy = new int[10 + 9];
+            legacy[0] = 4; legacy[1] = 4; legacy[2] = 0;   // 中心格
+            legacy[3] = 3; legacy[4] = 3; legacy[5] = 0;   // 范围起点
+            legacy[6] = 3; legacy[7] = 3; legacy[8] = 1;   // 尺寸
+            legacy[9] = 9;                                  // 块数
+            legacy[10] = stoneId;                           // (3,3,0)
+            legacy[14] = structureId;                       // (4,4,0)
+            Structure.Reset();
+            Structure.DeserializeMemories(legacy);
+            Check("老存档的 3×3 记忆能读回来", Structure.Memories.Count == 1 &&
+                Structure.Memories[0].SizeX == 3 && Structure.Memories[0].SizeZ == 1 &&
+                Structure.Memories[0].Cells.Length == 3 &&
+                Structure.BlockAt(Structure.Memories[0], 3, 3, 0) == stoneId &&
                 Structure.BlockAt(Structure.Memories[0], 4, 4, 0) == structureId);
+
+            var gLegacy = new Grid(9, 9, 1);
+            gLegacy.Set(4, 4, 0, structureId);
+            Structure.DeserializeMemories(legacy);
+            Structure.Trigger(gLegacy, 4, 4, 0);
+            for (int i = 0; i < 60; i++)
+                Structure.Tick(gLegacy, Structure.StepInterval * 2f);
+            Check("老记忆也能还原", gLegacy.Get(3, 3, 0) == stoneId && gLegacy.Get(4, 4, 0) == 0 &&
+                !Structure.Busy);
             Structure.Reset();
 
             // 背景音乐：文件齐、是流式导入、不是空文件，音量换算对
