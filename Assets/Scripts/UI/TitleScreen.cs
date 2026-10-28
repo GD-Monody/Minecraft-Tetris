@@ -817,7 +817,7 @@ namespace MinecraftTetris
                 {
                     Ids = new[] { Tnt.TntId },
                     Title = "TNT",
-                    Desc = "贴着火源就点着，2.4 秒后炸掉半径 2 以内的方块，旁边的 TNT 会跟着连锁。",
+                    Desc = "贴着红石块或岩浆会被点着，2.4 秒后炸掉半径 2 以内的方块，旁边的 TNT 会跟着连锁。",
                 },
                 new GuideItem
                 {
@@ -850,7 +850,7 @@ namespace MinecraftTetris
                         FindBlock("ancient_debris"), FindBlock("netherite_block"),
                         FindBlock("reinforced_deepslate"), FindBlock("command_block"),
                     },
-                    Title = "抗爆方块",
+                    Title = "防爆方块",
                     Desc = "远古残骸、下界合金块、强化深板岩、命令方块，和原版一样炸不掉。",
                 },
                 new GuideItem
@@ -863,7 +863,7 @@ namespace MinecraftTetris
                 {
                     Ids = new[] { FindBlock("lava") },
                     Title = "岩浆",
-                    Desc = "流得比水慢；源岩浆碰到水变黑曜石，流动的岩浆变圆石。",
+                    Desc = "流得比水慢；源岩浆碰到水变黑曜石，流动的岩浆变圆石。挨着 TNT 会把它点着。",
                 },
                 new GuideItem
                 {
@@ -903,9 +903,6 @@ namespace MinecraftTetris
                 float x = panel.x + UiSkin.P(40f) + (i / perCol) * (colW + UiSkin.P(40f));
                 DrawGuideRow(x, top + (i % perCol) * rowH, colW, _guideItems[i]);
             }
-
-            GUI.Label(new Rect(panel.x + UiSkin.P(40f), panel.yMax - UiSkin.P(70f), UiSkin.P(620f), UiSkin.P(28f)),
-                "其余方块都是普通方块，摆稳就能消。", _rowLabelStyle);
 
             if (GUI.Button(new Rect(panel.x + w - UiSkin.P(230f), panel.yMax - UiSkin.P(72f),
                 UiSkin.P(180f), UiSkin.P(44f)), "返回", _btnStyle))
