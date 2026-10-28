@@ -85,6 +85,11 @@ namespace MinecraftTetris
                     // 另外记下编号，抽到 TNT 之后强制跟一块。
                     _redstoneId = i + 1;
                 }
+                if (n.EndsWith("_leaves"))
+                {
+                    // 树叶是原木长出来的，不该当成一整块方块的材质掉下来
+                    continue;
+                }
                 if (IsSpecial(n))
                     special.Add(i + 1);
                 else

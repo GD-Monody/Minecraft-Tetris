@@ -128,6 +128,9 @@ namespace MinecraftTetris
             // -tnttest：场上摆一颗 TNT + 一块红石，看引信闪白、爆炸范围和连锁
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-tnttest") >= 0)
                 RunTntTest();
+            // -leaftest：摆一块原木并让它长树叶
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-leaftest") >= 0)
+                RunLeafTest();
 
             // -blocktest <方块英文名>：在场地高处摆三个该方块，用来肉眼核对六面贴图
             var btArgv = System.Environment.GetCommandLineArgs();
@@ -153,7 +156,7 @@ namespace MinecraftTetris
             // 而按空格开始游戏又会 Grid.Clear() 把刚摆好的场面一起清掉 —— 单给 -tnttest 什么都看不见。
             string[] sceneTests =
             {
-                "-sandtest", "-reacttest", "-tnttest",
+                "-sandtest", "-reacttest", "-tnttest", "-leaftest",
                 "-blocktest", "-fluidtest", "-yawtest", "-pitchtest",
             };
             for (int i = 0; i < sceneTests.Length; i++)
@@ -181,6 +184,7 @@ namespace MinecraftTetris
             _loop.FluidReacted += OnFluidReacted;
             _loop.TntPrimed += OnTntPrimed;
             _loop.TntExploded += OnTntExploded;
+            _loop.FoliageGrew += OnFoliageGrew;
 
             _view.RefreshAll();
             _view.SnapPiece(_loop.Current);
@@ -509,6 +513,45 @@ namespace MinecraftTetris
             Debug.Log("[tnttest] 点着 " + fired + " 颗，引信 " + Tnt.FuseSeconds + " 秒");
         }
 
+        /// <summary>调试用：摆一块原木，结算一次长树叶，肉眼核对树叶贴图和生长位置。</summary>
+        void RunLeafTest()
+        {
+            if (_loop == null || _view == null)
+                return;
+
+            int oakLog = -1;
+            for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
+            {
+                if (BlockCatalog.Blocks[i].Name == "oak_log")
+                {
+                    oakLog = i + 1;
+                    break;
+                }
+            }
+            if (oakLog <= 0)
+            {
+                Debug.Log("[leaftest] 方块表里找不到 oak_log");
+                return;
+            }
+
+            int cx = _loop.Grid.SizeX / 2;
+            int cy = Mathf.Min(6, Mathf.Max(2, _loop.Grid.SizeY - 6));
+            int cz = _loop.Grid.SizeZ / 2;
+
+            // 摆一块 I 型原木（4 格），落定后每格长一片，能看出叶子往哪几个方向长
+            var piece = new Piece(PieceType.I, oakLog, cx, cy, cz);
+            for (int i = 0; i < piece.Cells.Length; i++)
+            {
+                Vector3Int c = piece.WorldCell(i);
+                if (_loop.Grid.InBounds(c.x, c.y, c.z))
+                    _loop.Grid.Set(c.x, c.y, c.z, oakLog);
+            }
+
+            int grown = Foliage.Grow(_loop.Grid, piece);
+            _view.RefreshAll();
+            Debug.Log("[leaftest] 长叶 " + grown + " 片：" + Foliage.LastGrown.Count);
+        }
+
         void RunFluidTest(string which)
         {
             if (_loop == null || _view == null)
@@ -714,6 +757,22 @@ namespace MinecraftTetris
             {
                 Vector3Int c = blast.Cells[i];
                 _particles.EmitCell(c.x, c.y, c.z, blast.Blocks[i], 2);
+            }
+        }
+
+        /// <summary>
+        /// 原木长出了树叶：把那几格画出来。
+        /// 树叶是透明材质（走 BlockTransparentMat），SetCell 会照方块本身选材质，不用特殊处理。
+        /// </summary>
+        void OnFoliageGrew()
+        {
+            if (_view == null)
+                return;
+
+            for (int i = 0; i < Foliage.LastGrown.Count; i++)
+            {
+                Vector3Int c = Foliage.LastGrown[i];
+                _view.SetCell(c.x, c.y, c.z, _loop.Grid.Get(c.x, c.y, c.z));
             }
         }
 

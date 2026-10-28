@@ -531,6 +531,106 @@ namespace MinecraftTetris.EditorTools
             Check("被消行带走的 TNT 会哑火", Tnt.PrimedCells.Count == 0);
             Tnt.Reset();
 
+            // 原木长树叶
+            Foliage.Init();
+            int oakLog = -1, oakLeaves = -1, strippedOak = -1, crimsonStem = -1, bamboo = -1;
+            for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
+            {
+                string n = BlockCatalog.Blocks[i].Name;
+                if (n == "oak_log")
+                    oakLog = i + 1;
+                else if (n == "oak_leaves")
+                    oakLeaves = i + 1;
+                else if (n == "stripped_oak_log")
+                    strippedOak = i + 1;
+                else if (n == "crimson_stem")
+                    crimsonStem = i + 1;
+                else if (n == "bamboo_block")
+                    bamboo = i + 1;
+            }
+
+            Check("方块表里有橡树原木和橡树树叶", oakLog > 0 && oakLeaves > 0);
+            Check("橡树原木长出的是橡树树叶", Foliage.LeafIdFor(oakLog) == oakLeaves);
+            Check("剥皮原木不长树叶", strippedOak > 0 && Foliage.LeafIdFor(strippedOak) == 0);
+            Check("菌柄不长树叶", crimsonStem > 0 && Foliage.LeafIdFor(crimsonStem) == 0);
+            Check("竹块不长树叶", bamboo > 0 && Foliage.LeafIdFor(bamboo) == 0);
+            Check("普通方块一律不长", Foliage.LeafIdFor(stoneId) == 0);
+            Check("树叶不进随机材质池（不会整块掉下来）",
+                System.Array.IndexOf(BlockPools.Normal, oakLeaves) < 0 &&
+                System.Array.IndexOf(BlockPools.Special, oakLeaves) < 0);
+
+            var gLeaf = new Grid(9, 9, 1);
+            gLeaf.Set(4, 4, 0, oakLog);
+            Foliage.LastGrown.Clear();
+            int grew = Foliage.GrowAround(gLeaf, 4, 4, 0, oakLog);
+            Check("空地上长出 1 片树叶", grew == 1 && Foliage.LastGrown.Count == 1);
+            Vector3Int leafPos = Foliage.LastGrown[0];
+            Check("树叶挨着木头、不是长在自身那格",
+                gLeaf.Get(leafPos.x, leafPos.y, leafPos.z) == oakLeaves &&
+                Mathf.Max(Mathf.Abs(leafPos.x - 4), Mathf.Abs(leafPos.y - 4)) == 1);
+
+            var gFull = new Grid(5, 5, 1);
+            for (int x = 0; x < 5; x++)
+            {
+                for (int y = 0; y < 5; y++)
+                    gFull.Set(x, y, 0, stoneId);
+            }
+            gFull.Set(2, 2, 0, oakLog);
+            Check("周围没有空地就不长", Foliage.GrowAround(gFull, 2, 2, 0, oakLog) == 0);
+
+            var gCorner = new Grid(3, 3, 1);
+            gCorner.Set(0, 0, 0, oakLog);
+            Check("贴着场地左下角也不越界", Foliage.GrowAround(gCorner, 0, 0, 0, oakLog) == 1);
+
+            // 整块结算：先把木头写进网格（真实流程里落定时已经写好了）
+            var gPiece = new Grid(9, 9, 1);
+            var logPiece = new Piece(PieceType.I, oakLog, 2, 2, 0);
+            for (int i = 0; i < logPiece.Cells.Length; i++)
+            {
+                Vector3Int c = logPiece.WorldCell(i);
+                gPiece.Set(c.x, c.y, c.z, oakLog);
+            }
+            Check("一块 4 格原木长出 4 片树叶", Foliage.Grow(gPiece, logPiece) == 4);
+
+            bool distinct = true;
+            for (int i = 0; i < Foliage.LastGrown.Count && distinct; i++)
+            {
+                for (int j = i + 1; j < Foliage.LastGrown.Count; j++)
+                {
+                    if (Foliage.LastGrown[i] == Foliage.LastGrown[j])
+                    {
+                        distinct = false;
+                        break;
+                    }
+                }
+            }
+            Check("每片叶子落在不同的格子里", distinct && Foliage.LastGrown.Count == 4);
+
+            // 大模具不会一次刷出一整面叶子墙：一次落定有上限
+            var bigCells = new Vector2Int[16];
+            for (int i = 0; i < 16; i++)
+                bigCells[i] = new Vector2Int(i % 4, i / 4);
+            var gMold = new Grid(12, 12, 1);
+            var moldPiece = new Piece(bigCells, "big", PieceType.I, oakLog, 3, 3, 0);
+            for (int i = 0; i < moldPiece.Cells.Length; i++)
+            {
+                Vector3Int c = moldPiece.WorldCell(i);
+                gMold.Set(c.x, c.y, c.z, oakLog);
+            }
+            Check("16 格的大模具也只长 " + Foliage.MaxLeavesPerLock + " 片",
+                Foliage.Grow(gMold, moldPiece) == Foliage.MaxLeavesPerLock);
+
+            // 不是原木的方块整块结算什么都不长
+            var gStone = new Grid(9, 9, 1);
+            var stonePiece = new Piece(PieceType.O, stoneId, 2, 2, 0);
+            for (int i = 0; i < stonePiece.Cells.Length; i++)
+            {
+                Vector3Int c = stonePiece.WorldCell(i);
+                gStone.Set(c.x, c.y, c.z, stoneId);
+            }
+            Check("石头方块不会长叶子",
+                Foliage.Grow(gStone, stonePiece) == 0 && Foliage.LastGrown.Count == 0);
+
             // 背景音乐：文件齐、是流式导入、不是空文件，音量换算对
             int missingMusic = 0;
             for (int i = 0; i < MusicPlayer.GameTrackPaths.Length; i++)

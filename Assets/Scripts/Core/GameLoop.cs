@@ -166,6 +166,8 @@ namespace MinecraftTetris
         public event Action<Vector3Int> TntPrimed;
         /// <summary>TNT 炸了：参数是这一处的爆心与被炸掉的格子。</summary>
         public event Action<Tnt.Blast> TntExploded;
+        /// <summary>原木长出了树叶：视图层照着 Foliage.LastGrown 刷那几格。</summary>
+        public event Action FoliageGrew;
         /// <summary>方块转了个 90°：参数是绕哪个轴 + 是否顺时针。视图层用它播旋转动画。</summary>
         public event Action<RotationAxis, bool> PieceRotated;
 
@@ -464,6 +466,11 @@ namespace MinecraftTetris
             LastGravityMoves.Clear();
             if (Gravity.Settle(Grid, LastGravityMoves))
                 GravitySettled?.Invoke();
+
+            // 原木长树叶。放在消行之前：树叶补满的行当场就消，
+            // 否则那片行要等下一块落定才消，看起来像卡住了。
+            if (!fluidPiece && Foliage.Grow(Grid, Current) > 0)
+                FoliageGrew?.Invoke();
 
             // 先记下这一轮要清的行和每行的代表材质，清完再派事件给粒子效果
             var fullRows = new System.Collections.Generic.List<int>();
