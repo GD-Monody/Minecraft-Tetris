@@ -29,6 +29,7 @@ namespace MinecraftTetris
         bool _demoBurst;
         bool _titleMode;
         int _titleShotIndex;
+        bool _structureDemo;
         static readonly float[] TitleShotTimes = { 0.4f, 1.3f, 2.5f, 3.4f, 4.2f };
         Camera _mainCam;
         CameraRig _rig;
@@ -51,9 +52,9 @@ namespace MinecraftTetris
             _loop = new GameLoop(SizeX, SizeY, SizeZ, (int)System.DateTime.Now.Ticks);
             _loop.FallSpeed = GameSettings.FallSpeed;
 
-            // 结构方块的还原动画：搭好一格画一格，清掉一格擦一格
-            Structure.CellRebuilt += OnStructureCellRebuilt;
-            Structure.CellCleared += OnStructureCellCleared;
+            // 结构方块的还原动画：消失阶段一格一格擦掉，重建阶段一格一格从上面掉回来
+            Structure.CellVanished += OnStructureCellVanished;
+            Structure.CellDropped += OnStructureCellDropped;
 
             _view = gameObject.AddComponent<GridView>();
             _view.Setup(_loop.Grid);
@@ -138,9 +139,12 @@ namespace MinecraftTetris
             // -bedrocktest：底层铺满，左列中间夹基岩、右列同样高度作对照
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-bedrocktest") >= 0)
                 RunBedrockTest();
-            // -structuretest：摆一块结构方块和周围一圈方块，立刻触发一次还原动画
+            // -structuretest：摆一场结构方块的演示，F5 可以再放一遍
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-structuretest") >= 0)
+            {
+                _structureDemo = true;
                 RunStructureTest();
+            }
 
             // -blocktest <方块英文名>：在场地高处摆三个该方块，用来肉眼核对六面贴图
             var btArgv = System.Environment.GetCommandLineArgs();
@@ -210,6 +214,10 @@ namespace MinecraftTetris
 
             if (Input.GetKeyDown(KeyCode.F12))
                 CaptureShot("manual_shot.png");
+
+            // -structuretest 下按 F5 重新摆一遍，方便反复看那一波扫回去
+            if (_structureDemo && Input.GetKeyDown(KeyCode.F5))
+                RunStructureTest();
 
             if (!_camLogged && Time.time > 3f && _mainCam != null)
             {
@@ -627,8 +635,11 @@ namespace MinecraftTetris
         }
 
         /// <summary>
-        /// 调试用：摆一块结构方块和周围一圈不同材质的方块，再在场地两头各摆一格，
-        /// 立刻触发一次还原，看「整场从下往上一波扫回去」的动画。扫完结构方块自己消失。
+        /// 调试用：摆一场看得清「整场记忆 + 从下往上一波扫回去」的场面。
+        /// 地面铺几层交错材质，上方悬一格结构方块（四邻不同材质），场地另一头也摆一格；
+        /// 记住整场之后把地面挖条沟、再插一根沙柱（模拟记忆之后场地被改成别的样子），
+        /// 然后点着 TNT 把结构方块炸掉触发还原：沟被填上、沙柱从下往上被抹掉、材质变回来。
+        /// 按 F5 可以再放一遍。
         /// </summary>
         void RunStructureTest()
         {
@@ -642,8 +653,8 @@ namespace MinecraftTetris
                 return;
             }
 
-            // 挑几个颜色差别大的，搭建顺序一眼能看出来
-            int stoneId = 0, leavesId = 0, sandId = 0, dirtId = 0;
+            // 挑几个颜色差别大的，扫到哪一层一眼能看出来
+            int stoneId = 0, leavesId = 0, sandId = 0, dirtId = 0, logId = 0;
             for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
             {
                 string n = BlockCatalog.Blocks[i].Name;
@@ -651,39 +662,74 @@ namespace MinecraftTetris
                 else if (n == "oak_leaves") leavesId = i + 1;
                 else if (n == "sand") sandId = i + 1;
                 else if (n == "dirt") dirtId = i + 1;
+                else if (n == "oak_log") logId = i + 1;
             }
 
             Grid grid = _loop.Grid;
             int cx = grid.SizeX / 2;
-            int cy = Mathf.Min(8, Mathf.Max(3, grid.SizeY - 8));
             int cz = grid.SizeZ / 2;
+            int lastX = grid.SizeX - 1;
+            int lastY = grid.SizeY - 1;
+            int lastZ = grid.SizeZ - 1;
+            int rows = Mathf.Clamp(grid.SizeY / 4, 2, 5);
 
-            // 3×3 一圈摆成不同材质
+            // F5 重放时从零开始，别叠在上一轮的场面上
+            grid.Clear();
+            Fluids.Reset();
+            Tnt.Reset();
+            Structure.Reset();
+
+            // 地面铺几层，材质交错
+            int[] floorIds = { stoneId, dirtId, sandId, logId };
+            for (int y = 0; y < rows; y++)
+            {
+                for (int x = 0; x < grid.SizeX; x++)
+                    grid.Set(x, y, cz, floorIds[(x + y) % floorIds.Length]);
+            }
+            // 左边搭根柱子，恢复时高度方向的变化也看得见
+            Put(grid, 0, rows, cz, logId);
+            Put(grid, 0, rows + 1, cz, leavesId);
+
+            // 结构方块悬在地面之上，四邻不同材质，都进快照
+            int cy = rows + 3;
             Put(grid, cx, cy, cz, structureId);
             Put(grid, cx - 1, cy, cz, stoneId);
             Put(grid, cx + 1, cy, cz, leavesId);
             Put(grid, cx, cy - 1, cz, sandId);
-            Put(grid, cx, cy + 1, cz, dirtId);
-            Put(grid, cx - 1, cy + 1, cz, stoneId);
-            Put(grid, cx + 1, cy + 1, cz, leavesId);
-            Put(grid, cx - 1, cy - 1, cz, sandId);
-            Put(grid, cx + 1, cy - 1, cz, dirtId);
+            Put(grid, cx + 1, cy + 1, cz, dirtId);
+            // 场地另一头各摆一格：记忆拍的是整场，不只是结构方块身边那一圈
+            Put(grid, lastX, Mathf.Min(lastY, cy + 1), cz, leavesId);
+            Put(grid, 0, Mathf.Min(lastY, cy + 2), lastZ, stoneId);
 
-            // 场地两头各放一格：记忆拍的是整场，不只是结构方块身边那一圈
-            Put(grid, 0, 0, cz, stoneId);
-            Put(grid, grid.SizeX - 1, Mathf.Min(grid.SizeY - 1, cy + 2), cz, leavesId);
-
-            // 手动拍一次记忆（正常流程里是落定时自动记的），然后立刻触发还原
             Structure.Memory m = Structure.Remember(grid, cx, cy, cz);
 
-            // 记忆拍完再补一格：还原时要被抹掉，回滚范围一眼能看出来
-            Put(grid, Mathf.Max(0, cx - 2), Mathf.Min(grid.SizeY - 1, cy + 3), cz, sandId);
-            _view.RefreshAll();
+            // TNT 和红石在记忆之后才放：它们不在快照里，炸完不会跟着一起还原回来
+            Put(grid, cx, cy + 1, cz, Tnt.TntId);
+            Put(grid, cx, cy + 2, cz, Tnt.RedstoneId);
 
-            bool queued = Structure.Trigger(grid, cx, cy, cz);
-            Debug.Log("[structuretest] 中心 (" + cx + "," + cy + "," + cz + ") 结构方块，记忆整场 " +
-                      (m != null ? m.Blocks.Length : 0) + " 格，触发还原=" + queued +
-                      "；从下往上一波扫回去，记忆之后补的那格也会被抹掉");
+            // 记忆拍完再动手：地面挖条沟，插一根沙柱，另一头再补一格。
+            // 还原时这些都会被改回记忆里的样子，沙柱会从下往上一点点被抹掉。
+            for (int x = cx - 2; x <= cx + 2; x++)
+            {
+                for (int y = 0; y < Mathf.Min(rows, 2); y++)
+                {
+                    if (grid.InBounds(x, y, cz))
+                        grid.Set(x, y, cz, 0);
+                }
+            }
+            int pillarX = Mathf.Max(0, cx - 4);
+            for (int y = 0; y <= Mathf.Min(lastY, cy + 3); y++)
+            {
+                if (grid.InBounds(pillarX, y, cz))
+                    grid.Set(pillarX, y, cz, sandId);
+            }
+            Put(grid, Mathf.Max(0, cx - 3), Mathf.Min(lastY, cy + 4), cz, sandId);
+
+            _view.RefreshAll();
+            int primed = Tnt.PrimeContact(grid);
+            Debug.Log("[structuretest] 记忆整场 " + (m != null ? m.Blocks.Length : 0) +
+                      " 格，点着 TNT " + primed + " 颗；引信烧完炸掉结构方块，然后从下往上一波扫回去。" +
+                      " 沟会被填上、沙柱从下往上被抹掉、另一头补的那格也会消失。按 F5 再放一遍");
         }
 
         static void Put(Grid grid, int x, int y, int z, int id)
@@ -901,22 +947,25 @@ namespace MinecraftTetris
         }
 
         /// <summary>
-        /// 结构方块还原：搭好一格就画出来。
-        /// 只动这一格，所以不需要整场重画。
+        /// 结构方块还原：消失阶段收掉一格。擦掉它，顺手撒一点碎块，看起来像被拆下来。
+        /// 只动这一格，不需要整场重画。
         /// </summary>
-        void OnStructureCellRebuilt(int x, int y, int z, int blockId)
+        void OnStructureCellVanished(int x, int y, int z, int blockId)
         {
             if (_view == null)
                 return;
-            _view.SetCell(x, y, z, blockId);
+
+            _view.SetCell(x, y, z, 0);
+            if (_particles != null && blockId > 0)
+                _particles.EmitCell(x, y, z, blockId, 1);
         }
 
-        /// <summary>结构方块还原：那一格被清掉了（先清空整片，或最后结构方块自己消失）。</summary>
-        void OnStructureCellCleared(int x, int y, int z)
+        /// <summary>结构方块还原：重建阶段落下一格，从目标上方掉下来。</summary>
+        void OnStructureCellDropped(int x, int y, int z, int blockId)
         {
             if (_view == null)
                 return;
-            _view.SetCell(x, y, z, 0);
+            _view.SetCellDropping(x, y, z, blockId, Structure.DropHeight);
         }
 
         /// <summary>

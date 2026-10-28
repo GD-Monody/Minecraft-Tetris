@@ -738,7 +738,7 @@ namespace MinecraftTetris.EditorTools
                 System.Array.IndexOf(BlockPools.Normal, bedrockId) < 0 &&
                 System.Array.IndexOf(BlockPools.Special, bedrockId) < 0);
 
-            // 结构方块：落定时记住整块场地 → 被消掉时从下往上一波扫回去
+            // 结构方块：落定时记住整块场地 → 被消掉时先一格一格收掉，再从下往上一格一格掉回来
             int structureId = BlockCatalog.StructureId;
             Check("方块表里有结构方块", structureId > 0);
             Check("结构方块能认出来", Structure.IsStructure(structureId));
@@ -764,7 +764,9 @@ namespace MinecraftTetris.EditorTools
 
             // 一整块 4 格结构方块只记一条：消掉任意一格只触发一次
             Structure.Reset();
-            var gQuad = new Grid(10, 10, 1);
+            var gQuad = new Grid(11, 10, 1);     // 比地面宽一格，免得地面自己先是个满行
+            for (int x = 0; x < 10; x++)
+                gQuad.Set(x, 0, 0, stoneId);          // 地面：消失阶段有东西可收
             var quad = new Piece(PieceType.O, structureId, 4, 2, 0);
             for (int i = 0; i < quad.Cells.Length; i++)
             {
@@ -775,26 +777,44 @@ namespace MinecraftTetris.EditorTools
             Structure.RememberFromPiece(gQuad, quad);
             Check("4 格结构方块只记一条记忆", Structure.Memories.Count == 1 &&
                 Structure.Memories[0].Cells.Length == 12);
+            Check("记忆里连地面一起拍下来了", Structure.BlockAt(Structure.Memories[0], 0, 0, 0) == stoneId);
 
             int finishes = 0;
             System.Action<int, int, int> countFinish = (fx, fy, fz) => { finishes++; };
             Structure.Finished += countFinish;
-            for (int x = 0; x < 10; x++)
+            for (int x = 0; x < 11; x++)
             {
                 if (gQuad.Get(x, 2, 0) == 0)
                     gQuad.Set(x, 2, 0, stoneId);
             }
             Check("满行会触发结构方块的还原", gQuad.ClearFullRows() == 1);
             Check("还原已经排队", Structure.Busy);
-            for (int i = 0; i < 80; i++)
-                Structure.Tick(gQuad, Structure.StepInterval * 2f);
+
+            // 消失阶段：从下往上，一次只收一格（地面 10 格 + 还留在上面的 2 格结构方块）
+            Check("触发时场上还有 12 格", CountFilled(gQuad) == 12);
+            Structure.Tick(gQuad, Structure.ClearInterval * 1.01f);
+            Check("消失阶段一次只收一格", CountFilled(gQuad) == 11);
+
+            // 收完场子才轮到重建
+            for (int i = 0; i < 200 && !Structure.InDropPhase && Structure.Busy; i++)
+                Structure.Tick(gQuad, Structure.ClearInterval * 1.01f);
+            Check("消失阶段把场子腾空了", CountFilled(gQuad) == 0);
+            Check("收完就进重建阶段", Structure.InDropPhase);
+
+            // 重建阶段：同样一次一格，从最下面往上掉
+            Structure.Tick(gQuad, Structure.DropInterval * 1.01f);
+            Check("重建阶段一次掉下一格", CountFilled(gQuad) == 1 && gQuad.Get(0, 0, 0) == stoneId);
+
+            for (int i = 0; i < 200 && Structure.Busy; i++)
+                Structure.Tick(gQuad, Structure.DropInterval * 1.01f);
             Structure.Finished -= countFinish;
             Check("一条记忆只还原一次", finishes == 1);
-            Check("还原完结构方块自己消失了，记忆也清掉了",
-                gQuad.Get(4, 2, 0) == 0 && gQuad.Get(5, 2, 0) == 0 &&
-                Structure.Memories.Count == 0 && !Structure.Busy);
+            Check("重建完场地跟记忆里一样", CountFilled(gQuad) == 10 &&
+                gQuad.Get(0, 0, 0) == stoneId && gQuad.Get(9, 0, 0) == stoneId);
+            Check("结构方块自己不会再回来", gQuad.Get(4, 2, 0) == 0 && gQuad.Get(5, 2, 0) == 0);
+            Check("记忆和队列都清空了", Structure.Memories.Count == 0 && !Structure.Busy);
 
-            // 回滚：记忆之后才落下来的东西，扫到的时候要被抹掉
+            // 回滚：记忆之后才落下来的东西，消失阶段一并收掉
             Structure.Reset();
             var gRoll = new Grid(6, 6, 1);
             gRoll.Set(1, 0, 0, stoneId);
@@ -802,13 +822,12 @@ namespace MinecraftTetris.EditorTools
             Structure.Remember(gRoll, 2, 1, 0);
             gRoll.Set(4, 0, 0, sandId);
             Structure.Trigger(gRoll, 2, 1, 0);
-            for (int i = 0; i < 80; i++)
-                Structure.Tick(gRoll, Structure.StepInterval * 2f);
+            RunRestore(gRoll);
             Check("还原把记忆之后补的方块抹掉", gRoll.Get(4, 0, 0) == 0);
             Check("还原把记忆里的构造放回来", gRoll.Get(1, 0, 0) == stoneId);
             Check("这条记忆删掉了", Structure.Memories.Count == 0 && !Structure.Busy);
 
-            // 一波一波扫：刚起步时上面那格还没轮到
+            // 从下往上：先收下面的，再收上面的
             Structure.Reset();
             var gWave = new Grid(3, 6, 1);
             gWave.Set(1, 0, 0, stoneId);
@@ -816,11 +835,10 @@ namespace MinecraftTetris.EditorTools
             Structure.Remember(gWave, 1, 2, 0);
             gWave.Set(1, 4, 0, sandId);      // 记忆之后才有的，在上方
             Structure.Trigger(gWave, 1, 2, 0);
-            Structure.Tick(gWave, Structure.StepInterval * 1.01f);
-            Check("还原从下往上扫：上面那格还没轮到", gWave.Get(1, 4, 0) == sandId);
-            for (int i = 0; i < 80; i++)
-                Structure.Tick(gWave, Structure.StepInterval * 2f);
-            Check("扫完之后上面那格也按记忆抹掉了", gWave.Get(1, 4, 0) == 0 && !Structure.Busy);
+            Structure.Tick(gWave, Structure.ClearInterval * 1.01f);
+            Check("消失从下往上：最下面那格先没", gWave.Get(1, 0, 0) == 0 && gWave.Get(1, 4, 0) == sandId);
+            RunRestore(gWave);
+            Check("收完之后上面那格也按记忆抹掉了", gWave.Get(1, 4, 0) == 0 && !Structure.Busy);
 
             // 存档：新格式带 -2 前缀，快照和触发格一起存
             Structure.Reset();
@@ -860,8 +878,7 @@ namespace MinecraftTetris.EditorTools
             gLegacy.Set(4, 4, 0, structureId);
             Structure.DeserializeMemories(legacy);
             Structure.Trigger(gLegacy, 4, 4, 0);
-            for (int i = 0; i < 60; i++)
-                Structure.Tick(gLegacy, Structure.StepInterval * 2f);
+            RunRestore(gLegacy);
             Check("老记忆也能还原", gLegacy.Get(3, 3, 0) == stoneId && gLegacy.Get(4, 4, 0) == 0 &&
                 !Structure.Busy);
             Structure.Reset();
@@ -921,6 +938,25 @@ namespace MinecraftTetris.EditorTools
             Debug.Log("[MinecraftTetris 自检]\n" + sb);
 
             EditorApplication.Exit(fail > 0 ? 1 : 0);
+        }
+
+        /// <summary>场上还有多少格有方块（水不算，水不写网格）。</summary>
+        static int CountFilled(Grid g)
+        {
+            int n = 0;
+            for (int x = 0; x < g.SizeX; x++)
+                for (int y = 0; y < g.SizeY; y++)
+                    for (int z = 0; z < g.SizeZ; z++)
+                        if (g.Get(x, y, z) > 0)
+                            n++;
+            return n;
+        }
+
+        /// <summary>把一条还原动画跑完（消失 + 重建）。</summary>
+        static void RunRestore(Grid g)
+        {
+            for (int i = 0; i < 4000 && Structure.Busy; i++)
+                Structure.Tick(g, 0.05f);
         }
     }
 }

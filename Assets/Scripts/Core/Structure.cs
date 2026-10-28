@@ -10,20 +10,24 @@ namespace MinecraftTetris
     /// 三个阶段：
     ///   记忆 —— 结构方块落定的瞬间记一条。范围是整块场地，不再只是身边那一圈。
     ///           一整块方块里可能有 4 格结构方块，但它们只记一条：任意一格被消掉就触发一次。
-    ///   还原 —— 从下往上一波扫过去：每 0.06 秒处理一批格子，扫到哪格就把那格改成快照里的样子。
-    ///           场地大、格子多的时候自动把步子迈大，总时长封顶。
-    ///   收尾 —— 扫完之后把结构方块自己从快照里抹掉（它记成空的），这条记忆也就删了。
+    ///   消失 —— 场上现在的方块从下往上一个接一个消失，把场地腾出来。
+    ///   重建 —— 记忆里的方块从下往上一个接一个从上方掉下来，落回各自的格子。
     ///
     /// 记忆记的是**绝对坐标**：还原时不管中间发生了什么，整场都恢复成记忆时的样子。
     /// </summary>
     public static class Structure
     {
-        /// <summary>每批之间的间隔（秒）。</summary>
-        public const float StepInterval = 0.06f;
+        /// <summary>消失阶段：每隔多久收掉一格（秒）。</summary>
+        public const float ClearInterval = 0.035f;
 
-        /// <summary>还原总时长的下限 / 上限（秒）：太少看不出过程，太多等得慌。</summary>
-        public const float MinRestoreTime = 0.8f;
-        public const float MaxRestoreTime = 2.2f;
+        /// <summary>重建阶段：每隔多久掉下一格（秒）。</summary>
+        public const float DropInterval = 0.05f;
+
+        /// <summary>重建时方块从目标上方几格开始落。</summary>
+        public const int DropHeight = 2;
+
+        /// <summary>一个阶段最多演多久（秒）：方块特别多的时候一次处理多格，不让玩家干等。</summary>
+        public const float MaxPhaseTime = 3f;
 
         /// <summary>存档格式标记。老存档没有这个前缀，第一个数是中心 X（≥ 0），不会撞上负数。</summary>
         const int SaveVersion = -2;
@@ -58,17 +62,22 @@ namespace MinecraftTetris
         /// <summary>正在还原的那一条。</summary>
         static Memory _active;
 
-        /// <summary>扫到第几格 / 每批扫几格 / 一共多少格 / 距离下一批还差多少秒。</summary>
-        static int _cursor;
-        static int _perStep;
-        static int _total;
-        static float _timer;
+        enum Phase { Clear, Drop }
 
-        /// <summary>搭好一格：视图层拿它把那一格画出来。</summary>
-        public static event System.Action<int, int, int, int> CellRebuilt;
+        /// <summary>这一阶段要挨个处理的格子，4 个一组：x, y, z, 方块 id。</summary>
+        static readonly List<int> _work = new List<int>();
 
-        /// <summary>清掉一格：视图层拿它把那一格擦掉。</summary>
-        public static event System.Action<int, int, int> CellCleared;
+        static Phase _phase;
+        static int _cursor;     // 处理到第几格
+        static int _count;      // 这一阶段一共多少格
+        static int _batch;      // 一次处理几格（格子太多时 > 1）
+        static float _timer;    // 距离下一次处理还差多少秒
+
+        /// <summary>消失阶段收掉一格：视图层擦掉它，顺手撒一点碎块。</summary>
+        public static event System.Action<int, int, int, int> CellVanished;
+
+        /// <summary>重建阶段落下一格：视图层让它从上方掉回自己的格子。</summary>
+        public static event System.Action<int, int, int, int> CellDropped;
 
         /// <summary>整条还原流程结束（结构方块自己消失了）：参数是它原来在哪儿。</summary>
         public static event System.Action<int, int, int> Finished;
@@ -77,6 +86,9 @@ namespace MinecraftTetris
 
         /// <summary>现在有没有正在进行的还原（队列里也算）。</summary>
         public static bool Busy { get { return _active != null || _pending.Count > 0; } }
+
+        /// <summary>正处在重建阶段（消失阶段已经走完，方块正在一格一格掉回来）。</summary>
+        public static bool InDropPhase { get { return _active != null && _phase == Phase.Drop; } }
 
         /// <summary>快照里某个下标对应的是场上哪一格（给存档和自检用）。</summary>
         public static void CellOf(Memory m, int index, out int x, out int y, out int z)
@@ -257,31 +269,27 @@ namespace MinecraftTetris
                 next.Queued = false;
                 if (next.Cancelled)
                     continue;
-                BeginRestore(next);
+                BeginRestore(grid, next);
             }
 
             if (_active == null)
                 return;
 
+            float interval = _phase == Phase.Clear ? ClearInterval : DropInterval;
             _timer += dt;
-            while (_timer >= StepInterval)
+            while (_timer >= interval && _active != null)
             {
-                _timer -= StepInterval;
-                if (!RestoreStep(grid, _active))
-                {
-                    Finish(_active);
-                    break;
-                }
+                _timer -= interval;
+                StepPhase(grid);
             }
         }
 
-        static void BeginRestore(Memory m)
+        static void BeginRestore(Grid grid, Memory m)
         {
             _active = m;
-            _cursor = 0;
             _timer = 0f;
 
-            // 结构方块自己是这次还原的开关：快照里把它记成空的，扫到它的时候自然就没了。
+            // 结构方块自己是这次还原的开关：快照里把它记成空的，重建时不会把自己搭回来
             if (m.Cells != null)
             {
                 for (int i = 0; i + 2 < m.Cells.Length; i += 3)
@@ -292,75 +300,151 @@ namespace MinecraftTetris
                 }
             }
 
-            // 步子按非空格数算：格子少的时候慢慢扫，格子多的时候把步子迈大，总时长封顶。
-            _total = m.SizeX * m.SizeY * m.SizeZ;
-            int filled = 0;
-            for (int i = 0; i < _total; i++)
-            {
-                if (m.Blocks[i] > 0)
-                    filled++;
-            }
-
-            float duration = Mathf.Clamp(filled * StepInterval, MinRestoreTime, MaxRestoreTime);
-            int steps = Mathf.Max(1, Mathf.CeilToInt(duration / StepInterval));
-            _perStep = Mathf.Max(1, Mathf.CeilToInt((float)_total / steps));
+            _phase = Phase.Clear;
+            BuildClearList(grid, m);
         }
 
-        /// <summary>扫一批格子，扫到哪格就把那格改成快照里的样子。返回 false 表示整场扫完了。</summary>
-        static bool RestoreStep(Grid grid, Memory m)
+        /// <summary>收集场上现在有东西的格子，从下往上排：消失就是照这个顺序一格一格收。</summary>
+        static void BuildClearList(Grid grid, Memory m)
         {
-            if (_cursor >= _total)
-                return false;
-
-            int end = Mathf.Min(_total, _cursor + _perStep);
-            for (int index = _cursor; index < end; index++)
+            _work.Clear();
+            for (int y = m.MinY; y < m.MinY + m.SizeY; y++)
             {
-                int x, y, z;
-                CellOf(m, index, out x, out y, out z);
-                if (!grid.InBounds(x, y, z))
-                    continue;
-
-                int want = m.Blocks[index];
-                int cur = grid.Get(x, y, z);
-                bool changed = false;
-
-                // 还原连流体一起收回：快照里没记水，扫过的格子不留水
-                if (Fluids.AmountAt(x, y, z) > 0)
+                for (int z = m.MinZ; z < m.MinZ + m.SizeZ; z++)
                 {
-                    Fluids.ClearCell(x, y, z);
-                    changed = true;
-                }
-
-                if (want <= 0)
-                {
-                    if (cur != 0)
+                    for (int x = m.MinX; x < m.MinX + m.SizeX; x++)
                     {
-                        if (IsStructure(cur))
-                            ForgetAt(x, y, z, m);
-                        grid.Set(x, y, z, 0);
-                        changed = true;
+                        int id = grid.Get(x, y, z);
+                        if (id <= 0 && Fluids.AmountAt(x, y, z) <= 0)
+                            continue;   // 空格子不用管，收的是有东西的
+                        _work.Add(x);
+                        _work.Add(y);
+                        _work.Add(z);
+                        _work.Add(id);
                     }
-
-                    if (changed && CellCleared != null)
-                        CellCleared(x, y, z);
-                }
-                else
-                {
-                    if (cur != want)
-                    {
-                        if (IsStructure(cur))
-                            ForgetAt(x, y, z, m);
-                        grid.Set(x, y, z, want);
-                        changed = true;
-                    }
-
-                    if (changed && CellRebuilt != null)
-                        CellRebuilt(x, y, z, want);
                 }
             }
 
+            _cursor = 0;
+            _count = _work.Count / 4;
+            _batch = BatchFor(_count, ClearInterval);
+        }
+
+        /// <summary>收集记忆里有方块的格子，同样从下往上：重建就是照这个顺序一格一格掉回来。</summary>
+        static void BuildDropList(Memory m)
+        {
+            _work.Clear();
+            for (int y = 0; y < m.SizeY; y++)
+            {
+                for (int z = 0; z < m.SizeZ; z++)
+                {
+                    for (int x = 0; x < m.SizeX; x++)
+                    {
+                        int id = m.Blocks[(y * m.SizeZ + z) * m.SizeX + x];
+                        if (id <= 0)
+                            continue;
+                        _work.Add(m.MinX + x);
+                        _work.Add(m.MinY + y);
+                        _work.Add(m.MinZ + z);
+                        _work.Add(id);
+                    }
+                }
+            }
+
+            _cursor = 0;
+            _count = _work.Count / 4;
+            _batch = BatchFor(_count, DropInterval);
+        }
+
+        /// <summary>格子太多的时候一次处理多格，把一个阶段的时长压在上限以内。</summary>
+        static int BatchFor(int count, float interval)
+        {
+            if (count <= 0)
+                return 1;
+            float capacity = Mathf.Max(1f, MaxPhaseTime / interval);
+            return Mathf.Max(1, Mathf.CeilToInt(count / capacity));
+        }
+
+        /// <summary>处理这一小批格子；一批走完就切阶段或者收尾。</summary>
+        static void StepPhase(Grid grid)
+        {
+            int end = Mathf.Min(_count, _cursor + _batch);
+            for (int i = _cursor; i < end; i++)
+            {
+                int b = i * 4;
+                if (_phase == Phase.Clear)
+                    Vanish(grid, _work[b], _work[b + 1], _work[b + 2], _work[b + 3]);
+                else
+                    Drop(grid, _work[b], _work[b + 1], _work[b + 2], _work[b + 3]);
+            }
             _cursor = end;
-            return _cursor < _total;
+
+            if (_cursor < _count)
+                return;
+
+            if (_phase == Phase.Clear)
+            {
+                // 收的这一两秒里玩家可能又落了一块：场上还有东西就再收一轮
+                if (HasContent(grid, _active))
+                {
+                    BuildClearList(grid, _active);
+                    return;
+                }
+
+                BuildDropList(_active);
+                _phase = Phase.Drop;
+                _timer = 0f;
+                if (_count <= 0)
+                    Finish(_active);
+            }
+            else
+            {
+                Finish(_active);
+            }
+        }
+
+        static bool HasContent(Grid grid, Memory m)
+        {
+            for (int y = m.MinY; y < m.MinY + m.SizeY; y++)
+                for (int z = m.MinZ; z < m.MinZ + m.SizeZ; z++)
+                    for (int x = m.MinX; x < m.MinX + m.SizeX; x++)
+                    {
+                        if (grid.Get(x, y, z) > 0 || Fluids.AmountAt(x, y, z) > 0)
+                            return true;
+                    }
+            return false;
+        }
+
+        /// <summary>收掉一格：方块、水一起清。视图层擦掉它，再撒一点碎块。</summary>
+        static void Vanish(Grid grid, int x, int y, int z, int blockId)
+        {
+            if (!grid.InBounds(x, y, z))
+                return;
+
+            // 这一格要是别的结构方块的落脚点，那条记忆跟着作废
+            if (IsStructure(blockId))
+                ForgetAt(x, y, z, _active);
+
+            if (grid.Get(x, y, z) > 0)
+                grid.Set(x, y, z, 0);
+            if (Fluids.AmountAt(x, y, z) > 0)
+                Fluids.ClearCell(x, y, z);
+
+            if (CellVanished != null)
+                CellVanished(x, y, z, blockId);
+        }
+
+        /// <summary>落下一格：把记忆里的方块放回原位，视图层让它从上面掉下来。</summary>
+        static void Drop(Grid grid, int x, int y, int z, int blockId)
+        {
+            if (!grid.InBounds(x, y, z) || blockId <= 0)
+                return;
+
+            if (grid.Get(x, y, z) != blockId)
+                grid.Set(x, y, z, blockId);
+
+            if (CellDropped != null)
+                CellDropped(x, y, z, blockId);
         }
 
         /// <summary>某一格的结构方块被抹掉了：记在那格上的记忆作废（正在还原的那条除外）。</summary>
@@ -380,15 +464,16 @@ namespace MinecraftTetris
             }
         }
 
-        /// <summary>扫完了：这条记忆删掉。结构方块在快照里记成空的，已经跟着扫没了。</summary>
+        /// <summary>重建完了：这条记忆删掉。结构方块在快照里记成空的，早就跟着消失那一段收掉了。</summary>
         static void Finish(Memory m)
         {
             _memories.Remove(m);
             _active = null;
             _cursor = 0;
-            _perStep = 0;
-            _total = 0;
+            _count = 0;
+            _batch = 1;
             _timer = 0f;
+            _work.Clear();
 
             if (Finished != null)
                 Finished(m.X, m.Y, m.Z);
@@ -400,9 +485,11 @@ namespace MinecraftTetris
             _memories.Clear();
             _pending.Clear();
             _active = null;
+            _phase = Phase.Clear;
+            _work.Clear();
             _cursor = 0;
-            _perStep = 0;
-            _total = 0;
+            _count = 0;
+            _batch = 1;
             _timer = 0f;
         }
 

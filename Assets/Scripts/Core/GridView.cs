@@ -257,6 +257,24 @@ namespace MinecraftTetris
             go.GetComponent<MeshRenderer>().sharedMaterial = wantFlash ? FlashMaterial : _materials[idx];
         }
 
+        /// <summary>
+        /// 结构方块重建：这一格放回方块，但视觉上先出现在目标上方 drop 格的位置，
+        /// 交给 Update 的追赶把它"掉"下来。drop &lt;= 0 时等同直接出现。
+        /// </summary>
+        public void SetCellDropping(int x, int y, int z, int blockId, int drop)
+        {
+            SetCell(x, y, z, blockId);
+            if (drop <= 0 || !InCells(x, y, z))
+                return;
+
+            GameObject go = _cells[x, y, z];
+            if (go == null || !go.activeSelf)
+                return;
+
+            _cellVisual[x, y, z] = new Vector3(x, y + drop, z);
+            go.transform.position = _cellVisual[x, y, z];
+        }
+
         /// <summary>把一格画成白闪（TNT 引信）或还原。</summary>
         public void SetCellFlash(int x, int y, int z, bool on)
         {
