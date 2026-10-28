@@ -42,3 +42,20 @@ sysinfo.txt
 # 系统
 .DS_Store
 Thumbs.db
+
+# IDE
+.vs/
+.idea/
+.vscode/
+*.code-workspace
+
+# 本地的调试 / 一次性补丁脚本（根目录下划线开头的那批），不进仓库
+/_*.py
+/_*.log
+
+# 编辑器记忆与本地会话数据（含本机绝对路径），不进仓库
+.workbuddy/
+
+# 压缩包 / 临时输出
+*.zip
+*.7z
