@@ -119,6 +119,12 @@ namespace MinecraftTetris
                 _title.Visible = true;
                 _title.OpenSettingsPage(3);
             }
+            // -guide：直接打开「特殊方块」说明页，截图核对用
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-guide") >= 0)
+            {
+                _title.Visible = true;
+                _title.OpenSettingsPage(TitleScreen.PageGuide);
+            }
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-pause") >= 0)
             {
                 _title.Visible = false;

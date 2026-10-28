@@ -15,7 +15,10 @@ namespace MinecraftTetris
         [Serializable]
         class TitleMeta { public CharMeta[] chars; }
 
-        enum SettingsPage { Main, Keys, Size, Workshop, Speed, Music }
+        enum SettingsPage { Main, Keys, Size, Workshop, Speed, Music, Guide }
+
+        /// <summary>「特殊方块」说明页在 SettingsPage 里的下标，调试开关要用。</summary>
+        public const int PageGuide = (int)SettingsPage.Guide;
 
         struct Mote
         {
@@ -51,6 +54,8 @@ namespace MinecraftTetris
         }
 
         Texture2D _titleTex;
+        /// <summary>方块图集，只给「特殊方块」页画图标用。</summary>
+        Texture2D _atlasTex;
         CharMeta[] _chars;
         float _t;
         bool _stylesReady;
@@ -68,6 +73,10 @@ namespace MinecraftTetris
         GUIStyle _bigValueStyle;
         /// <summary>提示行专用：不折行。折行会把固定的 Rect 撑破、压到下面的按钮上。</summary>
         GUIStyle _hintStyle;
+        /// <summary>「特殊方块」页：方块名、机制说明、页脚小字。</summary>
+        GUIStyle _guideNameStyle;
+        GUIStyle _guideDescStyle;
+        GUIStyle _guideNoteStyle;
         Texture2D _btnNormal;
         Texture2D _btnHover;
         Texture2D _btnActive;
@@ -129,7 +138,7 @@ namespace MinecraftTetris
         public void OpenSettingsPage(int page)
         {
             ShowSettings = true;
-            _page = (SettingsPage)Mathf.Clamp(page, 0, (int)SettingsPage.Music);
+            _page = (SettingsPage)Mathf.Clamp(page, 0, (int)SettingsPage.Guide);
             _tmpSpeed = GameSettings.FallSpeed;
             _tmpMusic = GameSettings.MusicVolume;
             _capturingAction = -1;
@@ -152,6 +161,7 @@ namespace MinecraftTetris
         void LoadAssets()
         {
             _titleTex = Resources.Load<Texture2D>("title");
+            _atlasTex = Resources.Load<Texture2D>("atlas");
             TextAsset meta = Resources.Load<TextAsset>("title_meta");
             if (meta != null)
             {
@@ -299,6 +309,7 @@ namespace MinecraftTetris
                 items.Add(new KeyValuePair<string, Action>("继续游戏", () => Fire(OnContinue)));
             items.Add(new KeyValuePair<string, Action>("开始游戏", () => Fire(OnStartGame)));
             items.Add(new KeyValuePair<string, Action>("创意工坊", OpenWorkshop));
+            items.Add(new KeyValuePair<string, Action>("特殊方块", () => { ShowSettings = true; _page = SettingsPage.Guide; }));
             items.Add(new KeyValuePair<string, Action>("设置", () => { ShowSettings = true; _page = SettingsPage.Main; }));
             items.Add(new KeyValuePair<string, Action>("退出", () => Fire(OnQuit)));
 
@@ -371,6 +382,9 @@ namespace MinecraftTetris
                     break;
                 case SettingsPage.Music:
                     DrawSettingsMusic();
+                    break;
+                case SettingsPage.Guide:
+                    DrawGuide();
                     break;
             }
         }
@@ -773,6 +787,184 @@ namespace MinecraftTetris
             }
         }
 
+        // ---------- 特殊方块说明 ----------
+
+        struct GuideItem
+        {
+            public int[] Ids;
+            public string Title;
+            public string Desc;
+        }
+
+        static GuideItem[] _guideItems;
+
+        static int FindBlock(string name)
+        {
+            for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
+                if (BlockCatalog.Blocks[i].Name == name)
+                    return i + 1;
+            return 0;
+        }
+
+        static void EnsureGuideItems()
+        {
+            if (_guideItems != null)
+                return;
+
+            _guideItems = new[]
+            {
+                new GuideItem
+                {
+                    Ids = new[] { Tnt.TntId },
+                    Title = "TNT",
+                    Desc = "贴着火源就点着，2.4 秒后炸掉半径 2 以内的方块，旁边的 TNT 会跟着连锁。",
+                },
+                new GuideItem
+                {
+                    Ids = new[] { Tnt.RedstoneId },
+                    Title = "红石块",
+                    Desc = "贴着 TNT 就点火，隔一格不算。",
+                },
+                new GuideItem
+                {
+                    Ids = new[] { BlockCatalog.StructureId },
+                    Title = "结构方块",
+                    Desc = "落定记住整场，被消行、消层或炸掉时，场上一格格收掉再按记忆掉回来。默认不进池。",
+                },
+                new GuideItem
+                {
+                    Ids = new[] { BlockCatalog.BedrockId },
+                    Title = "基岩",
+                    Desc = "不随消除下落，也炸不掉，默认不进池。",
+                },
+                new GuideItem
+                {
+                    Ids = new[] { FindBlock("obsidian"), FindBlock("crying_obsidian") },
+                    Title = "黑曜石 / 哭泣的黑曜石",
+                    Desc = "炸不掉，可以拿来当挡板。",
+                },
+                new GuideItem
+                {
+                    Ids = new[]
+                    {
+                        FindBlock("ancient_debris"), FindBlock("netherite_block"),
+                        FindBlock("reinforced_deepslate"), FindBlock("command_block"),
+                    },
+                    Title = "抗爆方块",
+                    Desc = "远古残骸、下界合金块、强化深板岩、命令方块，和原版一样炸不掉。",
+                },
+                new GuideItem
+                {
+                    Ids = new[] { FindBlock("water") },
+                    Title = "水",
+                    Desc = "往低处和两边流，一格最多 8 份。碰到源岩浆会变成黑曜石。",
+                },
+                new GuideItem
+                {
+                    Ids = new[] { FindBlock("lava") },
+                    Title = "岩浆",
+                    Desc = "流得比水慢；源岩浆碰到水变黑曜石，流动的岩浆变圆石。",
+                },
+                new GuideItem
+                {
+                    Ids = new[] { FindBlock("sand"), FindBlock("gravel") },
+                    Title = "沙子 / 沙砾",
+                    Desc = "下面是空的就往下掉，被炸出的弹坑会自己填平。",
+                },
+                new GuideItem
+                {
+                    Ids = new[] { FindBlock("oak_log") },
+                    Title = "原木",
+                    Desc = "落定以后，周围的空位会长出同种树叶。",
+                },
+            };
+        }
+
+        void DrawGuide()
+        {
+            EnsureGuideItems();
+
+            float w = UiSkin.P(1060f);
+            float h = UiSkin.P(710f);
+            Rect panel = CenterPanel(w, h);
+            DrawPanel(panel);
+
+            GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(14f), w, UiSkin.P(44f)), "特殊方块", _panelTitleStyle);
+            GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(60f), w, UiSkin.P(24f)),
+                "只列和原版不一样、或者第一次玩容易搞错的机制", _guideNoteStyle);
+
+            const int perCol = 5;
+            float colW = UiSkin.P(470f);
+            float rowH = UiSkin.P(104f);
+            float top = panel.y + UiSkin.P(104f);
+
+            for (int i = 0; i < _guideItems.Length; i++)
+            {
+                float x = panel.x + UiSkin.P(40f) + (i / perCol) * (colW + UiSkin.P(40f));
+                DrawGuideRow(x, top + (i % perCol) * rowH, colW, _guideItems[i]);
+            }
+
+            GUI.Label(new Rect(panel.x + UiSkin.P(40f), panel.yMax - UiSkin.P(70f), UiSkin.P(620f), UiSkin.P(28f)),
+                "其余方块都是普通方块，摆稳就能消。", _rowLabelStyle);
+
+            if (GUI.Button(new Rect(panel.x + w - UiSkin.P(230f), panel.yMax - UiSkin.P(72f),
+                UiSkin.P(180f), UiSkin.P(44f)), "返回", _btnStyle))
+                ShowSettings = false;
+        }
+
+        void DrawGuideRow(float x, float y, float w, GuideItem item)
+        {
+            int n = 0;
+            for (int i = 0; i < item.Ids.Length; i++)
+                if (item.Ids[i] > 0)
+                    n++;
+
+            float icon = n <= 2 ? UiSkin.P(40f) : UiSkin.P(30f);
+            float gap = UiSkin.P(4f);
+            float iconsW = n > 0 ? n * icon + (n - 1) * gap : 0f;
+
+            int slot = 0;
+            for (int i = 0; i < item.Ids.Length; i++)
+            {
+                if (item.Ids[i] <= 0)
+                    continue;
+                DrawBlockIcon(new Rect(x + slot * (icon + gap), y + UiSkin.P(2f), icon, icon), item.Ids[i]);
+                slot++;
+            }
+
+            float pad = iconsW > 0f ? iconsW + UiSkin.P(14f) : 0f;
+            GUI.Label(new Rect(x + pad, y, w - pad, UiSkin.P(26f)), item.Title, _guideNameStyle);
+            GUI.Label(new Rect(x + pad, y + UiSkin.P(26f), w - pad, UiSkin.P(70f)), item.Desc, _guideDescStyle);
+        }
+
+        /// <summary>从方块图集里切一格顶面出来画成图标；方块表里查不到就画个灰块。</summary>
+        void DrawBlockIcon(Rect r, int blockId)
+        {
+            DrawRect(new Rect(r.x - 1f, r.y - 1f, r.width + 2f, r.height + 2f), new Color(0f, 0f, 0f, 0.55f));
+
+            if (_atlasTex == null || blockId <= 0 || blockId > BlockCatalog.Blocks.Length)
+            {
+                DrawRect(r, new Color(0.25f, 0.28f, 0.33f, 1f));
+                return;
+            }
+
+            Tile tile = BlockCatalog.Of(blockId).Up;
+            int cell = BlockCatalog.CellPixels;
+            int pad = BlockCatalog.TilePadding;
+            float aw = (float)BlockCatalog.AtlasColumns * cell;
+            float ah = (float)BlockCatalog.AtlasRows * cell;
+            float x0 = tile.Col * cell + pad;
+            float yTop = tile.Row * cell + pad;
+
+            var uv = new Rect(
+                x0 / aw,
+                1f - (yTop + BlockCatalog.TilePixels) / ah,
+                (float)BlockCatalog.TilePixels / aw,
+                (float)BlockCatalog.TilePixels / ah);
+
+            GUI.DrawTextureWithTexCoords(r, _atlasTex, uv);
+        }
+
         // ---------- 工具 ----------
 
         void Fire(Action a)
@@ -989,6 +1181,13 @@ namespace MinecraftTetris
             _hintStyle.wordWrap = false;
             _valueStyle = MakeStyle(22, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
             _bigValueStyle = MakeStyle(34, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
+
+            _guideNameStyle = MakeStyle(19, Color.white, TextAnchor.MiddleLeft, FontStyle.Bold);
+            _guideNameStyle.wordWrap = false;
+            _guideDescStyle = MakeStyle(14, new Color(0.78f, 0.82f, 0.88f, 1f), TextAnchor.UpperLeft, FontStyle.Normal);
+            _guideDescStyle.wordWrap = true;
+            _guideNoteStyle = MakeStyle(17, new Color(0.68f, 0.72f, 0.80f, 1f), TextAnchor.MiddleCenter, FontStyle.Normal);
+            _guideNoteStyle.wordWrap = false;
 
             _btnStyle = new GUIStyle(GUI.skin.button);
             _btnStyle.fontSize = UiSkin.Size(18);
