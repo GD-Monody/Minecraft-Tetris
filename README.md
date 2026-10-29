@@ -81,7 +81,7 @@ v0.1 可玩版，Windows 已验证。详细进度见 [任务清单](docs/任务�
 
 - `Assets/`
   - `Art/Blocks/`：方块贴图，以及 `tools/build_full_atlas.py` 拼出的图集 `Resources/atlas.png`（每格 18×18，含 1 像素 padding）
-  - `Resources/Sfx/`：界面 / 消除 / 结晶 / TNT 音效；`Sfx/Place/` 是按 MC 材质分组的放置音（61 组 281 个变体，`tools/build_place_sfx.py` 可重新生成）
+  - `Resources/Sfx/`：界面 / 消除 / 结晶 / TNT 音效；`Sfx/Place/` 是按 MC 材质分组的放置音（61 组 284 个变体，`tools/build_place_sfx.py` 可重新生成）
   - `Resources/Music/`：背景音乐 16 首（14 首常速曲 + 2 首菜单曲，约 28 MB，`tools/extract_music.py` 可重新提取），按流式导入
   - `Resources/Fonts/`：界面字体 `STKaiTi.ttf`（华文楷体，动态字体，约 12 MB）
   - `Scripts/`：`Core`（纯逻辑，不依赖 MonoBehaviour）/ `Input` / `Camera` / `UI`

@@ -1,5 +1,6 @@
 // 由 tools/build_place_sfx.py 自动生成，不要手改。
 // 数据来源：32.json 里的 minecraft/sounds.json（block.<组>.place 事件，水和岩浆用 item.bucket.*）。
+// 玻璃没有现成事件，采样见脚本里的 SYNTH_GROUPS。
 namespace MinecraftTetris
 {
     /// <summary>
@@ -72,9 +73,9 @@ namespace MinecraftTetris
             "suspicious_sand",
             "snow",
             "coral_block",
-            "glass",
             "fluid_water",
             "fluid_lava",
+            "glass_place",
         };
 
         /// <summary>每组可用的 clip（Resources/Sfx/Place 下的文件名）。</summary>
@@ -138,9 +139,9 @@ namespace MinecraftTetris
             new[] { "block_suspicious_sand_place1", "block_suspicious_sand_place2", "block_suspicious_sand_place3", "block_suspicious_sand_place4", "block_suspicious_sand_place5" },   // suspicious_sand
             new[] { "dig_snow1", "dig_snow2", "dig_snow3", "dig_snow4" },   // snow
             new[] { "dig_coral1", "dig_coral2", "dig_coral3", "dig_coral4" },   // coral_block
-            new[] { "dig_stone1", "dig_stone2", "dig_stone3", "dig_stone4" },   // glass
             new[] { "item_bucket_empty1", "item_bucket_empty1", "item_bucket_empty2", "item_bucket_empty3" },   // fluid_water
             new[] { "item_bucket_empty_lava1", "item_bucket_empty_lava2", "item_bucket_empty_lava3" },   // fluid_lava
+            new[] { "random_glass1", "random_glass2", "random_glass3" },   // glass_place
         };
 
         /// <summary>每组的基础音量（sounds.json 里个别条目自带 volume）。</summary>
@@ -204,9 +205,75 @@ namespace MinecraftTetris
             1f,   // suspicious_sand
             1f,   // snow
             1f,   // coral_block
-            1f,   // glass
             1f,   // fluid_water
             1f,   // fluid_lava
+            0.45f,   // glass_place
+        };
+
+        /// <summary>每组的播放音高（1 = 原样）。只有自己凑的组会偏离 1。</summary>
+        public static readonly float[] GroupPitch =
+        {
+            1f,   // stone
+            1f,   // wood
+            1f,   // gravel
+            1f,   // grass
+            1f,   // sand
+            1f,   // wool
+            1f,   // metal
+            1f,   // iron
+            1f,   // netherite_block
+            1f,   // ancient_debris
+            1f,   // copper
+            1f,   // copper_bulb
+            1f,   // copper_grate
+            1f,   // basalt
+            1f,   // deepslate
+            1f,   // deepslate_bricks
+            1f,   // deepslate_tiles
+            1f,   // tuff
+            1f,   // tuff_bricks
+            1f,   // polished_tuff
+            1f,   // calcite
+            1f,   // dripstone_block
+            1f,   // bone_block
+            1f,   // netherrack
+            1f,   // nether_bricks
+            1f,   // soul_sand
+            1f,   // soul_soil
+            1f,   // nylium
+            1f,   // wart_block
+            1f,   // amethyst_block
+            1f,   // sculk
+            1f,   // sculk_catalyst
+            1f,   // lodestone
+            1f,   // sponge
+            1f,   // wet_sponge
+            1f,   // cherry_wood
+            1f,   // bamboo_wood
+            1f,   // nether_wood
+            1f,   // stem
+            1f,   // mud
+            1f,   // mud_bricks
+            1f,   // packed_mud
+            1f,   // muddy_mangrove_roots
+            1f,   // moss
+            1f,   // rooted_dirt
+            1f,   // nether_ore
+            1f,   // gilded_blackstone
+            1f,   // creaking_heart
+            1f,   // resin
+            1f,   // resin_bricks
+            1f,   // chiseled_bookshelf
+            1f,   // sulfur
+            1f,   // cinnabar
+            1f,   // potent_sulfur
+            1f,   // suspicious_gravel
+            1f,   // suspicious_sand
+            1f,   // snow
+            1f,   // coral_block
+            1f,   // fluid_water
+            1f,   // fluid_lava
+            1.18f,   // glass_place
         };
 
         /// <summary>每个方块属于哪一组（下标和 BlockCatalogData.Names 对齐）。</summary>
@@ -564,7 +631,7 @@ namespace MinecraftTetris
             "grass",   // cherry_leaves
             "grass",   // pale_oak_leaves
             "stone",   // bedrock
-            "glass",   // glass
+            "glass_place",   // glass
         };
     }
 }
