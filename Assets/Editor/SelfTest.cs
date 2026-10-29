@@ -248,6 +248,16 @@ namespace MinecraftTetris.EditorTools
                 GameSettings.ClampFallSpeed(0.8765f) == 0.88f);
             Check("下落速度默认 1.00", GameSettings.DefaultFallSpeed == 1f);
 
+            // ---- 消除模式：深度 1 只能行消 ----
+            Check("深度 1 时层消被落成行消",
+                GameSettings.ResolveElimMode(1, GameSettings.ElimLayer) == GameSettings.ElimRows);
+            Check("深度大于 1 才允许层消",
+                GameSettings.ResolveElimMode(4, GameSettings.ElimLayer) == GameSettings.ElimLayer &&
+                GameSettings.ResolveElimMode(4, GameSettings.ElimRows) == GameSettings.ElimRows);
+            Check("乱的消除模式会被夹回两种之一",
+                GameSettings.ResolveElimMode(3, 7) == GameSettings.ElimLayer &&
+                GameSettings.ResolveElimMode(3, -5) == GameSettings.ElimRows);
+
             var speedLoop = new GameLoop(10, 20, 6, 21);
             Check("默认速度下每 0.8 秒落一格", Mathf.Abs(speedLoop.FallInterval - 0.8f) < 0.0001f);
             speedLoop.FallSpeed = 2f;

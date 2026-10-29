@@ -51,7 +51,25 @@ namespace MinecraftTetris
 
         public static int ElimMode
         {
-            get { return Mathf.Clamp(PlayerPrefs.GetInt(ElimModeKey, ElimRows), ElimRows, ElimLayer); }
+            get { return ResolveElimMode(SizeZ, PlayerPrefs.GetInt(ElimModeKey, ElimRows)); }
+        }
+
+        /// <summary>
+        /// 按深度定下真正生效的消除模式：z = 1 时一层就是一行，层消和行消在这里完全等价，
+        /// 一律按行消处理，免得界面上写着「层消」实际干的是行消的事。
+        /// 抽成纯函数是为了自检能直接验，不用去动玩家存档。
+        /// </summary>
+        public static int ResolveElimMode(int sizeZ, int stored)
+        {
+            if (sizeZ <= 1)
+                return ElimRows;
+            return Mathf.Clamp(stored, ElimRows, ElimLayer);
+        }
+
+        /// <summary>当前尺寸能不能选层消（深度 1 只能行消）。设置页据此把按钮置灰。</summary>
+        public static bool CanUseLayerMode
+        {
+            get { return SizeZ > 1; }
         }
 
         /// <summary>
@@ -107,9 +125,16 @@ namespace MinecraftTetris
 
         public static void SetSize(int x, int y, int z)
         {
-            PlayerPrefs.SetInt(SizeXKey, Mathf.Clamp(x, MinSizeX, MaxSizeX));
-            PlayerPrefs.SetInt(SizeYKey, Mathf.Clamp(y, MinSizeY, MaxSizeY));
-            PlayerPrefs.SetInt(SizeZKey, Mathf.Clamp(z, MinSizeZ, MaxSizeZ));
+            int cx = Mathf.Clamp(x, MinSizeX, MaxSizeX);
+            int cy = Mathf.Clamp(y, MinSizeY, MaxSizeY);
+            int cz = Mathf.Clamp(z, MinSizeZ, MaxSizeZ);
+            PlayerPrefs.SetInt(SizeXKey, cx);
+            PlayerPrefs.SetInt(SizeYKey, cy);
+            PlayerPrefs.SetInt(SizeZKey, cz);
+            // 深度缩到 1 就把消除模式一并落成行消。只靠 getter 兜着的话，
+            // 存档里还留着「层消」，等玩家把深度再调大时会莫名其妙跳回层消。
+            if (cz <= 1)
+                PlayerPrefs.SetInt(ElimModeKey, ElimRows);
             PlayerPrefs.Save();
             // 尺寸变了，旧存档的格子数对不上，直接清掉
             GameSave.Clear();
@@ -117,7 +142,8 @@ namespace MinecraftTetris
 
         public static void SetElimMode(int mode)
         {
-            PlayerPrefs.SetInt(ElimModeKey, Mathf.Clamp(mode, ElimRows, ElimLayer));
+            // 走一遍 Resolve：深度 1 时传进来的层消会被按行消存下，界面和存档不会对不上
+            PlayerPrefs.SetInt(ElimModeKey, ResolveElimMode(SizeZ, mode));
             PlayerPrefs.Save();
             // 消除规则变了，旧存档里的局面按新规则继续容易出错，清掉
             GameSave.Clear();

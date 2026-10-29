@@ -216,8 +216,10 @@ namespace MinecraftTetris
 
             y += UiSkin.P(46f);
             Text(new Rect(x, y, UiSkin.P(80f), UiSkin.P(30f)), "消除", _label, _labelShadow);
+            // 层消模式下 LinesCleared 数的是层，单位跟着变一下，不然「12 行」其实是 12 层
+            string unit = GameSettings.ElimMode == GameSettings.ElimLayer ? " 层" : " 行";
             Text(new Rect(x + UiSkin.P(46f), y - UiSkin.P(3f), UiSkin.P(200f), UiSkin.P(26f)),
-                Loop.LinesCleared + " 行", _valueSmall, _valueSmallShadow);
+                Loop.LinesCleared + unit, _valueSmall, _valueSmallShadow);
 
             y += UiSkin.P(34f);
             Text(new Rect(x, y, UiSkin.P(80f), UiSkin.P(30f)), "最高", _label, _labelShadow);

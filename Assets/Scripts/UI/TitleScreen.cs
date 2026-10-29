@@ -75,8 +75,8 @@ namespace MinecraftTetris
         GUIStyle _panelTitleStyle;
         GUIStyle _rowLabelStyle;
         GUIStyle _valueStyle;
-        /// <summary>大号数值（下落速度页那个「1.00×」）。</summary>
-        GUIStyle _bigValueStyle;
+        /// <summary>滑条文字的暗色影子（压在圆头上也看得清）。</summary>
+        GUIStyle _sliderShadowStyle;
         /// <summary>提示行专用：不折行。折行会把固定的 Rect 撑破、压到下面的按钮上。</summary>
         GUIStyle _hintStyle;
         /// <summary>「特殊方块」页：方块名、机制说明、页脚小字。</summary>
@@ -97,6 +97,11 @@ namespace MinecraftTetris
         float _tmpSpeed = 1f;
         /// <summary>音乐音量页里正在编辑的值（0~1）。</summary>
         float _tmpMusic = 0.45f;
+
+        /// <summary>下滑条正在被拖的是哪一个（-1 = 没在拖）。IMGUI 没有内置拖动条，自己记。</summary>
+        int _dragSlider = -1;
+        const int SliderSpeed = 0;
+        const int SliderMusic = 1;
 
         // 时间轴（秒）
         const float MadeEnd = 0.8f;
@@ -132,6 +137,7 @@ namespace MinecraftTetris
             ShowSettings = false;
             _page = SettingsPage.Main;
             _capturingAction = -1;
+            _dragSlider = -1;
             if (show)
                 _t = 0f;
         }
@@ -150,6 +156,7 @@ namespace MinecraftTetris
             _tmpSpeed = GameSettings.FallSpeed;
             _tmpMusic = GameSettings.MusicVolume;
             _capturingAction = -1;
+            _dragSlider = -1;
             _tmpX = GameSettings.SizeX;
             _tmpY = GameSettings.SizeY;
             _tmpZ = GameSettings.SizeZ;
@@ -426,8 +433,19 @@ namespace MinecraftTetris
             }
             y += step;
 
-            string elimName = GameSettings.ElimMode == GameSettings.ElimLayer ? "消除：层消" : "消除：行消";
-            if (GUI.Button(new Rect(bx, y, bw, bh), elimName, _btnStyle))
+            // 深度 1 时一层就是一行，层消没有意义，按钮直接置灰
+            bool canLayer = GameSettings.CanUseLayerMode;
+            string elimName = !canLayer
+                ? "消除：行消（Z=1 固定）"
+                : (GameSettings.ElimMode == GameSettings.ElimLayer ? "消除：层消" : "消除：行消");
+            GUI.enabled = canLayer;
+            bool elimClicked = GUI.Button(new Rect(bx, y, bw, bh), elimName, _btnStyle);
+            GUI.enabled = true;
+            // IMGUI 关掉 GUI.enabled 只是不吃点击，自定义贴图不会自己变灰，压一层半透明盖住
+            if (!canLayer)
+                DrawRect(new Rect(bx, y, bw, bh), new Color(0.05f, 0.06f, 0.08f, 0.45f));
+
+            if (elimClicked)
             {
                 int next = GameSettings.ElimMode == GameSettings.ElimLayer
                     ? GameSettings.ElimRows
@@ -630,7 +648,7 @@ namespace MinecraftTetris
         void DrawSettingsSpeed()
         {
             float w = UiSkin.P(500f);
-            float h = UiSkin.P(380f);
+            float h = UiSkin.P(360f);
             Rect panel = CenterPanel(w, h);
             DrawPanel(panel);
 
@@ -639,27 +657,16 @@ namespace MinecraftTetris
             float rowW = UiSkin.P(400f);
             float bx = panel.x + (w - rowW) * 0.5f;
 
-            // 当前值放大居中，下面一排按钮：粗调 ±0.10、细调 ±0.01
-            float v = GameSettings.ClampFallSpeed(_tmpSpeed);
-            GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(66f), w, UiSkin.P(56f)),
-                v.ToString("0.00") + "×", _bigValueStyle);
-
-            bool changed = false;
-            float btnW = UiSkin.P(88f);
-            float gap = UiSkin.P(10f);
-            float bh = UiSkin.P(42f);
-            float rowBtnW = btnW * 4f + gap * 3f;
-            float btnX = panel.x + (w - rowBtnW) * 0.5f;
-            float btnY = panel.y + UiSkin.P(126f);
-
-            if (GUI.Button(new Rect(btnX, btnY, btnW, bh), "−0.10", _btnStyle)) { v -= 0.1f; changed = true; }
-            if (GUI.Button(new Rect(btnX + btnW + gap, btnY, btnW, bh), "−0.01", _btnStyle)) { v -= 0.01f; changed = true; }
-            if (GUI.Button(new Rect(btnX + (btnW + gap) * 2f, btnY, btnW, bh), "+0.01", _btnStyle)) { v += 0.01f; changed = true; }
-            if (GUI.Button(new Rect(btnX + (btnW + gap) * 3f, btnY, btnW, bh), "+0.10", _btnStyle)) { v += 0.1f; changed = true; }
-
-            if (changed)
+            // 和 MC 的设置一样：一条滑条拖到哪儿算哪儿，数值写在滑条上。
+            // 原来那排 ±0.10 / ±0.01 按钮去掉了——MC 里没有这种按钮，也省得两套调法互相打架。
+            float min = GameSettings.MinFallSpeed;
+            float max = GameSettings.MaxFallSpeed;
+            float t = Mathf.InverseLerp(min, max, GameSettings.ClampFallSpeed(_tmpSpeed));
+            var sliderRect = new Rect(bx, panel.y + UiSkin.P(86f), rowW, UiSkin.P(46f));
+            if (McSlider(SliderSpeed, sliderRect, ref t,
+                    x => "下落速度  " + Mathf.Lerp(min, max, x).ToString("0.00") + "×"))
             {
-                _tmpSpeed = GameSettings.ClampFallSpeed(v);
+                _tmpSpeed = GameSettings.ClampFallSpeed(Mathf.Lerp(min, max, t));
                 GameSettings.SetFallSpeed(_tmpSpeed);
                 if (OnFallSpeedChanged != null)
                     OnFallSpeedChanged();
@@ -667,7 +674,9 @@ namespace MinecraftTetris
 
             // 四行提示，每行都短到不会折行（折行会撑破 Rect、压到下面的按钮上）
             float lineH = UiSkin.P(28f);
-            float y = panel.y + UiSkin.P(176f);
+            float y = panel.y + UiSkin.P(152f);
+            GUI.Label(new Rect(bx, y, rowW, lineH), "按住圆头拖动，或点滑条上任意位置", _hintStyle);
+            y += lineH;
             GUI.Label(new Rect(bx, y, rowW, lineH),
                 "1.00× = 标准（每 " + GameLoop.BaseFallInterval.ToString("0.00") + " 秒落一格）", _hintStyle);
             y += lineH;
@@ -675,11 +684,10 @@ namespace MinecraftTetris
                 "当前：每 " + (GameLoop.BaseFallInterval / Mathf.Max(0.01f, _tmpSpeed)).ToString("0.00") + " 秒落一格",
                 _hintStyle);
             y += lineH;
-            GUI.Label(new Rect(bx, y, rowW, lineH), "范围 0.01 ~ 2.00（两位小数）", _hintStyle);
-            y += lineH;
-            GUI.Label(new Rect(bx, y, rowW, lineH), "3D 场地建议 0.50 ~ 0.80", _hintStyle);
+            GUI.Label(new Rect(bx, y, rowW, lineH), "范围 0.01 ~ 2.00，3D 场地建议 0.50 ~ 0.80", _hintStyle);
 
             float bottomY = panel.y + h - UiSkin.P(62f);
+            float bh = UiSkin.P(42f);
             if (GUI.Button(new Rect(bx, bottomY, UiSkin.P(190f), bh), "恢复标准", _btnStyle))
             {
                 _tmpSpeed = GameSettings.DefaultFallSpeed;
@@ -694,12 +702,12 @@ namespace MinecraftTetris
 
         /// <summary>
         /// 音乐音量。曲库是从 MC 原版里提的那些常速曲，随机播放；
-        /// 这里只管音量，0% 就是关。
+        /// 这里只管音量，0% 就是关。滑条和下落速度那条共用 McSlider。
         /// </summary>
         void DrawSettingsMusic()
         {
             float w = UiSkin.P(500f);
-            float h = UiSkin.P(380f);
+            float h = UiSkin.P(360f);
             Rect panel = CenterPanel(w, h);
             DrawPanel(panel);
 
@@ -708,25 +716,11 @@ namespace MinecraftTetris
             float rowW = UiSkin.P(400f);
             float bx = panel.x + (w - rowW) * 0.5f;
 
-            float v = GameSettings.ClampMusicVolume(_tmpMusic);
-            string shown = v <= 0.005f ? "静音" : Mathf.RoundToInt(v * 100f) + "%";
-            GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(66f), w, UiSkin.P(56f)), shown, _bigValueStyle);
-
-            bool changed = false;
-            float btnW = UiSkin.P(110f);
-            float gap = UiSkin.P(16f);
-            float bh = UiSkin.P(42f);
-            float rowBtnW = btnW * 3f + gap * 2f;
-            float btnX = panel.x + (w - rowBtnW) * 0.5f;
-            float btnY = panel.y + UiSkin.P(126f);
-
-            if (GUI.Button(new Rect(btnX, btnY, btnW, bh), "−10%", _btnStyle)) { v -= 0.1f; changed = true; }
-            if (GUI.Button(new Rect(btnX + btnW + gap, btnY, btnW, bh), "静音", _btnStyle)) { v = 0f; changed = true; }
-            if (GUI.Button(new Rect(btnX + (btnW + gap) * 2f, btnY, btnW, bh), "+10%", _btnStyle)) { v += 0.1f; changed = true; }
-
-            if (changed)
+            float t = GameSettings.ClampMusicVolume(_tmpMusic);
+            var sliderRect = new Rect(bx, panel.y + UiSkin.P(86f), rowW, UiSkin.P(46f));
+            if (McSlider(SliderMusic, sliderRect, ref t, MusicLabel))
             {
-                _tmpMusic = GameSettings.ClampMusicVolume(v);
+                _tmpMusic = GameSettings.ClampMusicVolume(t);
                 GameSettings.SetMusicVolume(_tmpMusic);
                 if (OnMusicChanged != null)
                     OnMusicChanged();
@@ -734,16 +728,17 @@ namespace MinecraftTetris
 
             // 一行一句，短到不会折行（折行会撑破 Rect、压到底部按钮上）
             float lineH = UiSkin.P(28f);
-            float y = panel.y + UiSkin.P(176f);
+            float y = panel.y + UiSkin.P(152f);
+            GUI.Label(new Rect(bx, y, rowW, lineH), "按住圆头拖动，拖到最左就是静音", _hintStyle);
+            y += lineH;
             GUI.Label(new Rect(bx, y, rowW, lineH), "原版曲库，随机播放，两首之间留一段静默", _hintStyle);
             y += lineH;
             GUI.Label(new Rect(bx, y, rowW, lineH), "标题界面用菜单曲，进游戏换成常速曲", _hintStyle);
             y += lineH;
             GUI.Label(new Rect(bx, y, rowW, lineH), "0% = 关闭音乐（放置音效另算）", _hintStyle);
-            y += lineH;
-            GUI.Label(new Rect(bx, y, rowW, lineH), "按 Esc 暂停时音乐一起暂停", _hintStyle);
 
             float bottomY = panel.y + h - UiSkin.P(62f);
+            float bh = UiSkin.P(42f);
             if (GUI.Button(new Rect(bx, bottomY, UiSkin.P(190f), bh), "恢复默认", _btnStyle))
             {
                 _tmpMusic = GameSettings.DefaultMusicVolume;
@@ -754,6 +749,83 @@ namespace MinecraftTetris
 
             if (GUI.Button(new Rect(bx + rowW - UiSkin.P(190f), bottomY, UiSkin.P(190f), bh), "返回", _btnStyle))
                 _page = SettingsPage.Main;
+        }
+
+        /// <summary>滑条上的文字：0 就直接写「关」，别显示 0%。</summary>
+        static string MusicLabel(float t)
+        {
+            return t <= 0.005f ? "音乐音量  关" : "音乐音量  " + Mathf.RoundToInt(t * 100f) + "%";
+        }
+
+        /// <summary>
+        /// 我的世界那种设置滑条：一整条轨 + 一个圆头把手，按住拖、或者点轨上任意位置直接跳过去。
+        /// t 是 0~1 的归一化位置；返回 true 表示这一帧值变了，调用方据此存盘并发事件。
+        ///
+        /// IMGUI 自带的 GUI.HorizontalSlider 是「细线 + 小圆点」的外观，和 MC 差得远，
+        /// 所以鼠标三个事件自己接：MouseDown 认领、MouseDrag 跟随、MouseUp 交还。
+        /// 认领期间 e.Use()，免得同一次点击又穿到下面的按钮上。
+        /// </summary>
+        bool McSlider(int id, Rect r, ref float t, Func<float, string> label)
+        {
+            Event e = Event.current;
+            bool changed = false;
+
+            float handle = UiSkin.P(12f);
+            float travel = Mathf.Max(1f, r.width - handle);
+
+            if (e != null)
+            {
+                if (e.type == EventType.MouseDown && e.button == 0 && r.Contains(e.mousePosition))
+                    _dragSlider = id;
+
+                if (_dragSlider == id && (e.type == EventType.MouseDown || e.type == EventType.MouseDrag))
+                {
+                    // 让把手中心跟着鼠标；两边各留半个把手宽，拖到头时把手正好贴边
+                    float nt = Mathf.Clamp01((e.mousePosition.x - r.x - handle * 0.5f) / travel);
+                    if (Mathf.Abs(nt - t) > 0.0004f)
+                    {
+                        t = nt;
+                        changed = true;
+                    }
+                    e.Use();
+                }
+                else if (e.type == EventType.MouseUp && _dragSlider == id)
+                {
+                    _dragSlider = -1;
+                    e.Use();
+                }
+                else if (_dragSlider == id && !Input.GetMouseButton(0))
+                {
+                    // 鼠标在窗口外松开就收不到 MouseUp，这里兜一下，不然滑条会一直粘着鼠标
+                    _dragSlider = -1;
+                }
+            }
+
+            bool lit = e != null && (r.Contains(e.mousePosition) || _dragSlider == id);
+            Color border = lit
+                ? new Color(0.62f, 0.66f, 0.74f, 0.95f)
+                : new Color(0.35f, 0.37f, 0.44f, 0.95f);
+
+            DrawRect(r, new Color(0.13f, 0.15f, 0.19f, 0.96f));
+            // 已拖过的部分淡淡的填一层，一眼能看出现在到哪儿了
+            DrawRect(new Rect(r.x + 1f, r.y + 1f, (r.width - 2f) * t, r.height - 2f),
+                new Color(0.42f, 0.86f, 1f, 0.16f));
+            DrawRect(new Rect(r.x, r.y, r.width, 1f), border);
+            DrawRect(new Rect(r.x, r.yMax - 1f, r.width, 1f), border);
+            DrawRect(new Rect(r.x, r.y, 1f, r.height), border);
+            DrawRect(new Rect(r.xMax - 1f, r.y, 1f, r.height), border);
+
+            // 把手：浅灰一块，右边压一道深色，看着像凸起来的塑料件
+            var knob = new Rect(r.x + travel * t, r.y + 1f, handle, r.height - 2f);
+            DrawRect(knob, new Color(0.74f, 0.77f, 0.83f, 1f));
+            DrawRect(new Rect(knob.xMax - 1f, knob.y, 1f, knob.height), new Color(0.38f, 0.41f, 0.47f, 1f));
+
+            // 字在圆头上再盖一遍：先落一层深影子（往右下偏 1px），再写白字。
+            // 圆头滑到中间时正好从字中间穿过，没有这层影子那块会糊成一片。
+            string text = label(t);
+            GUI.Label(new Rect(r.x + 1f, r.y + 1f, r.width, r.height), text, _sliderShadowStyle);
+            GUI.Label(r, text, _valueStyle);
+            return changed;
         }
 
         // ---------- 改键 ----------
@@ -847,9 +919,9 @@ namespace MinecraftTetris
         /// <summary>玩法栏的六段：小标题、正文各一行。</summary>
         static readonly string[][] PlayRules =
         {
-            new[] { "目标", "方块一块一块落下来，把一行摆满就消掉。设置里可以把「消除」切成层消，那就要铺满整个平面才消。" },
+            new[] { "目标", "方块一块一块落下来，把一行摆满就消掉。深度大于 1 时可以把「消除」切成层消，那就得铺满整个平面才消。" },
             new[] { "摆法", "每块最多四格，落定之后不能再动，用旋转把它塞进空位。一次消得越多分越高，方块堆到顶就结束。" },
-            new[] { "场地", "默认 10 宽 × 20 高 × 1 深。深度只有 1 时俯视旋转和前后翻用不上，要转得先去 设置 → 场地尺寸 加深。" },
+            new[] { "场地", "默认 10 宽 × 20 高 × 1 深。深度只有 1 时只能行消，俯视旋转和前后翻也用不上，要转得先去 设置 → 场地尺寸 加深。" },
             new[] { "旋转", "三套转法：面内转、绕竖直轴转、前后翻，各自管一个方向，键位见第二栏。" },
             new[] { "特殊方块", "TNT、水、沙子这些方块各有一套规则，见第三栏；不想要可以到 设置 → 特殊方块开关 一项项关掉。" },
             new[] { "其他", "分数和最高分存在本地。创意工坊里能改方块形状，五连条、T 这类可以开关，也能自己画新形状。" },
@@ -1340,7 +1412,8 @@ namespace MinecraftTetris
             _hintStyle = MakeStyle(18, new Color(0.72f, 0.76f, 0.82f, 1f), TextAnchor.MiddleLeft, FontStyle.Normal);
             _hintStyle.wordWrap = false;
             _valueStyle = MakeStyle(22, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
-            _bigValueStyle = MakeStyle(34, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
+            // 滑条上的字会被圆头从中间穿过去，垫一层深色影子才读得清
+            _sliderShadowStyle = MakeStyle(22, new Color(0f, 0f, 0f, 0.75f), TextAnchor.MiddleCenter, FontStyle.Bold);
 
             _guideNameStyle = MakeStyle(19, Color.white, TextAnchor.MiddleLeft, FontStyle.Bold);
             _guideNameStyle.wordWrap = false;

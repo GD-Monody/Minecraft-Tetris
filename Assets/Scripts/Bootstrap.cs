@@ -114,6 +114,17 @@ namespace MinecraftTetris
                 _title.Visible = true;
                 _title.OpenSettingsPage(2);
             }
+            // -settingsspeed / -settingsmusic：直接开下落速度、音乐音量页（都是滑条），截图核对用
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-settingsspeed") >= 0)
+            {
+                _title.Visible = true;
+                _title.OpenSettingsPage(4);
+            }
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-settingsmusic") >= 0)
+            {
+                _title.Visible = true;
+                _title.OpenSettingsPage(5);
+            }
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-workshop") >= 0)
             {
                 _title.Visible = true;
