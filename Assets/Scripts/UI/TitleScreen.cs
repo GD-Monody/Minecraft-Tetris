@@ -102,6 +102,9 @@ namespace MinecraftTetris
         int _dragSlider = -1;
         const int SliderSpeed = 0;
         const int SliderMusic = 1;
+        const int SliderSizeX = 2;
+        const int SliderSizeY = 3;
+        const int SliderSizeZ = 4;
 
         // 时间轴（秒）
         const float MadeEnd = 0.8f;
@@ -599,19 +602,23 @@ namespace MinecraftTetris
 
             GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(14f), w, UiSkin.P(44f)), "场地尺寸", _panelTitleStyle);
 
+            // 三个轴都是拖拽滑条，和下落速度、音乐音量一个样式。
+            // 这里只在内存里改 _tmpX/Y/Z，真正落盘要等下面「应用并重启」——尺寸一变就得清存档重建场地。
             float rowW = UiSkin.P(360f);
             float bx = panel.x + (w - rowW) * 0.5f;
             float y = panel.y + UiSkin.P(76f);
 
-            DrawSizeRow(bx, y, "宽度 X", ref _tmpX, GameSettings.MinSizeX, GameSettings.MaxSizeX);
+            DrawSizeSlider(SliderSizeX, bx, y, rowW, "宽度 X", GameSettings.MinSizeX, GameSettings.MaxSizeX, ref _tmpX);
             y += UiSkin.P(58f);
-            DrawSizeRow(bx, y, "高度 Y", ref _tmpY, GameSettings.MinSizeY, GameSettings.MaxSizeY);
+            DrawSizeSlider(SliderSizeY, bx, y, rowW, "高度 Y", GameSettings.MinSizeY, GameSettings.MaxSizeY, ref _tmpY);
             y += UiSkin.P(58f);
-            DrawSizeRow(bx, y, "深度 Z", ref _tmpZ, GameSettings.MinSizeZ, GameSettings.MaxSizeZ);
-            y += UiSkin.P(54f);
+            DrawSizeSlider(SliderSizeZ, bx, y, rowW, "深度 Z", GameSettings.MinSizeZ, GameSettings.MaxSizeZ, ref _tmpZ);
+            y += UiSkin.P(58f);
 
-            GUI.Label(new Rect(bx, y, rowW, UiSkin.P(40f)), "深度大于 1 时用 W / S 前后移动方块", _rowLabelStyle);
-            y += UiSkin.P(44f);
+            GUI.Label(new Rect(bx, y, rowW, UiSkin.P(28f)), "拖动滑条调大小，改完点「应用并重启」", _hintStyle);
+            y += UiSkin.P(28f);
+            GUI.Label(new Rect(bx, y, rowW, UiSkin.P(28f)), "深度大于 1 才能用 W / S 前后移动、才能选层消", _hintStyle);
+            y += UiSkin.P(34f);
 
             if (GUI.Button(new Rect(bx, y, rowW, UiSkin.P(44f)), "应用并重启", _btnStyle))
             {
@@ -625,24 +632,17 @@ namespace MinecraftTetris
                 _page = SettingsPage.Main;
         }
 
-        void DrawSizeRow(float x, float y, string label, ref int value, int min, int max)
+        /// <summary>尺寸滑条：值是整数，拖的时候四舍五入到最近的格数。</summary>
+        void DrawSizeSlider(int id, float x, float y, float w, string label, int min, int max, ref int value)
         {
-            GUI.Label(new Rect(x, y, UiSkin.P(160f), UiSkin.P(40f)), label, _rowLabelStyle);
+            int v = Mathf.Clamp(value, min, max);
+            float t = max > min ? Mathf.Clamp01((v - min) / (float)(max - min)) : 0f;
 
-            bool canMinus = value > min;
-            bool canPlus = value < max;
-
-            GUI.enabled = canMinus;
-            if (GUI.Button(new Rect(x + UiSkin.P(160f), y, UiSkin.P(46f), UiSkin.P(40f)), "−", _btnStyle))
-                value = Mathf.Max(min, value - 1);
-            GUI.enabled = true;
-
-            GUI.Label(new Rect(x + UiSkin.P(214f), y, UiSkin.P(60f), UiSkin.P(40f)), value.ToString(), _valueStyle);
-
-            GUI.enabled = canPlus;
-            if (GUI.Button(new Rect(x + UiSkin.P(282f), y, UiSkin.P(46f), UiSkin.P(40f)), "+", _btnStyle))
-                value = Mathf.Min(max, value + 1);
-            GUI.enabled = true;
+            if (McSlider(id, new Rect(x, y, w, UiSkin.P(46f)), ref t,
+                    f => label + "  " + Mathf.RoundToInt(Mathf.Lerp(min, max, f))))
+            {
+                value = Mathf.Clamp(Mathf.RoundToInt(Mathf.Lerp(min, max, t)), min, max);
+            }
         }
 
         void DrawSettingsSpeed()
