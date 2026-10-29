@@ -183,6 +183,9 @@ namespace MinecraftTetris
             // -glasstest：玻璃柱上压沙，看玻璃被压碎、沙落下来
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-glasstest") >= 0)
                 RunGlassTest();
+            // -glassdroptest：三根柱子对比「谁先在那儿」，看玻璃落下不碎、被后压的才碎
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-glassdroptest") >= 0)
+                RunGlassDropTest();
             // -blocktest <方块英文名>：在场地高处摆三个该方块，用来肉眼核对六面贴图
             var btArgv = System.Environment.GetCommandLineArgs();
             int btAt = System.Array.IndexOf(btArgv, "-blocktest");
@@ -208,7 +211,7 @@ namespace MinecraftTetris
             string[] sceneTests =
             {
                 "-sandtest", "-reacttest", "-tnttest", "-leaftest", "-bedrocktest", "-structuretest",
-                "-blocktest", "-fluidtest", "-yawtest", "-pitchtest", "-glasstest",
+                "-blocktest", "-fluidtest", "-yawtest", "-pitchtest", "-glasstest", "-glassdroptest",
             };
             for (int i = 0; i < sceneTests.Length; i++)
             {
@@ -567,6 +570,65 @@ namespace MinecraftTetris
             _view.RefreshAll();
 
             // 先让玩家看清「玻璃上压着沙」，一秒半后再压碎，不然一进场就是结果
+            StartCoroutine(CrushGlassSoon(1.5f));
+        }
+
+        /// <summary>
+        /// -glassdroptest：专门演「玻璃落下来不碎，之后被压上来才碎」。
+        ///
+        /// 三根柱子都立在同一层石头上，区别只在写入先后（也就是「谁先在那儿」）：
+        ///   左：玻璃先、石头后 —— 石头是新压上来的，玻璃碎；
+        ///   中：石头先、玻璃后 —— 玻璃是落进早就有的方块底下，不碎；
+        ///   右：玻璃、玻璃    —— 上方那块也是玻璃，不算压（连放两块玻璃不会自己炸）。
+        /// 一秒半后才判定，先让人看清摆的是什么。
+        /// </summary>
+        void RunGlassDropTest()
+        {
+            if (_loop == null || _view == null)
+                return;
+
+            int glassId = BlockCatalog.GlassId;
+            int stoneId = 0;
+            for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
+                if (BlockCatalog.Blocks[i].Name == "stone")
+                    stoneId = i + 1;
+            if (glassId <= 0 || stoneId <= 0)
+            {
+                Debug.Log("[glassdroptest] 方块表里缺玻璃或石头");
+                return;
+            }
+
+            _loop.Restart();
+            Fluids.Reset();
+            Tnt.Reset();
+            Structure.Reset();
+
+            Grid grid = _loop.Grid;
+            int cx = grid.SizeX / 2;
+            int cz = grid.SizeZ / 2;
+            int left = Mathf.Max(0, cx - 3);
+            int right = Mathf.Min(grid.SizeX - 1, cx + 3);
+
+            // 三根柱子底下都铺一块石头，玻璃碎完才有东西接着
+            Put(grid, left, 0, cz, stoneId);
+            Put(grid, cx, 0, cz, stoneId);
+            Put(grid, right, 0, cz, stoneId);
+
+            // 左：玻璃先落，石头后压上来
+            Put(grid, left, 2, cz, glassId);
+            Put(grid, left, 3, cz, stoneId);
+
+            // 中：石头先在那儿，玻璃后落进它下面
+            Put(grid, cx, 3, cz, stoneId);
+            Put(grid, cx, 2, cz, glassId);
+
+            // 右：两块玻璃叠着，上面那块也是玻璃
+            Put(grid, right, 2, cz, glassId);
+            Put(grid, right, 3, cz, glassId);
+
+            _view.SnapPiece(_loop.Current);
+            _view.RefreshAll();
+
             StartCoroutine(CrushGlassSoon(1.5f));
         }
 

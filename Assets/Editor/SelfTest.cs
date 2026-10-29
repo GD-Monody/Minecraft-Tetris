@@ -1114,6 +1114,34 @@ namespace MinecraftTetris.EditorTools
             Gravity.Settle(gGlass);
             Check("玻璃碎完，上面的沙落到底", gGlass.Get(2, 0, 0) == mechSand);
 
+            // 新规则的核心：先来后到。玻璃落定时上方本来就有东西，不该当场碎
+            var gGlassLate = new Grid(5, 5, 1);
+            gGlassLate.Set(2, 2, 0, mechSand);   // 上面那块先在那儿
+            gGlassLate.Set(2, 1, 0, glassId);    // 玻璃后落进来，正上方压着旧的方块
+            Check("玻璃落定时上方已有的旧方块不算压（落下不碎）", Glass.Crush(gGlassLate) == 0);
+            gGlassLate.Set(2, 2, 0, 0);          // 上面那块旧方块被消掉
+            gGlassLate.Set(2, 2, 0, mechSand);   // 又一块新方块落到同一格
+            Check("之后新落下来的方块照常压碎它", Glass.Crush(gGlassLate) == 1);
+
+            // 玻璃压玻璃不算压：不然一次落四格玻璃，叠着的那几格会互相碎掉
+            var gGlassPair = new Grid(5, 5, 1);
+            gGlassPair.Set(2, 0, 0, glassId);
+            gGlassPair.Set(2, 1, 0, glassId);
+            Check("玻璃叠玻璃不碎（上方是玻璃不算压）", Glass.Crush(gGlassPair) == 0);
+            gGlassPair.Set(2, 2, 0, mechSand);
+            Check("玻璃上再压一块实心方块，两块玻璃不会一次全碎",
+                Glass.Crush(gGlassPair) == 1 && gGlassPair.Get(2, 1, 0) == 0 && gGlassPair.Get(2, 0, 0) == glassId);
+
+            // 读档进来的格子没有先后，不能一开局就噼里啪啦碎一片
+            var gGlassLoad = new Grid(2, 2, 1);
+            var loadData = new int[4];
+            loadData[0] = glassId;               // (x=0, y=0)
+            loadData[2] = mechSand;              // (x=0, y=1)
+            gGlassLoad.Import(loadData);
+            Check("读档进来的玻璃不自己碎", Glass.Crush(gGlassLoad) == 0);
+            gGlassLoad.Set(0, 1, 0, mechSand);   // 读档之后又落下来一块
+            Check("读档后新落下的方块照常压碎玻璃", Glass.Crush(gGlassLoad) == 1);
+
             var gGlassOff = new Grid(5, 5, 1);
             gGlassOff.Set(2, 0, 0, glassId);
             gGlassOff.Set(2, 1, 0, mechSand);
@@ -1128,8 +1156,12 @@ namespace MinecraftTetris.EditorTools
             gGlassStack.Set(2, 2, 0, mechSand);
             int glassCrushed = Glass.Crush(gGlassStack);
             Gravity.Settle(gGlassStack);
-            Check("叠起来的玻璃一起碎，沙一路落到底",
-                glassCrushed == 2 && CountFilled(gGlassStack) == 1 && gGlassStack.Get(2, 0, 0) == mechSand);
+            Check("叠起来的玻璃从被压的那块开始碎，沙落在下面那块上",
+                glassCrushed == 1 && gGlassStack.Get(2, 0, 0) == glassId && gGlassStack.Get(2, 1, 0) == mechSand);
+            int glassCrushed2 = Glass.Crush(gGlassStack);
+            Gravity.Settle(gGlassStack);
+            Check("下一轮沙把剩下那块也压碎，一路落到底",
+                glassCrushed2 == 1 && CountFilled(gGlassStack) == 1 && gGlassStack.Get(2, 0, 0) == mechSand);
 
             // 拨回全开，别把开关状态留给玩家
             for (int i = 0; i < GameSettings.MechCount; i++)

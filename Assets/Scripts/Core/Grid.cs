@@ -30,12 +30,21 @@ namespace MinecraftTetris
         // 0 表示空，>0 是方块类型索引 + 1（存 int 方便以后加方块种类）
         readonly int[,,] _cells;
 
+        /// <summary>
+        /// 每格最后一次被写入的先后序号，0 = 空格 / 读档进来的。玻璃靠它判断「上面那块是不是后来才压上来的」，
+        /// 不然玻璃一落定就会被自己上方本来就有的方块判成「被压着」而当场碎掉。
+        /// 只存在内存里，不进存档：读档之后一律当 0，也就是「谁也没压谁」，不会自己炸一片。
+        /// </summary>
+        readonly int[,,] _stamp;
+        int _stampSeq;
+
         public Grid(int sizeX, int sizeY, int sizeZ)
         {
             SizeX = Mathf.Max(1, sizeX);
             SizeY = Mathf.Max(1, sizeY);
             SizeZ = Mathf.Max(1, sizeZ);
             _cells = new int[SizeX, SizeY, SizeZ];
+            _stamp = new int[SizeX, SizeY, SizeZ];
         }
 
         public bool InBounds(int x, int y, int z)
@@ -60,6 +69,12 @@ namespace MinecraftTetris
             return _cells[x, y, z];
         }
 
+        /// <summary>这一格最后一次写入的序号（越大越新，0 = 空格或读档进来的）。</summary>
+        public int Stamp(int x, int y, int z)
+        {
+            return _stamp[x, y, z];
+        }
+
         /// <summary>按固定顺序导出所有格子，存档用。</summary>
         public int[] Export()
         {
@@ -82,16 +97,23 @@ namespace MinecraftTetris
                 for (int y = 0; y < SizeY; y++)
                     for (int x = 0; x < SizeX; x++)
                         _cells[x, y, z] = data[i++];
+            // 读档进来的格子没有先后可言，全部归零，免得玻璃以为上面压着「后来的」方块
+            System.Array.Clear(_stamp, 0, _stamp.Length);
+            _stampSeq = 0;
         }
 
         public void Set(int x, int y, int z, int block)
         {
             _cells[x, y, z] = block;
+            // 写一块就盖一个更晚的序号；清空则归零
+            _stamp[x, y, z] = block == 0 ? 0 : ++_stampSeq;
         }
 
         public void Clear()
         {
             System.Array.Clear(_cells, 0, _cells.Length);
+            System.Array.Clear(_stamp, 0, _stamp.Length);
+            _stampSeq = 0;
         }
 
         /// <summary>
@@ -174,7 +196,10 @@ namespace MinecraftTetris
             // 换成逐格下落之后没有东西覆盖了，得自己清 —— 不清的话这一行还是满的，
             // 调用方的 while (IsRowFull(y)) 会永远转下去。
             for (int x = 0; x < SizeX; x++)
+            {
                 _cells[x, y, z] = 0;
+                _stamp[x, y, z] = 0;
+            }
 
             for (int yy = y + 1; yy < SizeY; yy++)
             {
@@ -189,7 +214,11 @@ namespace MinecraftTetris
                         continue;
 
                     _cells[x, yy - 1, z] = id;
+                    // 序号跟着方块一起走：整列平移只是换了个位置，谁先谁后没变，
+                    // 所以玻璃不会因为「被搬下来的旧方块压到」而碎（真正新落下的走 Set，会拿到新序号）
+                    _stamp[x, yy - 1, z] = _stamp[x, yy, z];
                     _cells[x, yy, z] = 0;
+                    _stamp[x, yy, z] = 0;
                 }
             }
         }
@@ -258,7 +287,10 @@ namespace MinecraftTetris
             // 同 DropRowAbove：被消的这一层要先自己清空
             for (int x = 0; x < SizeX; x++)
                 for (int z = 0; z < SizeZ; z++)
+                {
                     _cells[x, y, z] = 0;
+                    _stamp[x, y, z] = 0;
+                }
 
             for (int yy = y + 1; yy < SizeY; yy++)
             {
@@ -273,7 +305,9 @@ namespace MinecraftTetris
                             continue;
 
                         _cells[x, yy - 1, z] = id;
+                        _stamp[x, yy - 1, z] = _stamp[x, yy, z];
                         _cells[x, yy, z] = 0;
+                        _stamp[x, yy, z] = 0;
                     }
                 }
             }

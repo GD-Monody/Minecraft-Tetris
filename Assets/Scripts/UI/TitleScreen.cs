@@ -1015,7 +1015,7 @@ namespace MinecraftTetris
                 {
                     Ids = new[] { BlockCatalog.GlassId },
                     Title = "玻璃",
-                    Desc = "上面压着方块就碎，碎完上方的方块接着往下掉。",
+                    Desc = "放下来不会碎；之后有方块压到上面才碎，碎完上方的东西接着往下掉。",
                 },
                 new GuideItem
                 {
