@@ -34,6 +34,7 @@ namespace MinecraftTetris
         AudioClip _fallbackPlace;      // 组里没素材时兜底用
         AudioClip[][] _placeClips;     // 按组下标
         float[] _placeVolume;
+        float[] _placePitch;
         Dictionary<string, int> _groupIndex;
 
         AudioClip _pickupXp;
@@ -80,6 +81,7 @@ namespace MinecraftTetris
             int count = BlockSfxData.GroupCount;
             _placeClips = new AudioClip[count][];
             _placeVolume = new float[count];
+            _placePitch = new float[count];
             _groupIndex = new Dictionary<string, int>(count);
 
             int total = 0;
@@ -88,6 +90,7 @@ namespace MinecraftTetris
                 string group = BlockSfxData.Groups[g];
                 _groupIndex[group] = g;
                 _placeVolume[g] = BlockSfxData.GroupVolume[g];
+                _placePitch[g] = BlockSfxData.GroupPitch[g];
 
                 string[] names = BlockSfxData.GroupClips[g];
                 var clips = new List<AudioClip>(names.Length);
@@ -140,7 +143,8 @@ namespace MinecraftTetris
                 AudioClip[] clips = _placeClips[group];
                 if (clips != null && clips.Length > 0)
                 {
-                    float pitch = 1f + Random.Range(-PitchJitter, PitchJitter);
+                    // 组自己的音高（玻璃那组是拿破坏音凑的，抬高一点才像放下）
+                    float pitch = _placePitch[group] * (1f + Random.Range(-PitchJitter, PitchJitter));
                     Play(clips[Random.Range(0, clips.Length)], _placeVolume[group], pitch);
                     return;
                 }
