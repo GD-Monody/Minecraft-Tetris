@@ -98,6 +98,14 @@ namespace MinecraftTetris
         /// <summary>铜傀儡的身体材质。</summary>
         public static readonly int CopperBlockId = FindId("copper_block");
 
+        /// <summary>原木。雪傀儡的手臂在原版是两根棕色树枝，实体贴图里没画，拿原木凑。</summary>
+        public static readonly int OakLogId = FindId("oak_log");
+
+        /// <summary>铜块的三个氧化阶段。用哪个阶段的铜块召唤，傀儡就从哪个阶段开始。</summary>
+        public static readonly int ExposedCopperId = FindId("exposed_copper");
+        public static readonly int WeatheredCopperId = FindId("weathered_copper");
+        public static readonly int OxidizedCopperId = FindId("oxidized_copper");
+
         /// <summary>
         /// 这一格是不是「消除时不下落」的锚点方块（目前只有基岩）。
         /// 设置里关掉「基岩钉住不动」之后，基岩和普通方块一样跟着走。

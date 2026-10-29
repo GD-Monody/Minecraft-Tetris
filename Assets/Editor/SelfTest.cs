@@ -1293,27 +1293,63 @@ namespace MinecraftTetris.EditorTools
             GameSettings.SetMech(GameSettings.MechKind.Golem, true);
             Golem.Reset();
 
-            var gSnow = new Grid(4, 4, 1);
+            // 雪傀儡：南瓜头 + 竖着两格雪
+            var gSnow = new Grid(4, 5, 1);
             gSnow.Set(1, 1, 0, BlockCatalog.SnowId);
-            gSnow.Set(1, 2, 0, golemHead);
-            Check("南瓜头压在雪块上召出雪傀儡",
+            gSnow.Set(1, 2, 0, BlockCatalog.SnowId);
+            gSnow.Set(1, 3, 0, golemHead);
+            Check("南瓜头压着两格雪，召出雪傀儡",
                 Golem.Check(gSnow) == 1 && Golem.LastSummoned[0].Kind == GolemKind.Snow);
-            Check("召唤时南瓜头和脚下那格一起消失",
-                gSnow.Get(1, 1, 0) == 0 && gSnow.Get(1, 2, 0) == 0);
+            Check("雪傀儡消耗三格（南瓜头 + 两格雪）",
+                Golem.LastSummoned[0].CellCount == 3 &&
+                gSnow.Get(1, 1, 0) == 0 && gSnow.Get(1, 2, 0) == 0 && gSnow.Get(1, 3, 0) == 0);
             Check("召出来的傀儡记进收藏",
                 Golem.Collection.Count == 1 && Golem.Collection[0].Kind == GolemKind.Snow);
 
-            var gIron = new Grid(4, 4, 1);
-            gIron.Set(2, 0, 0, BlockCatalog.IronBlockId);
-            gIron.Set(2, 1, 0, golemHead);
-            Check("南瓜头压在铁块上召出铁傀儡",
-                Golem.Check(gIron) == 1 && Golem.LastSummoned[0].Kind == GolemKind.Iron);
+            // 只有一格雪不够
+            var gSnowOne = new Grid(4, 4, 1);
+            gSnowOne.Set(1, 1, 0, BlockCatalog.SnowId);
+            gSnowOne.Set(1, 2, 0, golemHead);
+            Check("只垫一格雪召不出雪傀儡",
+                Golem.Check(gSnowOne) == 0 && gSnowOne.Get(1, 2, 0) == golemHead);
 
+            // 铁傀儡：倒 T（竖两格 + 上面那格左右各一块）
+            var gIron = new Grid(6, 6, 1);
+            gIron.Set(2, 1, 0, BlockCatalog.IronBlockId);
+            gIron.Set(2, 2, 0, BlockCatalog.IronBlockId);
+            gIron.Set(1, 2, 0, BlockCatalog.IronBlockId);
+            gIron.Set(3, 2, 0, BlockCatalog.IronBlockId);
+            gIron.Set(2, 3, 0, golemHead);
+            Check("南瓜头压着倒 T 的四块铁，召出铁傀儡",
+                Golem.Check(gIron) == 1 && Golem.LastSummoned[0].Kind == GolemKind.Iron);
+            Check("铁傀儡消耗五格",
+                Golem.LastSummoned[0].CellCount == 5 && CountFilled(gIron) == 0);
+
+            // 少了左右那两块就只是「两根柱子」
+            var gIronBare = new Grid(6, 6, 1);
+            gIronBare.Set(2, 1, 0, BlockCatalog.IronBlockId);
+            gIronBare.Set(2, 2, 0, BlockCatalog.IronBlockId);
+            gIronBare.Set(2, 3, 0, golemHead);
+            Check("只有竖着的两格铁召不出铁傀儡",
+                Golem.Check(gIronBare) == 0 && gIronBare.Get(2, 3, 0) == golemHead);
+
+            // 铜傀儡：一格铜就够，氧化阶段跟着那块铜走
             var gCopper = new Grid(4, 4, 1);
-            gCopper.Set(1, 2, 0, BlockCatalog.CopperBlockId);
-            gCopper.Set(1, 3, 0, golemHead);
-            Check("南瓜头压在铜块上召出铜傀儡",
+            gCopper.Set(1, 1, 0, BlockCatalog.CopperBlockId);
+            gCopper.Set(1, 2, 0, golemHead);
+            Check("南瓜头压着一格铜，召出铜傀儡",
                 Golem.Check(gCopper) == 1 && Golem.LastSummoned[0].Kind == GolemKind.Copper);
+            Check("普通铜块召出来的傀儡是没氧化的",
+                Golem.LastSummoned[0].Oxidation == 0);
+
+            if (BlockCatalog.WeatheredCopperId > 0)
+            {
+                var gWeathered = new Grid(4, 4, 1);
+                gWeathered.Set(1, 1, 0, BlockCatalog.WeatheredCopperId);
+                gWeathered.Set(1, 2, 0, golemHead);
+                Check("用风化铜块召唤，傀儡从第二阶段开始",
+                    Golem.Check(gWeathered) == 1 && Golem.LastSummoned[0].Oxidation == 2);
+            }
 
             var gStoneHead = new Grid(4, 4, 1);
             gStoneHead.Set(1, 0, 0, mechSand > 0 ? mechSand : 1);
@@ -1328,11 +1364,114 @@ namespace MinecraftTetris.EditorTools
 
             var gGolemOff = new Grid(4, 4, 1);
             gGolemOff.Set(1, 0, 0, BlockCatalog.SnowId);
-            gGolemOff.Set(1, 1, 0, golemHead);
+            gGolemOff.Set(1, 1, 0, BlockCatalog.SnowId);
+            gGolemOff.Set(1, 2, 0, golemHead);
             GameSettings.SetMech(GameSettings.MechKind.Golem, false);
             Check("关掉傀儡开关就不召唤",
-                Golem.Check(gGolemOff) == 0 && gGolemOff.Get(1, 1, 0) == golemHead);
+                Golem.Check(gGolemOff) == 0 && gGolemOff.Get(1, 2, 0) == golemHead);
             GameSettings.SetMech(GameSettings.MechKind.Golem, true);
+
+            // 傀儡模型的部件数：每种都得有头、身体，铁和铜还要有腿
+            Check("雪傀儡有头 / 身体 / 双臂",
+                GolemModel.Snow().Length == 4 && GolemModel.Iron().Length == 6 &&
+                GolemModel.Copper().Length == 6);
+
+            // 网格尺寸：一根 18×12×11 像素的方块，换算成格应该是 1.125 × 0.75 × 0.6875
+            var cubeMesh = GolemModel.BuildCube(
+                new GolemCube(0, 40, 18, 12, 11, Vector3.zero, Vector3.zero), 128, 128);
+            Vector3 csize = cubeMesh.bounds.size;
+            Check("傀儡网格的尺寸按「像素 / 16」换算",
+                Mathf.Abs(csize.x - 18f / 16f) < 0.001f &&
+                Mathf.Abs(csize.y - 12f / 16f) < 0.001f &&
+                Mathf.Abs(csize.z - 11f / 16f) < 0.001f);
+            Check("傀儡网格是六个面（24 个顶点）", cubeMesh.vertexCount == 24);
+
+            // 绕向到底朝哪边，别自己推公式 —— 让 Unity 说。
+            // Mesh.RecalculateNormals() 就是按三角形绕向生成顶点法线的：算出来的方向和
+            // BuildCube 里显式给的法线同向，才说明这一面按 Unity 的规矩是「朝外」的。
+            // 反过来就是整块模型内外翻了，看到的是盒子内壁（贴图像是贴在里面）。
+            {
+                Mesh m2 = GolemModel.BuildCube(GolemModel.Iron()[2].Cube, 128, 128);
+                Vector3[] given = m2.normals;
+                m2.RecalculateNormals();
+                Vector3[] calc = m2.normals;
+                int mismatch = 0;
+                for (int i = 0; i < calc.Length; i++)
+                    if (Vector3.Dot(given[i], calc[i]) <= 0f)
+                        mismatch++;
+                Check("网格绕向与法线同向（Unity 按绕向算出的法线朝外）", mismatch == 0);
+            }
+
+            // 贴图不能上下颠倒：侧面里位置更高的那个顶点，UV 的 v 也必须更大
+            // （Unity 的 UV 原点在左下，v 大 = 图片上方）。
+            // 顶点顺序按「下左→下右→上右→上左」写的时候，四个侧面会一起上下翻，
+            // 看着就是整张贴图被倒过来 —— 这个只能靠算，肉眼看形状是看不出来的。
+            {
+                Mesh m3 = GolemModel.BuildCube(GolemModel.Iron()[2].Cube, 128, 128);
+                Vector3[] vv = m3.vertices;
+                Vector2[] uv3 = m3.uv;
+                int upsideDown = 0;
+                for (int f = 0; f < vv.Length; f += 4)
+                {
+                    float dy = vv[f].y - vv[f + 2].y;       // a 与 c 是同一面的对角
+                    if (Mathf.Abs(dy) < 0.001f)
+                        continue;                            // 顶面 / 底面，跳过
+                    float dv = uv3[f].y - uv3[f + 2].y;
+                    if (dy * dv <= 0f)
+                        upsideDown++;
+                }
+                Check("侧面贴图没有上下颠倒（高处顶点的 UV.v 更大）", upsideDown == 0);
+            }
+
+            // 每一面都得贴在贴图的不透明区里。26.2 的实体贴图是「展开的纸盒」，
+            // 没用到的地方 alpha=0；UV 差一格就会采到空白，shader 的 clip 把这面裁掉，
+            // 看起来就是「这块没贴上贴图」。光看截图分不清是哪个部件哪一面，所以逐面核对。
+            string uvSnow = CheckGolemUVs("snow_golem", 64, 64, GolemModel.Snow());
+            Check("snow_golem 的 24 个面全都贴在贴图上" + (uvSnow.Length == 0 ? "" : "（" + uvSnow + "）"),
+                  uvSnow.Length == 0);
+
+            string uvIron = CheckGolemUVs("iron_golem", 128, 128, GolemModel.Iron());
+            Check("iron_golem 的 36 个面全都贴在贴图上" + (uvIron.Length == 0 ? "" : "（" + uvIron + "）"),
+                  uvIron.Length == 0);
+
+            string uvCopper = CheckGolemUVs("copper_golem", 64, 64, GolemModel.Copper());
+            Check("copper_golem 的 36 个面全都贴在贴图上" + (uvCopper.Length == 0 ? "" : "（" + uvCopper + "）"),
+                  uvCopper.Length == 0);
+
+            // 各部件的实际世界高度：光看代码里的 pivot / center 算不出渲染出来多高，
+            // 直接建一个傀儡量包围盒最实在。原版铁傀儡 2.7 格、雪 1.9、铜 0.98。
+            {
+                string log = "";
+                foreach (GolemKind k in new[] { GolemKind.Snow, GolemKind.Iron, GolemKind.Copper })
+                {
+                    var sizeProbe = new GameObject("golem_probe");
+                    var pet = sizeProbe.AddComponent<GolemPet>();
+                    pet.Build(k, 0, Vector3.zero, 0f, Vector3.zero, Vector3.zero);
+
+                    var rs = sizeProbe.GetComponentsInChildren<MeshRenderer>();
+                    float lo = 999f, hi = -999f;
+                    for (int i = 0; i < rs.Length; i++)
+                    {
+                        lo = Mathf.Min(lo, rs[i].bounds.min.y);
+                        hi = Mathf.Max(hi, rs[i].bounds.max.y);
+                    }
+
+                    log += "\n  " + k + "：" + rs.Length + " 个部件，y " +
+                           lo.ToString("0.000") + " ~ " + hi.ToString("0.000") +
+                           "，高 " + (hi - lo).ToString("0.000") + " 格";
+
+                    for (int i = 0; i < rs.Length; i++)
+                    {
+                        Bounds b = rs[i].bounds;
+                        log += "\n      " + rs[i].gameObject.name + "  y " +
+                               b.min.y.ToString("0.000") + "~" + b.max.y.ToString("0.000") +
+                               "  x " + b.min.x.ToString("0.000") + "~" + b.max.x.ToString("0.000") +
+                               "  z " + b.min.z.ToString("0.000") + "~" + b.max.z.ToString("0.000");
+                    }
+                    Object.DestroyImmediate(sizeProbe);
+                }
+                Debug.Log("[golem] 傀儡实际尺寸（原版：雪 1.9 / 铁 2.7 / 铜 0.98）" + log);
+            }
 
             // 拨回全开，别把开关状态留给玩家
             for (int i = 0; i < GameSettings.MechCount; i++)
@@ -1355,6 +1494,75 @@ namespace MinecraftTetris.EditorTools
                         if (g.Get(x, y, z) > 0)
                             n++;
             return n;
+        }
+
+        /// <summary>
+        /// 逐面核对傀儡部件的 UV 是否都落在贴图的不透明区里。
+        ///
+        /// 贴图直接从磁盘读，不走 Resources.Load：Resources 里的贴图默认不开 Read/Write，
+        /// GetPixels 会抛异常；Texture2D.LoadImage 没有这个限制。
+        ///
+        /// 一个 w×h×d 的方块在 MC 实体贴图上展开成：上窄带（顶面 + 底面，宽 2w，高 d）
+        /// 压在四条侧面（宽 2(w+d)，高 h）上面。哪一段差一格，那面就采到透明像素，
+        /// shader 的 clip 把它整面裁掉 —— 表现出来就是「这块没贴上贴图」。
+        /// </summary>
+        static string CheckGolemUVs(string texName, int texW, int texH, GolemPartDef[] parts)
+        {
+            string path = System.IO.Path.Combine(Application.dataPath, "Resources/Golem/" + texName + ".png");
+            if (!System.IO.File.Exists(path))
+                return "找不到 " + path;
+
+            var tex = new Texture2D(2, 2);
+            tex.LoadImage(System.IO.File.ReadAllBytes(path));
+            Color32[] px = tex.GetPixels32();   // 左下原点
+
+            string[] faceNames = { "顶", "底", "左", "右", "正", "背" };
+            int bad = 0;
+            string where = "";
+
+            for (int i = 0; i < parts.Length; i++)
+            {
+                GolemCube c = parts[i].Cube;
+
+                // 与 GolemModel.BuildCube 里的六个面一一对应（图片坐标，左上原点）
+                int[][] rects =
+                {
+                    new[] { c.U + c.D,             c.V,       c.U + c.D + c.W,           c.V + c.D },
+                    new[] { c.U + c.D + c.W,       c.V,       c.U + c.D + c.W * 2,       c.V + c.D },
+                    new[] { c.U + c.D + c.W,       c.V + c.D, c.U + c.D + c.W + c.D,     c.V + c.D + c.H },
+                    new[] { c.U,                   c.V + c.D, c.U + c.D,                 c.V + c.D + c.H },
+                    new[] { c.U + c.D,             c.V + c.D, c.U + c.D + c.W,           c.V + c.D + c.H },
+                    new[] { c.U + c.D + c.W + c.D, c.V + c.D, c.U + c.D + c.W * 2 + c.D, c.V + c.D + c.H },
+                };
+
+                for (int f = 0; f < rects.Length; f++)
+                {
+                    int empty = 0, total = 0;
+                    for (int y = rects[f][1]; y < rects[f][3]; y++)
+                    {
+                        for (int x = rects[f][0]; x < rects[f][2]; x++)
+                        {
+                            total++;
+                            bool outside = x < 0 || y < 0 || x >= texW || y >= texH;
+                            if (outside)
+                            {
+                                empty++;
+                                continue;
+                            }
+                            if (px[(texH - 1 - y) * texW + x].a == 0)
+                                empty++;
+                        }
+                    }
+
+                    if (total == 0 || empty > 0)
+                    {
+                        bad++;
+                        where += parts[i].Part + faceNames[f] + " ";
+                    }
+                }
+            }
+
+            return bad == 0 ? "" : bad + " 个面采到空白：" + where.Trim();
         }
 
         /// <summary>把一条还原动画跑完（消失 + 重建）。</summary>

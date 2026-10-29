@@ -13,20 +13,18 @@ namespace MinecraftTetris
     }
 
     /// <summary>
-    /// 傀儡召唤：南瓜头压在雪块 / 铁块 / 铜块上就召出对应傀儡。
+    /// 傀儡召唤：按原版的摆法搭好方块，最上面压一个南瓜头，就召出对应傀儡。
     ///
-    /// 原版是「按形状摆好方块 + 最后放南瓜头」召唤，这里的方块是随机四格，
-    /// 摆不出原版那种 T 形，所以简化成一条：**南瓜头正下方那一格是什么，就召哪种**：
-    /// - 雪块 → 雪傀儡
-    /// - 铁块 → 铁傀儡
-    /// - 铜块 → 铜傀儡
-    /// 雕刻南瓜和普通南瓜都算（原版两个都能召唤）。
+    /// 三种的摆法（南瓜头永远在最上面，下面按原版形状铺）：
+    /// - **雪傀儡**：南瓜头 + 竖着两格雪块（原版就是两个雪块 + 南瓜头）
+    /// - **铁傀儡**：南瓜头 + 竖着两格铁块，顶上那格左右各再来一块 —— 也就是「倒 T」的四个铁块
+    /// - **铜傀儡**：南瓜头 + 一格铜块（原版就这么简单）
     ///
-    /// 召唤时**两格一起消失**（南瓜头和它踩着的方块），因为傀儡是由这两格「变成」的，
-    /// 不是白送的。抽走两格之后上方可能悬空，调用方（GameLoop）要补一次重力结算。
+    /// 铜块用哪个氧化阶段（普通 / 斑驳 / 风化 / 氧化），召出来的铜傀儡就从那个阶段开始，
+    /// 之后像原版一样慢慢继续氧化，见 GolemPet.TickOxidation。
     ///
-    /// 傀儡不在场地里活动，而是挪到场外右侧摆成一排当收藏，见 Bootstrap.SpawnGolemModel。
-    /// 所以这里只负责「认出来 + 清格子 + 记账」，不参与碰撞和消行。
+    /// 召唤会**把这几个格子一起消掉**：傀儡是由这些方块「变成」的，不是白送的。
+    /// 抽掉之后上面压着的东西可能悬空，调用方（GameLoop）要补一次重力结算。
     ///
     /// 设置里的「傀儡召唤」关掉之后，南瓜头压在什么上面都只是一块普通砖。
     /// </summary>
@@ -43,6 +41,10 @@ namespace MinecraftTetris
             public int X, Y, Z;
             /// <summary>被一起消掉的脚下那一格的方块编号，视图层撒碎块用。</summary>
             public int BodyBlockId;
+            /// <summary>铜傀儡的初始氧化等级 0~3（其它傀儡恒为 0）。</summary>
+            public int Oxidation;
+            /// <summary>一共消耗掉几格方块（含南瓜头），播粒子用。</summary>
+            public int CellCount;
         }
 
         /// <summary>最近一次 Check 召出来的傀儡。</summary>
@@ -59,18 +61,20 @@ namespace MinecraftTetris
             return blockId == BlockCatalog.CarvedPumpkinId || blockId == BlockCatalog.PumpkinId;
         }
 
-        /// <summary>这块砖压在下面能召出什么（召不出返回 None）。</summary>
-        public static GolemKind KindOf(int blockId)
+        /// <summary>这块铜是第几氧化阶段（0~3），不是铜返回 -1。</summary>
+        public static int CopperStage(int blockId)
         {
             if (blockId <= 0)
-                return GolemKind.None;
-            if (blockId == BlockCatalog.SnowId)
-                return GolemKind.Snow;
-            if (blockId == BlockCatalog.IronBlockId)
-                return GolemKind.Iron;
+                return -1;
             if (blockId == BlockCatalog.CopperBlockId)
-                return GolemKind.Copper;
-            return GolemKind.None;
+                return 0;
+            if (blockId == BlockCatalog.ExposedCopperId)
+                return 1;
+            if (blockId == BlockCatalog.WeatheredCopperId)
+                return 2;
+            if (blockId == BlockCatalog.OxidizedCopperId)
+                return 3;
+            return -1;
         }
 
         public static void Reset()
@@ -80,7 +84,7 @@ namespace MinecraftTetris
         }
 
         /// <summary>
-        /// 扫一遍场地，把「南瓜头压着对应方块」的组合召成傀儡。
+        /// 扫一遍场地，把摆好的傀儡结构召出来。
         /// 返回这一次召了几个（结果也写进 LastSummoned，同时追加进 Collection）。
         /// </summary>
         public static int Check(Grid grid)
@@ -97,6 +101,7 @@ namespace MinecraftTetris
 
             int count = 0;
 
+            // 南瓜头下面至少要有一格垫脚，所以从 y = 1 开始扫
             for (int y = 1; y < grid.SizeY; y++)
             {
                 for (int z = 0; z < grid.SizeZ; z++)
@@ -106,31 +111,80 @@ namespace MinecraftTetris
                         if (!IsPumpkin(grid.Get(x, y, z)))
                             continue;
 
-                        // 只看正下方：傀儡是「站在」方块上的，斜着压过去不算
-                        int body = grid.Get(x, y - 1, z);
-                        GolemKind kind = KindOf(body);
-                        if (kind == GolemKind.None)
-                            continue;
-
-                        // 两格一起消失：脑袋和脚下那块都变成傀儡了
-                        grid.Set(x, y, z, 0);
-                        grid.Set(x, y - 1, z, 0);
-
-                        var s = new Summon
+                        Summon s;
+                        if (TrySummon(grid, x, y, z, out s))
                         {
-                            Kind = kind,
-                            X = x, Y = y, Z = z,
-                            BodyBlockId = body,
-                        };
-                        count++;
-                        if (outList != null)
-                            outList.Add(s);
-                        Collection.Add(s);
+                            count++;
+                            if (outList != null)
+                                outList.Add(s);
+                            Collection.Add(s);
+                        }
                     }
                 }
             }
 
             return count;
+        }
+
+        /// <summary>
+        /// 以 (x,y,z) 的南瓜头为顶，看下面是不是某个傀儡的摆法。
+        /// 是的话把那几格清空并填好记录。
+        /// </summary>
+        static bool TrySummon(Grid grid, int x, int y, int z, out Summon summon)
+        {
+            summon = default(Summon);
+
+            // 铜傀儡最省事：正下方一格铜块就行，氧化阶段跟着那块铜走
+            int below = grid.Get(x, y - 1, z);
+            int stage = CopperStage(below);
+            if (stage >= 0)
+            {
+                summon = Make(GolemKind.Copper, x, y, z, below, stage, 2);
+                grid.Set(x, y, z, 0);
+                grid.Set(x, y - 1, z, 0);
+                return true;
+            }
+
+            int snowId = BlockCatalog.SnowId;
+            int ironId = BlockCatalog.IronBlockId;
+
+            // 雪傀儡：竖着两格雪块
+            if (snowId > 0 && below == snowId && y >= 2 && grid.Get(x, y - 2, z) == snowId)
+            {
+                summon = Make(GolemKind.Snow, x, y, z, snowId, 0, 3);
+                grid.Set(x, y, z, 0);
+                grid.Set(x, y - 1, z, 0);
+                grid.Set(x, y - 2, z, 0);
+                return true;
+            }
+
+            // 铁傀儡：竖着两格铁块，顶上那格左右各再来一块（倒 T）
+            if (ironId > 0 && below == ironId && y >= 2 && grid.Get(x, y - 2, z) == ironId &&
+                x >= 1 && x + 1 < grid.SizeX &&
+                grid.Get(x - 1, y - 1, z) == ironId && grid.Get(x + 1, y - 1, z) == ironId)
+            {
+                summon = Make(GolemKind.Iron, x, y, z, ironId, 0, 5);
+                grid.Set(x, y, z, 0);
+                grid.Set(x, y - 1, z, 0);
+                grid.Set(x, y - 2, z, 0);
+                grid.Set(x - 1, y - 1, z, 0);
+                grid.Set(x + 1, y - 1, z, 0);
+                return true;
+            }
+
+            return false;
+        }
+
+        static Summon Make(GolemKind kind, int x, int y, int z, int bodyId, int oxidation, int cells)
+        {
+            return new Summon
+            {
+                Kind = kind,
+                X = x, Y = y, Z = z,
+                BodyBlockId = bodyId,
+                Oxidation = oxidation,
+                CellCount = cells,
+            };
         }
     }
 }
