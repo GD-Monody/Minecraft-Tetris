@@ -85,6 +85,18 @@ namespace MinecraftTetris
         GUIStyle _guideNoteStyle;
         /// <summary>「游戏规则」按键栏：键名居中。</summary>
         GUIStyle _guideKeyStyle;
+
+        // ---------- 设置各页的大号样式（尺寸统统 ×PageScale） ----------
+        GUIStyle _btnBig;
+        GUIStyle _panelTitleBig;
+        GUIStyle _rowLabelBig;
+        GUIStyle _hintBig;
+        GUIStyle _valueBig;
+        GUIStyle _sliderShadowBig;
+        GUIStyle _guideNameBig;
+        GUIStyle _guideDescBig;
+        GUIStyle _guideNoteBig;
+        GUIStyle _guideKeyBig;
         Texture2D _btnNormal;
         Texture2D _btnHover;
         Texture2D _btnActive;
@@ -412,21 +424,21 @@ namespace MinecraftTetris
 
         void DrawSettingsMain()
         {
-            float w = UiSkin.P(420f);
+            float w = Pg(420f);
             // 按钮数 × 54 + 上下留白；加一项就跟着涨，不然会压到「返回」上
-            float h = UiSkin.P(580f);
+            float h = Pg(540f);
             Rect panel = CenterPanel(w, h);
             DrawPanel(panel);
 
-            GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(16f), w, UiSkin.P(44f)), "设置", _panelTitleStyle);
+            GUI.Label(new Rect(panel.x, panel.y + Pg(16f), w, Pg(44f)), "设置", _panelTitleBig);
 
-            float bw = UiSkin.P(300f);
-            float bh = UiSkin.P(42f);
-            float step = UiSkin.P(54f);
+            float bw = Pg(300f);
+            float bh = Pg(42f);
+            float step = Pg(54f);
             float bx = panel.x + (w - bw) * 0.5f;
-            float y = panel.y + UiSkin.P(80f);
+            float y = panel.y + Pg(80f);
 
-            if (GUI.Button(new Rect(bx, y, bw, bh), SfxEnabled ? "音效：开" : "音效：关", _btnStyle))
+            if (GUI.Button(new Rect(bx, y, bw, bh), SfxEnabled ? "音效：开" : "音效：关", _btnBig))
             {
                 bool next = !SfxEnabled;
                 PlayerPrefs.SetInt(SfxKey, next ? 1 : 0);
@@ -442,7 +454,7 @@ namespace MinecraftTetris
                 ? "消除：行消（Z=1 固定）"
                 : (GameSettings.ElimMode == GameSettings.ElimLayer ? "消除：层消" : "消除：行消");
             GUI.enabled = canLayer;
-            bool elimClicked = GUI.Button(new Rect(bx, y, bw, bh), elimName, _btnStyle);
+            bool elimClicked = GUI.Button(new Rect(bx, y, bw, bh), elimName, _btnBig);
             GUI.enabled = true;
             // IMGUI 关掉 GUI.enabled 只是不吃点击，自定义贴图不会自己变灰，压一层半透明盖住
             if (!canLayer)
@@ -458,7 +470,7 @@ namespace MinecraftTetris
             y += step;
 
             string speedName = "下落速度：" + GameSettings.FallSpeed.ToString("0.00") + "×";
-            if (GUI.Button(new Rect(bx, y, bw, bh), speedName, _btnStyle))
+            if (GUI.Button(new Rect(bx, y, bw, bh), speedName, _btnBig))
             {
                 _tmpSpeed = GameSettings.FallSpeed;
                 _page = SettingsPage.Speed;
@@ -468,21 +480,21 @@ namespace MinecraftTetris
             string musicName = GameSettings.MusicVolume <= 0.005f
                 ? "音乐：关"
                 : "音乐：" + Mathf.RoundToInt(GameSettings.MusicVolume * 100f) + "%";
-            if (GUI.Button(new Rect(bx, y, bw, bh), musicName, _btnStyle))
+            if (GUI.Button(new Rect(bx, y, bw, bh), musicName, _btnBig))
             {
                 _tmpMusic = GameSettings.MusicVolume;
                 _page = SettingsPage.Music;
             }
             y += step;
 
-            if (GUI.Button(new Rect(bx, y, bw, bh), "按键设置", _btnStyle))
+            if (GUI.Button(new Rect(bx, y, bw, bh), "按键设置", _btnBig))
             {
                 _page = SettingsPage.Keys;
                 _capturingAction = -1;
             }
             y += step;
 
-            if (GUI.Button(new Rect(bx, y, bw, bh), "场地尺寸", _btnStyle))
+            if (GUI.Button(new Rect(bx, y, bw, bh), "场地尺寸", _btnBig))
             {
                 _tmpX = GameSettings.SizeX;
                 _tmpY = GameSettings.SizeY;
@@ -493,11 +505,11 @@ namespace MinecraftTetris
 
             // 特殊方块各机制的开关（TNT 炸不炸、沙子落不落…）都收在这一页里，
             // 原来「基岩进池」「结构方块进池」两个开关已经去掉：方块常驻池，行为由机制开关决定
-            if (GUI.Button(new Rect(bx, y, bw, bh), "特殊方块开关", _btnStyle))
+            if (GUI.Button(new Rect(bx, y, bw, bh), "特殊方块开关", _btnBig))
                 _page = SettingsPage.Mech;
-            y += UiSkin.P(62f);
+            y += Pg(62f);
 
-            if (GUI.Button(new Rect(bx, y, bw, bh), "返回", _btnStyle))
+            if (GUI.Button(new Rect(bx, y, bw, bh), "返回", _btnBig))
                 ShowSettings = false;
         }
 
@@ -507,86 +519,93 @@ namespace MinecraftTetris
         /// </summary>
         void DrawSettingsMech()
         {
-            float rowH = UiSkin.P(38f);
-            float rowGap = UiSkin.P(8f);
-            float w = UiSkin.P(560f);
-            float h = UiSkin.P(80f) + GameSettings.MechCount * (rowH + rowGap) + UiSkin.P(100f);
+            // 十项排两列、每列五行：和按键页同理，一条竖列在放大一倍后会顶出屏幕
+            const int perCol = 5;
+            float rowH = Pg(46f);
+            float rowGap = Pg(10f);
+            float colW = Pg(400f);
+            float colGap = Pg(50f);
+            int cols = (GameSettings.MechCount + perCol - 1) / perCol;
+
+            float w = Pg(80f) + cols * colW + (cols - 1) * colGap;
+            float h = Pg(80f) + perCol * (rowH + rowGap) + Pg(150f);
             Rect panel = CenterPanel(w, h);
             DrawPanel(panel);
 
-            GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(12f), w, UiSkin.P(40f)), "特殊方块机制", _panelTitleStyle);
+            GUI.Label(new Rect(panel.x, panel.y + Pg(12f), w, Pg(44f)), "特殊方块机制", _panelTitleBig);
 
-            float bw = UiSkin.P(360f);
-            float bx = panel.x + (w - bw) * 0.5f;
-            float y = panel.y + UiSkin.P(66f);
-
+            float top = panel.y + Pg(70f);
             for (int i = 0; i < GameSettings.MechCount; i++)
             {
                 GameSettings.MechKind kind = (GameSettings.MechKind)i;
                 bool on = GameSettings.Mech(kind);
                 string label = GameSettings.MechLabel(kind) + (on ? "：开" : "：关");
-                if (GUI.Button(new Rect(bx, y, bw, rowH), label, _btnStyle))
+
+                float x = panel.x + Pg(40f) + (i / perCol) * (colW + colGap);
+                float y = top + (i % perCol) * (rowH + rowGap);
+
+                if (GUI.Button(new Rect(x, y, colW, rowH), label, _btnBig))
                     GameSettings.SetMech(kind, !on);
-                y += rowH + rowGap;
             }
 
-            GUI.Label(new Rect(panel.x, y - UiSkin.P(2f), w, UiSkin.P(28f)),
-                "关掉只是这种方块不再按特殊规则动，方块照常出现", _guideNoteStyle);
+            GUI.Label(new Rect(panel.x, panel.y + h - Pg(120f), w, Pg(30f)),
+                "关掉只是这种方块不再按特殊规则动，方块照常出现", _guideNoteBig);
 
-            if (GUI.Button(new Rect(bx, panel.y + h - UiSkin.P(58f), bw, UiSkin.P(42f)), "返回", _btnStyle))
+            float bw = Pg(260f);
+            if (GUI.Button(new Rect(panel.x + (w - bw) * 0.5f, panel.y + h - Pg(70f), bw, Pg(44f)), "返回", _btnBig))
                 _page = SettingsPage.Main;
         }
 
         void DrawSettingsKeys()
         {
-            // 12 组键 × 每行 P(40)+P(4)：放大字号后仍要能塞进 1440×900 的窗口
-            float rowH = UiSkin.P(40f);
-            float rowGap = UiSkin.P(4f);
+            // 12 组键排成两列（每列 6 行）。原来是一条竖列 12 行，整页放大一倍之后
+            // 行数 × 行高会直接顶出屏幕，只能改成两列。
+            const int perCol = 6;
+            float rowH = Pg(44f);
+            float rowGap = Pg(8f);
+            float colW = Pg(400f);
+            float colGap = Pg(60f);
+            int cols = (AllActions.Length + perCol - 1) / perCol;
 
-            float w = UiSkin.P(480f);
-            // 面板高度跟着键位条数走，不然每加一组键（比如俯视旋转）最后一行就会压到底部按钮上
-            float h = UiSkin.P(62f) + AllActions.Length * (rowH + rowGap) + UiSkin.P(80f);
+            float w = Pg(80f) + cols * colW + (cols - 1) * colGap;
+            float h = Pg(62f) + perCol * (rowH + rowGap) + Pg(104f);
             Rect panel = CenterPanel(w, h);
             DrawPanel(panel);
 
-            GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(12f), w, UiSkin.P(44f)), "按键设置", _panelTitleStyle);
+            GUI.Label(new Rect(panel.x, panel.y + Pg(12f), w, Pg(44f)), "按键设置", _panelTitleBig);
 
-            float rowW = UiSkin.P(380f);
-            float bx = panel.x + (w - rowW) * 0.5f;
-            float y = panel.y + UiSkin.P(62f);
-
+            float top = panel.y + Pg(66f);
             for (int i = 0; i < AllActions.Length; i++)
             {
                 GameAction action = AllActions[i];
-                var row = new Rect(bx, y, rowW, rowH);
+                float x = panel.x + Pg(40f) + (i / perCol) * (colW + colGap);
+                float y = top + (i % perCol) * (rowH + rowGap);
 
-                GUI.Label(new Rect(row.x, row.y, UiSkin.P(190f), rowH), ActionLabel(action), _rowLabelStyle);
+                GUI.Label(new Rect(x, y, Pg(170f), rowH), ActionLabel(action), _rowLabelBig);
 
                 string keyName = _capturingAction == (int)action
                     ? "按任意键…"
                     : KeyName(KeyboardInput.GetPrimaryKey(action));
 
-                if (GUI.Button(new Rect(row.x + UiSkin.P(200f), row.y, UiSkin.P(180f), rowH), keyName, _btnStyle))
-                {
+                if (GUI.Button(new Rect(x + Pg(175f), y, Pg(225f), rowH), keyName, _btnBig))
                     _capturingAction = (int)action;
-                }
-
-                y += rowH + rowGap;
             }
 
             if (_capturingAction >= 0)
-            {
-                GUI.Label(new Rect(panel.x, panel.y + h - UiSkin.P(96f), w, UiSkin.P(30f)), "按 Esc 取消", _rowLabelStyle);
-            }
+                GUI.Label(new Rect(panel.x, panel.y + h - Pg(114f), w, Pg(30f)), "按 Esc 取消", _rowLabelBig);
 
-            float bottomY = panel.y + h - UiSkin.P(62f);
-            if (GUI.Button(new Rect(bx, bottomY, UiSkin.P(180f), UiSkin.P(42f)), "恢复默认", _btnStyle))
+            float bw = Pg(210f);
+            float gap = Pg(40f);
+            float bx = panel.x + (w - (bw * 2f + gap)) * 0.5f;
+            float bottomY = panel.y + h - Pg(66f);
+
+            if (GUI.Button(new Rect(bx, bottomY, bw, Pg(44f)), "恢复默认", _btnBig))
             {
                 ResetKeys();
                 if (OnKeysChanged != null)
                     OnKeysChanged();
             }
-            if (GUI.Button(new Rect(bx + UiSkin.P(200f), bottomY, UiSkin.P(180f), UiSkin.P(42f)), "返回", _btnStyle))
+            if (GUI.Button(new Rect(bx + bw + gap, bottomY, bw, Pg(44f)), "返回", _btnBig))
             {
                 _capturingAction = -1;
                 _page = SettingsPage.Main;
@@ -595,40 +614,40 @@ namespace MinecraftTetris
 
         void DrawSettingsSize()
         {
-            float w = UiSkin.P(460f);
-            float h = UiSkin.P(500f);
+            float w = Pg(460f);
+            float h = Pg(500f);
             Rect panel = CenterPanel(w, h);
             DrawPanel(panel);
 
-            GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(14f), w, UiSkin.P(44f)), "场地尺寸", _panelTitleStyle);
+            GUI.Label(new Rect(panel.x, panel.y + Pg(14f), w, Pg(44f)), "场地尺寸", _panelTitleBig);
 
             // 三个轴都是拖拽滑条，和下落速度、音乐音量一个样式。
             // 这里只在内存里改 _tmpX/Y/Z，真正落盘要等下面「应用并重启」——尺寸一变就得清存档重建场地。
-            float rowW = UiSkin.P(360f);
+            float rowW = Pg(360f);
             float bx = panel.x + (w - rowW) * 0.5f;
-            float y = panel.y + UiSkin.P(76f);
+            float y = panel.y + Pg(76f);
 
             DrawSizeSlider(SliderSizeX, bx, y, rowW, "宽度 X", GameSettings.MinSizeX, GameSettings.MaxSizeX, ref _tmpX);
-            y += UiSkin.P(58f);
+            y += Pg(58f);
             DrawSizeSlider(SliderSizeY, bx, y, rowW, "高度 Y", GameSettings.MinSizeY, GameSettings.MaxSizeY, ref _tmpY);
-            y += UiSkin.P(58f);
+            y += Pg(58f);
             DrawSizeSlider(SliderSizeZ, bx, y, rowW, "深度 Z", GameSettings.MinSizeZ, GameSettings.MaxSizeZ, ref _tmpZ);
-            y += UiSkin.P(58f);
+            y += Pg(58f);
 
-            GUI.Label(new Rect(bx, y, rowW, UiSkin.P(28f)), "拖动滑条调大小，改完点「应用并重启」", _hintStyle);
-            y += UiSkin.P(28f);
-            GUI.Label(new Rect(bx, y, rowW, UiSkin.P(28f)), "深度大于 1 才能用 W / S 前后移动、才能选层消", _hintStyle);
-            y += UiSkin.P(34f);
+            GUI.Label(new Rect(bx, y, rowW, Pg(28f)), "拖动滑条调大小，改完点「应用并重启」", _hintBig);
+            y += Pg(28f);
+            GUI.Label(new Rect(bx, y, rowW, Pg(28f)), "深度大于 1 才有前后移动和层消", _hintBig);
+            y += Pg(34f);
 
-            if (GUI.Button(new Rect(bx, y, rowW, UiSkin.P(44f)), "应用并重启", _btnStyle))
+            if (GUI.Button(new Rect(bx, y, rowW, Pg(44f)), "应用并重启", _btnBig))
             {
                 GameSettings.SetSize(_tmpX, _tmpY, _tmpZ);
                 if (OnSizeApplied != null)
                     OnSizeApplied();
             }
-            y += UiSkin.P(54f);
+            y += Pg(54f);
 
-            if (GUI.Button(new Rect(bx, y, rowW, UiSkin.P(42f)), "返回", _btnStyle))
+            if (GUI.Button(new Rect(bx, y, rowW, Pg(42f)), "返回", _btnBig))
                 _page = SettingsPage.Main;
         }
 
@@ -638,7 +657,7 @@ namespace MinecraftTetris
             int v = Mathf.Clamp(value, min, max);
             float t = max > min ? Mathf.Clamp01((v - min) / (float)(max - min)) : 0f;
 
-            if (McSlider(id, new Rect(x, y, w, UiSkin.P(46f)), ref t,
+            if (McSlider(id, new Rect(x, y, w, Pg(46f)), ref t,
                     f => label + "  " + Mathf.RoundToInt(Mathf.Lerp(min, max, f))))
             {
                 value = Mathf.Clamp(Mathf.RoundToInt(Mathf.Lerp(min, max, t)), min, max);
@@ -647,14 +666,14 @@ namespace MinecraftTetris
 
         void DrawSettingsSpeed()
         {
-            float w = UiSkin.P(500f);
-            float h = UiSkin.P(360f);
+            float w = Pg(500f);
+            float h = Pg(360f);
             Rect panel = CenterPanel(w, h);
             DrawPanel(panel);
 
-            GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(14f), w, UiSkin.P(44f)), "下落速度", _panelTitleStyle);
+            GUI.Label(new Rect(panel.x, panel.y + Pg(14f), w, Pg(44f)), "下落速度", _panelTitleBig);
 
-            float rowW = UiSkin.P(400f);
+            float rowW = Pg(400f);
             float bx = panel.x + (w - rowW) * 0.5f;
 
             // 和 MC 的设置一样：一条滑条拖到哪儿算哪儿，数值写在滑条上。
@@ -662,7 +681,7 @@ namespace MinecraftTetris
             float min = GameSettings.MinFallSpeed;
             float max = GameSettings.MaxFallSpeed;
             float t = Mathf.InverseLerp(min, max, GameSettings.ClampFallSpeed(_tmpSpeed));
-            var sliderRect = new Rect(bx, panel.y + UiSkin.P(86f), rowW, UiSkin.P(46f));
+            var sliderRect = new Rect(bx, panel.y + Pg(86f), rowW, Pg(46f));
             if (McSlider(SliderSpeed, sliderRect, ref t,
                     x => "下落速度  " + Mathf.Lerp(min, max, x).ToString("0.00") + "×"))
             {
@@ -673,22 +692,22 @@ namespace MinecraftTetris
             }
 
             // 四行提示，每行都短到不会折行（折行会撑破 Rect、压到下面的按钮上）
-            float lineH = UiSkin.P(28f);
-            float y = panel.y + UiSkin.P(152f);
-            GUI.Label(new Rect(bx, y, rowW, lineH), "按住圆头拖动，或点滑条上任意位置", _hintStyle);
+            float lineH = Pg(28f);
+            float y = panel.y + Pg(152f);
+            GUI.Label(new Rect(bx, y, rowW, lineH), "按住圆头拖动，或点滑条上任意位置", _hintBig);
             y += lineH;
             GUI.Label(new Rect(bx, y, rowW, lineH),
-                "1.00× = 标准（每 " + GameLoop.BaseFallInterval.ToString("0.00") + " 秒落一格）", _hintStyle);
+                "1.00× = 标准（每 " + GameLoop.BaseFallInterval.ToString("0.00") + " 秒落一格）", _hintBig);
             y += lineH;
             GUI.Label(new Rect(bx, y, rowW, lineH),
                 "当前：每 " + (GameLoop.BaseFallInterval / Mathf.Max(0.01f, _tmpSpeed)).ToString("0.00") + " 秒落一格",
-                _hintStyle);
+                _hintBig);
             y += lineH;
-            GUI.Label(new Rect(bx, y, rowW, lineH), "范围 0.01 ~ 2.00，3D 场地建议 0.50 ~ 0.80", _hintStyle);
+            GUI.Label(new Rect(bx, y, rowW, lineH), "范围 0.01 ~ 2.00，3D 场地建议 0.50 ~ 0.80", _hintBig);
 
-            float bottomY = panel.y + h - UiSkin.P(62f);
-            float bh = UiSkin.P(42f);
-            if (GUI.Button(new Rect(bx, bottomY, UiSkin.P(190f), bh), "恢复标准", _btnStyle))
+            float bottomY = panel.y + h - Pg(62f);
+            float bh = Pg(42f);
+            if (GUI.Button(new Rect(bx, bottomY, Pg(190f), bh), "恢复标准", _btnBig))
             {
                 _tmpSpeed = GameSettings.DefaultFallSpeed;
                 GameSettings.SetFallSpeed(_tmpSpeed);
@@ -696,7 +715,7 @@ namespace MinecraftTetris
                     OnFallSpeedChanged();
             }
 
-            if (GUI.Button(new Rect(bx + rowW - UiSkin.P(190f), bottomY, UiSkin.P(190f), bh), "返回", _btnStyle))
+            if (GUI.Button(new Rect(bx + rowW - Pg(190f), bottomY, Pg(190f), bh), "返回", _btnBig))
                 _page = SettingsPage.Main;
         }
 
@@ -706,18 +725,18 @@ namespace MinecraftTetris
         /// </summary>
         void DrawSettingsMusic()
         {
-            float w = UiSkin.P(500f);
-            float h = UiSkin.P(360f);
+            float w = Pg(500f);
+            float h = Pg(360f);
             Rect panel = CenterPanel(w, h);
             DrawPanel(panel);
 
-            GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(14f), w, UiSkin.P(44f)), "音乐音量", _panelTitleStyle);
+            GUI.Label(new Rect(panel.x, panel.y + Pg(14f), w, Pg(44f)), "音乐音量", _panelTitleBig);
 
-            float rowW = UiSkin.P(400f);
+            float rowW = Pg(400f);
             float bx = panel.x + (w - rowW) * 0.5f;
 
             float t = GameSettings.ClampMusicVolume(_tmpMusic);
-            var sliderRect = new Rect(bx, panel.y + UiSkin.P(86f), rowW, UiSkin.P(46f));
+            var sliderRect = new Rect(bx, panel.y + Pg(86f), rowW, Pg(46f));
             if (McSlider(SliderMusic, sliderRect, ref t, MusicLabel))
             {
                 _tmpMusic = GameSettings.ClampMusicVolume(t);
@@ -727,19 +746,19 @@ namespace MinecraftTetris
             }
 
             // 一行一句，短到不会折行（折行会撑破 Rect、压到底部按钮上）
-            float lineH = UiSkin.P(28f);
-            float y = panel.y + UiSkin.P(152f);
-            GUI.Label(new Rect(bx, y, rowW, lineH), "按住圆头拖动，拖到最左就是静音", _hintStyle);
+            float lineH = Pg(28f);
+            float y = panel.y + Pg(152f);
+            GUI.Label(new Rect(bx, y, rowW, lineH), "按住圆头拖动，拖到最左就是静音", _hintBig);
             y += lineH;
-            GUI.Label(new Rect(bx, y, rowW, lineH), "原版曲库，随机播放，两首之间留一段静默", _hintStyle);
+            GUI.Label(new Rect(bx, y, rowW, lineH), "原版曲库，随机播放，两首之间留一段静默", _hintBig);
             y += lineH;
-            GUI.Label(new Rect(bx, y, rowW, lineH), "标题界面用菜单曲，进游戏换成常速曲", _hintStyle);
+            GUI.Label(new Rect(bx, y, rowW, lineH), "标题界面用菜单曲，进游戏换成常速曲", _hintBig);
             y += lineH;
-            GUI.Label(new Rect(bx, y, rowW, lineH), "0% = 关闭音乐（放置音效另算）", _hintStyle);
+            GUI.Label(new Rect(bx, y, rowW, lineH), "0% = 关闭音乐（放置音效另算）", _hintBig);
 
-            float bottomY = panel.y + h - UiSkin.P(62f);
-            float bh = UiSkin.P(42f);
-            if (GUI.Button(new Rect(bx, bottomY, UiSkin.P(190f), bh), "恢复默认", _btnStyle))
+            float bottomY = panel.y + h - Pg(62f);
+            float bh = Pg(42f);
+            if (GUI.Button(new Rect(bx, bottomY, Pg(190f), bh), "恢复默认", _btnBig))
             {
                 _tmpMusic = GameSettings.DefaultMusicVolume;
                 GameSettings.SetMusicVolume(_tmpMusic);
@@ -747,7 +766,7 @@ namespace MinecraftTetris
                     OnMusicChanged();
             }
 
-            if (GUI.Button(new Rect(bx + rowW - UiSkin.P(190f), bottomY, UiSkin.P(190f), bh), "返回", _btnStyle))
+            if (GUI.Button(new Rect(bx + rowW - Pg(190f), bottomY, Pg(190f), bh), "返回", _btnBig))
                 _page = SettingsPage.Main;
         }
 
@@ -770,7 +789,7 @@ namespace MinecraftTetris
             Event e = Event.current;
             bool changed = false;
 
-            float handle = UiSkin.P(12f);
+            float handle = Pg(12f);
             float travel = Mathf.Max(1f, r.width - handle);
 
             if (e != null)
@@ -817,14 +836,17 @@ namespace MinecraftTetris
 
             // 把手：浅灰一块，右边压一道深色，看着像凸起来的塑料件
             var knob = new Rect(r.x + travel * t, r.y + 1f, handle, r.height - 2f);
-            DrawRect(knob, new Color(0.74f, 0.77f, 0.83f, 1f));
-            DrawRect(new Rect(knob.xMax - 1f, knob.y, 1f, knob.height), new Color(0.38f, 0.41f, 0.47f, 1f));
+            // 圆头用中灰而不是浅灰：白字要从它上面压过去，浅灰上白字会糊成一片
+            DrawRect(knob, new Color(0.46f, 0.49f, 0.56f, 1f));
+            DrawRect(new Rect(knob.xMax - 1f, knob.y, 1f, knob.height), new Color(0.26f, 0.28f, 0.33f, 1f));
 
             // 字在圆头上再盖一遍：先落一层深影子（往右下偏 1px），再写白字。
             // 圆头滑到中间时正好从字中间穿过，没有这层影子那块会糊成一片。
             string text = label(t);
-            GUI.Label(new Rect(r.x + 1f, r.y + 1f, r.width, r.height), text, _sliderShadowStyle);
-            GUI.Label(r, text, _valueStyle);
+            // 影子也要跟着放大：1px 的偏移在 2 倍字号下根本压不住圆头那块浅灰
+            float sh = Mathf.Max(1f, Pg(1f));
+            GUI.Label(new Rect(r.x + sh, r.y + sh, r.width, r.height), text, _sliderShadowBig);
+            GUI.Label(r, text, _valueBig);
             return changed;
         }
 
@@ -1041,32 +1063,33 @@ namespace MinecraftTetris
             if (_guideTab < 0 || _guideTab >= GuideTabCount)
                 _guideTab = GuideTabPlay;
 
-            float w = UiSkin.P(1060f);
+            // 这一页内容最多，放大一倍之后宽高都顶到屏幕边上，所以横向铺满（1000 设计单位 = 2500px）
+            float w = Pg(1000f);
             // 三栏内容长短差得多，面板高度跟着栏走，免得短栏下面空一大块
-            float h = _guideTab == GuideTabBlocks ? UiSkin.P(806f)
-                : _guideTab == GuideTabKeys ? UiSkin.P(620f)
-                : UiSkin.P(720f);
+            float h = _guideTab == GuideTabBlocks ? Pg(596f)
+                : _guideTab == GuideTabKeys ? Pg(576f)
+                : Pg(496f);
             Rect panel = CenterPanel(w, h);
             DrawPanel(panel);
 
-            GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(14f), w, UiSkin.P(44f)), "游戏规则", _panelTitleStyle);
+            GUI.Label(new Rect(panel.x, panel.y + Pg(12f), w, Pg(46f)), "游戏规则", _panelTitleBig);
 
-            float tw = UiSkin.P(200f);
-            float th = UiSkin.P(38f);
-            float tgap = UiSkin.P(16f);
+            float tw = Pg(200f);
+            float th = Pg(40f);
+            float tgap = Pg(16f);
             float tx = panel.x + (w - (tw * GuideTabCount + tgap * (GuideTabCount - 1))) * 0.5f;
-            float ty = panel.y + UiSkin.P(58f);
+            float ty = panel.y + Pg(56f);
             for (int i = 0; i < GuideTabCount; i++)
             {
                 Color prev = GUI.color;
                 GUI.color = _guideTab == i ? Color.white : new Color(0.7f, 0.7f, 0.7f, 1f);
-                if (GUI.Button(new Rect(tx + i * (tw + tgap), ty, tw, th), GuideTabNames[i], _btnStyle))
+                if (GUI.Button(new Rect(tx + i * (tw + tgap), ty, tw, th), GuideTabNames[i], _btnBig))
                     _guideTab = i;
                 GUI.color = prev;
             }
 
-            GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(104f), w, UiSkin.P(24f)),
-                GuideTabNotes[_guideTab], _guideNoteStyle);
+            GUI.Label(new Rect(panel.x, panel.y + Pg(100f), w, Pg(28f)),
+                GuideTabNotes[_guideTab], _guideNoteBig);
 
             if (_guideTab == GuideTabPlay)
                 DrawRulesPlay(panel, w);
@@ -1075,24 +1098,26 @@ namespace MinecraftTetris
             else
                 DrawRulesBlocks(panel);
 
-            if (GUI.Button(new Rect(panel.x + w - UiSkin.P(230f), panel.yMax - UiSkin.P(72f),
-                UiSkin.P(180f), UiSkin.P(44f)), "返回", _btnStyle))
+            if (GUI.Button(new Rect(panel.x + w - Pg(230f), panel.yMax - Pg(76f),
+                Pg(180f), Pg(44f)), "返回", _btnBig))
                 ShowSettings = false;
         }
 
-        /// <summary>玩法栏：六段小标题 + 正文，纯文字，不画图标。</summary>
+        /// <summary>玩法栏：六段小标题 + 正文。放大之后一列放不下六段，改成两列每列三段。</summary>
         void DrawRulesPlay(Rect panel, float w)
         {
-            float left = panel.x + UiSkin.P(50f);
-            float textW = w - UiSkin.P(100f);
-            float rowH = UiSkin.P(80f);
-            float top = panel.y + UiSkin.P(142f);
+            const int perCol = 3;
+            float colW = Pg(430f);
+            float colGap = Pg(40f);
+            float rowH = Pg(92f);
+            float top = panel.y + Pg(128f);
 
             for (int i = 0; i < PlayRules.Length; i++)
             {
-                float y = top + i * rowH;
-                GUI.Label(new Rect(left, y, textW, UiSkin.P(26f)), PlayRules[i][0], _guideNameStyle);
-                GUI.Label(new Rect(left, y + UiSkin.P(26f), textW, UiSkin.P(52f)), PlayRules[i][1], _guideDescStyle);
+                float x = panel.x + Pg(40f) + (i / perCol) * (colW + colGap);
+                float y = top + (i % perCol) * rowH;
+                GUI.Label(new Rect(x, y, colW, Pg(30f)), PlayRules[i][0], _guideNameBig);
+                GUI.Label(new Rect(x, y + Pg(30f), colW, Pg(58f)), PlayRules[i][1], _guideDescBig);
             }
         }
 
@@ -1100,46 +1125,46 @@ namespace MinecraftTetris
         void DrawRulesKeys(Rect panel, float w)
         {
             const int perCol = 6;
-            float colW = UiSkin.P(440f);
-            float labelW = UiSkin.P(250f);
-            float keyW = UiSkin.P(170f);
-            float rowH = UiSkin.P(44f);
-            float rowGap = UiSkin.P(8f);
-            float left = panel.x + UiSkin.P(50f);
-            float top = panel.y + UiSkin.P(142f);
+            float colW = Pg(440f);
+            float labelW = Pg(240f);
+            float keyW = Pg(170f);
+            float rowH = Pg(42f);
+            float rowGap = Pg(8f);
+            float left = panel.x + Pg(40f);
+            float top = panel.y + Pg(128f);
 
             for (int i = 0; i < AllActions.Length; i++)
             {
                 GameAction action = AllActions[i];
-                float x = left + (i / perCol) * (colW + UiSkin.P(60f));
+                float x = left + (i / perCol) * (colW + Pg(40f));
                 float y = top + (i % perCol) * (rowH + rowGap);
 
-                GUI.Label(new Rect(x, y, labelW, rowH), ActionLabel(action), _rowLabelStyle);
-                DrawRect(new Rect(x + labelW, y + UiSkin.P(3f), keyW, rowH - UiSkin.P(6f)),
+                GUI.Label(new Rect(x, y, labelW, rowH), ActionLabel(action), _rowLabelBig);
+                DrawRect(new Rect(x + labelW, y + Pg(3f), keyW, rowH - Pg(6f)),
                     new Color(1f, 1f, 1f, 0.07f));
                 GUI.Label(new Rect(x + labelW, y, keyW, rowH),
-                    KeyName(KeyboardInput.GetPrimaryKey(action)), _guideKeyStyle);
+                    KeyName(KeyboardInput.GetPrimaryKey(action)), _guideKeyBig);
             }
 
-            float noteY = top + perCol * (rowH + rowGap) + UiSkin.P(12f);
-            GUI.Label(new Rect(left, noteY, w - UiSkin.P(100f), UiSkin.P(26f)),
-                "改键：设置 → 按键设置，点一下键位再按新键；这一栏会跟着变。", _guideNoteStyle);
-            GUI.Label(new Rect(left, noteY + UiSkin.P(30f), w - UiSkin.P(100f), UiSkin.P(26f)),
-                "绕竖直轴转和前后翻要场地深度 z ≥ 2 才有意义，I 型要 4。", _guideNoteStyle);
+            float noteY = top + perCol * (rowH + rowGap) + Pg(14f);
+            GUI.Label(new Rect(left, noteY, w - Pg(80f), Pg(28f)),
+                "改键：设置 → 按键设置，点一下键位再按新键；这一栏会跟着变。", _guideNoteBig);
+            GUI.Label(new Rect(left, noteY + Pg(32f), w - Pg(80f), Pg(28f)),
+                "绕竖直轴转和前后翻要场地深度 z ≥ 2 才有意义，I 型要 4。", _guideNoteBig);
         }
 
-        /// <summary>特殊方块栏：十一项两列，图标从方块图集里切。</summary>
+        /// <summary>特殊方块栏：十一项三列，图标从方块图集里切。两列六行在放大后放不下。</summary>
         void DrawRulesBlocks(Rect panel)
         {
-            const int perCol = 6;
-            float colW = UiSkin.P(470f);
+            const int perCol = 4;
+            float colW = Pg(293f);
             // 标题、切换栏、提示各占一段之后只剩这么多，行高再大就压到「返回」上了
-            float rowH = UiSkin.P(98f);
-            float top = panel.y + UiSkin.P(142f);
+            float rowH = Pg(96f);
+            float top = panel.y + Pg(128f);
 
             for (int i = 0; i < _guideItems.Length; i++)
             {
-                float x = panel.x + UiSkin.P(40f) + (i / perCol) * (colW + UiSkin.P(40f));
+                float x = panel.x + Pg(40f) + (i / perCol) * (colW + Pg(20f));
                 DrawGuideRow(x, top + (i % perCol) * rowH, colW, _guideItems[i]);
             }
         }
@@ -1151,8 +1176,8 @@ namespace MinecraftTetris
                 if (item.Ids[i] > 0)
                     n++;
 
-            float icon = n <= 2 ? UiSkin.P(40f) : UiSkin.P(30f);
-            float gap = UiSkin.P(4f);
+            float icon = n <= 2 ? Pg(36f) : Pg(26f);
+            float gap = Pg(4f);
             float iconsW = n > 0 ? n * icon + (n - 1) * gap : 0f;
 
             int slot = 0;
@@ -1160,13 +1185,15 @@ namespace MinecraftTetris
             {
                 if (item.Ids[i] <= 0)
                     continue;
-                DrawBlockIcon(new Rect(x + slot * (icon + gap), y + UiSkin.P(2f), icon, icon), item.Ids[i]);
+                DrawBlockIcon(new Rect(x + slot * (icon + gap), y + Pg(2f), icon, icon), item.Ids[i]);
                 slot++;
             }
 
-            float pad = iconsW > 0f ? iconsW + UiSkin.P(14f) : 0f;
-            GUI.Label(new Rect(x + pad, y, w - pad, UiSkin.P(26f)), item.Title, _guideNameStyle);
-            GUI.Label(new Rect(x + pad, y + UiSkin.P(26f), w - pad, UiSkin.P(70f)), item.Desc, _guideDescStyle);
+            // 图标在左、文字在右。三列之后每格只剩 293 宽，图标要是单独占一行，
+            // 一格就顶到 130 高，四行直接压到「返回」上；并排之后一格正好 26 + 52 = 78。
+            float pad = iconsW > 0f ? iconsW + Pg(10f) : 0f;
+            GUI.Label(new Rect(x + pad, y, w - pad, Pg(28f)), item.Title, _guideNameBig);
+            GUI.Label(new Rect(x + pad, y + Pg(30f), w - pad, Pg(58f)), item.Desc, _guideDescBig);
         }
 
         /// <summary>从方块图集里切一格顶面出来画成图标；方块表里查不到就画个灰块。</summary>
@@ -1203,6 +1230,26 @@ namespace MinecraftTetris
         {
             if (a != null)
                 a();
+        }
+
+        /// <summary>
+        /// 设置这几页（主页 / 按键 / 场地尺寸 / 下滑速度 / 音量 / 机制开关 / 游戏规则）相对基准再放大一倍。
+        ///
+        /// 为什么要单独一套：界面尺寸是写死的像素（P() 只乘 1.25），不随分辨率走。
+        /// 在 2560×1494 这类高分屏上整块设置面板只占屏幕中间一小块，字看着就小。
+        /// 这几页内容少、改起来可控，所以整页翻倍；页内每个尺寸过 Pg()、每个字号过 Fg()，
+        /// 两套数字同一个系数，等比长大不会出现「字大了框没大」的错位。
+        /// </summary>
+        const float PageScale = 2f;
+
+        static float Pg(float design)
+        {
+            return UiSkin.P(design * PageScale);
+        }
+
+        static int Fg(int size)
+        {
+            return UiSkin.Size(Mathf.RoundToInt(size * PageScale));
         }
 
         static Rect CenterPanel(float w, float h)
@@ -1425,6 +1472,7 @@ namespace MinecraftTetris
             _guideKeyStyle = MakeStyle(19, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
             _guideKeyStyle.wordWrap = false;
 
+
             _btnStyle = new GUIStyle(GUI.skin.button);
             _btnStyle.fontSize = UiSkin.Size(18);
             _btnStyle.alignment = TextAnchor.MiddleCenter;
@@ -1444,12 +1492,41 @@ namespace MinecraftTetris
             _menuBtnStyle = new GUIStyle(_btnStyle);
             _menuBtnStyle.alignment = TextAnchor.MiddleCenter;
             _menuBtnStyle.fontSize = UiSkin.Size(18);
+            // 设置各页的大号版本：颜色、对齐、换行设置和上面一一对应，只是字号 ×PageScale
+            _panelTitleBig = MakeStylePx(Fg(32), Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
+            _rowLabelBig = MakeStylePx(Fg(18), new Color(0.72f, 0.76f, 0.82f, 1f), TextAnchor.MiddleLeft, FontStyle.Normal);
+            _hintBig = MakeStylePx(Fg(18), new Color(0.72f, 0.76f, 0.82f, 1f), TextAnchor.MiddleLeft, FontStyle.Normal);
+            _hintBig.wordWrap = false;
+            _valueBig = MakeStylePx(Fg(22), Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
+            _sliderShadowBig = MakeStylePx(Fg(22), new Color(0f, 0f, 0f, 0.75f), TextAnchor.MiddleCenter, FontStyle.Bold);
+            _guideNameBig = MakeStylePx(Fg(19), Color.white, TextAnchor.MiddleLeft, FontStyle.Bold);
+            _guideNameBig.wordWrap = false;
+            _guideDescBig = MakeStylePx(Fg(14), new Color(0.78f, 0.82f, 0.88f, 1f), TextAnchor.UpperLeft, FontStyle.Normal);
+            _guideDescBig.wordWrap = true;
+            _guideNoteBig = MakeStylePx(Fg(17), new Color(0.68f, 0.72f, 0.80f, 1f), TextAnchor.MiddleCenter, FontStyle.Normal);
+            _guideNoteBig.wordWrap = false;
+            _guideKeyBig = MakeStylePx(Fg(19), Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
+            _guideKeyBig.wordWrap = false;
+            _btnBig = new GUIStyle(_btnStyle);
+            _btnBig.fontSize = Fg(18);
+
         }
 
         static GUIStyle MakeStyle(int size, Color color, TextAnchor anchor, FontStyle style)
         {
             var s = new GUIStyle(GUI.skin.label);
             s.fontSize = UiSkin.Size(size);
+            s.normal.textColor = color;
+            s.alignment = anchor;
+            s.fontStyle = style;
+            return s;
+        }
+
+        /// <summary>同 MakeStyle，但字号已经是最终像素值（大号样式已经乘过 PageScale，不能再缩一次）。</summary>
+        static GUIStyle MakeStylePx(int px, Color color, TextAnchor anchor, FontStyle style)
+        {
+            var s = new GUIStyle(GUI.skin.label);
+            s.fontSize = px;
             s.normal.textColor = color;
             s.alignment = anchor;
             s.fontStyle = style;
