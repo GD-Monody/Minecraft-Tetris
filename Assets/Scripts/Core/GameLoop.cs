@@ -172,6 +172,8 @@ namespace MinecraftTetris
         public event Action GlassCrushed;
         /// <summary>雪块/冰被岩浆化掉了：视图层照着 LastSnowMelted 刷那几格、播嘶声、撒碎块。</summary>
         public event Action SnowMelted;
+        /// <summary>召出傀儡了：视图层照着 LastGolemsSummoned 刷那几格，并在场外摆出模型。</summary>
+        public event Action GolemSummoned;
 
         /// <summary>最近一次落定里压碎的玻璃格子（可以有两轮以上，越靠下越先碎）。</summary>
         public readonly System.Collections.Generic.List<Vector3Int> LastGlassCrushed
@@ -181,12 +183,16 @@ namespace MinecraftTetris
         public readonly System.Collections.Generic.List<Vector3Int> LastSnowMelted
             = new System.Collections.Generic.List<Vector3Int>();
 
+        /// <summary>最近一次召出来的傀儡。</summary>
+        public readonly System.Collections.Generic.List<Golem.Summon> LastGolemsSummoned
+            = new System.Collections.Generic.List<Golem.Summon>();
+
         /// <summary>
-        /// 融化之后那一次重力结算的落点，只在本类里用。
+        /// 「抽掉几格之后」那次重力结算的落点，融化雪块和召唤傀儡共用，只在本类里用。
         /// 不复用 LastGravityMoves：那个列表是给上一个滑落动画看的，
         /// 覆盖掉的话玻璃碎完之后沙子那一段动画就不播了。
         /// </summary>
-        readonly System.Collections.Generic.List<GravityStep> _meltMoves
+        readonly System.Collections.Generic.List<GravityStep> _removalMoves
             = new System.Collections.Generic.List<GravityStep>();
         /// <summary>方块转了个 90°：参数是绕哪个轴 + 是否顺时针。视图层用它播旋转动画。</summary>
         public event Action<RotationAxis, bool> PieceRotated;
@@ -517,6 +523,11 @@ namespace MinecraftTetris
             if (!fluidPiece)
                 MeltSnow();
 
+            // 南瓜头压着雪块 / 铁块 / 铜块就召出傀儡，两格一起消失。
+            // 同样放在判满行之前：抽走两格之后塌下来的方块可能正好补满一行。
+            if (!fluidPiece)
+                SummonGolems();
+
             // 先记下这一轮要清的行和每行的代表材质，清完再派事件给粒子效果
             var fullRows = new System.Collections.Generic.List<int>();
             var rowBlocks = new System.Collections.Generic.List<int>();
@@ -626,18 +637,38 @@ namespace MinecraftTetris
         /// <summary>化完之后收尾：落到位的重力结算 + 通知视图层。</summary>
         void AfterMelt()
         {
-            // 化掉的位置空了，上面压着的东西要重新塌一次。用局部列表结算，
-            // 不动 LastGravityMoves（那是给上一个滑落动画的）；画面统一由 SnowMelted 后的重画收拾。
-            _meltMoves.Clear();
-            if (Gravity.Settle(Grid, _meltMoves))
-            {
-                // 沙落进了刚化出来的水里：走一遍 OnSolidPlaced 把水挤到上面去。
-                // 不挤的话那格会同时挂着方块和一份看不见的水，等流体下一次推进才被收拾。
-                for (int i = 0; i < _meltMoves.Count; i++)
-                    Fluids.OnSolidPlaced(Grid, _meltMoves[i].ToX, _meltMoves[i].ToY, _meltMoves[i].ToZ);
-            }
-
+            SettleAfterRemoval();
             SnowMelted?.Invoke();
+        }
+
+        /// <summary>
+        /// 南瓜头压着雪块 / 铁块 / 铜块 → 召出傀儡，两格一起消失。
+        /// 傀儡不在场地里活动，被挪到场外摆着（见 Bootstrap），所以这里只清格子、跑一次重力。
+        /// </summary>
+        void SummonGolems()
+        {
+            LastGolemsSummoned.Clear();
+            if (Golem.Check(Grid, LastGolemsSummoned) == 0)
+                return;
+
+            SettleAfterRemoval();
+            GolemSummoned?.Invoke();
+        }
+
+        /// <summary>
+        /// 「抽掉几格之后」的重力结算。用局部列表，不动 LastGravityMoves
+        /// （那是给上一个滑落动画的）；画面统一由调用方派的事件里那次重画收拾。
+        /// </summary>
+        void SettleAfterRemoval()
+        {
+            _removalMoves.Clear();
+            if (!Gravity.Settle(Grid, _removalMoves))
+                return;
+
+            // 沙落进了刚化出来的水里：走一遍 OnSolidPlaced 把水挤到上面去。
+            // 不挤的话那格会同时挂着方块和一份看不见的水，等流体下一次推进才被收拾。
+            for (int i = 0; i < _removalMoves.Count; i++)
+                Fluids.OnSolidPlaced(Grid, _removalMoves[i].ToX, _removalMoves[i].ToY, _removalMoves[i].ToZ);
         }
 
         /// <summary>把这一帧新点着的 TNT 派给视图层，然后清掉待发列表。</summary>

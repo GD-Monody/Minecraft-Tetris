@@ -1022,7 +1022,7 @@ namespace MinecraftTetris.EditorTools
                 tiny.scale >= 0.5f && tiny.width > 0f && tiny.height > 0f && tiny.gap >= 0f);
 
             // ---------- 特殊方块机制开关 ----------
-            Check("机制开关一共十一项", GameSettings.MechCount == 11);
+            Check("机制开关一共十二项", GameSettings.MechCount == 12);
 
             int mechSand = 0, mechLog = 0, mechObsidian = 0;
             for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
@@ -1281,6 +1281,58 @@ namespace MinecraftTetris.EditorTools
             Gravity.Settle(gMeltDrop);
             Check("雪块化掉之后上面压着的沙落到地上",
                 meltedDrop == 1 && gMeltDrop.Get(1, 0, 0) == mechSand && gMeltDrop.Get(1, 1, 0) == 0);
+
+            // ---------- 傀儡召唤 ----------
+            int golemHead = BlockCatalog.CarvedPumpkinId > 0
+                ? BlockCatalog.CarvedPumpkinId
+                : BlockCatalog.PumpkinId;
+            Check("方块表里有南瓜 / 雪块 / 铁块 / 铜块",
+                golemHead > 0 && BlockCatalog.SnowId > 0 &&
+                BlockCatalog.IronBlockId > 0 && BlockCatalog.CopperBlockId > 0);
+
+            GameSettings.SetMech(GameSettings.MechKind.Golem, true);
+            Golem.Reset();
+
+            var gSnow = new Grid(4, 4, 1);
+            gSnow.Set(1, 1, 0, BlockCatalog.SnowId);
+            gSnow.Set(1, 2, 0, golemHead);
+            Check("南瓜头压在雪块上召出雪傀儡",
+                Golem.Check(gSnow) == 1 && Golem.LastSummoned[0].Kind == GolemKind.Snow);
+            Check("召唤时南瓜头和脚下那格一起消失",
+                gSnow.Get(1, 1, 0) == 0 && gSnow.Get(1, 2, 0) == 0);
+            Check("召出来的傀儡记进收藏",
+                Golem.Collection.Count == 1 && Golem.Collection[0].Kind == GolemKind.Snow);
+
+            var gIron = new Grid(4, 4, 1);
+            gIron.Set(2, 0, 0, BlockCatalog.IronBlockId);
+            gIron.Set(2, 1, 0, golemHead);
+            Check("南瓜头压在铁块上召出铁傀儡",
+                Golem.Check(gIron) == 1 && Golem.LastSummoned[0].Kind == GolemKind.Iron);
+
+            var gCopper = new Grid(4, 4, 1);
+            gCopper.Set(1, 2, 0, BlockCatalog.CopperBlockId);
+            gCopper.Set(1, 3, 0, golemHead);
+            Check("南瓜头压在铜块上召出铜傀儡",
+                Golem.Check(gCopper) == 1 && Golem.LastSummoned[0].Kind == GolemKind.Copper);
+
+            var gStoneHead = new Grid(4, 4, 1);
+            gStoneHead.Set(1, 0, 0, mechSand > 0 ? mechSand : 1);
+            gStoneHead.Set(1, 1, 0, golemHead);
+            Check("南瓜头压在别的方块上什么都不发生",
+                Golem.Check(gStoneHead) == 0 && gStoneHead.Get(1, 0, 0) != 0 && gStoneHead.Get(1, 1, 0) == golemHead);
+
+            var gFloatHead = new Grid(4, 4, 1);
+            gFloatHead.Set(1, 2, 0, golemHead);
+            Check("南瓜头底下是空的也召不出来",
+                Golem.Check(gFloatHead) == 0 && gFloatHead.Get(1, 2, 0) == golemHead);
+
+            var gGolemOff = new Grid(4, 4, 1);
+            gGolemOff.Set(1, 0, 0, BlockCatalog.SnowId);
+            gGolemOff.Set(1, 1, 0, golemHead);
+            GameSettings.SetMech(GameSettings.MechKind.Golem, false);
+            Check("关掉傀儡开关就不召唤",
+                Golem.Check(gGolemOff) == 0 && gGolemOff.Get(1, 1, 0) == golemHead);
+            GameSettings.SetMech(GameSettings.MechKind.Golem, true);
 
             // 拨回全开，别把开关状态留给玩家
             for (int i = 0; i < GameSettings.MechCount; i++)

@@ -981,17 +981,13 @@ namespace MinecraftTetris
 
             _guideItems = new[]
             {
+                // TNT 和红石块合成一格：本来就是同一条机制（红石点火），
+                // 分开占两格的话加上傀儡就变成 13 格，三列排不下（4 行已是面板上限）
                 new GuideItem
                 {
-                    Ids = new[] { Tnt.TntId },
-                    Title = "TNT",
-                    Desc = "贴着红石块或岩浆会被点着，2.4 秒后炸掉半径 2 以内的方块，旁边的 TNT 会跟着连锁。",
-                },
-                new GuideItem
-                {
-                    Ids = new[] { Tnt.RedstoneId },
-                    Title = "红石块",
-                    Desc = "贴着 TNT 就点火，隔一格不算。",
+                    Ids = new[] { Tnt.TntId, Tnt.RedstoneId },
+                    Title = "TNT / 红石块",
+                    Desc = "红石块贴着就点火（隔一格不算），2.4 秒后炸掉半径 2，TNT 会连锁。",
                 },
                 new GuideItem
                 {
@@ -1047,6 +1043,12 @@ namespace MinecraftTetris
                 },
                 new GuideItem
                 {
+                    Ids = new[] { BlockCatalog.CarvedPumpkinId, BlockCatalog.SnowId },
+                    Title = "傀儡",
+                    Desc = "南瓜头压着雪块 / 铁块 / 铜块就召出傀儡，两格消失，傀儡摆到场外。",
+                },
+                new GuideItem
+                {
                     Ids = new[] { BlockCatalog.GlassId },
                     Title = "玻璃",
                     Desc = "放下来不会碎；之后有方块压到上面才碎，碎完上方的东西接着往下掉。",
@@ -1055,7 +1057,7 @@ namespace MinecraftTetris
                 {
                     Ids = new[] { FindBlock("oak_log") },
                     Title = "原木",
-                    Desc = "落定以后，周围的空位会长出同种树叶。",
+                    Desc = "落定后，周围空位会长出同种树叶。",
                 },
             };
         }

@@ -86,6 +86,19 @@ namespace MinecraftTetris
         public static readonly int IceId = FindId("ice");
 
         /// <summary>
+        /// 可以当傀儡脑袋的两格：雕刻南瓜和普通南瓜都认（原版两个都行）。
+        /// 见 Golem.cs。
+        /// </summary>
+        public static readonly int CarvedPumpkinId = FindId("carved_pumpkin");
+        public static readonly int PumpkinId = FindId("pumpkin");
+
+        /// <summary>铁傀儡的身体材质。</summary>
+        public static readonly int IronBlockId = FindId("iron_block");
+
+        /// <summary>铜傀儡的身体材质。</summary>
+        public static readonly int CopperBlockId = FindId("copper_block");
+
+        /// <summary>
         /// 这一格是不是「消除时不下落」的锚点方块（目前只有基岩）。
         /// 设置里关掉「基岩钉住不动」之后，基岩和普通方块一样跟着走。
         /// </summary>

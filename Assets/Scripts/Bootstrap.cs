@@ -36,6 +36,13 @@ namespace MinecraftTetris
         bool _camLogged;
         int _normalCullMask;
 
+        /// <summary>已经摆在场外的傀儡模型，重开一局时整批销毁。</summary>
+        readonly System.Collections.Generic.List<GameObject> _golemModels
+            = new System.Collections.Generic.List<GameObject>();
+        /// <summary>傀儡部件用的 mesh 缓存：同一种方块只建一次，别每次召唤都新建一堆。</summary>
+        readonly System.Collections.Generic.Dictionary<int, Mesh> _golemMeshes
+            = new System.Collections.Generic.Dictionary<int, Mesh>();
+
         void Start()
         {
             SizeX = GameSettings.SizeX;
@@ -189,6 +196,9 @@ namespace MinecraftTetris
             // -melttest：雪块 / 冰立在石槽上，一秒半后往槽里灌岩浆，看它化水再被烫成黑曜石
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-melttest") >= 0)
                 RunMeltTest();
+            // -golemtest：南瓜头压在雪块 / 铁块 / 铜块 / 石头上，看前三个召出傀儡、第四个没反应
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-golemtest") >= 0)
+                RunGolemTest();
             // -blocktest <方块英文名>：在场地高处摆三个该方块，用来肉眼核对六面贴图
             var btArgv = System.Environment.GetCommandLineArgs();
             int btAt = System.Array.IndexOf(btArgv, "-blocktest");
@@ -215,7 +225,7 @@ namespace MinecraftTetris
             {
                 "-sandtest", "-reacttest", "-tnttest", "-leaftest", "-bedrocktest", "-structuretest",
                 "-blocktest", "-fluidtest", "-yawtest", "-pitchtest", "-glasstest", "-glassdroptest",
-                "-melttest",
+                "-melttest", "-golemtest",
             };
             for (int i = 0; i < sceneTests.Length; i++)
             {
@@ -245,6 +255,7 @@ namespace MinecraftTetris
             _loop.FoliageGrew += OnFoliageGrew;
             _loop.GlassCrushed += OnGlassCrushed;
             _loop.SnowMelted += OnSnowMelted;
+            _loop.GolemSummoned += OnGolemSummoned;
 
             _view.RefreshAll();
             _view.SnapPiece(_loop.Current);
@@ -381,6 +392,9 @@ namespace MinecraftTetris
             Fluids.Reset();
             Fluids.Prepare(_loop.Grid);
             _loop.Restart();
+            // 傀儡是「收藏」，新开一局要清空，不然上一局的雕像还摆在场上
+            Golem.Reset();
+            ClearGolemModels();
             _loop.FallSpeed = GameSettings.FallSpeed;
             _particles.Clear();
             _paused = false;
@@ -635,6 +649,76 @@ namespace MinecraftTetris
             _view.RefreshAll();
 
             StartCoroutine(CrushGlassSoon(1.5f));
+        }
+
+        /// <summary>
+        /// -golemtest：四个「南瓜头压着方块」的组合排成一排，一秒半后结算一次召唤。
+        ///
+        /// 从左到右：雪块 → 雪傀儡、铁块 → 铁傀儡、铜块 → 铜傀儡、石头 → 什么都不发生（对照组）。
+        /// 南瓜头当场和脚下方块一起消失，傀儡出现在场地右侧的展示区里。
+        /// </summary>
+        void RunGolemTest()
+        {
+            if (_loop == null || _view == null)
+                return;
+
+            int headId = BlockCatalog.CarvedPumpkinId > 0
+                ? BlockCatalog.CarvedPumpkinId
+                : BlockCatalog.PumpkinId;
+            int stoneId = BlockCatalog.Blocks.Length > 0 ? 1 : 0;
+            for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
+                if (BlockCatalog.Blocks[i].Name == "stone")
+                    stoneId = i + 1;
+
+            if (headId <= 0 || BlockCatalog.SnowId <= 0 || BlockCatalog.IronBlockId <= 0 ||
+                BlockCatalog.CopperBlockId <= 0)
+            {
+                Debug.Log("[golemtest] 方块表里缺南瓜 / 雪块 / 铁块 / 铜块");
+                return;
+            }
+
+            _loop.Restart();
+            Fluids.Reset();
+            Tnt.Reset();
+            Structure.Reset();
+            Melt.Reset();
+            Golem.Reset();
+            ClearGolemModels();
+
+            Grid grid = _loop.Grid;
+            int cx = grid.SizeX / 2;
+            int cz = grid.SizeZ / 2;
+            int yBase = Mathf.Clamp(grid.SizeY / 8, 1, 3);
+
+            // 四个组合：身体一层、南瓜头压在上面
+            int[] bodies = { BlockCatalog.SnowId, BlockCatalog.IronBlockId, BlockCatalog.CopperBlockId, stoneId };
+            for (int i = 0; i < bodies.Length; i++)
+            {
+                int x = cx - 3 + i * 2;
+                Put(grid, x, yBase, cz, bodies[i]);
+                Put(grid, x, yBase + 1, cz, headId);
+            }
+
+            _view.SnapPiece(_loop.Current);
+            _view.RefreshAll();
+
+            // 等一会儿再结算，先让人看清四个组合摆的是什么
+            StartCoroutine(SummonGolemsSoon(1.5f));
+        }
+
+        /// <summary>演示用：等一会儿再结算一次召唤（场上已经摆好组合了）。</summary>
+        System.Collections.IEnumerator SummonGolemsSoon(float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            if (_loop == null || _view == null)
+                yield break;
+
+            var list = new System.Collections.Generic.List<Golem.Summon>();
+            int n = Golem.Check(_loop.Grid, list);
+            Gravity.Settle(_loop.Grid);
+            _view.RefreshAll();
+            ShowGolems(list);
+            Debug.Log("[golemtest] 召出 " + n + " 个傀儡（第四个压的是石头，应该没动静）");
         }
 
         /// <summary>
@@ -1326,6 +1410,146 @@ namespace MinecraftTetris
                 Vector3Int c = _loop.LastSnowMelted[i];
                 _particles.EmitCell(c.x, c.y, c.z, id, 2);
             }
+        }
+
+        /// <summary>
+        /// 召出傀儡了：清掉场地里那两格、撒碎块、播一下身体方块的放置音，
+        /// 再在场外右侧摆一个小雕像。
+        /// </summary>
+        void OnGolemSummoned()
+        {
+            if (_view != null)
+                _view.RefreshAll();   // 抽走两格之后上面可能还有塌下来的，整场刷一遍最省心
+
+            ShowGolems(_loop.LastGolemsSummoned);
+        }
+
+        /// <summary>对着一批召唤记录播放效果并摆雕像。事件和演示场景共用。</summary>
+        void ShowGolems(System.Collections.Generic.List<Golem.Summon> summons)
+        {
+            if (summons == null || summons.Count == 0)
+                return;
+
+            int headId = BlockCatalog.CarvedPumpkinId > 0
+                ? BlockCatalog.CarvedPumpkinId
+                : BlockCatalog.PumpkinId;
+
+            for (int i = 0; i < summons.Count; i++)
+            {
+                Golem.Summon sm = summons[i];
+
+                if (_particles != null)
+                {
+                    if (headId > 0)
+                        _particles.EmitCell(sm.X, sm.Y, sm.Z, headId, 2);
+                    _particles.EmitCell(sm.X, sm.Y - 1, sm.Z, sm.BodyBlockId, 2);
+                }
+                if (_sfx != null && sm.BodyBlockId > 0)
+                    _sfx.PlayPlace(BlockCatalog.Of(sm.BodyBlockId));
+            }
+
+            // 展示位的序号就是它在 Collection 里的下标：先算出这一批的起点
+            int total = Golem.Collection.Count;
+            int first = total - summons.Count;
+            for (int i = 0; i < summons.Count; i++)
+            {
+                int slot = first + i;
+                if (slot < 0 || slot >= Golem.MaxDisplay)
+                    continue;   // 展示区满了：傀儡照旧算数，只是没地方摆
+                SpawnGolemModel(Golem.Collection[slot].Kind, slot);
+            }
+        }
+
+        /// <summary>
+        /// 在场外右侧摆一个傀儡雕像。全是方块拼的，所以和场地里的方块同一套材质。
+        ///
+        /// 为什么摆到场外：傀儡要是留在场地里，就得处理它占不占格子、参不参与消行、
+        /// 会不会挡路——一个「彩蛋」不值得把消行逻辑再改一遍。摆到场外当收藏，
+        /// 场地里只少掉南瓜头和脚下方块，规则一点没变。
+        /// </summary>
+        void SpawnGolemModel(GolemKind kind, int slot)
+        {
+            int headId = BlockCatalog.CarvedPumpkinId > 0
+                ? BlockCatalog.CarvedPumpkinId
+                : BlockCatalog.PumpkinId;
+            int bodyId = kind == GolemKind.Snow ? BlockCatalog.SnowId
+                : kind == GolemKind.Iron ? BlockCatalog.IronBlockId
+                : BlockCatalog.CopperBlockId;
+            if (headId <= 0 || bodyId <= 0)
+                return;
+
+            // 场地右侧排成三列，超过三个另起一层（铁傀儡连手臂占 3 格宽，列距取 3.2 才不打架）
+            float z = (SizeZ - 1) * 0.5f;
+            float x0 = SizeX + 1.4f + (slot % 3) * 3.2f;
+            float y0 = (slot / 3) * 5f;
+
+            var rootGo = new GameObject("Golem_" + kind + "_" + slot);
+            rootGo.transform.SetParent(transform, false);
+            _golemModels.Add(rootGo);
+            Transform root = rootGo.transform;
+
+            switch (kind)
+            {
+                case GolemKind.Snow:
+                    // 原版是两格雪 + 南瓜头，这里照着摆
+                    AddGolemPart(root, x0, y0 + 0f, z, bodyId);
+                    AddGolemPart(root, x0, y0 + 1f, z, bodyId);
+                    AddGolemPart(root, x0, y0 + 2f, z, headId);
+                    break;
+
+                case GolemKind.Iron:
+                    // 两格腿 + 一格身体，身体两侧各挂一格当手臂，头顶南瓜
+                    AddGolemPart(root, x0, y0 + 0f, z, bodyId);
+                    AddGolemPart(root, x0, y0 + 1f, z, bodyId);
+                    AddGolemPart(root, x0, y0 + 2f, z, bodyId);
+                    AddGolemPart(root, x0 - 1f, y0 + 2f, z, bodyId);
+                    AddGolemPart(root, x0 + 1f, y0 + 2f, z, bodyId);
+                    AddGolemPart(root, x0, y0 + 3f, z, headId);
+                    break;
+
+                default:
+                    // 铜傀儡在原版比铁傀儡矮一号：一格身体 + 两臂 + 南瓜头
+                    AddGolemPart(root, x0, y0 + 0f, z, bodyId);
+                    AddGolemPart(root, x0 - 1f, y0 + 0f, z, bodyId);
+                    AddGolemPart(root, x0 + 1f, y0 + 0f, z, bodyId);
+                    AddGolemPart(root, x0, y0 + 1f, z, headId);
+                    break;
+            }
+        }
+
+        /// <summary>摆傀儡的一个部件。mesh 按方块编号缓存，同一种方块只建一次。</summary>
+        void AddGolemPart(Transform root, float x, float y, float z, int blockId)
+        {
+            if (blockId <= 0 || blockId > BlockCatalog.Blocks.Length)
+                return;
+
+            BlockDef def = BlockCatalog.Of(blockId);
+            if (def == null)
+                return;
+
+            Mesh mesh;
+            if (!_golemMeshes.TryGetValue(blockId, out mesh))
+            {
+                mesh = BlockMesh.Build(def);
+                _golemMeshes[blockId] = mesh;
+            }
+
+            var go = new GameObject("part");
+            go.transform.SetParent(root, false);
+            go.transform.position = new Vector3(x, y, z);
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            go.AddComponent<MeshRenderer>().sharedMaterial = BlockMesh.GetMaterial(def);
+        }
+
+        /// <summary>把场外的傀儡模型全清掉（新开一局 / 改场地尺寸时）。</summary>
+        void ClearGolemModels()
+        {
+            for (int i = 0; i < _golemModels.Count; i++)
+            {
+                if (_golemModels[i] != null)
+                    Destroy(_golemModels[i]);
+            }
+            _golemModels.Clear();
         }
 
         /// <summary>
