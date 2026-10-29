@@ -107,6 +107,8 @@ GROUPS = [
 RULES = [
     # 玻璃：原版有单独的一组（清亮的叮声），别落到 stone 兜底
     ("glass", "glass"),
+    # 冰在原版里也挂 glass 这一组（SoundType.GLASS），别落到 stone
+    ("ice", "glass"),
     # 26.2 的新材质族，先占位，别被下面的通用规则吃掉
     ("potent_sulfur", "potent_sulfur"),
     ("sulfur|sulfur_bricks|chiseled_sulfur|polished_sulfur", "sulfur"),

@@ -565,6 +565,7 @@ namespace MinecraftTetris
             "grass",   // pale_oak_leaves
             "stone",   // bedrock
             "glass",   // glass
+            "glass",   // ice
         };
     }
 }

@@ -4942,5 +4942,19 @@
    "west": "glass"
   },
   "tint": []
+ },
+ {
+  "name": "ice",
+  "zh": "冰",
+  "root": "manual",
+  "faces": {
+   "up": "ice",
+   "down": "ice",
+   "north": "ice",
+   "south": "ice",
+   "east": "ice",
+   "west": "ice"
+  },
+  "tint": []
  }
 ]
