@@ -453,6 +453,18 @@ namespace MinecraftTetris.EditorTools
             Check("红石块仍在普通池里（偶尔自然出现也能点火）",
                 System.Array.IndexOf(BlockPools.Normal, Tnt.RedstoneId) >= 0);
 
+            // 玻璃：普通池三百多种，抽一次要等好几百块，改成按块数定期发
+            int glassPool = BlockCatalog.GlassId;
+            Check("玻璃不在普通池和特殊池里（单独按块数发）",
+                glassPool > 0 &&
+                System.Array.IndexOf(BlockPools.Normal, glassPool) < 0 &&
+                System.Array.IndexOf(BlockPools.Special, glassPool) < 0);
+            Random.InitState(20261029);
+            bool sawGlass = false;
+            for (int i = 0; i < 2000 && !sawGlass; i++)
+                sawGlass = BlockPools.NextRandomId() == glassPool;
+            Check("抽 2000 块能抽到玻璃", sawGlass);
+
             int stoneId = 1;
             for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
             {
@@ -659,6 +671,15 @@ namespace MinecraftTetris.EditorTools
             var gCorner = new Grid(3, 3, 1);
             gCorner.Set(0, 0, 0, oakLog);
             Check("贴着场地左下角也不越界", Foliage.GrowAround(gCorner, 0, 0, 0, oakLog) == 1);
+
+            // 只长面相邻的格：四个侧面和正上方都被占死，斜上方空着也不该长
+            var gSide = new Grid(5, 5, 1);
+            gSide.Set(2, 2, 0, oakLog);
+            gSide.Set(1, 2, 0, stoneId);
+            gSide.Set(3, 2, 0, stoneId);
+            gSide.Set(2, 3, 0, stoneId);
+            Check("只剩斜上方空着时，不长（树叶不隔空）",
+                Foliage.GrowAround(gSide, 2, 2, 0, oakLog) == 0);
 
             // 整块结算：先把木头写进网格（真实流程里落定时已经写好了）
             var gPiece = new Grid(9, 9, 1);

@@ -13,8 +13,8 @@ namespace MinecraftTetris
     ///   `stripped_*`（剥皮）不长——树皮都剥了；菌柄 / 菌核（`_stem` / `_hyphae`）不长——菌类没有树叶；
     ///   `bamboo_block` 也不长。
     /// - 长什么：同树种的 `<木头>_leaves`，比如 oak_log → oak_leaves。
-    /// - 长哪：木头正上方、斜上方一圈、同一层的四个侧面，共 13 个候选位；只挑空的（
-    ///   被方块占着、或者积着水都不行）。候选里随机挑一个，不然叶片永远朝着同一个方向，
+    /// - 长哪：木头正上方、同一层的四个侧面，共 5 个候选位，全部是面相邻的格子；
+    ///   只挑空的（被方块占着、或者积着水都不行）。候选里随机挑一个，不然叶片永远朝着同一个方向，
     ///   看起来像贴上去的。
     /// - 一片一个：每个原木格长一片，整块一次最多 6 片（`MaxLeavesPerLock`）——
     ///   玩家在创意工坊里画个 25 格的原木模具，不该一次刷出 25 片叶子。
@@ -31,17 +31,13 @@ namespace MinecraftTetris
         public static readonly List<Vector3Int> LastGrown = new List<Vector3Int>();
 
         /// <summary>
-        /// 候选位置：正上方、斜上方一圈（8 个）、同一层四个侧面（4 个）。
+        /// 候选位置：正上方一格，加同一层的四个侧面。
+        /// 只收面相邻的格：斜上方的格子和原木只有一条棱挨着，看着像隔空长出来的。
         /// 不含正下方和斜下方——树叶长在树干底下不像话。
         /// </summary>
         static readonly Vector3Int[] Offsets =
         {
             new Vector3Int(0, 1, 0),
-
-            new Vector3Int(-1, 1, 0), new Vector3Int(1, 1, 0),
-            new Vector3Int(0, 1, -1), new Vector3Int(0, 1, 1),
-            new Vector3Int(-1, 1, -1), new Vector3Int(1, 1, -1),
-            new Vector3Int(-1, 1, 1), new Vector3Int(1, 1, 1),
 
             new Vector3Int(-1, 0, 0), new Vector3Int(1, 0, 0),
             new Vector3Int(0, 0, -1), new Vector3Int(0, 0, 1),

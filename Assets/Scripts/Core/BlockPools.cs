@@ -18,6 +18,10 @@ namespace MinecraftTetris
         // 每 SpecialEvery 个方块里，有一个整块用特殊材质
         public const int SpecialEvery = 12;
 
+        // 玻璃不放普通池：普通池三百多种，抽中一次要等几百块，玩家基本见不到它。
+        // 改成按块数定期给一块，大约每 GlassEvery 个方块里有一块是玻璃。
+        public const int GlassEvery = 40;
+
         static int[] _special;
         static int[] _normal;
         static int _waterId = -1;
@@ -28,7 +32,11 @@ namespace MinecraftTetris
         static int _bedrockId = -1;
         /// <summary>结构方块编号。同样常驻特殊池。</summary>
         static int _structureId = -1;
+        /// <summary>玻璃编号。不进普通池，按块数定期给一块，见 GlassEvery。</summary>
+        static int _glassId = -1;
         static int _count;
+        /// <summary>距上一块玻璃又抽了几块（只数普通池那一路）。</summary>
+        static int _glassCount;
         /// <summary>抽到 TNT 之后，下一次抽必然给红石块 —— 见 NextRandomId。</summary>
         static bool _forceRedstone;
 
@@ -65,6 +73,8 @@ namespace MinecraftTetris
             _redstoneId = -1;
             _bedrockId = -1;
             _structureId = -1;
+            _glassId = -1;
+            _glassCount = 0;
             _forceRedstone = false;
             for (int i = 0; i < blocks.Length; i++)
             {
@@ -110,6 +120,13 @@ namespace MinecraftTetris
                     // 树叶是原木长出来的，不该当成一整块方块的材质掉下来
                     continue;
                 }
+                if (n == "glass")
+                {
+                    // 玻璃从普通池里拿出来单独发，不然一块难求（见 GlassEvery）。
+                    // 它照旧是普通方块，只是出现频率被钉死了。
+                    _glassId = i + 1;
+                    continue;
+                }
                 if (IsSpecial(n))
                     special.Add(i + 1);
                 else
@@ -121,7 +138,7 @@ namespace MinecraftTetris
             Debug.Log("[pools] 普通 " + _normal.Length + " 种 / 特殊 " + _special.Length +
                       " 种 / 水 " + _waterId + " 岩浆 " + _lavaId +
                       " / TNT " + _tntId + " 红石 " + _redstoneId +
-                      " 基岩 " + _bedrockId + " 结构 " + _structureId);
+                      " 基岩 " + _bedrockId + " 结构 " + _structureId + " 玻璃 " + _glassId);
         }
 
         /// <summary>抽一个材质编号。每隔 SpecialEvery 个方块抽一次特殊池，水和岩浆在特殊池里占比较高。</summary>
@@ -177,6 +194,15 @@ namespace MinecraftTetris
                 }
                 return _special[Random.Range(0, _special.Length)];
             }
+            // 玻璃按块数发：普通池抽一次，计数器加一，攒够 GlassEvery 就给一块。
+            // 放在特殊池之后，特殊方块那一抽不参与计数，玻璃的间隔才稳定。
+            if (_glassId > 0)
+            {
+                _glassCount++;
+                if (_glassCount % GlassEvery == 0)
+                    return _glassId;
+            }
+
             if (_normal.Length == 0)
                 return 1;
             return _normal[Random.Range(0, _normal.Length)];
