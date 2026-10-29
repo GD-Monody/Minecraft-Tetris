@@ -186,6 +186,9 @@ namespace MinecraftTetris
             // -glassdroptest：三根柱子对比「谁先在那儿」，看玻璃落下不碎、被后压的才碎
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-glassdroptest") >= 0)
                 RunGlassDropTest();
+            // -melttest：雪块 / 冰立在石槽上，一秒半后往槽里灌岩浆，看它化水再被烫成黑曜石
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-melttest") >= 0)
+                RunMeltTest();
             // -blocktest <方块英文名>：在场地高处摆三个该方块，用来肉眼核对六面贴图
             var btArgv = System.Environment.GetCommandLineArgs();
             int btAt = System.Array.IndexOf(btArgv, "-blocktest");
@@ -212,6 +215,7 @@ namespace MinecraftTetris
             {
                 "-sandtest", "-reacttest", "-tnttest", "-leaftest", "-bedrocktest", "-structuretest",
                 "-blocktest", "-fluidtest", "-yawtest", "-pitchtest", "-glasstest", "-glassdroptest",
+                "-melttest",
             };
             for (int i = 0; i < sceneTests.Length; i++)
             {
@@ -240,6 +244,7 @@ namespace MinecraftTetris
             _loop.TntExploded += OnTntExploded;
             _loop.FoliageGrew += OnFoliageGrew;
             _loop.GlassCrushed += OnGlassCrushed;
+            _loop.SnowMelted += OnSnowMelted;
 
             _view.RefreshAll();
             _view.SnapPiece(_loop.Current);
@@ -630,6 +635,90 @@ namespace MinecraftTetris
             _view.RefreshAll();
 
             StartCoroutine(CrushGlassSoon(1.5f));
+        }
+
+        /// <summary>
+        /// -melttest：雪块 / 冰立在石头做的浅槽上，一秒半后往槽里灌岩浆。
+        ///
+        /// 三组并排，唯一的差别是「槽里有没有岩浆」：
+        /// - 左：雪块 + 岩浆 → 化成水，水落进槽里被岩浆烫成黑曜石；
+        /// - 中：冰 + 岩浆     → 同上；
+        /// - 右：雪块，槽里空着 → 对照组，一直立着不动。
+        ///
+        /// 为什么要石槽：岩浆是流体，直接摆在平地上会朝四面淌走，根本贴不住上面的雪块。
+        /// 槽只要一格见方，底一块石头、四周各一块，灌满 8 份就封住了。
+        /// </summary>
+        void RunMeltTest()
+        {
+            if (_loop == null || _view == null)
+                return;
+
+            int snowId = BlockCatalog.SnowId;
+            int iceId = BlockCatalog.IceId;
+            int lavaId = Fluids.LavaId;
+            int stoneId = 0;
+            for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
+                if (BlockCatalog.Blocks[i].Name == "stone")
+                    stoneId = i + 1;
+
+            if (snowId <= 0 || iceId <= 0 || lavaId <= 0 || stoneId <= 0)
+            {
+                Debug.Log("[melttest] 方块表里缺雪 / 冰 / 岩浆 / 石头");
+                return;
+            }
+
+            _loop.Restart();
+            Fluids.Reset();
+            Tnt.Reset();
+            Structure.Reset();
+            Melt.Reset();
+
+            Grid grid = _loop.Grid;
+            Fluids.Prepare(grid);   // 先把流体表建好，等下往槽里灌岩浆才写得进去
+
+            int cx = grid.SizeX / 2;
+            int cz = grid.SizeZ / 2;
+            int left = Mathf.Clamp(cx - 4, 1, Mathf.Max(1, grid.SizeX - 2));
+            int mid = cx;
+            int right = Mathf.Clamp(cx + 4, 1, Mathf.Max(1, grid.SizeX - 2));
+
+            MeltCup(grid, left, cz, stoneId);
+            MeltCup(grid, mid, cz, stoneId);
+            MeltCup(grid, right, cz, stoneId);
+
+            Put(grid, left, 2, cz, snowId);
+            Put(grid, mid, 2, cz, iceId);
+            Put(grid, right, 2, cz, snowId);
+
+            _view.SnapPiece(_loop.Current);
+            _view.RefreshAll();
+
+            // 等一秒半再灌，先让人看清「雪块 / 冰立在石槽上」的样子
+            StartCoroutine(PourLavaSoon(1.5f,
+                new Vector3Int(left, 1, cz), new Vector3Int(mid, 1, cz)));
+        }
+
+        /// <summary>演示用的一个 1×1 石槽：底 + 四壁。角落那几块越界就不铺（场地只有 1 深时正常）。</summary>
+        void MeltCup(Grid grid, int x, int z, int stoneId)
+        {
+            Put(grid, x, 0, z, stoneId);
+            Put(grid, x - 1, 1, z, stoneId);
+            Put(grid, x + 1, 1, z, stoneId);
+            Put(grid, x, 1, z - 1, stoneId);
+            Put(grid, x, 1, z + 1, stoneId);
+        }
+
+        /// <summary>演示用：等一会儿再往两个槽里灌岩浆，右边那个槽故意不灌，当对照。</summary>
+        System.Collections.IEnumerator PourLavaSoon(float delay, Vector3Int a, Vector3Int b)
+        {
+            yield return new WaitForSeconds(delay);
+            if (_loop == null)
+                yield break;
+
+            Fluids.Prepare(_loop.Grid);
+            Fluids.AddSource(_loop.Grid, a.x, a.y, a.z, Fluids.LavaId);
+            Fluids.AddSource(_loop.Grid, b.x, b.y, b.z, Fluids.LavaId);
+            Debug.Log("[melttest] 已往两个槽里灌岩浆，等着看雪块 / 冰化成水");
         }
 
         /// <summary>演示用：等一会儿再压碎，让画面先停在场上有玻璃的状态。</summary>
@@ -1209,6 +1298,33 @@ namespace MinecraftTetris
                 _view.SetCell(c.x, c.y, c.z, 0);
                 if (_particles != null)
                     _particles.EmitCell(c.x, c.y, c.z, BlockCatalog.GlassId, 2);
+            }
+        }
+
+        /// <summary>
+        /// 雪块 / 冰被岩浆化掉了：嘶一声，格子清空，撒一把白色碎块。
+        ///
+        /// 这里用整场重画而不是逐格 SetCell：融化那一格同时清掉了固体、又新增了一格水，
+        /// SetCell 只认网格里的方块 id，看不出「这格现在有水」；RefreshAll 会把流体层一起重画。
+        /// 融化是坏事，但发生频率很低（要有岩浆又要有雪/冰），整场重画的开销可以接受。
+        /// </summary>
+        void OnSnowMelted()
+        {
+            if (_sfx != null)
+                _sfx.PlayFizz();
+
+            if (_view != null)
+                _view.RefreshAll();
+
+            if (_particles == null)
+                return;
+
+            // 融掉的是雪块还是冰已经查不出来了（格子已经清空），统一撒白色碎块 —— 两者都是白的。
+            int id = BlockCatalog.SnowId > 0 ? BlockCatalog.SnowId : BlockCatalog.IceId;
+            for (int i = 0; i < _loop.LastSnowMelted.Count; i++)
+            {
+                Vector3Int c = _loop.LastSnowMelted[i];
+                _particles.EmitCell(c.x, c.y, c.z, id, 2);
             }
         }
 

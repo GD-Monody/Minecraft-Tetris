@@ -519,8 +519,9 @@ namespace MinecraftTetris
         /// </summary>
         void DrawSettingsMech()
         {
-            // 十项排两列、每列五行：和按键页同理，一条竖列在放大一倍后会顶出屏幕
-            const int perCol = 5;
+            // 十一项排两列（6 + 5）：和按键页同理，一条竖列在放大一倍后会顶出屏幕。
+            // 每列取 6 是为了让两列长度接近；按 5 分的话会变成 5+5+1，第三列孤零零一个按钮。
+            const int perCol = 6;
             float rowH = Pg(46f);
             float rowGap = Pg(10f);
             float colW = Pg(400f);
@@ -1037,6 +1038,12 @@ namespace MinecraftTetris
                     Ids = new[] { FindBlock("sand"), FindBlock("gravel") },
                     Title = "沙子 / 沙砾",
                     Desc = "下面是空的就往下掉，被炸出的弹坑会自己填平。",
+                },
+                new GuideItem
+                {
+                    Ids = new[] { BlockCatalog.SnowId, BlockCatalog.IceId },
+                    Title = "雪块 / 冰",
+                    Desc = "贴着岩浆（任意一面）就化成水，水再被岩浆烫成黑曜石。",
                 },
                 new GuideItem
                 {

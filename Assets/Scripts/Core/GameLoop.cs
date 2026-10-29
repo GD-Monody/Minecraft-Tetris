@@ -170,10 +170,24 @@ namespace MinecraftTetris
         public event Action FoliageGrew;
         /// <summary>玻璃被压碎了：视图层照着 LastGlassCrushed 刷那几格、播音效、撒碎块。</summary>
         public event Action GlassCrushed;
+        /// <summary>雪块/冰被岩浆化掉了：视图层照着 LastSnowMelted 刷那几格、播嘶声、撒碎块。</summary>
+        public event Action SnowMelted;
 
         /// <summary>最近一次落定里压碎的玻璃格子（可以有两轮以上，越靠下越先碎）。</summary>
         public readonly System.Collections.Generic.List<Vector3Int> LastGlassCrushed
             = new System.Collections.Generic.List<Vector3Int>();
+
+        /// <summary>最近一次化掉的雪块 / 冰（融化前的位置）。</summary>
+        public readonly System.Collections.Generic.List<Vector3Int> LastSnowMelted
+            = new System.Collections.Generic.List<Vector3Int>();
+
+        /// <summary>
+        /// 融化之后那一次重力结算的落点，只在本类里用。
+        /// 不复用 LastGravityMoves：那个列表是给上一个滑落动画看的，
+        /// 覆盖掉的话玻璃碎完之后沙子那一段动画就不播了。
+        /// </summary>
+        readonly System.Collections.Generic.List<GravityStep> _meltMoves
+            = new System.Collections.Generic.List<GravityStep>();
         /// <summary>方块转了个 90°：参数是绕哪个轴 + 是否顺时针。视图层用它播旋转动画。</summary>
         public event Action<RotationAxis, bool> PieceRotated;
 
@@ -209,6 +223,10 @@ namespace MinecraftTetris
                 // 只能等它动过之后再补扫一遍（水面挨着不算，Tnt 里只认岩浆）。
                 Tnt.PrimeContact(Grid);
             }
+
+            // 雪块 / 冰挨着岩浆就化水。不挂在上面那个 if 里：一桶岩浆封在石槽里、
+            // 上面贴着雪块的时候，流体既不掉也不流，Tick 返回 false，挂在下面永远等不到。
+            MeltSnowTick(dt);
 
             // TNT：引信烧完就炸。炸完上面的沙 / 沙砾要重新塌一次，
             // 所以这里不能只当视觉事件，得再跑一遍重力结算。
@@ -494,6 +512,11 @@ namespace MinecraftTetris
             if (!fluidPiece)
                 CrushGlass();
 
+            // 雪块 / 冰贴着岩浆就化成水。放在判满行之前：化掉的位置空了，
+            // 上面压着的东西可能塌下来补满一行。化出来的水本身不写网格，不影响满行判定。
+            if (!fluidPiece)
+                MeltSnow();
+
             // 先记下这一轮要清的行和每行的代表材质，清完再派事件给粒子效果
             var fullRows = new System.Collections.Generic.List<int>();
             var rowBlocks = new System.Collections.Generic.List<int>();
@@ -569,6 +592,52 @@ namespace MinecraftTetris
 
             if (any)
                 GlassCrushed?.Invoke();
+        }
+
+        /// <summary>
+        /// 雪块 / 冰贴着岩浆就地化成水，化完再落一次重力。
+        ///
+        /// 为什么不再套循环：融化只由「雪冰 ↔ 岩浆」这一对决定，化成水之后原本那格就不再是
+        /// 雪 / 冰了，同一次落定里不会连锁（水就算淌到别的雪块旁边也不化它，得是岩浆才行），
+        /// 所以扫一遍、落一次重力就够。岩浆自己淌过来那种情况由 Tick 里的流体分支负责。
+        /// </summary>
+        void MeltSnow()
+        {
+            LastSnowMelted.Clear();
+            if (Melt.Sweep(Grid, LastSnowMelted) == 0)
+                return;
+
+            AfterMelt();
+        }
+
+        /// <summary>
+        /// 定期检查用的版本（每帧调，内部 0.1 秒节流）：岩浆静静贴着雪块也要化，
+        /// 不能只靠「流体动过」触发，理由见 Melt.Tick。
+        /// </summary>
+        void MeltSnowTick(float dt)
+        {
+            LastSnowMelted.Clear();
+            if (!Melt.Tick(Grid, dt, LastSnowMelted))
+                return;
+
+            AfterMelt();
+        }
+
+        /// <summary>化完之后收尾：落到位的重力结算 + 通知视图层。</summary>
+        void AfterMelt()
+        {
+            // 化掉的位置空了，上面压着的东西要重新塌一次。用局部列表结算，
+            // 不动 LastGravityMoves（那是给上一个滑落动画的）；画面统一由 SnowMelted 后的重画收拾。
+            _meltMoves.Clear();
+            if (Gravity.Settle(Grid, _meltMoves))
+            {
+                // 沙落进了刚化出来的水里：走一遍 OnSolidPlaced 把水挤到上面去。
+                // 不挤的话那格会同时挂着方块和一份看不见的水，等流体下一次推进才被收拾。
+                for (int i = 0; i < _meltMoves.Count; i++)
+                    Fluids.OnSolidPlaced(Grid, _meltMoves[i].ToX, _meltMoves[i].ToY, _meltMoves[i].ToZ);
+            }
+
+            SnowMelted?.Invoke();
         }
 
         /// <summary>把这一帧新点着的 TNT 派给视图层，然后清掉待发列表。</summary>

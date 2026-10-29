@@ -79,6 +79,12 @@ namespace MinecraftTetris
         /// <summary>玻璃的编号（0 = 表里没这个方块）。上面压着方块就会碎，见 Glass.cs。</summary>
         public static readonly int GlassId = FindId("glass");
 
+        /// <summary>雪块的编号（0 = 表里没这个方块）。挨着岩浆会化成水，见 Melt.cs。</summary>
+        public static readonly int SnowId = FindId("snow_block");
+
+        /// <summary>冰的编号（0 = 表里没这个方块）。挨着岩浆会化成水，见 Melt.cs。</summary>
+        public static readonly int IceId = FindId("ice");
+
         /// <summary>
         /// 这一格是不是「消除时不下落」的锚点方块（目前只有基岩）。
         /// 设置里关掉「基岩钉住不动」之后，基岩和普通方块一样跟着走。
@@ -182,7 +188,9 @@ namespace MinecraftTetris
 
         static bool IsTransparent(string name)
         {
-            return name.Contains("glass") || name.Contains("leaves");
+            // 冰和玻璃、树叶一样是半透明材质：贴图自带 alpha，得走 BlockTransparentMat，
+            // 不然冰块会被画成一块不透明的白板。
+            return name.Contains("glass") || name.Contains("leaves") || name.Contains("ice");
         }
     }
 }

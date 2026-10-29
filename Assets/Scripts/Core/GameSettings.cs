@@ -170,21 +170,24 @@ namespace MinecraftTetris
             BedrockAnchor = 7,
             BlastProof = 8,
             GlassCrush = 9,
+            SnowMelt = 10,
         }
 
         /// <summary>开关总数。设置页和自检都按它遍历。</summary>
-        public const int MechCount = 10;
+        public const int MechCount = 11;
 
         static readonly string[] MechKeys =
         {
             "mech.tnt", "mech.ignite", "mech.sand", "mech.leaves", "mech.water",
             "mech.lava", "mech.structure", "mech.bedrock", "mech.blastproof", "mech.glass",
+            "mech.melt",
         };
 
         static readonly string[] MechLabels =
         {
             "TNT 爆炸", "接触点火", "沙子与沙砾下落", "原木长树叶", "水会流动",
             "岩浆会流动", "结构方块还原", "基岩钉住不动", "防爆方块炸不掉", "玻璃被压碎",
+            "雪与冰遇岩浆融化",
         };
 
         public static string MechLabel(MechKind kind)
@@ -221,5 +224,6 @@ namespace MinecraftTetris
         public static bool BedrockAnchors { get { return Mech(MechKind.BedrockAnchor); } }
         public static bool BlastProofOn { get { return Mech(MechKind.BlastProof); } }
         public static bool GlassCrushes { get { return Mech(MechKind.GlassCrush); } }
+        public static bool SnowMelts { get { return Mech(MechKind.SnowMelt); } }
     }
 }

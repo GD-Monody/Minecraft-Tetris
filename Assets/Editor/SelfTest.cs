@@ -465,6 +465,25 @@ namespace MinecraftTetris.EditorTools
                 sawGlass = BlockPools.NextRandomId() == glassPool;
             Check("抽 2000 块能抽到玻璃", sawGlass);
 
+            // 雪块 / 冰：同理，埋在普通池里等于见不到，改成定期发
+            int snowPool = BlockCatalog.SnowId;
+            int icePool = BlockCatalog.IceId;
+            Check("雪块和冰不在普通池和特殊池里（单独按块数发）",
+                snowPool > 0 && icePool > 0 &&
+                System.Array.IndexOf(BlockPools.Normal, snowPool) < 0 &&
+                System.Array.IndexOf(BlockPools.Special, snowPool) < 0 &&
+                System.Array.IndexOf(BlockPools.Normal, icePool) < 0 &&
+                System.Array.IndexOf(BlockPools.Special, icePool) < 0);
+            Random.InitState(20261030);
+            bool sawSnow = false, sawIce = false;
+            for (int i = 0; i < 3000 && !(sawSnow && sawIce); i++)
+            {
+                int pulled = BlockPools.NextRandomId();
+                if (pulled == snowPool) sawSnow = true;
+                if (pulled == icePool) sawIce = true;
+            }
+            Check("抽 3000 块能同时抽到雪块和冰", sawSnow && sawIce);
+
             int stoneId = 1;
             for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
             {
@@ -1003,7 +1022,7 @@ namespace MinecraftTetris.EditorTools
                 tiny.scale >= 0.5f && tiny.width > 0f && tiny.height > 0f && tiny.gap >= 0f);
 
             // ---------- 特殊方块机制开关 ----------
-            Check("机制开关一共十项", GameSettings.MechCount == 10);
+            Check("机制开关一共十一项", GameSettings.MechCount == 11);
 
             int mechSand = 0, mechLog = 0, mechObsidian = 0;
             for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
@@ -1162,6 +1181,106 @@ namespace MinecraftTetris.EditorTools
             Gravity.Settle(gGlassStack);
             Check("下一轮沙把剩下那块也压碎，一路落到底",
                 glassCrushed2 == 1 && CountFilled(gGlassStack) == 1 && gGlassStack.Get(2, 0, 0) == mechSand);
+
+            // ---------- 雪与冰遇岩浆融化 ----------
+            int snowId = BlockCatalog.SnowId;
+            int iceId = BlockCatalog.IceId;
+            Check("方块表里有雪块和冰", snowId > 0 && iceId > 0);
+
+            // 这几个用例都靠流体层，前面可能被别人关过，先拨回全开
+            GameSettings.SetMech(GameSettings.MechKind.WaterFlow, true);
+            GameSettings.SetMech(GameSettings.MechKind.LavaFlow, true);
+            GameSettings.SetMech(GameSettings.MechKind.SnowMelt, true);
+
+            // 雪块正下方压着一满格岩浆
+            var gMelt = new Grid(4, 4, 1);
+            Fluids.Reset();
+            Fluids.Prepare(gMelt);
+            gMelt.Set(1, 1, 0, snowId);
+            Fluids.SetAmount(1, 0, 0, Fluids.MaxAmount, Fluids.LavaId);
+            Check("雪块贴着岩浆就化成水", Melt.Sweep(gMelt) == 1);
+            Check("化掉的那格网格里空了", gMelt.Get(1, 1, 0) == 0);
+            Check("原来是雪块的那格现在是一整格水",
+                Fluids.AmountAt(1, 1, 0) == Fluids.MaxAmount && Fluids.IdAt(1, 1, 0) == Fluids.WaterId);
+            Check("化掉的格子记在 LastMelted 里",
+                Melt.LastMelted.Count == 1 && Melt.LastMelted[0].x == 1 && Melt.LastMelted[0].y == 1);
+            Check("化过一次就不再算（那格已经不是雪了）", Melt.Sweep(gMelt) == 0);
+
+            // 流动岩浆（不满 8 份）照样能把冰化掉
+            var gMeltIce = new Grid(4, 4, 1);
+            Fluids.Reset();
+            Fluids.Prepare(gMeltIce);
+            gMeltIce.Set(2, 2, 0, iceId);
+            Fluids.SetAmount(3, 2, 0, 3, Fluids.LavaId);
+            Check("冰贴着流动中的岩浆也化",
+                Melt.Sweep(gMeltIce) == 1 && gMeltIce.Get(2, 2, 0) == 0);
+
+            // 前后方向（z 轴）也要认，不能只判同一层
+            var gMeltZ = new Grid(3, 3, 3);
+            Fluids.Reset();
+            Fluids.Prepare(gMeltZ);
+            gMeltZ.Set(1, 1, 1, iceId);
+            Fluids.SetAmount(1, 1, 0, Fluids.MaxAmount, Fluids.LavaId);
+            Check("z 方向挨着岩浆也化", Melt.Sweep(gMeltZ) == 1);
+
+            // 隔着两格、或者只在斜对角，都不该化
+            var gMeltFar = new Grid(5, 5, 1);
+            Fluids.Reset();
+            Fluids.Prepare(gMeltFar);
+            gMeltFar.Set(1, 1, 0, snowId);
+            Fluids.SetAmount(3, 3, 0, Fluids.MaxAmount, Fluids.LavaId);
+            Check("离岩浆远就不化", Melt.Sweep(gMeltFar) == 0 && gMeltFar.Get(1, 1, 0) == snowId);
+
+            var gMeltDiag = new Grid(5, 5, 1);
+            Fluids.Reset();
+            Fluids.Prepare(gMeltDiag);
+            gMeltDiag.Set(2, 2, 0, snowId);
+            Fluids.SetAmount(3, 3, 0, Fluids.MaxAmount, Fluids.LavaId);
+            Check("斜对角挨着岩浆不算（只认六向）",
+                Melt.Sweep(gMeltDiag) == 0 && gMeltDiag.Get(2, 2, 0) == snowId);
+
+            // 别的方块挨着岩浆照旧没事
+            var gMeltOther = new Grid(4, 4, 1);
+            Fluids.Reset();
+            Fluids.Prepare(gMeltOther);
+            gMeltOther.Set(1, 1, 0, mechObsidian > 0 ? mechObsidian : mechSand);
+            Fluids.SetAmount(1, 0, 0, Fluids.MaxAmount, Fluids.LavaId);
+            Check("石头 / 黑曜石贴着岩浆不化", Melt.Sweep(gMeltOther) == 0);
+
+            // 开关关掉：方块照常出现，只是不再化
+            var gMeltOff = new Grid(4, 4, 1);
+            Fluids.Reset();
+            Fluids.Prepare(gMeltOff);
+            gMeltOff.Set(1, 1, 0, snowId);
+            Fluids.SetAmount(1, 0, 0, Fluids.MaxAmount, Fluids.LavaId);
+            GameSettings.SetMech(GameSettings.MechKind.SnowMelt, false);
+            Check("关掉融化开关就不化",
+                Melt.Sweep(gMeltOff) == 0 && gMeltOff.Get(1, 1, 0) == snowId);
+            GameSettings.SetMech(GameSettings.MechKind.SnowMelt, true);
+
+            // 化出来的水压在岩浆上，下一次流体推进就会被烫成黑曜石
+            var gMeltBoil = new Grid(4, 4, 1);
+            Fluids.Reset();
+            Fluids.Prepare(gMeltBoil);
+            gMeltBoil.Set(1, 1, 0, snowId);
+            Fluids.SetAmount(1, 0, 0, Fluids.MaxAmount, Fluids.LavaId);
+            Melt.Sweep(gMeltBoil);
+            for (int i = 0; i < 10; i++)
+                Fluids.Tick(gMeltBoil, 0.2f);
+            Check("化出来的水被下面的岩浆烫成黑曜石",
+                gMeltBoil.Get(1, 0, 0) == Fluids.ObsidianId);
+
+            // 化掉之后上面压着的方块要塌下来（GameLoop.MeltSnow 里补的那次重力结算）
+            var gMeltDrop = new Grid(4, 5, 1);
+            Fluids.Reset();
+            Fluids.Prepare(gMeltDrop);
+            gMeltDrop.Set(1, 0, 0, snowId);
+            gMeltDrop.Set(1, 1, 0, mechSand);
+            Fluids.SetAmount(2, 0, 0, Fluids.MaxAmount, Fluids.LavaId);
+            int meltedDrop = Melt.Sweep(gMeltDrop);
+            Gravity.Settle(gMeltDrop);
+            Check("雪块化掉之后上面压着的沙落到地上",
+                meltedDrop == 1 && gMeltDrop.Get(1, 0, 0) == mechSand && gMeltDrop.Get(1, 1, 0) == 0);
 
             // 拨回全开，别把开关状态留给玩家
             for (int i = 0; i < GameSettings.MechCount; i++)

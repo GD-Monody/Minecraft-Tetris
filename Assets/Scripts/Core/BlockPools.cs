@@ -22,6 +22,10 @@ namespace MinecraftTetris
         // 改成按块数定期给一块，大约每 GlassEvery 个方块里有一块是玻璃。
         public const int GlassEvery = 40;
 
+        // 雪块和冰同理：普通池三百多种抽不到，而且它俩要碰上岩浆才有戏，
+        // 所以定期发，间隔比玻璃短一点（融化是消耗品，化一次就没了）。
+        public const int MeltEvery = 30;
+
         static int[] _special;
         static int[] _normal;
         static int _waterId = -1;
@@ -34,9 +38,14 @@ namespace MinecraftTetris
         static int _structureId = -1;
         /// <summary>玻璃编号。不进普通池，按块数定期给一块，见 GlassEvery。</summary>
         static int _glassId = -1;
+        /// <summary>雪块 / 冰的编号。同样不进普通池，按块数定期发，见 MeltEvery。</summary>
+        static int _snowId = -1;
+        static int _iceId = -1;
         static int _count;
         /// <summary>距上一块玻璃又抽了几块（只数普通池那一路）。</summary>
         static int _glassCount;
+        /// <summary>距上一块雪/冰又抽了几块。</summary>
+        static int _meltCount;
         /// <summary>抽到 TNT 之后，下一次抽必然给红石块 —— 见 NextRandomId。</summary>
         static bool _forceRedstone;
 
@@ -74,7 +83,10 @@ namespace MinecraftTetris
             _bedrockId = -1;
             _structureId = -1;
             _glassId = -1;
+            _snowId = -1;
+            _iceId = -1;
             _glassCount = 0;
+            _meltCount = 0;
             _forceRedstone = false;
             for (int i = 0; i < blocks.Length; i++)
             {
@@ -127,6 +139,16 @@ namespace MinecraftTetris
                     _glassId = i + 1;
                     continue;
                 }
+                if (n == "snow_block" || n == "ice")
+                {
+                    // 雪块 / 冰也单独发（见 MeltEvery）：它俩的机制要碰上岩浆才触发，
+                    // 埋在三百多种的普通池里等于没有。行为本身由「雪与冰遇岩浆融化」开关控制。
+                    if (n == "snow_block")
+                        _snowId = i + 1;
+                    else
+                        _iceId = i + 1;
+                    continue;
+                }
                 if (IsSpecial(n))
                     special.Add(i + 1);
                 else
@@ -138,7 +160,8 @@ namespace MinecraftTetris
             Debug.Log("[pools] 普通 " + _normal.Length + " 种 / 特殊 " + _special.Length +
                       " 种 / 水 " + _waterId + " 岩浆 " + _lavaId +
                       " / TNT " + _tntId + " 红石 " + _redstoneId +
-                      " 基岩 " + _bedrockId + " 结构 " + _structureId + " 玻璃 " + _glassId);
+                      " 基岩 " + _bedrockId + " 结构 " + _structureId + " 玻璃 " + _glassId +
+                      " 雪 " + _snowId + " 冰 " + _iceId);
         }
 
         /// <summary>抽一个材质编号。每隔 SpecialEvery 个方块抽一次特殊池，水和岩浆在特殊池里占比较高。</summary>
@@ -194,13 +217,24 @@ namespace MinecraftTetris
                 }
                 return _special[Random.Range(0, _special.Length)];
             }
-            // 玻璃按块数发：普通池抽一次，计数器加一，攒够 GlassEvery 就给一块。
-            // 放在特殊池之后，特殊方块那一抽不参与计数，玻璃的间隔才稳定。
+            // 玻璃和雪/冰按块数发：普通池抽一次，两个计数器各加一，攒够各自的间隔就给一块。
+            // 放在特殊池之后，特殊方块那一抽不参与计数，间隔才稳定。
+            // 两个计数器先一起加，再决定给谁 —— 写完一个 return 再数另一个的话，
+            // 撞在同一次（每 120 块）的时候雪/冰的计数会少加一回，节奏慢慢就歪了。
             if (_glassId > 0)
-            {
                 _glassCount++;
-                if (_glassCount % GlassEvery == 0)
-                    return _glassId;
+            if (_snowId > 0 || _iceId > 0)
+                _meltCount++;
+
+            if (_glassId > 0 && _glassCount % GlassEvery == 0)
+                return _glassId;
+
+            if (_meltCount > 0 && _meltCount % MeltEvery == 0)
+            {
+                // 雪块和冰各一半：两个都给的话一轮里就能凑出「雪挨着冰」的局面，看不出融化
+                if (_snowId > 0 && _iceId > 0)
+                    return Random.value < 0.5f ? _snowId : _iceId;
+                return _snowId > 0 ? _snowId : _iceId;
             }
 
             if (_normal.Length == 0)
