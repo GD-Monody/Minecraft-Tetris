@@ -933,7 +933,8 @@ namespace MinecraftTetris
         static readonly string[] GuideTabNames = { "玩法", "按键", "特殊方块" };
         static readonly string[] GuideTabNotes =
         {
-            "写给第一次玩的人。方块形状可以在创意工坊里改，键位可以在设置里改。",
+            // 玩法栏不放提示行：六条本身就够直白，多一句反而显得啰嗦（玩家要求去掉）
+            "",
             "这里显示的是当前键位，改键去 设置 → 按键设置。",
             "只列和原版不一样、或者第一次玩容易搞错的机制；每一项都能在设置里单独关掉。",
         };
@@ -1092,8 +1093,9 @@ namespace MinecraftTetris
                 GUI.color = prev;
             }
 
-            GUI.Label(new Rect(panel.x, panel.y + Pg(100f), w, Pg(28f)),
-                GuideTabNotes[_guideTab], _guideNoteBig);
+            string tabNote = GuideTabNotes[_guideTab];
+            if (!string.IsNullOrEmpty(tabNote))
+                GUI.Label(new Rect(panel.x, panel.y + Pg(100f), w, Pg(28f)), tabNote, _guideNoteBig);
 
             if (_guideTab == GuideTabPlay)
                 DrawRulesPlay(panel, w);
@@ -1114,7 +1116,8 @@ namespace MinecraftTetris
             float colW = Pg(430f);
             float colGap = Pg(40f);
             float rowH = Pg(96f);
-            float top = panel.y + Pg(136f);
+            // 这一栏没有提示行了，内容往上提一点，不然标签和正文之间空出一道
+            float top = panel.y + Pg(112f);
 
             for (int i = 0; i < PlayRules.Length; i++)
             {
