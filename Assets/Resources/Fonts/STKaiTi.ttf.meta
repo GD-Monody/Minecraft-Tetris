@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: e90602f6e0478d14aab685b39d490665
+guid: 66ea9550edfa63f4e9e982bbd0736afa
 TrueTypeFontImporter:
   externalObjects: {}
   serializedVersion: 4
@@ -9,7 +9,7 @@ TrueTypeFontImporter:
   characterPadding: 1
   includeFontData: 1
   fontNames:
-  - FZZJ-LongYTJW
+  - STKaiti
   fallbackFontReferences: []
   customCharacters: 
   fontRenderingMode: 0

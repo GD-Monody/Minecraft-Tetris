@@ -10,7 +10,7 @@ W, H = 1440, 900
 TEXT_SCALE = 1.25
 MENU_SCALE = 2.0
 
-FONT = "Assets/Resources/Fonts/LongYinTi.ttf"
+FONT = "Assets/Resources/Fonts/STKaiTi.ttf"
 
 
 def P(v):

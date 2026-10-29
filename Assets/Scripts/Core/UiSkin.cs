@@ -25,7 +25,7 @@ namespace MinecraftTetris
         public const float MenuScale = 2f;
 
         /// <summary>字体资源在 Resources 下的路径（不含扩展名）。</summary>
-        public const string FontPath = "Fonts/LongYinTi";
+        public const string FontPath = "Fonts/STKaiTi";
 
         static Font _font;
         static bool _tried;
@@ -52,7 +52,7 @@ namespace MinecraftTetris
             // 资源没导进来（比如有人删了 ttf）时退回系统字体，至少不是一屏方框
             Debug.LogWarning("[MinecraftTetris] 没找到 Resources/" + FontPath + "，退回系统字体");
             return Font.CreateDynamicFontFromOSFont(
-                new[] { "方正字迹-龙吟体 简", "FZZJ-LongYTJW", "Microsoft YaHei", "SimHei", "Arial" }, 40);
+                new[] { "STKaiti", "华文楷体", "KaiTi", "楷体", "Microsoft YaHei", "SimHei", "Arial" }, 40);
         }
 
         /// <summary>设计像素 → 实际像素。布局尺寸都用它包一层。</summary>

@@ -83,7 +83,7 @@ v0.1 可玩版，Windows 已验证。详细进度见 [任务清单](docs/任务�
   - `Art/Blocks/`：方块贴图，以及 `tools/build_full_atlas.py` 拼出的图集 `Resources/atlas.png`（每格 18×18，含 1 像素 padding）
   - `Resources/Sfx/`：界面 / 消除 / 结晶 / TNT 音效；`Sfx/Place/` 是按 MC 材质分组的放置音（61 组 281 个变体，`tools/build_place_sfx.py` 可重新生成）
   - `Resources/Music/`：背景音乐 16 首（14 首常速曲 + 2 首菜单曲，约 28 MB，`tools/extract_music.py` 可重新提取），按流式导入
-  - `Resources/Fonts/`：界面字体 `LongYinTi.ttf`（动态字体，约 19 MB）
+  - `Resources/Fonts/`：界面字体 `STKaiTi.ttf`（华文楷体，动态字体，约 12 MB）
   - `Scripts/`：`Core`（纯逻辑，不依赖 MonoBehaviour）/ `Input` / `Camera` / `UI`
   - `Editor/`：自动建场景、构建、材质、逻辑自检、字体与音频的导入规则
 - `docs/`：设计规格、技术方案、任务清单
@@ -104,7 +104,7 @@ v0.1 可玩版，Windows 已验证。详细进度见 [任务清单](docs/任务�
 |---|---|---|
 | 全部源代码 | 本项目 | MIT（见 [LICENSE](LICENSE)） |
 | 方块贴图、音效、背景音乐 | 提取自**已购买的正版**《我的世界》 | Mojang Studios / Microsoft |
-| 界面字体「方正字迹-龙吟体 简」 | 方正字库 | 方正字库 |
+| 界面字体「华文楷体」 | Windows 自带字体（`STKaiti`） | 华文 / 微软 |
 
 素材仅供本项目运行使用，**不在 MIT 许可范围内**，请勿单独提取使用或商用。
 
