@@ -939,14 +939,18 @@ namespace MinecraftTetris
         };
 
         /// <summary>玩法栏的六段：小标题、正文各一行。</summary>
+        /// <summary>
+        /// 玩法栏的六段文案。左边是玩家自己写的一版，页名统一改成界面上真实的按钮名
+        /// （设置里的那个叫「场地尺寸」，不是「场地设置」），免得他按字面去找找不到。
+        /// </summary>
         static readonly string[][] PlayRules =
         {
-            new[] { "目标", "方块一块一块落下来，把一行摆满就消掉。深度大于 1 时可以把「消除」切成层消，那就得铺满整个平面才消。" },
-            new[] { "摆法", "每块最多四格，落定之后不能再动，用旋转把它塞进空位。一次消得越多分越高，方块堆到顶就结束。" },
-            new[] { "场地", "默认 10 宽 × 20 高 × 1 深。深度只有 1 时只能行消，俯视旋转和前后翻也用不上，要转得先去 设置 → 场地尺寸 加深。" },
-            new[] { "旋转", "三套转法：面内转、绕竖直轴转、前后翻，各自管一个方向，键位见第二栏。" },
-            new[] { "特殊方块", "TNT、水、沙子这些方块各有一套规则，见第三栏；不想要可以到 设置 → 特殊方块开关 一项项关掉。" },
-            new[] { "其他", "分数和最高分存在本地。创意工坊里能改方块形状，五连条、T 这类可以开关，也能自己画新形状。" },
+            new[] { "游戏玩法", "参照经典游戏《俄罗斯方块》。" },
+            new[] { "游戏方块来源", "《我的世界》。" },
+            new[] { "游戏场地", "默认为（x = 10，y = 20，z = 1），可以在 设置 → 场地尺寸 里自行调节。" },
+            new[] { "方向选择", "支持沿 x、y、z 轴任意旋转 90°，键位可以在 设置 → 按键设置 里自定义。" },
+            new[] { "特殊方块", "一些方块拥有特殊机制，详见本页的「特殊方块」栏。" },
+            new[] { "创意工坊", "玩家可以自定义下落方块的样式。" },
         };
 
         // ---------- 特殊方块说明 ----------
@@ -1068,7 +1072,7 @@ namespace MinecraftTetris
             // 三栏内容长短差得多，面板高度跟着栏走，免得短栏下面空一大块
             float h = _guideTab == GuideTabBlocks ? Pg(596f)
                 : _guideTab == GuideTabKeys ? Pg(576f)
-                : Pg(496f);
+                : Pg(520f);
             Rect panel = CenterPanel(w, h);
             DrawPanel(panel);
 
@@ -1109,8 +1113,8 @@ namespace MinecraftTetris
             const int perCol = 3;
             float colW = Pg(430f);
             float colGap = Pg(40f);
-            float rowH = Pg(92f);
-            float top = panel.y + Pg(128f);
+            float rowH = Pg(96f);
+            float top = panel.y + Pg(136f);
 
             for (int i = 0; i < PlayRules.Length; i++)
             {
