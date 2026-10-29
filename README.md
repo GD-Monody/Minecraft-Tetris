@@ -40,7 +40,7 @@ v0.1 可玩版，Windows 已验证。详细进度见 [任务清单](docs/任务�
 - 三轴旋转（24 种朝向）、踢墙与重定位、旋转动画
 - 61 组放置音效对齐 MC 原版、消除音、界面音；14 + 2 首原版 BGM 随机播放，音量可调
 - 命令行式设置界面：场地尺寸、消除模式、下落速度（0.01 ~ 2.00 倍）、音乐音量、十项特殊方块机制开关、键位自定义、音效开关
-- 主菜单像素标题、创意工坊（自己画模具）、游戏规则页（玩法 / 按键 / 特殊方块三栏）、十项特殊方块机制开关、玻璃被压碎、轨道相机、光标荧光拖尾、逻辑自检 236 项
+- 主菜单像素标题、创意工坊（自己画模具）、游戏规则页（玩法 / 按键 / 特殊方块三栏）、十项特殊方块机制开关、玻璃被压碎、轨道相机、光标荧光拖尾、逻辑自检 232 项
 
 还欠着：立体方块形状（z ≥ 2 的解锁）、WebGL / Android 构建。
 
@@ -68,7 +68,7 @@ v0.1 可玩版，Windows 已验证。详细进度见 [任务清单](docs/任务�
 2. 打开 `Assets/Scenes/Game.unity`；如果场景丢了或报错，用菜单 `MinecraftTetris → 生成游戏场景` 重新生成
 3. 点 Play
 
-跑逻辑自检（不进 Play 模式，直接批处理，236 项）：
+跑逻辑自检（不进 Play 模式，直接批处理，232 项）：
 
 ```bash
 "C:/Program Files/Unity/Hub/Editor/2022.3.62f3c1/Editor/Unity.exe" -batchmode -quit \
@@ -81,7 +81,7 @@ v0.1 可玩版，Windows 已验证。详细进度见 [任务清单](docs/任务�
 
 - `Assets/`
   - `Art/Blocks/`：方块贴图，以及 `tools/build_full_atlas.py` 拼出的图集 `Resources/atlas.png`（每格 18×18，含 1 像素 padding）
-  - `Resources/Sfx/`：界面 / 消除 / 结晶 / TNT 音效；`Sfx/Place/` 是按 MC 材质分组的放置音（61 组 284 个变体，`tools/build_place_sfx.py` 可重新生成）
+  - `Resources/Sfx/`：界面 / 消除 / 结晶 / TNT 音效；`Sfx/Place/` 是按 MC 材质分组的放置音（61 组 281 个变体，`tools/build_place_sfx.py` 可重新生成）
   - `Resources/Music/`：背景音乐 16 首（14 首常速曲 + 2 首菜单曲，约 28 MB，`tools/extract_music.py` 可重新提取），按流式导入
   - `Resources/Fonts/`：界面字体 `STKaiTi.ttf`（华文楷体，动态字体，约 12 MB）
   - `Scripts/`：`Core`（纯逻辑，不依赖 MonoBehaviour）/ `Input` / `Camera` / `UI`

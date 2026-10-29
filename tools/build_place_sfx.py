@@ -95,26 +95,18 @@ GROUPS = [
     ("suspicious_sand", "block.suspicious_sand.place"),
     ("snow", "block.snow.place"),
     ("coral_block", "block.coral_block.place"),
+    ("glass", "block.glass.place"),
     # 液体：原版是拿桶倒出来的声音
     ("fluid_water", "item.bucket.empty"),
     ("fluid_lava", "item.bucket.empty_lava"),
-]
-
-# --- 原版没有对应事件、要自己凑的组 ---------------------------------------
-# (组名, 采样名列表, 音量, 播放音高)
-# 玻璃：MC 的 block.glass.place 直接指向 dig/stone1..4，放玻璃听起来就是放石头，
-# 只有 block.glass.break 是 glass1..3 这一组「叮」声。这里拿破坏音的采样当放置音，
-# 音量压到 0.45、音高提到 1.18，听感是一下轻脆的落放声，不像砸碎。
-SYNTH_GROUPS = [
-    ("glass_place", ["random/glass1", "random/glass2", "random/glass3"], 0.45, 1.18),
 ]
 
 # --- 方块名 -> 组 的规则（顺序敏感，先具体后通用） -----------------------
 # 用 fullmatch 匹配，所以写 alternation 时要把全名写清楚；被规则顶掉的方块
 # 会落到最后的兜底 stone，脚本会打印「哪些方块走了兜底」以便核对。
 RULES = [
-    # 玻璃：原版的放置音其实是石头声，这里换成破坏音的采样（见 SYNTH_GROUPS）
-    (r".*glass.*", "glass_place"),
+    # 玻璃：原版有单独的一组（清亮的叮声），别落到 stone 兜底
+    ("glass", "glass"),
     # 26.2 的新材质族，先占位，别被下面的通用规则吃掉
     ("potent_sulfur", "potent_sulfur"),
     ("sulfur|sulfur_bricks|chiseled_sulfur|polished_sulfur", "sulfur"),
@@ -254,14 +246,6 @@ def collect_clips(sounds):
             clips.append((flat_name(name), vol))
             files[name] = True
         plan.append((group, clips))
-
-    # 原版没有单独事件的组：采样名直接写死
-    for group, names, vol, _pitch in SYNTH_GROUPS:
-        clips = []
-        for name in names:
-            clips.append((flat_name(name), vol))
-            files[name] = True
-        plan.append((group, clips))
     return plan, sorted(files)
 
 
@@ -302,7 +286,7 @@ def main():
 
     print("索引: %s" % os.path.basename(index_path))
     print("方块 %d 个 -> %d 组" % (len(block_names), len(counts)))
-    group_names = [g for g, _ in plan]
+    group_names = [g for g, _ in GROUPS]
     for group in group_names:
         if group not in counts:
             print("  [空组] %-22s 0" % group)
@@ -337,7 +321,6 @@ def main():
     lines.append("// 由 tools/build_place_sfx.py 自动生成，不要手改。")
     lines.append("// 数据来源：%s 里的 minecraft/sounds.json（block.<组>.place 事件，"
                  "水和岩浆用 item.bucket.*）。" % os.path.basename(index_path))
-    lines.append("// 玻璃没有现成事件，采样见脚本里的 SYNTH_GROUPS。")
     lines.append("namespace MinecraftTetris")
     lines.append("{")
     lines.append("    /// <summary>")
@@ -347,7 +330,7 @@ def main():
     lines.append("    /// </summary>")
     lines.append("    public static class BlockSfxData")
     lines.append("    {")
-    lines.append("        public const int GroupCount = %d;" % len(plan))
+    lines.append("        public const int GroupCount = %d;" % len(GROUPS))
     lines.append("")
     lines.append("        /// <summary>组名，下标即方块表里的组编号。</summary>")
     lines.append("        public static readonly string[] Groups =")
@@ -371,15 +354,6 @@ def main():
         vols = sorted(set(v for _, v in clips))
         vol = vols[0] if len(vols) == 1 else 1.0
         lines.append("            %sf,   // %s" % (("%.2f" % vol).rstrip("0").rstrip(".") if vol != 1.0 else "1", group))
-    lines.append("        };")
-    lines.append("")
-    lines.append("        /// <summary>每组的播放音高（1 = 原样）。只有自己凑的组会偏离 1。</summary>")
-    lines.append("        public static readonly float[] GroupPitch =")
-    lines.append("        {")
-    pitch_of = {g: p for g, _names, _vol, p in SYNTH_GROUPS}
-    for group, _clips in plan:
-        pitch = pitch_of.get(group, 1.0)
-        lines.append("            %sf,   // %s" % (("%.2f" % pitch).rstrip("0").rstrip(".") if pitch != 1.0 else "1", group))
     lines.append("        };")
     lines.append("")
     lines.append("        /// <summary>每个方块属于哪一组（下标和 BlockCatalogData.Names 对齐）。</summary>")

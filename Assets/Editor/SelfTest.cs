@@ -320,8 +320,6 @@ namespace MinecraftTetris.EditorTools
             Check("clip 文件都在 Sfx/Place 下", missingClip == 0);
             Check("每组音量表和组数对齐",
                 BlockSfxData.GroupVolume.Length == BlockSfxData.GroupCount);
-            Check("每组音高表和组数对齐",
-                BlockSfxData.GroupPitch.Length == BlockSfxData.GroupCount);
 
             // 文件在磁盘上 ≠ Resources 拿得到，抽样真正加载一遍（281 个全加载太慢）
             int probeCount = 0;
@@ -351,14 +349,6 @@ namespace MinecraftTetris.EditorTools
             Check("黑曜石 -> 石头音", groupOf("obsidian") == "stone");
             Check("水 -> 倒桶音", groupOf("water") == "fluid_water");
             Check("岩浆 -> 倒桶音", groupOf("lava") == "fluid_lava");
-            // 原版 block.glass.place 指向 dig/stone*，放玻璃听着就是放石头；
-            // 这里用玻璃破坏音凑了一组 glass_place（音量 0.45、音高 1.18）
-            Check("玻璃不再共用石头音", groupOf("glass") == "glass_place");
-            int glassGroup = System.Array.IndexOf(BlockSfxData.Groups, "glass_place");
-            Check("玻璃那组压低了音量",
-                glassGroup >= 0 && BlockSfxData.GroupVolume[glassGroup] < 1f);
-            Check("玻璃那组抬高了音高",
-                glassGroup >= 0 && BlockSfxData.GroupPitch[glassGroup] > 1f);
 
             // 流体要用的方块编号（水、岩浆、黑曜石、原石）在方块表里查一次
             Fluids.Init();
