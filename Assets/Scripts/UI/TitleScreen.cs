@@ -17,7 +17,7 @@ namespace MinecraftTetris
 
         enum SettingsPage { Main, Keys, Size, Workshop, Speed, Music, Guide, Mech }
 
-        /// <summary>「特殊方块」说明页在 SettingsPage 里的下标，调试开关要用。</summary>
+        /// <summary>「游戏规则」页在 SettingsPage 里的下标，调试开关要用。</summary>
         public const int PageGuide = (int)SettingsPage.Guide;
 
         /// <summary>「特殊方块机制开关」页的下标。</summary>
@@ -38,6 +38,9 @@ namespace MinecraftTetris
         public bool Visible = true;
         public bool ShowSettings;
         public bool HasContinue;
+
+        /// <summary>「游戏规则」页当前看哪一栏：0 玩法、1 按键、2 特殊方块。</summary>
+        int _guideTab;
 
         public event Action OnStartGame;
         public event Action OnContinue;
@@ -80,6 +83,8 @@ namespace MinecraftTetris
         GUIStyle _guideNameStyle;
         GUIStyle _guideDescStyle;
         GUIStyle _guideNoteStyle;
+        /// <summary>「游戏规则」按键栏：键名居中。</summary>
+        GUIStyle _guideKeyStyle;
         Texture2D _btnNormal;
         Texture2D _btnHover;
         Texture2D _btnActive;
@@ -312,7 +317,7 @@ namespace MinecraftTetris
                 items.Add(new KeyValuePair<string, Action>("继续游戏", () => Fire(OnContinue)));
             items.Add(new KeyValuePair<string, Action>("开始游戏", () => Fire(OnStartGame)));
             items.Add(new KeyValuePair<string, Action>("创意工坊", OpenWorkshop));
-            items.Add(new KeyValuePair<string, Action>("特殊方块", () => { ShowSettings = true; _page = SettingsPage.Guide; }));
+            items.Add(new KeyValuePair<string, Action>("游戏规则", () => { ShowSettings = true; _guideTab = GuideTabPlay; _page = SettingsPage.Guide; }));
             items.Add(new KeyValuePair<string, Action>("设置", () => { ShowSettings = true; _page = SettingsPage.Main; }));
             items.Add(new KeyValuePair<string, Action>("退出", () => Fire(OnQuit)));
 
@@ -823,6 +828,33 @@ namespace MinecraftTetris
             }
         }
 
+        // ---------- 游戏规则 ----------
+
+        /// <summary>规则页的三栏：玩法、按键、特殊方块。</summary>
+        const int GuideTabPlay = 0;
+        const int GuideTabKeys = 1;
+        const int GuideTabBlocks = 2;
+        const int GuideTabCount = 3;
+
+        static readonly string[] GuideTabNames = { "玩法", "按键", "特殊方块" };
+        static readonly string[] GuideTabNotes =
+        {
+            "写给第一次玩的人。方块形状可以在创意工坊里改，键位可以在设置里改。",
+            "这里显示的是当前键位，改键去 设置 → 按键设置。",
+            "只列和原版不一样、或者第一次玩容易搞错的机制；每一项都能在设置里单独关掉。",
+        };
+
+        /// <summary>玩法栏的六段：小标题、正文各一行。</summary>
+        static readonly string[][] PlayRules =
+        {
+            new[] { "目标", "方块一块一块落下来，把一行摆满就消掉。设置里可以把「消除」切成层消，那就要铺满整个平面才消。" },
+            new[] { "摆法", "每块最多四格，落定之后不能再动，用旋转把它塞进空位。一次消得越多分越高，方块堆到顶就结束。" },
+            new[] { "场地", "默认 10 宽 × 20 高 × 1 深。深度只有 1 时俯视旋转和前后翻用不上，要转得先去 设置 → 场地尺寸 加深。" },
+            new[] { "旋转", "三套转法：面内转、绕竖直轴转、前后翻，各自管一个方向，键位见第二栏。" },
+            new[] { "特殊方块", "TNT、水、沙子这些方块各有一套规则，见第三栏；不想要可以到 设置 → 特殊方块开关 一项项关掉。" },
+            new[] { "其他", "分数和最高分存在本地。创意工坊里能改方块形状，五连条、T 这类可以开关，也能自己画新形状。" },
+        };
+
         // ---------- 特殊方块说明 ----------
 
         struct GuideItem
@@ -922,34 +954,122 @@ namespace MinecraftTetris
             };
         }
 
+        /// <summary>调试开关和主菜单用：直接打开规则页的某一栏。</summary>
+        public void OpenRulesPage(int tab)
+        {
+            ShowSettings = true;
+            _page = SettingsPage.Guide;
+            _guideTab = Mathf.Clamp(tab, 0, GuideTabCount - 1);
+        }
+
         void DrawGuide()
         {
             EnsureGuideItems();
 
+            if (_guideTab < 0 || _guideTab >= GuideTabCount)
+                _guideTab = GuideTabPlay;
+
             float w = UiSkin.P(1060f);
-            // 十一项排两列、每列六行；再往下就压到「返回」上了
-            float h = UiSkin.P(804f);
+            // 三栏内容长短差得多，面板高度跟着栏走，免得短栏下面空一大块
+            float h = _guideTab == GuideTabBlocks ? UiSkin.P(806f)
+                : _guideTab == GuideTabKeys ? UiSkin.P(620f)
+                : UiSkin.P(720f);
             Rect panel = CenterPanel(w, h);
             DrawPanel(panel);
 
-            GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(14f), w, UiSkin.P(44f)), "特殊方块", _panelTitleStyle);
-            GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(60f), w, UiSkin.P(24f)),
-                "只列和原版不一样、或者第一次玩容易搞错的机制；每一项都能在设置里单独关掉", _guideNoteStyle);
+            GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(14f), w, UiSkin.P(44f)), "游戏规则", _panelTitleStyle);
 
+            float tw = UiSkin.P(200f);
+            float th = UiSkin.P(38f);
+            float tgap = UiSkin.P(16f);
+            float tx = panel.x + (w - (tw * GuideTabCount + tgap * (GuideTabCount - 1))) * 0.5f;
+            float ty = panel.y + UiSkin.P(58f);
+            for (int i = 0; i < GuideTabCount; i++)
+            {
+                Color prev = GUI.color;
+                GUI.color = _guideTab == i ? Color.white : new Color(0.7f, 0.7f, 0.7f, 1f);
+                if (GUI.Button(new Rect(tx + i * (tw + tgap), ty, tw, th), GuideTabNames[i], _btnStyle))
+                    _guideTab = i;
+                GUI.color = prev;
+            }
+
+            GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(104f), w, UiSkin.P(24f)),
+                GuideTabNotes[_guideTab], _guideNoteStyle);
+
+            if (_guideTab == GuideTabPlay)
+                DrawRulesPlay(panel, w);
+            else if (_guideTab == GuideTabKeys)
+                DrawRulesKeys(panel, w);
+            else
+                DrawRulesBlocks(panel);
+
+            if (GUI.Button(new Rect(panel.x + w - UiSkin.P(230f), panel.yMax - UiSkin.P(72f),
+                UiSkin.P(180f), UiSkin.P(44f)), "返回", _btnStyle))
+                ShowSettings = false;
+        }
+
+        /// <summary>玩法栏：六段小标题 + 正文，纯文字，不画图标。</summary>
+        void DrawRulesPlay(Rect panel, float w)
+        {
+            float left = panel.x + UiSkin.P(50f);
+            float textW = w - UiSkin.P(100f);
+            float rowH = UiSkin.P(80f);
+            float top = panel.y + UiSkin.P(142f);
+
+            for (int i = 0; i < PlayRules.Length; i++)
+            {
+                float y = top + i * rowH;
+                GUI.Label(new Rect(left, y, textW, UiSkin.P(26f)), PlayRules[i][0], _guideNameStyle);
+                GUI.Label(new Rect(left, y + UiSkin.P(26f), textW, UiSkin.P(52f)), PlayRules[i][1], _guideDescStyle);
+            }
+        }
+
+        /// <summary>按键栏：读当前键位，两列排开；这里只显示，改键在设置里。</summary>
+        void DrawRulesKeys(Rect panel, float w)
+        {
+            const int perCol = 6;
+            float colW = UiSkin.P(440f);
+            float labelW = UiSkin.P(250f);
+            float keyW = UiSkin.P(170f);
+            float rowH = UiSkin.P(44f);
+            float rowGap = UiSkin.P(8f);
+            float left = panel.x + UiSkin.P(50f);
+            float top = panel.y + UiSkin.P(142f);
+
+            for (int i = 0; i < AllActions.Length; i++)
+            {
+                GameAction action = AllActions[i];
+                float x = left + (i / perCol) * (colW + UiSkin.P(60f));
+                float y = top + (i % perCol) * (rowH + rowGap);
+
+                GUI.Label(new Rect(x, y, labelW, rowH), ActionLabel(action), _rowLabelStyle);
+                DrawRect(new Rect(x + labelW, y + UiSkin.P(3f), keyW, rowH - UiSkin.P(6f)),
+                    new Color(1f, 1f, 1f, 0.07f));
+                GUI.Label(new Rect(x + labelW, y, keyW, rowH),
+                    KeyName(KeyboardInput.GetPrimaryKey(action)), _guideKeyStyle);
+            }
+
+            float noteY = top + perCol * (rowH + rowGap) + UiSkin.P(12f);
+            GUI.Label(new Rect(left, noteY, w - UiSkin.P(100f), UiSkin.P(26f)),
+                "改键：设置 → 按键设置，点一下键位再按新键；这一栏会跟着变。", _guideNoteStyle);
+            GUI.Label(new Rect(left, noteY + UiSkin.P(30f), w - UiSkin.P(100f), UiSkin.P(26f)),
+                "绕竖直轴转和前后翻要场地深度 z ≥ 2 才有意义，I 型要 4。", _guideNoteStyle);
+        }
+
+        /// <summary>特殊方块栏：十一项两列，图标从方块图集里切。</summary>
+        void DrawRulesBlocks(Rect panel)
+        {
             const int perCol = 6;
             float colW = UiSkin.P(470f);
-            float rowH = UiSkin.P(104f);
-            float top = panel.y + UiSkin.P(104f);
+            // 标题、切换栏、提示各占一段之后只剩这么多，行高再大就压到「返回」上了
+            float rowH = UiSkin.P(98f);
+            float top = panel.y + UiSkin.P(142f);
 
             for (int i = 0; i < _guideItems.Length; i++)
             {
                 float x = panel.x + UiSkin.P(40f) + (i / perCol) * (colW + UiSkin.P(40f));
                 DrawGuideRow(x, top + (i % perCol) * rowH, colW, _guideItems[i]);
             }
-
-            if (GUI.Button(new Rect(panel.x + w - UiSkin.P(230f), panel.yMax - UiSkin.P(72f),
-                UiSkin.P(180f), UiSkin.P(44f)), "返回", _btnStyle))
-                ShowSettings = false;
         }
 
         void DrawGuideRow(float x, float y, float w, GuideItem item)
@@ -1228,6 +1348,9 @@ namespace MinecraftTetris
             _guideDescStyle.wordWrap = true;
             _guideNoteStyle = MakeStyle(17, new Color(0.68f, 0.72f, 0.80f, 1f), TextAnchor.MiddleCenter, FontStyle.Normal);
             _guideNoteStyle.wordWrap = false;
+            // 按键栏里键名用的，放在淡色方块中间
+            _guideKeyStyle = MakeStyle(19, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
+            _guideKeyStyle.wordWrap = false;
 
             _btnStyle = new GUIStyle(GUI.skin.button);
             _btnStyle.fontSize = UiSkin.Size(18);

@@ -119,11 +119,22 @@ namespace MinecraftTetris
                 _title.Visible = true;
                 _title.OpenSettingsPage(3);
             }
-            // -guide：直接打开「特殊方块」说明页，截图核对用
+            // -guide：直接打开「游戏规则」页的玩法栏，截图核对用
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-guide") >= 0)
             {
                 _title.Visible = true;
-                _title.OpenSettingsPage(TitleScreen.PageGuide);
+                _title.OpenRulesPage(0);
+            }
+            // -rules N：打开规则页的第 N 栏（0 玩法 / 1 按键 / 2 特殊方块），截图核对用
+            int rulesArg = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-rules");
+            if (rulesArg >= 0)
+            {
+                int ruleTab = 0;
+                string[] ruleArgs = System.Environment.GetCommandLineArgs();
+                if (rulesArg + 1 < ruleArgs.Length)
+                    int.TryParse(ruleArgs[rulesArg + 1], out ruleTab);
+                _title.Visible = true;
+                _title.OpenRulesPage(ruleTab);
             }
             // -mechsettings：直接打开「特殊方块机制」开关页，截图核对用
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-mechsettings") >= 0)
