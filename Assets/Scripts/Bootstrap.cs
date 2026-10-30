@@ -341,6 +341,8 @@ namespace MinecraftTetris
             {
                 _title.HasContinue = GameSave.HasSave;
                 SetHudHidden(true);
+                if (_view != null)
+                    _view.HideGhost();
                 if (_mainCam != null)
                     _mainCam.cullingMask = 0;
                 if (_music != null)
@@ -371,6 +373,8 @@ namespace MinecraftTetris
             if (_loop.GameOver)
             {
                 GameSave.Clear();
+                if (_view != null)
+                    _view.HideGhost();   // 都结束了还指着落点没意义，而且会一直亮在那儿
                 if (Input.GetKeyDown(KeyCode.R))
                     StartNewGame();
                 return;
@@ -383,6 +387,7 @@ namespace MinecraftTetris
             _view.RefreshPiece(_loop.Current);
             SyncTntFlash();
             SyncFire();
+            SyncGhost();
 
             // 调试用：-demo 启动时在自动截图前炸一把粒子，方便截图看效果
             if (_demoMode && !_demoBurst && Time.time > 5.2f)
@@ -1949,6 +1954,26 @@ namespace MinecraftTetris
         /// <summary>上一帧哪些格子在烧（SyncFire 用来找出「火灭了」的那些）。</summary>
         readonly System.Collections.Generic.List<Vector3Int> _lastBurning
             = new System.Collections.Generic.List<Vector3Int>();
+
+        /// <summary>
+        /// 落点提示：把「这一块直接落下去会停在哪」用高亮方框标出来。
+        /// 每帧重算一次就够了 —— 方块横移、转朝向、底下堆的方块变了，框都得跟着变。
+        /// 落点是 GameLoop.GhostOrigin 算的，和硬降同一套判定，框指哪儿按空格就落哪儿。
+        /// </summary>
+        void SyncGhost()
+        {
+            if (_view == null)
+                return;
+
+            if (!GameSettings.GhostPiece || _loop == null || _loop.Current == null || _loop.GameOver)
+            {
+                _view.HideGhost();
+                return;
+            }
+
+            Vector3Int o = _loop.GhostOrigin();
+            _view.ShowGhost(_loop.Current, o.x, o.y, o.z);
+        }
 
         /// <summary>
         /// 水岩浆结晶：把那几格换成黑曜石 / 原石，冒一点碎屑，播 MC 的嘶声（random.fizz）。

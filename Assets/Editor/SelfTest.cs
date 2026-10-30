@@ -373,6 +373,55 @@ namespace MinecraftTetris.EditorTools
                       BlockMesh.GetMaterial(BlockCatalog.Of(BlockCatalog.GlassId)) != cutMat);
             }
 
+            // ---------- 落点提示（当前方块会停在哪，用高亮方框标出来） ----------
+            bool ghostWas = GameSettings.GhostPiece;
+            Check("落点提示默认开着", ghostWas);
+            GameSettings.SetGhostPiece(false);
+            Check("落点提示能关", !GameSettings.GhostPiece);
+            GameSettings.SetGhostPiece(true);
+            Check("落点提示能再开回来", GameSettings.GhostPiece);
+            GameSettings.SetGhostPiece(ghostWas);
+
+            int ghostStone = IdOf("stone");
+            var gGhost = new GameLoop(5, 8, 1, 7);
+            gGhost.Current = new Piece(PieceType.O, ghostStone, 0, 6, 0);
+            Vector3Int land = gGhost.GhostOrigin();
+            Check("空场里落点在最底层（y = 0）", land.y == 0 && land.x == 0 && land.z == 0);
+
+            // 底下垫两块石头，落点就抬到石头上面
+            var gGhost2 = new GameLoop(5, 8, 1, 7);
+            gGhost2.Grid.Set(0, 0, 0, ghostStone);
+            gGhost2.Grid.Set(1, 0, 0, ghostStone);
+            gGhost2.Current = new Piece(PieceType.O, ghostStone, 0, 6, 0);
+            Check("底下有方块时落点停在它上面", gGhost2.GhostOrigin().y == 1);
+
+            // 落点必须和硬降结果一致：框指哪儿，按空格就得落哪儿
+            var gGhost3 = new GameLoop(5, 8, 1, 7);
+            gGhost3.Current = new Piece(PieceType.O, ghostStone, 2, 6, 0);
+            Vector3Int preview = gGhost3.GhostOrigin();
+            gGhost3.HardDrop();
+            bool landed = true;
+            for (int i = 0; i < 4; i++)
+            {
+                // 落定之后 Current 已经换下一块了，拿落点算出的四格去查场地
+                Vector3Int off = new Piece(PieceType.O, ghostStone, 0, 0, 0).CellOffset(i);
+                if (gGhost3.Grid.Get(preview.x + off.x, preview.y + off.y, preview.z + off.z) == 0)
+                    landed = false;
+            }
+            Check("落点和硬降落在同一处", landed && preview.y == 0);
+
+            Mesh frame = GridView.BuildGhostFrame(0.56f, 0.055f);
+            Check("落点框是 12 根棱拼的（每根 8 顶点）",
+                  frame.vertexCount == 96 && frame.triangles.Length == 12 * 36);
+
+            var ghostHost = new GameObject("GhostMatProbe");
+            GridView ghostView = ghostHost.AddComponent<GridView>();
+            Material ghostMat = ghostView.GhostMaterial;
+            Check("落点框材质是加色发光的（不吃光才亮）",
+                  ghostMat != null && ghostMat.shader != null &&
+                  ghostMat.shader.name == "MinecraftTetris/GlowAdditive");
+            UnityEngine.Object.DestroyImmediate(ghostHost);
+
             // 放置音效：按 MC 原版材质分组，数据由 tools/build_place_sfx.py 生成
             Check("音效分组数和方块表对齐",
                 BlockSfxData.BlockGroup.Length == BlockCatalogData.Names.Length);

@@ -13,6 +13,7 @@ namespace MinecraftTetris
         const string ElimModeKey = "elim.mode";
         const string FallSpeedKey = "fall.speed";
         const string MusicVolumeKey = "music.volume";
+        const string GhostKey = "ghost.piece";
 
         public const int MinSizeX = 5;
         public const int MaxSizeX = 20;
@@ -120,6 +121,22 @@ namespace MinecraftTetris
         public static void SetMusicVolume(float v)
         {
             PlayerPrefs.SetFloat(MusicVolumeKey, ClampMusicVolume(v));
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>
+        /// 落点提示：下落时把「直接落下去会停在哪」用高亮方框标出来。
+        /// 3D 场地里方块能往深处挪，光靠自己看很难估落点，所以默认开着。
+        /// 觉得碍眼可以在设置里关掉，不影响任何玩法。
+        /// </summary>
+        public static bool GhostPiece
+        {
+            get { return PlayerPrefs.GetInt(GhostKey, 1) != 0; }
+        }
+
+        public static void SetGhostPiece(bool on)
+        {
+            PlayerPrefs.SetInt(GhostKey, on ? 1 : 0);
             PlayerPrefs.Save();
         }
 

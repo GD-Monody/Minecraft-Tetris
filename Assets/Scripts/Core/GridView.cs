@@ -18,6 +18,10 @@ namespace MinecraftTetris
         Vector3[] _pieceTarget;
         Transform _pieceRoot;
 
+        /// <summary>落点提示框：当前方块直接落下去会停在哪，就在那儿摆一圈高亮方框。</summary>
+        GameObject[] _ghostCells;
+        Transform _ghostRoot;
+
         /// <summary>正在下落的那个方块的父节点（调试用）。</summary>
         public Transform PieceRoot { get { return _pieceRoot; } }
 
@@ -93,6 +97,8 @@ namespace MinecraftTetris
 
             _pieceRoot = new GameObject("Piece").transform;
             _pieceRoot.SetParent(transform, false);
+            _ghostRoot = new GameObject("Ghost").transform;
+            _ghostRoot.SetParent(transform, false);
             _pieceCells = new GameObject[4];
             _pieceVisual = new Vector3[4];
             _pieceTarget = new Vector3[4];
@@ -802,6 +808,197 @@ namespace MinecraftTetris
             for (int i = 0; i < _pieceCells.Length; i++)
                 if (_pieceCells[i] != null)
                     _pieceCells[i].SetActive(false);
+        }
+
+        // ---------- 落点提示框 ----------
+
+        /// <summary>框的半边长。方块自己比 1 格大一点点（0.52），框要再大一圈才压在它表面上。</summary>
+        const float GhostHalf = 0.56f;
+        /// <summary>框线的粗细。</summary>
+        const float GhostThick = 0.055f;
+
+        static Mesh _ghostFrame;
+
+        /// <summary>
+        /// 落点框的网格：一个立方体的 12 条棱，每条是一根细长方块，全场共用一份。
+        ///
+        /// 没用 MeshTopology.Lines 画线：那种线宽在 Windows 上恒为 1 像素，
+        /// 场地一远就细得看不见。用有厚度的条拼能吃上加色材质，看起来是发光的。
+        /// </summary>
+        public static Mesh GhostFrame
+        {
+            get
+            {
+                if (_ghostFrame == null)
+                    _ghostFrame = BuildGhostFrame(GhostHalf, GhostThick);
+                return _ghostFrame;
+            }
+        }
+
+        /// <summary>造一个空心线框（12 根棱）。自检直接调它，所以做成 public static。</summary>
+        public static Mesh BuildGhostFrame(float half, float thick)
+        {
+            var verts = new List<Vector3>();
+            var tris = new List<int>();
+
+            for (int axis = 0; axis < 3; axis++)
+            {
+                int b = (axis + 1) % 3;
+                int c = (axis + 2) % 3;
+                for (int sb = -1; sb <= 1; sb += 2)
+                {
+                    for (int sc = -1; sc <= 1; sc += 2)
+                    {
+                        // 这根棱沿 axis 方向躺满，在另外两个轴上卡在立方体的角上
+                        var center = Vector3.zero;
+                        var size = Vector3.zero;
+                        center[b] = sb * half;
+                        center[c] = sc * half;
+                        size[axis] = half * 2f;
+                        size[b] = thick;
+                        size[c] = thick;
+                        AddBar(verts, tris, center, size);
+                    }
+                }
+            }
+
+            var mesh = new Mesh();
+            mesh.name = "GhostFrame";
+            mesh.SetVertices(verts);
+            mesh.SetTriangles(tris, 0);
+            mesh.RecalculateNormals();
+            return mesh;
+        }
+
+        /// <summary>往网格里加一根长方体（中心 + 尺寸）。</summary>
+        static void AddBar(List<Vector3> verts, List<int> tris, Vector3 center, Vector3 size)
+        {
+            Vector3 h = size * 0.5f;
+            int first = verts.Count;
+            for (int i = 0; i < 8; i++)
+            {
+                verts.Add(center + new Vector3(
+                    (i & 1) == 0 ? -h.x : h.x,
+                    (i & 2) == 0 ? -h.y : h.y,
+                    (i & 4) == 0 ? -h.z : h.z));
+            }
+
+            // 六个面的四个角（顶点编号：bit0 = +x，bit1 = +y，bit2 = +z）
+            int[] quads =
+            {
+                0, 2, 6, 4,   // -x
+                1, 5, 7, 3,   // +x
+                0, 4, 5, 1,   // -y
+                2, 3, 7, 6,   // +y
+                0, 1, 3, 2,   // -z
+                4, 6, 7, 5,   // +z
+            };
+            for (int f = 0; f < 6; f++)
+            {
+                int a = first + quads[f * 4];
+                int b2 = first + quads[f * 4 + 1];
+                int c = first + quads[f * 4 + 2];
+                int d = first + quads[f * 4 + 3];
+                tris.Add(a); tris.Add(b2); tris.Add(c);
+                tris.Add(a); tris.Add(c); tris.Add(d);
+            }
+        }
+
+        Material _ghostMaterial;
+
+        /// <summary>
+        /// 落点框用的青色发光材质。克隆 GridGlowMat（它引用了 GlowAdditive 这个加色 shader），
+        /// 和 FireMat 同理：构建版里裸 Shader.Find 常常拿到 null。
+        /// </summary>
+        public Material GhostMaterial
+        {
+            get
+            {
+                if (_ghostMaterial != null)
+                    return _ghostMaterial;
+
+                Material baseMat = Resources.Load<Material>("GridGlowMat");
+                if (baseMat != null)
+                    _ghostMaterial = new Material(baseMat);
+                else
+                {
+                    Shader sh = Shader.Find("MinecraftTetris/GlowAdditive");
+                    if (sh != null)
+                        _ghostMaterial = new Material(sh);
+                }
+
+                if (_ghostMaterial != null)
+                    _ghostMaterial.color = new Color(0.35f, 0.92f, 1f, 0.55f);
+                return _ghostMaterial;
+            }
+        }
+
+        /// <summary>
+        /// 把落点框摆到 (ox, oy, oz) 这个原点上，框的格子照方块的形状来 ——
+        /// 一格一个方框，合起来就是「这一块落下去会占哪儿」。
+        /// </summary>
+        public void ShowGhost(Piece piece, int ox, int oy, int oz)
+        {
+            if (_ghostRoot == null || piece == null)
+            {
+                HideGhost();
+                return;
+            }
+
+            int n = piece.Cells.Length;
+            EnsureGhostCapacity(n);
+            Mesh frame = GhostFrame;
+            Material mat = GhostMaterial;
+
+            for (int i = 0; i < _ghostCells.Length; i++)
+            {
+                GameObject go = _ghostCells[i];
+                if (go == null)
+                    continue;
+                if (i >= n)
+                {
+                    go.SetActive(false);
+                    continue;
+                }
+
+                Vector3Int off = piece.CellOffset(i);
+                go.transform.position = new Vector3(ox + off.x, oy + off.y, oz + off.z);
+                go.GetComponent<MeshFilter>().sharedMesh = frame;
+                go.GetComponent<MeshRenderer>().sharedMaterial = mat;
+                go.SetActive(true);
+            }
+        }
+
+        /// <summary>藏起落点框（关掉开关、暂停、游戏结束时用）。</summary>
+        public void HideGhost()
+        {
+            if (_ghostCells == null)
+                return;
+            for (int i = 0; i < _ghostCells.Length; i++)
+                if (_ghostCells[i] != null)
+                    _ghostCells[i].SetActive(false);
+        }
+
+        void EnsureGhostCapacity(int n)
+        {
+            if (_ghostCells != null && _ghostCells.Length >= n)
+                return;
+
+            int old = _ghostCells == null ? 0 : _ghostCells.Length;
+            int grown = Mathf.Max(n, old + 4);
+            var cells = new GameObject[grown];
+            for (int i = 0; i < grown; i++)
+            {
+                if (i < old)
+                {
+                    cells[i] = _ghostCells[i];
+                    continue;
+                }
+                cells[i] = NewCubeObject("GhostCell" + i);
+                cells[i].transform.SetParent(_ghostRoot, false);
+                cells[i].SetActive(false);
+            }
+            _ghostCells = cells;
         }
 
         void EnsurePieceCapacity(int n)

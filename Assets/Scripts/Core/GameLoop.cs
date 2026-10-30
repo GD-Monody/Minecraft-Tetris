@@ -472,6 +472,24 @@ namespace MinecraftTetris
             LockPiece();
         }
 
+        /// <summary>
+        /// 当前方块直接落到底会停在哪儿：返回落点的原点坐标（x / z 不动，只往下找）。
+        /// 落点提示框用这个，所以它和硬降的结果必须一致 —— 判据都是 CanPlaceAt，
+        /// 和 TryMove 是同一套判定，不会出现「框指的位置按空格却落不下去」。
+        /// </summary>
+        public Vector3Int GhostOrigin()
+        {
+            if (Current == null)
+                return new Vector3Int(0, 0, 0);
+
+            int x = Current.OriginX;
+            int y = Current.OriginY;
+            int z = Current.OriginZ;
+            while (CanPlaceAt(Current, x, y - 1, z))
+                y--;
+            return new Vector3Int(x, y, z);
+        }
+
         void LockPiece()
         {
             int blockId = Current.BlockId;

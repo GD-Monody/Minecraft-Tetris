@@ -426,7 +426,7 @@ namespace MinecraftTetris
         {
             float w = Pg(420f);
             // 按钮数 × 54 + 上下留白；加一项就跟着涨，不然会压到「返回」上
-            float h = Pg(540f);
+            float h = Pg(594f);
             Rect panel = CenterPanel(w, h);
             DrawPanel(panel);
 
@@ -485,6 +485,12 @@ namespace MinecraftTetris
                 _tmpMusic = GameSettings.MusicVolume;
                 _page = SettingsPage.Music;
             }
+            y += step;
+
+            // 落点提示：下落时把方块会停在哪儿用高亮方框标出来（3D 场地里不标很难估）
+            if (GUI.Button(new Rect(bx, y, bw, bh),
+                    GameSettings.GhostPiece ? "落点提示：开" : "落点提示：关", _btnBig))
+                GameSettings.SetGhostPiece(!GameSettings.GhostPiece);
             y += step;
 
             if (GUI.Button(new Rect(bx, y, bw, bh), "按键设置", _btnBig))
