@@ -53,6 +53,62 @@ namespace MinecraftTetris
         static readonly Dictionary<string, Texture2D> TexCache = new Dictionary<string, Texture2D>();
         static Material _matTemplate;
 
+        /// <summary>场上还活着的傀儡。挑出生点和散步目标时用来互相避开。</summary>
+        static readonly List<GolemPet> Registry = new List<GolemPet>();
+
+        void OnEnable()
+        {
+            Registry.Add(this);
+        }
+
+        void OnDestroy()
+        {
+            Registry.Remove(this);
+        }
+
+        /// <summary>
+        /// 在活动区里挑一个落脚点：随机撒十几把，选**离同伴最远**的那把
+        /// （best-candidate 采样）。
+        ///
+        /// 为什么要挑：纯随机的出生点会让同时召出的几个傀儡叠在一起 ——
+        /// 实测一次召唤雪 / 铁 / 铜三个全摞在同一点上，穿模成一团，
+        /// 得各自走到随机目标之后才散开，中间好几秒都很难看。
+        /// self 传 null 表示「 newcomer 还没出生」，只躲开已注册的同伴。
+        /// </summary>
+        public static Vector3 BestSpot(Vector3 min, Vector3 max, GolemPet self)
+        {
+            Vector3 best = new Vector3(
+                Random.Range(min.x, max.x), 0f, Random.Range(min.z, max.z));
+            float bestDist = -1f;
+
+            for (int t = 0; t < 12; t++)
+            {
+                Vector3 cand = new Vector3(
+                    Random.Range(min.x, max.x), 0f, Random.Range(min.z, max.z));
+
+                float nearest = 999f;
+                for (int i = 0; i < Registry.Count; i++)
+                {
+                    GolemPet other = Registry[i];
+                    if (other == null || other == self)
+                        continue;
+                    Vector3 d = other.transform.position - cand;
+                    d.y = 0f;
+                    float dist = d.magnitude;
+                    if (dist < nearest)
+                        nearest = dist;
+                }
+
+                if (nearest > bestDist)
+                {
+                    bestDist = nearest;
+                    best = cand;
+                }
+            }
+
+            return best;
+        }
+
         /// <summary>
         /// 造一个傀儡：建部件、挂贴图、随机一个朝向。位置是脚底所在的地面点。
         /// </summary>
@@ -406,10 +462,8 @@ namespace MinecraftTetris
 
         void PickTarget()
         {
-            _target = new Vector3(
-                Random.Range(RangeMin.x, RangeMax.x),
-                _groundY,
-                Random.Range(RangeMin.z, RangeMax.z));
+            // 散步目标也互相避开：别让两个傀儡同时往同一个点挤
+            _target = BestSpot(RangeMin, RangeMax, this);
             _walking = true;
         }
 

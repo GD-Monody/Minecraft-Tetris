@@ -1590,8 +1590,8 @@ namespace MinecraftTetris
             var pet = go.AddComponent<GolemPet>();
             Vector3 min = GolemPenMin();
             Vector3 max = GolemPenMax();
-            Vector3 pos = new Vector3(
-                Random.Range(min.x, max.x), 0f, Random.Range(min.z, max.z));
+            // 出生点离已有傀儡越远越好：同时召出几个时不能叠成一团
+            Vector3 pos = GolemPet.BestSpot(min, max, null);
 
             pet.Build(kind, oxidation, pos, Random.Range(0f, 360f), min, max);
             _golems.Add(pet);

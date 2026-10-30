@@ -1592,6 +1592,41 @@ namespace MinecraftTetris.EditorTools
                 Debug.Log("[golem] 傀儡实际尺寸（原版：雪 1.9 / 铁 2.7 / 铜 0.98）" + log);
             }
 
+            // 桌宠的出生点：连召 4 个，得彼此离得够远。
+            // 以前是纯随机落点，实测一次召出雪 / 铁 / 铜三个能叠在同一点上，
+            // 穿模成一团，走到随机目标之后才散开。现在用 best-candidate 采样
+            // （撒十几把挑离同伴最远的），这里用固定种子把「不重叠」钉死。
+            {
+                Random.InitState(20261030);
+                Vector3 pmin = new Vector3(0f, 0f, 0f), pmax = new Vector3(10f, 0f, 6f);
+                var spots = new System.Collections.Generic.List<Vector3>();
+                var probes = new System.Collections.Generic.List<GameObject>();
+                for (int i = 0; i < 4; i++)
+                {
+                    Vector3 pos = GolemPet.BestSpot(pmin, pmax, null);
+                    spots.Add(pos);
+
+                    var go = new GameObject("golem_spot_" + i);
+                    go.AddComponent<GolemPet>()
+                      .Build(GolemKind.Snow, 0, pos, 0f, pmin, pmax);
+                    probes.Add(go);
+                }
+
+                float minPair = 999f;
+                for (int a = 0; a < spots.Count; a++)
+                    for (int b = a + 1; b < spots.Count; b++)
+                        minPair = Mathf.Min(minPair,
+                            Vector2.Distance(
+                                new Vector2(spots[a].x, spots[a].z),
+                                new Vector2(spots[b].x, spots[b].z)));
+
+                Check("连召 4 个傀儡，出生点两两间距不小于 1.5 格（最近 " +
+                      minPair.ToString("0.0") + "）", minPair >= 1.5f);
+
+                for (int i = 0; i < probes.Count; i++)
+                    Object.DestroyImmediate(probes[i]);
+            }
+
             // 拨回全开，别把开关状态留给玩家
             for (int i = 0; i < GameSettings.MechCount; i++)
                 GameSettings.SetMech((GameSettings.MechKind)i, true);
