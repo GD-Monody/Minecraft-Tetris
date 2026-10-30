@@ -38,6 +38,8 @@ namespace MinecraftTetris
 
         Transform _head, _armL, _armR, _legL, _legR;
         Renderer _bodyRenderer;
+        /// <summary>铜傀儡的眼睛（单独一层，贴 eyes 贴图叠在头上，不受光照按原样发光）。</summary>
+        Renderer _eyeRenderer;
         readonly List<Renderer> _renderers = new List<Renderer>();
 
         Vector3 _target;
@@ -116,6 +118,11 @@ namespace MinecraftTetris
                 // 中心比雪头的中心高 1.5 像素，罩在头顶上。跟着头一起转。
                 if (Kind == GolemKind.Snow && def.Part == GolemPart.Head)
                     AddPumpkinHat(anim.transform, def.Pivot);
+
+                // 铜傀儡的橙色眼睛在 26.2 也是单独一层：LivingEntityEmissiveLayer 拿同一套模型
+                // 再刷一遍，贴图换成 copper_golem_eyes*.png，只有眼睛那几个像素不透明。
+                if (Kind == GolemKind.Copper && def.Part == GolemPart.Head)
+                    AddCopperEyes(anim.transform, def, texW, texH);
             }
 
             PickTarget();
@@ -147,7 +154,45 @@ namespace MinecraftTetris
             mr.receiveShadows = false;
         }
 
+        /// <summary>
+        /// 铜傀儡那双橙色的眼睛。26.2 的 CopperGolemRenderer 里挂的是
+        /// `LivingEntityEmissiveLayer`：拿**同一套模型**再刷一遍，只是贴图换成
+        /// `copper_golem_eyes*.png` —— 那张图 64×64 里只有 (11,12)~(16,13) 六个像素
+        /// 不透明，正好落在头正面 UV 的中段，其余全透明被 clip 掉。
+        ///
+        /// 所以这里也是「同一个头网格 + 眼睛贴图」再叠一层，不上光照就自带发光感
+        /// （同样是 Unlit，贴图本身是 255,168,81 的亮橙到 255,247,210 的亮黄）。
+        /// 网格稍微放大 2%，让眼睛压在头皮外侧一点点，否则两层完全重合会 z-fighting，
+        /// 眼睛会一块一块地闪。
+        /// </summary>
+        void AddCopperEyes(Transform headAnim, GolemPartDef headDef, int texW, int texH)
+        {
+            var go = new GameObject("eyes");
+            go.transform.SetParent(headAnim, false);
+            go.transform.localScale = Vector3.one * 1.02f;
+
+            go.AddComponent<MeshFilter>().sharedMesh = GolemModel.BuildPart(headDef, texW, texH);
+            var mr = go.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = MakeMaterial(EyeTextureName(Oxidation));
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            mr.receiveShadows = false;
+            _eyeRenderer = mr;
+        }
+
+        /// <summary>眼睛贴图文件名，跟着氧化等级走（原版四个阶段各有一张）。</summary>
+        static string EyeTextureName(int oxidation)
+        {
+            switch (oxidation)
+            {
+                case 1: return "copper_golem_eyes_exposed";
+                case 2: return "copper_golem_eyes_weathered";
+                case 3: return "copper_golem_eyes_oxidized";
+                default: return "copper_golem_eyes";
+            }
+        }
+
         static Material _pumpkinMat;
+
 
         /// <summary>
         /// 南瓜用的材质：方块图集 + 和傀儡同一个不受光的 shader。
@@ -293,6 +338,18 @@ namespace MinecraftTetris
             {
                 if (_renderers[i] != null && _renderers[i].sharedMaterial != null)
                     _renderers[i].sharedMaterial.mainTexture = tex;
+            }
+
+            // 眼睛是独立一张图，不能跟着身体换，否则整张脸都会被眼睛贴图盖住（非眼睛处全透明 → 脸消失）
+            if (_eyeRenderer != null && _eyeRenderer.sharedMaterial != null)
+            {
+                Texture2D eyes = LoadTexture(EyeTextureName(Oxidation));
+                if (eyes != null)
+                {
+                    eyes.filterMode = FilterMode.Point;
+                    eyes.wrapMode = TextureWrapMode.Clamp;
+                    _eyeRenderer.sharedMaterial.mainTexture = eyes;
+                }
             }
         }
 
