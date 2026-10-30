@@ -1398,6 +1398,98 @@ namespace MinecraftTetris.EditorTools
             GameSettings.SetMech(GameSettings.MechKind.FireBurn, true);
             Fire.Reset();
 
+            // ---------- 海绵吸水 ----------
+            int fireSponge = Sponge.SpongeId;
+            int fireWetSponge = Sponge.WetSpongeId;
+            Check("方块表里有海绵和湿海绵", fireSponge > 0 && fireWetSponge > 0 && fireSponge != fireWetSponge);
+
+            GameSettings.SetMech(GameSettings.MechKind.SpongeSoak, true);
+
+            // 海绵旁边有一格水：吸掉，海绵变湿
+            var gSp = new Grid(5, 5, 1);
+            Fluids.Reset();
+            Fluids.Prepare(gSp);
+            Sponge.Reset();
+            gSp.Set(2, 2, 0, fireSponge);
+            Fluids.SetAmount(1, 2, 0, Fluids.MaxAmount, Fluids.WaterId);
+            Check("海绵挨着水就把水吸掉", Sponge.SoakAll(gSp) == 1);
+            Check("被吸的那格没有水了", Fluids.AmountAt(1, 2, 0) == 0);
+            Check("吸到水的海绵变成了湿海绵",
+                  gSp.Get(2, 2, 0) == fireWetSponge && Sponge.LastSoaks.Count == 1 &&
+                  Sponge.LastSoaks[0].BecameWet && Sponge.LastSoaks[0].Cells.Count == 1);
+
+            // 周围没水：保持干燥，之后还能接着吸
+            var gSpDry = new Grid(5, 5, 1);
+            Fluids.Reset();
+            Fluids.Prepare(gSpDry);
+            Sponge.Reset();
+            gSpDry.Set(2, 2, 0, fireSponge);
+            Check("周围没水就不变湿", Sponge.SoakAll(gSpDry) == 0 && gSpDry.Get(2, 2, 0) == fireSponge);
+
+            // 湿海绵不能再吸：把它真换成湿海绵再试
+            gSpDry.Set(2, 2, 0, fireWetSponge);
+            Fluids.SetAmount(1, 2, 0, Fluids.MaxAmount, Fluids.WaterId);
+            Check("湿海绵吸不动水",
+                  Sponge.SoakAll(gSpDry) == 0 && Fluids.AmountAt(1, 2, 0) == Fluids.MaxAmount &&
+                  gSpDry.Get(2, 2, 0) == fireWetSponge);
+
+            // 半格水也算水，照样吸走
+            var gSpHalf = new Grid(5, 5, 1);
+            Fluids.Reset();
+            Fluids.Prepare(gSpHalf);
+            Sponge.Reset();
+            gSpHalf.Set(2, 2, 0, fireSponge);
+            Fluids.SetAmount(3, 2, 0, 2, Fluids.WaterId);
+            Check("半格的流动水也吸",
+                  Sponge.SoakAll(gSpHalf) == 1 && Fluids.AmountAt(3, 2, 0) == 0);
+
+            // 隔着一整列石墙，墙后面的水吸不到（BFS 走不过实心方块；墙只有一格高的话
+            // 水的搜索会从上面绕过去，所以这里把 x=2 那一列从底堵到顶）
+            var gSpWall = new Grid(7, 5, 1);
+            Fluids.Reset();
+            Fluids.Prepare(gSpWall);
+            Sponge.Reset();
+            gSpWall.Set(1, 1, 0, fireSponge);
+            for (int y = 0; y < gSpWall.SizeY; y++)
+                gSpWall.Set(2, y, 0, fireStone);
+            Fluids.SetAmount(4, 1, 0, Fluids.MaxAmount, Fluids.WaterId);
+            Check("隔着石墙的水吸不到",
+                  Sponge.SoakAll(gSpWall) == 0 && Fluids.AmountAt(4, 1, 0) == Fluids.MaxAmount &&
+                  gSpWall.Get(1, 1, 0) == fireSponge);
+
+            // 吸水量有上限：原版一次最多 65 格
+            var gSpMax = new Grid(20, 5, 5);
+            Fluids.Reset();
+            Fluids.Prepare(gSpMax);
+            Sponge.Reset();
+            gSpMax.Set(10, 0, 2, fireSponge);
+            int spWater = 0;
+            for (int x = 0; x < gSpMax.SizeX; x++)
+                for (int y = 1; y < 4; y++)
+                    for (int z = 0; z < gSpMax.SizeZ; z++)
+                    {
+                        Fluids.SetAmount(x, y, z, Fluids.MaxAmount, Fluids.WaterId);
+                        spWater++;
+                    }
+            int soakedMax = Sponge.SoakAll(gSpMax);
+            Check("一次最多吸 65 格水",
+                  soakedMax == Sponge.MaxCells && soakedMax < spWater &&
+                  gSpMax.Get(10, 0, 2) == fireWetSponge);
+
+            // 开关关掉就不吸
+            var gSpOff = new Grid(5, 5, 1);
+            Fluids.Reset();
+            Fluids.Prepare(gSpOff);
+            Sponge.Reset();
+            gSpOff.Set(2, 2, 0, fireSponge);
+            Fluids.SetAmount(1, 2, 0, Fluids.MaxAmount, Fluids.WaterId);
+            GameSettings.SetMech(GameSettings.MechKind.SpongeSoak, false);
+            Check("关掉海绵开关就不吸",
+                  Sponge.SoakAll(gSpOff) == 0 && Fluids.AmountAt(1, 2, 0) == Fluids.MaxAmount &&
+                  gSpOff.Get(2, 2, 0) == fireSponge);
+            GameSettings.SetMech(GameSettings.MechKind.SpongeSoak, true);
+            Sponge.Reset();
+
             // ---------- 傀儡召唤 ----------
             int golemHead = BlockCatalog.CarvedPumpkinId > 0
                 ? BlockCatalog.CarvedPumpkinId

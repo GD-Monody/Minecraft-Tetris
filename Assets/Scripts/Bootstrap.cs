@@ -206,6 +206,9 @@ namespace MinecraftTetris
             // -firetest：两根「木板 + 羊毛 + 树叶」柱子，一秒半后往左边灌岩浆，看火往上烧
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-firetest") >= 0)
                 RunFireTest();
+            // -spongetest：干海绵挨着一汪水会吸干并变湿，湿海绵旁边的水吸不动
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-spongetest") >= 0)
+                RunSpongeTest();
             // -golemtest：南瓜头压在雪块 / 铁块 / 铜块 / 石头上，看前三个召出傀儡、第四个没反应
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-golemtest") >= 0)
                 RunGolemTest();
@@ -238,7 +241,7 @@ namespace MinecraftTetris
             {
                 "-sandtest", "-reacttest", "-tnttest", "-leaftest", "-bedrocktest", "-structuretest",
                 "-blocktest", "-fluidtest", "-yawtest", "-pitchtest", "-glasstest", "-glassdroptest",
-                "-melttest", "-golemtest", "-golempose", "-firetest",
+                "-melttest", "-golemtest", "-golempose", "-firetest", "-spongetest",
             };
             for (int i = 0; i < sceneTests.Length; i++)
             {
@@ -271,6 +274,7 @@ namespace MinecraftTetris
             _loop.GolemSummoned += OnGolemSummoned;
             _loop.FireIgnited += OnFireIgnited;
             _loop.BlocksBurned += OnBlocksBurned;
+            _loop.WaterSoaked += OnWaterSoaked;
 
             _view.RefreshAll();
             _view.SnapPiece(_loop.Current);
@@ -1021,6 +1025,77 @@ namespace MinecraftTetris
             Debug.Log("[firetest] 已往左边灌岩浆，等着看火往上烧");
         }
 
+        /// <summary>
+        /// -spongetest：左边一块干海绵挨着一汪水，右边一块湿海绵也挨着一汪水。
+        /// 一秒半后吸一次：左边把水吸干、自己变湿；右边本来就已经是湿的，吸不动，水还在。
+        /// </summary>
+        void RunSpongeTest()
+        {
+            if (_loop == null || _view == null)
+                return;
+
+            int stoneId = 0;
+            for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
+                if (BlockCatalog.Blocks[i].Name == "stone")
+                    stoneId = i + 1;
+
+            if (stoneId <= 0 || Sponge.SpongeId <= 0 || Sponge.WetSpongeId <= 0 || Fluids.WaterId <= 0)
+            {
+                Debug.Log("[spongetest] 方块表里缺石头 / 海绵 / 湿海绵 / 水");
+                return;
+            }
+
+            Grid grid = _loop.Grid;
+            _loop.Restart();
+            Fluids.Reset();
+            Tnt.Reset();
+            Structure.Reset();
+            Melt.Reset();
+            Fire.Reset();
+
+            int cx = grid.SizeX / 2;
+            int cz = grid.SizeZ / 2;
+
+            // 地板铺一层石头：水落在上面不会漏下去，只会往旁边漫
+            for (int x = 0; x < grid.SizeX; x++)
+                Put(grid, x, 0, cz, stoneId);
+
+            int xl = Mathf.Clamp(cx - 3, 1, grid.SizeX - 2);
+            int xr = Mathf.Clamp(cx + 3, 1, grid.SizeX - 2);
+
+            // 左边：干海绵摆好，旁边留一格空着等下灌水
+            Put(grid, xl, 1, cz, Sponge.SpongeId);
+
+            // 右边：湿海绵 + 旁边一汪水。湿海绵吸不动，水应该一直在
+            Put(grid, xr, 1, cz, Sponge.WetSpongeId);
+
+            _view.SnapPiece(_loop.Current);
+            _view.RefreshAll();
+
+            // 等一秒半再灌水和吸水，先让人看清「干海绵和湿海绵摆在一起」的样子
+            StartCoroutine(SoakSoon(1.5f, new Vector3Int(Mathf.Clamp(xl + 1, 0, grid.SizeX - 1), 1, cz),
+                new Vector3Int(Mathf.Clamp(xr + 1, 0, grid.SizeX - 1), 1, cz)));
+        }
+
+        /// <summary>演示用：等一会儿往两处灌水，然后扫一遍海绵（左边吸干、右边湿的吸不动）。</summary>
+        System.Collections.IEnumerator SoakSoon(float delay, Vector3Int waterA, Vector3Int waterB)
+        {
+            yield return new WaitForSeconds(delay);
+            if (_loop == null)
+                yield break;
+
+            Fluids.Prepare(_loop.Grid);
+            Fluids.AddSource(_loop.Grid, waterA.x, waterA.y, waterA.z, Fluids.WaterId);
+            Fluids.AddSource(_loop.Grid, waterB.x, waterB.y, waterB.z, Fluids.WaterId);
+            _view.RefreshAll();
+            Debug.Log("[spongetest] 两处都灌了水");
+
+            yield return new WaitForSeconds(0.8f);
+            _loop.SoakWater();
+            _view.RefreshAll();
+            Debug.Log("[spongetest] 吸水扫了一遍");
+        }
+
         /// <summary>演示用的一个 1×1 石槽：底 + 四壁。角落那几块越界就不铺（场地只有 1 深时正常）。</summary>
         void MeltCup(Grid grid, int x, int z, int stoneId)
         {
@@ -1692,6 +1767,30 @@ namespace MinecraftTetris
 
             if (_sfx != null)
                 _sfx.PlayFizz();
+        }
+
+        /// <summary>
+        /// 海绵吸到水了：嘶一声，撒几粒水花，整场重画。
+        /// 被吸干的水不占网格、海绵又换成了湿海绵，RefreshAll 一次把两边都收拾干净。
+        /// </summary>
+        void OnWaterSoaked()
+        {
+            if (_sfx != null)
+                _sfx.PlayFizz();
+
+            if (_view != null)
+                _view.RefreshAll();
+
+            if (_particles == null)
+                return;
+
+            for (int i = 0; i < _loop.LastSpongeSoaks.Count; i++)
+            {
+                Sponge.Soak soak = _loop.LastSpongeSoaks[i];
+                for (int j = 0; j < soak.Cells.Count; j++)
+                    _particles.EmitCell(soak.Cells[j].x, soak.Cells[j].y, soak.Cells[j].z,
+                        Fluids.WaterId, 1);
+            }
         }
 
         /// <summary>

@@ -178,6 +178,8 @@ namespace MinecraftTetris
         public event Action FireIgnited;
         /// <summary>有方块烧光消失了：视图层刷那几格、撒碎块（列表见 LastBurnedOut）。</summary>
         public event Action BlocksBurned;
+        /// <summary>海绵吸到水了：视图层刷流体层、撒水花（结果见 LastSpongeSoaks）。</summary>
+        public event Action WaterSoaked;
 
         /// <summary>最近一次落定里压碎的玻璃格子（可以有两轮以上，越靠下越先碎）。</summary>
         public readonly System.Collections.Generic.List<Vector3Int> LastGlassCrushed
@@ -196,6 +198,9 @@ namespace MinecraftTetris
 
         /// <summary>和 LastBurnedOut 一一对应的方块编号（烧掉之前是什么，粒子要用）。</summary>
         public System.Collections.Generic.List<int> LastBurnedBlocks { get { return Fire.LastBurnedBlocks; } }
+
+        /// <summary>最近一次海绵吸水的结果（哪些海绵变湿、各自吸了哪些格）。</summary>
+        public System.Collections.Generic.List<Sponge.Soak> LastSpongeSoaks { get { return Sponge.LastSoaks; } }
 
         /// <summary>
         /// 「抽掉几格之后」那次重力结算的落点，融化雪块和召唤傀儡共用，只在本类里用。
@@ -242,6 +247,10 @@ namespace MinecraftTetris
                 // 岩浆淌到木头 / 羊毛 / 树叶旁边也是同一个道理，点着它们
                 Fire.IgniteContact(Grid);
                 FlushFireIgnited();
+
+                // 水漫到海绵旁边也会被吸掉。吸水不改网格里的固体，只动流体层，
+                // 所以这里只需要刷流体、不用落重力
+                SoakWater();
             }
 
             // 雪块 / 冰挨着岩浆就化水。不挂在上面那个 if 里：一桶岩浆封在石槽里、
@@ -548,6 +557,11 @@ namespace MinecraftTetris
                 FlushFireIgnited();
             }
 
+            // 海绵挨着水就把水吸掉。水不占网格，不影响满行判定，
+            // 但海绵自己会变成湿海绵 —— 那是实打实的方块变化。
+            if (!fluidPiece)
+                SoakWater();
+
             // 南瓜头压着雪块 / 铁块 / 铜块就召出傀儡，两格一起消失。
             // 同样放在判满行之前：抽走两格之后塌下来的方块可能正好补满一行。
             if (!fluidPiece)
@@ -712,6 +726,21 @@ namespace MinecraftTetris
             SettleAfterRemoval();
             BlocksBurned?.Invoke();
             FlushFireIgnited();
+        }
+
+        /// <summary>
+        /// 海绵吸水：全场扫一遍干海绵，把够得着的水吸掉。吸到水的海绵变湿海绵。
+        /// 吸掉的水不占网格，但流体层的画面变了，要通知视图层重画一次。
+        /// </summary>
+        public void SoakWater()
+        {
+            int soaked = Sponge.SoakAll(Grid);
+            if (soaked == 0)
+                return;
+
+            Score += soaked * Sponge.ScorePerWater;
+            FluidChanged?.Invoke();
+            WaterSoaked?.Invoke();
         }
 
         /// <summary>这一帧有没有新点着的方块，有就派给视图层播点火声。</summary>
@@ -952,6 +981,7 @@ namespace MinecraftTetris
             Tnt.Reset();
             Structure.Reset();
             Fire.Reset();
+            Sponge.Reset();
             Score = 0;
             LinesCleared = 0;
             GameOver = false;
