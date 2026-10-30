@@ -276,6 +276,8 @@ namespace MinecraftTetris
 
         void Update()
         {
+            HideSystemCursor();
+
             if (_loop == null)
                 return;
 
@@ -380,6 +382,24 @@ namespace MinecraftTetris
                 var blocks = new System.Collections.Generic.List<int> { 12, 150, 260 };
                 OnRowsCleared(rows, blocks);
             }
+        }
+
+        /// <summary>
+        /// 把系统光标藏掉，只留蓝色荧光拖尾当指针。拖尾自己就画了「光标那一颗」
+        /// （CursorTrail.Draw 结尾的三层光斑，鼠标不动时也在），两个一起出现反而像有两个鼠标。
+        ///
+        /// 每帧设一次而不是只设一次：切窗口焦点、切全屏时 Unity 会把可见性改回去。
+        /// </summary>
+        static void HideSystemCursor()
+        {
+            if (Cursor.visible)
+                Cursor.visible = false;
+        }
+
+        void OnDestroy()
+        {
+            // 还回去：编辑器里停掉 Play 之后要是没鼠标就麻烦了
+            Cursor.visible = true;
         }
 
         void CaptureShot(string fileName)

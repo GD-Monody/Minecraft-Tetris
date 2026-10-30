@@ -47,6 +47,13 @@ namespace MinecraftTetris
         int _drawnFrame = -1;
 
         /// <summary>
+        /// 鼠标有没有真的进过窗口。没进过之前 Input.mousePosition 一直是 (0, 0)，
+        /// 也就是屏幕左下角 —— 系统光标藏掉之后，在那儿凭空画一颗光斑会让人以为
+        /// 指针卡在角落里，所以没见过真鼠标就先不画。
+        /// </summary>
+        bool _seenMouse;
+
+        /// <summary>
         /// 让界面脚本在自己 OnGUI 的**最后**调一次，拖尾就会压在这一帧所画的所有东西之上。
         ///
         /// 为什么不用 GUI.depth：那是跨 MonoBehaviour 的层级排序，行为不直观也不稳定——
@@ -93,6 +100,9 @@ namespace MinecraftTetris
             }
 
             Vector2 p = MouseGui();
+            if (p.x > 0.5f || p.y > 0.5f)
+                _seenMouse = true;
+
             if (_count > 0 && (p - _nodes[_count - 1].pos).sqrMagnitude < 4f)
                 return;   // 没怎么动就不加新点，尾巴会自然淡掉，不会在原地堆成一坨
 
@@ -125,6 +135,8 @@ namespace MinecraftTetris
 
             Vector2 mouse = MouseGui();
             if (mouse.x < -20f || mouse.y < -20f || mouse.x > Screen.width + 20f || mouse.y > Screen.height + 20f)
+                return;
+            if (!_seenMouse)
                 return;
 
             _drawnFrame = Time.frameCount;
@@ -161,11 +173,17 @@ namespace MinecraftTetris
                 }
             }
 
-            // 光标本身：外圈呼吸 + 内芯
+            // 光标本身：外圈呼吸 + 内芯。
+            // 鼠标停住一会儿尾巴就淡光了（_count 归零），这时这三颗光斑是场上唯一的指针
+            // —— 系统光标已经藏掉，所以中心要画得更实一点，不然在浅色方块上找不着自己。
+            float idle = _count == 0 ? 1f : 0f;
+            float coreSize = Mathf.Lerp(0.75f, 0.62f, idle);
+            float coreAlpha = Mathf.Lerp(0.55f, 0.92f, idle);
+
             float pulse = 0.85f + 0.15f * Mathf.Sin(_time * 3.4f);
             Blob(mouse, unit * 3.4f * pulse, new Color(TrailColor.r, TrailColor.g, TrailColor.b, 0.18f));
             Blob(mouse, unit * 1.7f * pulse, new Color(TrailColor.r, TrailColor.g, TrailColor.b, 0.34f));
-            Blob(mouse, unit * 0.75f, new Color(HotColor.r, HotColor.g, HotColor.b, 0.55f));
+            Blob(mouse, unit * coreSize, new Color(HotColor.r, HotColor.g, HotColor.b, coreAlpha));
 
             GUI.color = prevColor;
         }
