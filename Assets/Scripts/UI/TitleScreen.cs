@@ -1162,6 +1162,10 @@ namespace MinecraftTetris
                     KeyName(KeyboardInput.GetPrimaryKey(action)), _guideKeyBig);
             }
 
+            // 最下面一行：视角操作不占键位，单独提一句（右键拖拽旋转、滚轮缩放）
+            float noteY = top + perCol * (rowH + rowGap) + Pg(14f);
+            GUI.Label(new Rect(left, noteY, w - Pg(80f), Pg(28f)),
+                "右键拖拽→视角旋转，滚轮滑动→视角放大/缩小", _guideNoteBig);
         }
 
         /// <summary>特殊方块栏：十一项三列，图标从方块图集里切。两列六行在放大后放不下。</summary>
