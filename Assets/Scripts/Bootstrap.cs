@@ -715,7 +715,7 @@ namespace MinecraftTetris
             float targetY = 1.3f, dist = 12f;
             if (only == 0) { targetY = 0.95f; dist = 7.5f; }
             else if (only == 1) { targetY = 1.35f; dist = 8.5f; }
-            else if (only == 2) { targetY = 0.55f; dist = 6.5f; }
+            else if (only == 2) { targetY = 0.72f; dist = 6.5f; }
 
             _rig.Target = new Vector3(cx, targetY, 0f);
             _rig.Distance = dist;

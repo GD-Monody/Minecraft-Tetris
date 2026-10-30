@@ -65,11 +65,10 @@ namespace MinecraftTetris
             _groundY = groundPos.y;
             _yaw = yaw;
             transform.rotation = Quaternion.Euler(0f, _yaw, 0f);
-            // 模型是照贴图像素做的（1 格 = 16 像素），和原版实体大小对一下：
-            // 雪傀儡模型 20 像素高（原版 1.9 格 ≈ 30 像素）、铁傀儡 38 像素（原版 2.7 格 ≈ 43）、
-            // 铜傀儡 21 像素（原版 0.98 格 ≈ 16，但太小了看不清，稍微放大一点）。
-            float scale = Kind == GolemKind.Snow ? 1.69f : (Kind == GolemKind.Iron ? 1.13f : 0.98f);
-            transform.localScale = Vector3.one * scale;
+            // 模型是照贴图像素 1:1 建的（1 格 = 16 像素），所以不用再缩放 ——
+            // 这样三种傀儡的相对身高就是原版的：雪 30.5 像素（1.9 格，连南瓜）、
+            // 铁 43 像素（2.69 格）、铜 24 像素（1.5 格，连天线；原版碰撞箱只算到头顶 16 像素 = 1 格）。
+            transform.localScale = Vector3.one;
 
             string tex = TextureName(Kind, Oxidation);
             int texW, texH;
@@ -78,111 +77,106 @@ namespace MinecraftTetris
             for (int i = 0; i < parts.Length; i++)
             {
                 GolemPartDef def = parts[i];
-                GolemCube c = def.Cube;
 
-                // 关节挂在根节点上，网格挂在关节下面、往里挪 center —— 这样转关节就是摆腿摆臂
+                // 三层：关节（摆在哪、朝哪）→ 动画节点（走路时绕关节转）→ 网格。
+                // 关节自己带一个初始旋转：原版雪傀儡的手臂是斜着往外伸的，那个 57° 得留在关节上，
+                // 放到动画层会被走路摆动覆盖掉。
                 var joint = new GameObject("joint_" + def.Part);
                 joint.transform.SetParent(transform, false);
-                joint.transform.localPosition = c.Pivot / GolemModel.PixelsPerBlock;
+                joint.transform.localPosition = def.Pivot / GolemModel.PixelsPerBlock;
+                joint.transform.localRotation = Quaternion.Euler(def.Rot);
+
+                var anim = new GameObject("anim_" + def.Part);
+                anim.transform.SetParent(joint.transform, false);
 
                 var go = new GameObject("part_" + def.Part);
-                go.transform.SetParent(joint.transform, false);
-                go.transform.localPosition = c.Center / GolemModel.PixelsPerBlock;
+                go.transform.SetParent(anim.transform, false);
 
-                // 雪傀儡的头在原版是南瓜头：它是单独的渲染层，实体贴图里没有，
-                // 所以改用方块图集里的雕刻南瓜，按 8×8×8 缩到和头一样大。
-                // 没雕刻南瓜就退回普通南瓜，两个都没有就还是用雪头（至少不会空着）。
-                Mesh partMesh = GolemModel.BuildCube(c, texW, texH);
-                Material partMat = MakeMaterial(tex);
-                float partScale = 1f;
-                if (Kind == GolemKind.Snow && def.Part == GolemPart.Head)
-                {
-                    int pid = BlockCatalog.CarvedPumpkinId > 0
-                        ? BlockCatalog.CarvedPumpkinId
-                        : BlockCatalog.PumpkinId;
-                    BlockDef pd = pid > 0 ? BlockCatalog.Of(pid) : null;
-                    if (pd != null)
-                    {
-                        partMesh = BlockMesh.Build(pd);                 // 1 格见方的方块
-                        partMat = BlockMesh.GetMaterial(pd);
-                        partScale = c.W / GolemModel.PixelsPerBlock;    // 8 像素 = 半格
-                    }
-                }
-
-                // 雪傀儡的手臂是两根棕色树枝，实体贴图里没画这一块（老版本的 (32,0) 整片透明），
-                // 借用身体的雪色贴图会白得看不出来，所以干脆用原木的方块网格压成细杆。
-                if (Kind == GolemKind.Snow &&
-                    (def.Part == GolemPart.ArmLeft || def.Part == GolemPart.ArmRight))
-                {
-                    BlockDef wd = BlockCatalog.OakLogId > 0 ? BlockCatalog.Of(BlockCatalog.OakLogId) : null;
-                    if (wd != null)
-                    {
-                        partMesh = BlockMesh.Build(wd);
-                        partMat = BlockMesh.GetMaterial(wd);
-                        // 方块是 1 格见方，要缩到 2×6×2 像素 —— 非等比，所以这里单独设
-                        go.transform.localScale = new Vector3(
-                            c.W / GolemModel.PixelsPerBlock,
-                            c.H / GolemModel.PixelsPerBlock,
-                            c.D / GolemModel.PixelsPerBlock);
-                        partScale = -1f;      // 标记：缩放已经单独设过，下面别再覆盖
-                    }
-                }
-
-                if (partScale > 0f)
-                    go.transform.localScale = Vector3.one * partScale;
-                go.AddComponent<MeshFilter>().sharedMesh = partMesh;
+                // 一个部件可能由好几个立方体拼成（铁傀儡的头 + 鼻子、铜傀儡的头 + 天线），
+                // BuildPart 已经把它们按 Center 摆好、合成一个 mesh
+                go.AddComponent<MeshFilter>().sharedMesh = GolemModel.BuildPart(def, texW, texH);
                 var mr = go.AddComponent<MeshRenderer>();
-                mr.sharedMaterial = partMat;
+                mr.sharedMaterial = MakeMaterial(tex);
                 mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 mr.receiveShadows = false;
                 _renderers.Add(mr);
 
                 switch (def.Part)
                 {
-                    case GolemPart.Head: _head = joint.transform; break;
+                    case GolemPart.Head: _head = anim.transform; break;
                     case GolemPart.Body: _bodyRenderer = mr; break;
-                    case GolemPart.ArmLeft: _armL = joint.transform; break;
-                    case GolemPart.ArmRight: _armR = joint.transform; break;
-                    case GolemPart.LegLeft: _legL = joint.transform; break;
-                    case GolemPart.LegRight: _legR = joint.transform; break;
+                    case GolemPart.ArmLeft: _armL = anim.transform; break;
+                    case GolemPart.ArmRight: _armR = anim.transform; break;
+                    case GolemPart.LegLeft: _legL = anim.transform; break;
+                    case GolemPart.LegRight: _legR = anim.transform; break;
                 }
-            }
 
-            if (Kind == GolemKind.Copper)
-                AddLightningRod();
+                // 雪傀儡的南瓜头是原版单独一层（SnowGolemHeadLayer），走的是方块模型不是实体贴图，
+                // 所以在这里补一个雕刻南瓜：10×10×10 像素（原版 scale 0.625）、
+                // 中心比雪头的中心高 1.5 像素，罩在头顶上。跟着头一起转。
+                if (Kind == GolemKind.Snow && def.Part == GolemPart.Head)
+                    AddPumpkinHat(anim.transform, def.Pivot);
+            }
 
             PickTarget();
         }
 
         /// <summary>
-        /// 铜傀儡头顶那根避雷针。原版是独立方块模型，实体贴图里没有，所以拿对应氧化阶段的
-        /// 铜块网格压成一根细杆。不参与走路动画，就静静插在脑袋上。
+        /// 雪傀儡头顶的南瓜。原版 SnowGolemHeadLayer 的做法：先移到 head 关节，
+        /// 再 translate(0, -0.34375, 0)（相当于往上 5.5 像素）、scale(0.625)，
+        /// 然后画一个整格方块。这里照抄成「10 像素见方、中心在头顶上方」。
+        ///
+        /// 没雕刻南瓜就退回普通南瓜；两个都找不到就干脆不戴，雪头本身已经有脸了，不至于空着。
         /// </summary>
-        void AddLightningRod()
+        void AddPumpkinHat(Transform headAnim, Vector3 headPivot)
         {
-            int id;
-            switch (Oxidation)
-            {
-                case 1: id = BlockCatalog.ExposedCopperId; break;
-                case 2: id = BlockCatalog.WeatheredCopperId; break;
-                case 3: id = BlockCatalog.OxidizedCopperId; break;
-                default: id = BlockCatalog.CopperBlockId; break;
-            }
-
-            BlockDef def = id > 0 ? BlockCatalog.Of(id) : null;
-            if (def == null)
+            int pid = BlockCatalog.CarvedPumpkinId > 0 ? BlockCatalog.CarvedPumpkinId : BlockCatalog.PumpkinId;
+            BlockDef pd = pid > 0 ? BlockCatalog.Of(pid) : null;
+            if (pd == null)
                 return;
 
-            var go = new GameObject("lightning_rod");
-            go.transform.SetParent(transform, false);
-            // 头高 6 像素、头顶在 16，针插进去一半，露出 5 像素
-            go.transform.localPosition = new Vector3(0f, 17.5f / GolemModel.PixelsPerBlock, 0f);
-            go.transform.localScale = new Vector3(1.5f, 5f, 1.5f) / GolemModel.PixelsPerBlock;
-            go.AddComponent<MeshFilter>().sharedMesh = BlockMesh.Build(def);
+            var go = new GameObject("pumpkin_hat");
+            go.transform.SetParent(headAnim, false);
+            // 头 8³ 的中心在关节上方 4 像素，南瓜中心再高 1.5 像素
+            go.transform.localPosition = new Vector3(0f, 5.5f / GolemModel.PixelsPerBlock, 0f);
+            go.transform.localScale = Vector3.one * (10f / GolemModel.PixelsPerBlock);
+            go.AddComponent<MeshFilter>().sharedMesh = BlockMesh.Build(pd);
             var mr = go.AddComponent<MeshRenderer>();
-            mr.sharedMaterial = BlockMesh.GetMaterial(def);
+            mr.sharedMaterial = PumpkinMaterial();
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             mr.receiveShadows = false;
+        }
+
+        static Material _pumpkinMat;
+
+        /// <summary>
+        /// 南瓜用的材质：方块图集 + 和傀儡同一个不受光的 shader。
+        ///
+        /// 不能直接用 BlockMesh.GetMaterial() —— 那是受光的方块材质，傀儡站在场外空地，
+        /// 正对镜头的那一面没有光，南瓜就成了一块黑饼（只有被照到的侧面还是橙的）。
+        /// MC 渲染实体本来就不吃光照，南瓜头作为雪傀儡的「头饰」也照这个来。
+        /// </summary>
+        static Material PumpkinMaterial()
+        {
+            if (_pumpkinMat != null)
+                return _pumpkinMat;
+
+            Shader sh = Shader.Find("MinecraftTetris/Golem");
+            if (sh == null)
+                sh = Shader.Find("Unlit/Texture");
+            if (sh == null)
+                sh = Shader.Find("Sprites/Default");
+
+            _pumpkinMat = new Material(sh);
+            _pumpkinMat.name = "GolemPumpkin";
+
+            Texture2D atlas = Resources.Load<Texture2D>("atlas");
+            if (atlas != null)
+            {
+                atlas.filterMode = FilterMode.Point;
+                _pumpkinMat.mainTexture = atlas;
+            }
+            return _pumpkinMat;
         }
 
         /// <summary>各种傀儡用哪几张部件定义。</summary>

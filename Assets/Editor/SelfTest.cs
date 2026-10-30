@@ -1371,14 +1371,47 @@ namespace MinecraftTetris.EditorTools
                 Golem.Check(gGolemOff) == 0 && gGolemOff.Get(1, 2, 0) == golemHead);
             GameSettings.SetMech(GameSettings.MechKind.Golem, true);
 
-            // 傀儡模型的部件数：每种都得有头、身体，铁和铜还要有腿
-            Check("雪傀儡有头 / 身体 / 双臂",
-                GolemModel.Snow().Length == 4 && GolemModel.Iron().Length == 6 &&
-                GolemModel.Copper().Length == 6);
+            // 傀儡模型的部件数：这次照原版 26.2 的模型类重抄了一遍，顺便把「部件里有几个立方体」
+            // 也钉住 —— 铁傀儡的鼻子、腰和铜傀儡的天线以前就是漏在这儿的。
+            {
+                GolemPartDef[] pSnow = GolemModel.Snow();
+                GolemPartDef[] pIron = GolemModel.Iron();
+                GolemPartDef[] pCopper = GolemModel.Copper();
+
+                Check("雪傀儡有底下雪球 / 上面雪球 / 头 / 双臂（5 个部件）", pSnow.Length == 5);
+                Check("雪傀儡的底下那个 12³ 雪球没被漏掉",
+                      pSnow[0].Cubes.Length == 1 && pSnow[0].Cubes[0].W == 12 &&
+                      pSnow[0].Cubes[0].H == 12 && pSnow[0].Cubes[0].D == 12);
+
+                Check("铁傀儡有头 / 身体 / 双臂 / 双腿（6 个部件）", pIron.Length == 6);
+                Check("铁傀儡的头带鼻子（头上两个立方体，鼻子 2×4×2）",
+                      pIron[0].Cubes.Length == 2 && pIron[0].Cubes[1].W == 2 &&
+                      pIron[0].Cubes[1].H == 4 && pIron[0].Cubes[1].D == 2);
+                Check("铁傀儡的身体带腰（身体两个立方体，腰 9×5×6）",
+                      pIron[1].Cubes.Length == 2 && pIron[1].Cubes[1].W == 9 &&
+                      pIron[1].Cubes[1].H == 5 && pIron[1].Cubes[1].D == 6);
+
+                Check("铜傀儡有身体 / 头 / 双臂 / 双腿（6 个部件）", pCopper.Length == 6);
+                Check("铜傀儡的头带鼻子 + 天线杆 + 天线球（四个立方体）",
+                      pCopper[1].Cubes.Length == 4);
+                Check("铜傀儡的头是 8×5×10（前后比左右长一倍）",
+                      pCopper[1].Cubes[0].W == 8 && pCopper[1].Cubes[0].H == 5 &&
+                      pCopper[1].Cubes[0].D == 10);
+            }
+
+            // 整体高度得对上原版：雪 28 像素、铁 43、铜 24（天线顶），换算成格是 /16
+            {
+                Check("铁傀儡模型高 43 像素（原版 2.69 格）",
+                      Mathf.Abs(PartTop(GolemModel.Iron()) - 43f) < 0.01f);
+                Check("雪傀儡模型高 28 像素（原版 1.75 格）",
+                      Mathf.Abs(PartTop(GolemModel.Snow()) - 28f) < 0.01f);
+                Check("铜傀儡模型高 24 像素（连天线，原版 1.5 格）",
+                      Mathf.Abs(PartTop(GolemModel.Copper()) - 24f) < 0.01f);
+            }
 
             // 网格尺寸：一根 18×12×11 像素的方块，换算成格应该是 1.125 × 0.75 × 0.6875
             var cubeMesh = GolemModel.BuildCube(
-                new GolemCube(0, 40, 18, 12, 11, Vector3.zero, Vector3.zero), 128, 128);
+                new GolemCube(0, 40, 18, 12, 11, Vector3.zero), 128, 128);
             Vector3 csize = cubeMesh.bounds.size;
             Check("傀儡网格的尺寸按「像素 / 16」换算",
                 Mathf.Abs(csize.x - 18f / 16f) < 0.001f &&
@@ -1391,7 +1424,7 @@ namespace MinecraftTetris.EditorTools
             // BuildCube 里显式给的法线同向，才说明这一面按 Unity 的规矩是「朝外」的。
             // 反过来就是整块模型内外翻了，看到的是盒子内壁（贴图像是贴在里面）。
             {
-                Mesh m2 = GolemModel.BuildCube(GolemModel.Iron()[2].Cube, 128, 128);
+                Mesh m2 = GolemModel.BuildCube(GolemModel.Iron()[1].Cubes[0], 128, 128);
                 Vector3[] given = m2.normals;
                 m2.RecalculateNormals();
                 Vector3[] calc = m2.normals;
@@ -1407,7 +1440,7 @@ namespace MinecraftTetris.EditorTools
             // 顶点顺序按「下左→下右→上右→上左」写的时候，四个侧面会一起上下翻，
             // 看着就是整张贴图被倒过来 —— 这个只能靠算，肉眼看形状是看不出来的。
             {
-                Mesh m3 = GolemModel.BuildCube(GolemModel.Iron()[2].Cube, 128, 128);
+                Mesh m3 = GolemModel.BuildCube(GolemModel.Iron()[1].Cubes[0], 128, 128);
                 Vector3[] vv = m3.vertices;
                 Vector2[] uv3 = m3.uv;
                 int upsideDown = 0;
@@ -1426,16 +1459,17 @@ namespace MinecraftTetris.EditorTools
             // 每一面都得贴在贴图的不透明区里。26.2 的实体贴图是「展开的纸盒」，
             // 没用到的地方 alpha=0；UV 差一格就会采到空白，shader 的 clip 把这面裁掉，
             // 看起来就是「这块没贴上贴图」。光看截图分不清是哪个部件哪一面，所以逐面核对。
-            string uvSnow = CheckGolemUVs("snow_golem", 64, 64, GolemModel.Snow());
-            Check("snow_golem 的 24 个面全都贴在贴图上" + (uvSnow.Length == 0 ? "" : "（" + uvSnow + "）"),
+            int faces;
+            string uvSnow = CheckGolemUVs("snow_golem", 64, 64, GolemModel.Snow(), out faces);
+            Check("snow_golem 的 " + faces + " 个面全都贴在贴图上" + (uvSnow.Length == 0 ? "" : "（" + uvSnow + "）"),
                   uvSnow.Length == 0);
 
-            string uvIron = CheckGolemUVs("iron_golem", 128, 128, GolemModel.Iron());
-            Check("iron_golem 的 36 个面全都贴在贴图上" + (uvIron.Length == 0 ? "" : "（" + uvIron + "）"),
+            string uvIron = CheckGolemUVs("iron_golem", 128, 128, GolemModel.Iron(), out faces);
+            Check("iron_golem 的 " + faces + " 个面全都贴在贴图上" + (uvIron.Length == 0 ? "" : "（" + uvIron + "）"),
                   uvIron.Length == 0);
 
-            string uvCopper = CheckGolemUVs("copper_golem", 64, 64, GolemModel.Copper());
-            Check("copper_golem 的 36 个面全都贴在贴图上" + (uvCopper.Length == 0 ? "" : "（" + uvCopper + "）"),
+            string uvCopper = CheckGolemUVs("copper_golem", 64, 64, GolemModel.Copper(), out faces);
+            Check("copper_golem 的 " + faces + " 个面全都贴在贴图上" + (uvCopper.Length == 0 ? "" : "（" + uvCopper + "）"),
                   uvCopper.Length == 0);
 
             // 各部件的实际世界高度：光看代码里的 pivot / center 算不出渲染出来多高，
@@ -1484,6 +1518,26 @@ namespace MinecraftTetris.EditorTools
             EditorApplication.Exit(fail > 0 ? 1 : 0);
         }
 
+        /// <summary>
+        /// 模型最高点到脚底的像素距离。算的是「关节 + 盒子中心 + 半个高度」，
+        /// 不带旋转 —— 目前只有雪傀儡的手臂带旋转，而它远不是最高的部件。
+        /// </summary>
+        static float PartTop(GolemPartDef[] parts)
+        {
+            float top = 0f;
+            for (int i = 0; i < parts.Length; i++)
+            {
+                for (int k = 0; k < parts[i].Cubes.Length; k++)
+                {
+                    GolemCube c = parts[i].Cubes[k];
+                    float y = parts[i].Pivot.y + c.Center.y + c.H * 0.5f;
+                    if (y > top)
+                        top = y;
+                }
+            }
+            return top;
+        }
+
         /// <summary>场上还有多少格有方块（水不算，水不写网格）。</summary>
         static int CountFilled(Grid g)
         {
@@ -1506,8 +1560,10 @@ namespace MinecraftTetris.EditorTools
         /// 压在四条侧面（宽 2(w+d)，高 h）上面。哪一段差一格，那面就采到透明像素，
         /// shader 的 clip 把它整面裁掉 —— 表现出来就是「这块没贴上贴图」。
         /// </summary>
-        static string CheckGolemUVs(string texName, int texW, int texH, GolemPartDef[] parts)
+        static string CheckGolemUVs(string texName, int texW, int texH, GolemPartDef[] parts, out int faceCount)
         {
+            faceCount = 0;
+
             string path = System.IO.Path.Combine(Application.dataPath, "Resources/Golem/" + texName + ".png");
             if (!System.IO.File.Exists(path))
                 return "找不到 " + path;
@@ -1522,42 +1578,46 @@ namespace MinecraftTetris.EditorTools
 
             for (int i = 0; i < parts.Length; i++)
             {
-                GolemCube c = parts[i].Cube;
-
-                // 与 GolemModel.BuildCube 里的六个面一一对应（图片坐标，左上原点）
-                int[][] rects =
+                for (int k = 0; k < parts[i].Cubes.Length; k++)
                 {
-                    new[] { c.U + c.D,             c.V,       c.U + c.D + c.W,           c.V + c.D },
-                    new[] { c.U + c.D + c.W,       c.V,       c.U + c.D + c.W * 2,       c.V + c.D },
-                    new[] { c.U + c.D + c.W,       c.V + c.D, c.U + c.D + c.W + c.D,     c.V + c.D + c.H },
-                    new[] { c.U,                   c.V + c.D, c.U + c.D,                 c.V + c.D + c.H },
-                    new[] { c.U + c.D,             c.V + c.D, c.U + c.D + c.W,           c.V + c.D + c.H },
-                    new[] { c.U + c.D + c.W + c.D, c.V + c.D, c.U + c.D + c.W * 2 + c.D, c.V + c.D + c.H },
-                };
+                    GolemCube c = parts[i].Cubes[k];
 
-                for (int f = 0; f < rects.Length; f++)
-                {
-                    int empty = 0, total = 0;
-                    for (int y = rects[f][1]; y < rects[f][3]; y++)
+                    // 与 GolemModel.BuildCube 里的六个面一一对应（图片坐标，左上原点）
+                    int[][] rects =
                     {
-                        for (int x = rects[f][0]; x < rects[f][2]; x++)
+                        new[] { c.U + c.D,             c.V,       c.U + c.D + c.W,           c.V + c.D },
+                        new[] { c.U + c.D + c.W,       c.V,       c.U + c.D + c.W * 2,       c.V + c.D },
+                        new[] { c.U + c.D + c.W,       c.V + c.D, c.U + c.D + c.W + c.D,     c.V + c.D + c.H },
+                        new[] { c.U,                   c.V + c.D, c.U + c.D,                 c.V + c.D + c.H },
+                        new[] { c.U + c.D,             c.V + c.D, c.U + c.D + c.W,           c.V + c.D + c.H },
+                        new[] { c.U + c.D + c.W + c.D, c.V + c.D, c.U + c.D + c.W * 2 + c.D, c.V + c.D + c.H },
+                    };
+
+                    for (int f = 0; f < rects.Length; f++)
+                    {
+                        faceCount++;
+                        int empty = 0, total = 0;
+                        for (int y = rects[f][1]; y < rects[f][3]; y++)
                         {
-                            total++;
-                            bool outside = x < 0 || y < 0 || x >= texW || y >= texH;
-                            if (outside)
+                            for (int x = rects[f][0]; x < rects[f][2]; x++)
                             {
-                                empty++;
-                                continue;
+                                total++;
+                                bool outside = x < 0 || y < 0 || x >= texW || y >= texH;
+                                if (outside)
+                                {
+                                    empty++;
+                                    continue;
+                                }
+                                if (px[(texH - 1 - y) * texW + x].a == 0)
+                                    empty++;
                             }
-                            if (px[(texH - 1 - y) * texW + x].a == 0)
-                                empty++;
                         }
-                    }
 
-                    if (total == 0 || empty > 0)
-                    {
-                        bad++;
-                        where += parts[i].Part + faceNames[f] + " ";
+                        if (total == 0 || empty > 0)
+                        {
+                            bad++;
+                            where += parts[i].Part + faceCount + faceNames[f] + " ";
+                        }
                     }
                 }
             }

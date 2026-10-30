@@ -3,22 +3,20 @@ using UnityEngine;
 
 namespace MinecraftTetris
 {
-    /// <summary>傀儡的一个部件（头 / 身体 / 手臂 / 腿），对应贴图里的一块展开图。</summary>
+    /// <summary>一个立方体：贴图上的一块展开图 + 它在部件里的位置。</summary>
     public struct GolemCube
     {
-        /// <summary>贴图左上角的像素坐标（MC 的 texOffs）。</summary>
+        /// <summary>贴图左上角的像素坐标（对应 MC 的 texOffs）。</summary>
         public int U, V;
         /// <summary>方块尺寸（像素）：宽、高、深。</summary>
         public int W, H, D;
-        /// <summary>关节位置，单位像素，原点在脚底中心，y 向上。</summary>
-        public Vector3 Pivot;
-        /// <summary>立方体中心相对关节的偏移（像素）。</summary>
+        /// <summary>立方体中心相对部件关节的偏移（像素，y 向上）。</summary>
         public Vector3 Center;
 
-        public GolemCube(int u, int v, int w, int h, int d, Vector3 pivot, Vector3 center)
+        public GolemCube(int u, int v, int w, int h, int d, Vector3 center)
         {
             U = u; V = v; W = w; H = h; D = d;
-            Pivot = pivot; Center = center;
+            Center = center;
         }
     }
 
@@ -28,124 +26,213 @@ namespace MinecraftTetris
         Head, Body, ArmLeft, ArmRight, LegLeft, LegRight,
     }
 
+    /// <summary>
+    /// 一个部件（头 / 身体 / 手臂 / 腿）。一个部件可以挂好几个立方体 ——
+    /// 原版就是这么干的：铁傀儡的鼻子、腰，铜傀儡的天线，都是各自部件里额外的 addBox。
+    /// </summary>
     public struct GolemPartDef
     {
         public GolemPart Part;
-        public GolemCube Cube;
+        /// <summary>关节位置（像素，y 向上，原点在脚底中心）。</summary>
+        public Vector3 Pivot;
+        /// <summary>关节的初始旋转（度）。原版雪傀儡的手臂是斜着伸出来的。</summary>
+        public Vector3 Rot;
+        public GolemCube[] Cubes;
     }
 
     /// <summary>
     /// 傀儡模型：把 MC 的实体贴图按官方 UV 布局切成六个面，拼成一个个立方体部件。
     ///
-    /// 为什么不沿用方块：傀儡在 MC 里是实体，皮肤是 `textures/entity/*.png` 那种"展开的纸盒"，
-    /// 用方块贴图堆出来怎么都不像。这里按 MC 自己的 cube 展开规则还原：
-    /// 一块 w×h×d 的立方体，贴图上占的矩形宽 2*(w+d)、高 d+h，
-    /// 依次是 [右面][正面][左面][背面] 四条竖条 + 上下的 [顶面][底面]。
+    /// 数据不是估的：下面三张表的每一个数字，都是从本机 `versions/26.2/26.2.jar` 里
+    /// 的模型类反编译抄出来的（`net.minecraft.client.model.animal.golem.*Model`），
+    /// 贴图也是同一个 jar 里的 `assets/minecraft/textures/entity/**`，一一对得上。
+    /// 抄法：MC 用 CubeListBuilder.texOffs(u,v).addBox(x,y,z,w,h,d) 描述一个盒子，
+    /// PartPose.offset(px,py,pz) 是关节位置；MC 的 y 轴向下、脚底在 y=24，
+    /// 这里统一换成「y 向上、脚底在 y=0」，即 myY = 24 - mcY。
     ///
-    /// 坐标：像素为单位，1 格 = 16 像素，y 向上（MC 模型是 y 向下，这里反过来）。
+    /// 为什么不干脆按贴图的连通块反解尺寸（以前那套做法）：反解只能量出「这块贴图多大」，
+    /// 量不出它挂在哪、朝哪边、是不是和别的盒子叠在一起 —— 于是就会出现
+    /// 「少一块身体」「鼻子没了」「腿被截断」这类问题。
     /// </summary>
     public static class GolemModel
     {
         public const float PixelsPerBlock = 16f;
 
         /// <summary>
-        /// 雪傀儡的部件。贴图 64×64。
+        /// 雪傀儡。贴图 64×64。原版 SnowGolemModel.createBodyLayer：
+        ///   lower_body  (0,36) 12³  y 0~12   底下的雪球
+        ///   upper_body  (0,16) 10³  y 11~21  上面的雪球
+        ///   head        (0,0)  8³   y 20~28  脸就画在贴图 (0,8) 那一圈四个侧面上
+        ///   left/right_arm (32,0) 12×2×2     两根棕色木棍，绕 z 轴斜伸出去
+        /// 以前只做了 upper_body + head，缺了底下那个 12³ 雪球，所以看着「少一块身体」。
         ///
-        /// 这张贴图上实际只有三块不透明的展开区（用连通块量出来的）：
-        ///   (0,0)  8×8×8     头
-        ///   (0,16) 10×10×10  —— 26.2 的模型已经不用了，留着不动
-        ///   (0,36) 12×12×12  身体
-        /// 手臂在 26.2 的贴图上**没有独立区域**了（老的 (32,0) 整块透明，采过去一片空，
-        /// 看起来就是"手臂没贴图"）。所以手臂借身体的侧面那条空白雪色带（y48~59）当采样区，
-        /// 那一带整片是不透明的雪，取哪一格都是白的，做树枝手臂够用。
+        /// 手臂：原版 texOffs(32,0)、addBox(-1,0,-1,12,2,2)，pivot 在 (±5,18,∓1)，
+        /// 左臂 rot z=+1rad、右臂 yRot=π + zRot=-1rad。这里换成本地等价写法：
+        /// 盒子从关节往下伸 12 像素，关节绕 z 轴外倾 57.3°（1 弧度），左右对称。
         /// </summary>
         public static GolemPartDef[] Snow()
         {
             return new[]
             {
-                // 原版是「下面一个大雪球 + 上面一个小雪球（盖南瓜头）」：
-                // 身体 10×10×10、头 8×8×8，两条细树枝手臂从身体两侧伸出来往下垂。
-                // 之前身体用 12³，头显得太小、整体像个方箱子，不像雪人。
-                Part(GolemPart.Body, 0, 16, 10, 10, 10, new Vector3(0f, 0f, 0f), new Vector3(0f, 5f, 0f)),
-                Part(GolemPart.Head, 0, 0, 8, 8, 8, new Vector3(0f, 10f, 0f), new Vector3(0f, 4f, 0f)),
-                Part(GolemPart.ArmLeft, 0, 48, 2, 6, 2, new Vector3(-5f, 11f, 0f), new Vector3(0f, -3f, 0f)),
-                Part(GolemPart.ArmRight, 0, 48, 2, 6, 2, new Vector3(5f, 11f, 0f), new Vector3(0f, -3f, 0f)),
-            };
-        }
+                Part(GolemPart.Body, new Vector3(0f, 0f, 0f), Vector3.zero,
+                    Cube(0, 36, 12, 12, 12, 0f, 6f, 0f)),
 
-        /// <summary>铁傀儡的部件。贴图 128×128。</summary>
-        public static GolemPartDef[] Iron()
-        {
-            return new[]
-            {
-                // 两条腿 6×16×5、身体 18×12×11、手臂 4×28×6（长到手垂过膝）、头 8×10×8
-                Part(GolemPart.LegLeft, 37, 0, 6, 16, 5, new Vector3(-3.5f, 16f, 0f), new Vector3(0f, -8f, 0f)),
-                Part(GolemPart.LegRight, 60, 0, 6, 16, 5, new Vector3(3.5f, 16f, 0f), new Vector3(0f, -8f, 0f)),
-                Part(GolemPart.Body, 0, 40, 18, 12, 11, new Vector3(0f, 16f, 0f), new Vector3(0f, 6f, 0f)),
-                // 手臂按 30 像素做会垂到脚底以下 2 像素，被地面切掉一截（看着像「腿被截断」）。
-                // 28 正好从肩膀垂到脚底，贴图上少取末端两行，肉眼看不出。
-                Part(GolemPart.ArmLeft, 60, 21, 4, 28, 6, new Vector3(-11f, 28f, 0f), new Vector3(0f, -14f, 0f)),
-                Part(GolemPart.ArmRight, 60, 58, 4, 28, 6, new Vector3(11f, 28f, 0f), new Vector3(0f, -14f, 0f)),
-                Part(GolemPart.Head, 0, 0, 8, 10, 8, new Vector3(0f, 28f, 0f), new Vector3(0f, 5f, 0f)),
+                Part(GolemPart.Body, new Vector3(0f, 11f, 0f), Vector3.zero,
+                    Cube(0, 16, 10, 10, 10, 0f, 5f, 0f)),
+
+                Part(GolemPart.Head, new Vector3(0f, 20f, 0f), Vector3.zero,
+                    Cube(0, 0, 8, 8, 8, 0f, 4f, 0f)),
+
+                Part(GolemPart.ArmLeft, new Vector3(5f, 18f, -1f), new Vector3(0f, 0f, 57.3f),
+                    Cube(32, 0, 12, 2, 2, 0f, -6f, 0f)),
+
+                Part(GolemPart.ArmRight, new Vector3(-5f, 18f, 1f), new Vector3(0f, 0f, -57.3f),
+                    Cube(32, 0, 12, 2, 2, 0f, -6f, 0f)),
             };
         }
 
         /// <summary>
-        /// 铜傀儡的部件。贴图 64×64。它是个头大身子小的矮家伙（碰撞箱 0.49 × 0.98 格）。
-        ///
-        /// 这几组数字不是猜的：铜傀儡是 26.2 新增的实体，没有公开的 UV 资料，
-        /// 所以直接按贴图上真实存在的展开块反解 —— 一个 w×h×d 的方块，
-        /// 展开后上窄带宽 2w、下宽带 2(w+d)，扫一遍贴图就能对上号：
-        ///   (0,0)   8×5×10   身体（前后比左右厚，它要抱东西）
-        ///   (0,15)  8×6×6    头（方头，宽度和身体一样）
-        ///   (0,27)  4×5×4    腿   (16,27) 同一尺寸，右腿
-        ///   (36,16) 3×10×4   手臂 (50,16) 同一尺寸，右臂
-        ///
-        /// 腿和手臂一开始搞反了：3×10×4 那种细长条是**手臂**（垂到脚），
-        /// 4×5×4 才是短腿。按「腿 5 + 身体 5 + 头 6 = 16 像素」算，正好 1 格高，
-        /// 和原版 0.98 格对得上 —— 反过来的话整个人有 1.3 格，腿长身子短，很怪。
+        /// 铁傀儡。贴图 128×128。原版 IronGolemModel.createBodyLayer：
+        ///   head  (0,0)  8×10×8 + 鼻子 (24,0) 2×4×2   y 33~43
+        ///   body  (0,40) 18×12×11 + 腰 (0,70) 9×5×6  y 21~33、腰 16~21
+        ///   arms  (60,21)/(60,58) 4×30×6             y 3.5~33.5
+        ///   legs  (37,0)/(60,0)   6×16×5             y 0~16
+        /// 以前少了鼻子（24,0 那块）和腰（0,70 那块），总高只有 38 像素，比原版 43 矮一截，
+        /// 于是腿显得被身体压住了 —— 「腿部被截断」就是这么来的。
+        /// </summary>
+        public static GolemPartDef[] Iron()
+        {
+            return new[]
+            {
+                // 头挂在 z=-2：原版 PartPose.offset(0,-7,-2)，脸比身体更靠前
+                Part(GolemPart.Head, new Vector3(0f, 31f, -2f), Vector3.zero,
+                    Cube(0, 0, 8, 10, 8, 0f, 7f, -1.5f),
+                    Cube(24, 0, 2, 4, 2, 0f, 3f, -6.5f)),
+
+                Part(GolemPart.Body, new Vector3(0f, 31f, 0f), Vector3.zero,
+                    Cube(0, 40, 18, 12, 11, 0f, -4f, -0.5f),
+                    Cube(0, 70, 9, 5, 6, 0f, -12.5f, 0f)),
+
+                // 手臂的关节和身体在同一个点上（原版都挂在 (0,-7,0)），盒子自己往外偏 11 像素
+                Part(GolemPart.ArmLeft, new Vector3(0f, 31f, 0f), Vector3.zero,
+                    Cube(60, 58, 4, 30, 6, 11f, -12.5f, 0f)),
+
+                Part(GolemPart.ArmRight, new Vector3(0f, 31f, 0f), Vector3.zero,
+                    Cube(60, 21, 4, 30, 6, -11f, -12.5f, 0f)),
+
+                Part(GolemPart.LegLeft, new Vector3(5f, 13f, 0f), Vector3.zero,
+                    Cube(60, 0, 6, 16, 5, -0.5f, -5f, 0f)),
+
+                Part(GolemPart.LegRight, new Vector3(-4f, 13f, 0f), Vector3.zero,
+                    Cube(37, 0, 6, 16, 5, -0.5f, -5f, 0f)),
+            };
+        }
+
+        /// <summary>
+        /// 铜傀儡。贴图 64×64。原版 CopperGolemModel.createBodyLayer，外面还套了一层
+        /// `MeshDefinition.transformed(p -&gt; p.translated(0,24,0))` —— 它的模型是贴着 y=0 建的，
+        /// 整体下移 24 像素后才和别的实体对齐脚底。下面已经是换好的数：
+        ///   body  (0,15) 8×6×6                       y 5~11
+        ///   head  (0,0)  8×5×10 + 鼻子 (56,0) 2×3×2   y 11~16
+        ///               + 天线杆 (37,8) 2×4×2 + 球 (37,0) 4×4×4  y 16~24
+        ///   arms  (36,16)/(50,16) 3×10×4            y 2~12
+        ///   legs  (0,27)/(16,27)  4×5×4             y 0~5
+        /// 注意头是「宽 8 高 5 深 10」—— 前后比左右长一倍，鼻子和天线都在头里面，
+        /// 以前按贴图反解成「8×6×6 的方头」，所以看着不像。
         /// </summary>
         public static GolemPartDef[] Copper()
         {
             return new[]
             {
-                Part(GolemPart.LegLeft, 0, 27, 4, 5, 4, new Vector3(-2.5f, 5f, 0f), new Vector3(0f, -2.5f, 0f)),
-                Part(GolemPart.LegRight, 16, 27, 4, 5, 4, new Vector3(2.5f, 5f, 0f), new Vector3(0f, -2.5f, 0f)),
-                Part(GolemPart.Body, 0, 0, 8, 5, 10, new Vector3(0f, 5f, 0f), new Vector3(0f, 2.5f, 0f)),
-                Part(GolemPart.ArmLeft, 36, 16, 3, 10, 4, new Vector3(-5.5f, 10f, 0f), new Vector3(0f, -5f, 0f)),
-                Part(GolemPart.ArmRight, 50, 16, 3, 10, 4, new Vector3(5.5f, 10f, 0f), new Vector3(0f, -5f, 0f)),
-                Part(GolemPart.Head, 0, 15, 8, 6, 6, new Vector3(0f, 10f, 0f), new Vector3(0f, 3f, 0f)),
+                Part(GolemPart.Body, new Vector3(0f, 5f, 0f), Vector3.zero,
+                    Cube(0, 15, 8, 6, 6, 0f, 3f, 0f)),
+
+                Part(GolemPart.Head, new Vector3(0f, 11f, 0f), Vector3.zero,
+                    Cube(0, 0, 8, 5, 10, 0f, 2.5f, 0f),
+                    Cube(56, 0, 2, 3, 2, 0f, 0.5f, -5f),
+                    Cube(37, 8, 2, 4, 2, 0f, 7f, 0f),
+                    Cube(37, 0, 4, 4, 4, 0f, 11f, 0f)),
+
+                Part(GolemPart.ArmLeft, new Vector3(4f, 11f, 0f), Vector3.zero,
+                    Cube(50, 16, 3, 10, 4, 1.5f, -4f, 0f)),
+
+                Part(GolemPart.ArmRight, new Vector3(-4f, 11f, 0f), Vector3.zero,
+                    Cube(36, 16, 3, 10, 4, -1.5f, -4f, 0f)),
+
+                Part(GolemPart.LegLeft, new Vector3(0f, 5f, 0f), Vector3.zero,
+                    Cube(16, 27, 4, 5, 4, 2f, -2.5f, 0f)),
+
+                Part(GolemPart.LegRight, new Vector3(0f, 5f, 0f), Vector3.zero,
+                    Cube(0, 27, 4, 5, 4, -2f, -2.5f, 0f)),
             };
         }
 
-        static GolemPartDef Part(GolemPart part, int u, int v, int w, int h, int d,
-                                 Vector3 pivot, Vector3 center)
+        static GolemCube Cube(int u, int v, int w, int h, int d, float cx, float cy, float cz)
         {
-            return new GolemPartDef
-            {
-                Part = part,
-                Cube = new GolemCube(u, v, w, h, d, pivot, center),
-            };
+            return new GolemCube(u, v, w, h, d, new Vector3(cx, cy, cz));
+        }
+
+        static GolemPartDef Part(GolemPart part, Vector3 pivot, Vector3 rot, params GolemCube[] cubes)
+        {
+            return new GolemPartDef { Part = part, Pivot = pivot, Rot = rot, Cubes = cubes };
+        }
+
+        /// <summary>整个部件（可能好几个立方体）合成一个 mesh，单位格，以关节为原点。</summary>
+        public static Mesh BuildPart(GolemPartDef def, int texW, int texH)
+        {
+            var verts = new List<Vector3>();
+            var norms = new List<Vector3>();
+            var uvs = new List<Vector2>();
+            var tris = new List<int>();
+
+            for (int i = 0; i < def.Cubes.Length; i++)
+                AppendCube(verts, norms, uvs, tris, def.Cubes[i], def.Cubes[i].Center / PixelsPerBlock,
+                           texW, texH);
+
+            var mesh = new Mesh();
+            mesh.name = "GolemPart_" + def.Part;
+            mesh.SetVertices(verts);
+            mesh.SetNormals(norms);
+            mesh.SetUVs(0, uvs);
+            mesh.SetTriangles(tris, 0);
+            mesh.RecalculateBounds();
+            return mesh;
+        }
+
+        /// <summary>生成一块立方体的 mesh（单位格），以立方体中心为原点。</summary>
+        public static Mesh BuildCube(GolemCube c, int texW, int texH)
+        {
+            var verts = new List<Vector3>(24);
+            var norms = new List<Vector3>(24);
+            var uvs = new List<Vector2>(24);
+            var tris = new List<int>(36);
+
+            AppendCube(verts, norms, uvs, tris, c, Vector3.zero, texW, texH);
+
+            var mesh = new Mesh();
+            mesh.name = "GolemCube";
+            mesh.SetVertices(verts);
+            mesh.SetNormals(norms);
+            mesh.SetUVs(0, uvs);
+            mesh.SetTriangles(tris, 0);
+            mesh.RecalculateBounds();
+            return mesh;
         }
 
         /// <summary>
-        /// 生成一块立方体的 mesh（单位：格）。以部件中心为原点，
-        /// 六个面的 UV 按 MC 的展开规则从贴图上取。
+        /// 把一块立方体的六个面追加进去。offset 是这块立方体中心在部件里的位置（格），
+        /// 一个部件好几个盒子时（铁傀儡的头 + 鼻子），就靠它把盒子摆到位。
         /// </summary>
-        public static Mesh BuildCube(GolemCube c, int texW, int texH)
+        static void AppendCube(List<Vector3> verts, List<Vector3> norms, List<Vector2> uvs, List<int> tris,
+                               GolemCube c, Vector3 offset, int texW, int texH)
         {
             float sx = c.W / PixelsPerBlock;
             float sy = c.H / PixelsPerBlock;
             float sz = c.D / PixelsPerBlock;
 
-            float x0 = -sx * 0.5f, x1 = sx * 0.5f;
-            float y0 = -sy * 0.5f, y1 = sy * 0.5f;
-            float z0 = -sz * 0.5f, z1 = sz * 0.5f;
-
-            var verts = new List<Vector3>(24);
-            var norms = new List<Vector3>(24);
-            var uvs = new List<Vector2>(24);
-            var tris = new List<int>(36);
+            float x0 = offset.x - sx * 0.5f, x1 = offset.x + sx * 0.5f;
+            float y0 = offset.y - sy * 0.5f, y1 = offset.y + sy * 0.5f;
+            float z0 = offset.z - sz * 0.5f, z1 = offset.z + sz * 0.5f;
 
             // MC 的展开：横坐标从 u 开始依次是 [右][正][左][背] 四条 d/w 宽的竖条，
             // 纵坐标 v 到 v+d 是上下两个面，v+d 到 v+d+h 是四个侧面。
@@ -191,15 +278,6 @@ namespace MinecraftTetris
                 new Vector3(x1, y1, z1), new Vector3(x0, y1, z1), new Vector3(x0, y0, z1), new Vector3(x1, y0, z1),
                 Vector3.forward,
                 uBack0, vSide0, uBack0 + c.W, vSide1, texW, texH);                 // 背面（+z）
-
-            var mesh = new Mesh();
-            mesh.name = "GolemCube";
-            mesh.SetVertices(verts);
-            mesh.SetNormals(norms);
-            mesh.SetUVs(0, uvs);
-            mesh.SetTriangles(tris, 0);
-            mesh.RecalculateBounds();
-            return mesh;
         }
 
         /// <summary>
