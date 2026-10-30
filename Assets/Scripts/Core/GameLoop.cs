@@ -174,6 +174,10 @@ namespace MinecraftTetris
         public event Action SnowMelted;
         /// <summary>召出傀儡了：视图层照着 LastGolemsSummoned 刷那几格，并在场外摆出模型。</summary>
         public event Action GolemSummoned;
+        /// <summary>有方块被点着了：视图层播点火声（列表见 Fire.LastIgnited）。</summary>
+        public event Action FireIgnited;
+        /// <summary>有方块烧光消失了：视图层刷那几格、撒碎块（列表见 LastBurnedOut）。</summary>
+        public event Action BlocksBurned;
 
         /// <summary>最近一次落定里压碎的玻璃格子（可以有两轮以上，越靠下越先碎）。</summary>
         public readonly System.Collections.Generic.List<Vector3Int> LastGlassCrushed
@@ -186,6 +190,12 @@ namespace MinecraftTetris
         /// <summary>最近一次召出来的傀儡。</summary>
         public readonly System.Collections.Generic.List<Golem.Summon> LastGolemsSummoned
             = new System.Collections.Generic.List<Golem.Summon>();
+
+        /// <summary>这一帧烧光消失的格子（列表在 Fire 里，转发一下给视图层读）。</summary>
+        public System.Collections.Generic.List<Vector3Int> LastBurnedOut { get { return Fire.LastBurnedOut; } }
+
+        /// <summary>和 LastBurnedOut 一一对应的方块编号（烧掉之前是什么，粒子要用）。</summary>
+        public System.Collections.Generic.List<int> LastBurnedBlocks { get { return Fire.LastBurnedBlocks; } }
 
         /// <summary>
         /// 「抽掉几格之后」那次重力结算的落点，融化雪块和召唤傀儡共用，只在本类里用。
@@ -228,11 +238,18 @@ namespace MinecraftTetris
                 // 岩浆淌到 TNT 旁边就点着。流体不写网格，落定时那一次扫描看不见，
                 // 只能等它动过之后再补扫一遍（水面挨着不算，Tnt 里只认岩浆）。
                 Tnt.PrimeContact(Grid);
+
+                // 岩浆淌到木头 / 羊毛 / 树叶旁边也是同一个道理，点着它们
+                Fire.IgniteContact(Grid);
+                FlushFireIgnited();
             }
 
             // 雪块 / 冰挨着岩浆就化水。不挂在上面那个 if 里：一桶岩浆封在石槽里、
             // 上面贴着雪块的时候，流体既不掉也不流，Tick 返回 false，挂在下面永远等不到。
             MeltSnowTick(dt);
+
+            // 烧着的方块推进：烧完就空掉，还可能把火传给旁边的可燃方块。
+            BurnTick(dt);
 
             // TNT：引信烧完就炸。炸完上面的沙 / 沙砾要重新塌一次，
             // 所以这里不能只当视觉事件，得再跑一遍重力结算。
@@ -523,6 +540,14 @@ namespace MinecraftTetris
             if (!fluidPiece)
                 MeltSnow();
 
+            // 木头 / 羊毛 / 树叶贴着岩浆就点着。也放在判满行之前：
+            // 火烧掉的位置空出来之后，塌下来的方块可能正好补满一行。
+            if (!fluidPiece)
+            {
+                Fire.IgniteContact(Grid);
+                FlushFireIgnited();
+            }
+
             // 南瓜头压着雪块 / 铁块 / 铜块就召出傀儡，两格一起消失。
             // 同样放在判满行之前：抽走两格之后塌下来的方块可能正好补满一行。
             if (!fluidPiece)
@@ -669,6 +694,33 @@ namespace MinecraftTetris
             // 不挤的话那格会同时挂着方块和一份看不见的水，等流体下一次推进才被收拾。
             for (int i = 0; i < _removalMoves.Count; i++)
                 Fluids.OnSolidPlaced(Grid, _removalMoves[i].ToX, _removalMoves[i].ToY, _removalMoves[i].ToZ);
+        }
+
+        /// <summary>
+        /// 推进燃烧。烧光了的格子要落一次重力（上面压着的东西塌下来），
+        /// 顺便给分 —— 火和 TNT 一样是清场手段，只是慢一点，所以分也低一点。
+        /// </summary>
+        void BurnTick(float dt)
+        {
+            if (!Fire.Tick(Grid, dt))
+            {
+                FlushFireIgnited();
+                return;
+            }
+
+            Score += Fire.LastBurnedOut.Count * Fire.ScorePerBlock;
+            SettleAfterRemoval();
+            BlocksBurned?.Invoke();
+            FlushFireIgnited();
+        }
+
+        /// <summary>这一帧有没有新点着的方块，有就派给视图层播点火声。</summary>
+        void FlushFireIgnited()
+        {
+            if (Fire.LastIgnited.Count == 0)
+                return;
+            FireIgnited?.Invoke();
+            Fire.LastIgnited.Clear();
         }
 
         /// <summary>把这一帧新点着的 TNT 派给视图层，然后清掉待发列表。</summary>
@@ -899,6 +951,7 @@ namespace MinecraftTetris
             Grid.Clear();
             Tnt.Reset();
             Structure.Reset();
+            Fire.Reset();
             Score = 0;
             LinesCleared = 0;
             GameOver = false;

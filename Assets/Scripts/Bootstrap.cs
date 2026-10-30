@@ -203,6 +203,9 @@ namespace MinecraftTetris
             // -melttest：雪块 / 冰立在石槽上，一秒半后往槽里灌岩浆，看它化水再被烫成黑曜石
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-melttest") >= 0)
                 RunMeltTest();
+            // -firetest：两根「木板 + 羊毛 + 树叶」柱子，一秒半后往左边灌岩浆，看火往上烧
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-firetest") >= 0)
+                RunFireTest();
             // -golemtest：南瓜头压在雪块 / 铁块 / 铜块 / 石头上，看前三个召出傀儡、第四个没反应
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-golemtest") >= 0)
                 RunGolemTest();
@@ -235,7 +238,7 @@ namespace MinecraftTetris
             {
                 "-sandtest", "-reacttest", "-tnttest", "-leaftest", "-bedrocktest", "-structuretest",
                 "-blocktest", "-fluidtest", "-yawtest", "-pitchtest", "-glasstest", "-glassdroptest",
-                "-melttest", "-golemtest", "-golempose",
+                "-melttest", "-golemtest", "-golempose", "-firetest",
             };
             for (int i = 0; i < sceneTests.Length; i++)
             {
@@ -266,6 +269,8 @@ namespace MinecraftTetris
             _loop.GlassCrushed += OnGlassCrushed;
             _loop.SnowMelted += OnSnowMelted;
             _loop.GolemSummoned += OnGolemSummoned;
+            _loop.FireIgnited += OnFireIgnited;
+            _loop.BlocksBurned += OnBlocksBurned;
 
             _view.RefreshAll();
             _view.SnapPiece(_loop.Current);
@@ -373,6 +378,7 @@ namespace MinecraftTetris
             _loop.Tick(Time.deltaTime, _input.Read());
             _view.RefreshPiece(_loop.Current);
             SyncTntFlash();
+            SyncFire();
 
             // 调试用：-demo 启动时在自动截图前炸一把粒子，方便截图看效果
             if (_demoMode && !_demoBurst && Time.time > 5.2f)
@@ -428,6 +434,8 @@ namespace MinecraftTetris
             _paused = false;
             _view.RefreshAll();
             _view.ClearFlash();
+            _view.ClearFire();
+            _lastBurning.Clear();
             _view.SnapPiece(_loop.Current);
             _nextPreview.Show(_loop.Next, _loop.NextBlockId);
             if (_title != null)
@@ -700,6 +708,7 @@ namespace MinecraftTetris
             Tnt.Reset();
             Structure.Reset();
             Melt.Reset();
+            Fire.Reset();
             Golem.Reset();
             ClearGolemModels();
 
@@ -802,6 +811,7 @@ namespace MinecraftTetris
             Tnt.Reset();
             Structure.Reset();
             Melt.Reset();
+            Fire.Reset();
             Golem.Reset();
             ClearGolemModels();
 
@@ -908,6 +918,7 @@ namespace MinecraftTetris
             Tnt.Reset();
             Structure.Reset();
             Melt.Reset();
+            Fire.Reset();
 
             Grid grid = _loop.Grid;
             Fluids.Prepare(grid);   // 先把流体表建好，等下往槽里灌岩浆才写得进去
@@ -932,6 +943,82 @@ namespace MinecraftTetris
             // 等一秒半再灌，先让人看清「雪块 / 冰立在石槽上」的样子
             StartCoroutine(PourLavaSoon(1.5f,
                 new Vector3Int(left, 1, cz), new Vector3Int(mid, 1, cz)));
+        }
+
+        /// <summary>
+        /// -firetest：左右各一根「木板 + 羊毛 + 树叶 + 木板」的柱子，中间隔一道石墙。
+        /// 一秒半后往左边灌岩浆：左边从底下那格开始烧，火一格一格往上窜，烧完塌掉；
+        /// 右边同样一根，离岩浆远，应该一直没动静。
+        /// </summary>
+        void RunFireTest()
+        {
+            if (_loop == null || _view == null)
+                return;
+
+            int planksId = 0, woolId = 0, leavesId = 0, stoneId = 0;
+            for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
+            {
+                string n = BlockCatalog.Blocks[i].Name;
+                if (n == "oak_planks") planksId = i + 1;
+                else if (n == "white_wool") woolId = i + 1;
+                else if (n == "oak_leaves") leavesId = i + 1;
+                else if (n == "stone") stoneId = i + 1;
+            }
+
+            if (planksId <= 0 || woolId <= 0 || leavesId <= 0 || stoneId <= 0 || Fluids.LavaId <= 0)
+            {
+                Debug.Log("[firetest] 方块表里缺木板 / 羊毛 / 树叶 / 石头 / 岩浆");
+                return;
+            }
+
+            Grid grid = _loop.Grid;
+            _loop.Restart();
+            Fluids.Reset();
+            Tnt.Reset();
+            Structure.Reset();
+            Melt.Reset();
+            Fire.Reset();
+
+            int cx = grid.SizeX / 2;
+            int cz = grid.SizeZ / 2;
+
+            // 地板铺一层石头：岩浆落在上面不会漏下去，往旁边漫开才会碰到柱子
+            for (int x = 0; x < grid.SizeX; x++)
+                Put(grid, x, 0, cz, stoneId);
+
+            // 中间那道石墙：隔开左右两组，右边那根才不会被漫过来的岩浆顺手点上
+            for (int y = 1; y <= 3; y++)
+                Put(grid, cx, y, cz, stoneId);
+
+            int xl = Mathf.Clamp(cx - 3, 1, grid.SizeX - 2);
+            Put(grid, xl, 1, cz, planksId);
+            Put(grid, xl, 2, cz, woolId);
+            Put(grid, xl, 3, cz, leavesId);
+            Put(grid, xl, 4, cz, planksId);
+
+            int xr = Mathf.Clamp(cx + 3, 1, grid.SizeX - 2);
+            Put(grid, xr, 1, cz, planksId);
+            Put(grid, xr, 2, cz, woolId);
+            Put(grid, xr, 3, cz, leavesId);
+            Put(grid, xr, 4, cz, planksId);
+
+            _view.SnapPiece(_loop.Current);
+            _view.RefreshAll();
+
+            // 等一秒半再灌，先让人看清「两根柱子长得一样」的样子
+            StartCoroutine(PourLavaAt(1.5f, new Vector3Int(Mathf.Clamp(xl - 1, 0, grid.SizeX - 1), 1, cz)));
+        }
+
+        /// <summary>演示用：等一会儿再往一格灌岩浆。</summary>
+        System.Collections.IEnumerator PourLavaAt(float delay, Vector3Int cell)
+        {
+            yield return new WaitForSeconds(delay);
+            if (_loop == null)
+                yield break;
+
+            Fluids.Prepare(_loop.Grid);
+            Fluids.AddSource(_loop.Grid, cell.x, cell.y, cell.z, Fluids.LavaId);
+            Debug.Log("[firetest] 已往左边灌岩浆，等着看火往上烧");
         }
 
         /// <summary>演示用的一个 1×1 石槽：底 + 四壁。角落那几块越界就不铺（场地只有 1 深时正常）。</summary>
@@ -1565,6 +1652,49 @@ namespace MinecraftTetris
         }
 
         /// <summary>
+        /// 有方块被点着了：嘶一声（MC 里点火就是这一下），撒几粒碎屑。
+        /// 火光壳由 SyncFire 每帧同步，这里只管声音。
+        /// </summary>
+        void OnFireIgnited()
+        {
+            if (_sfx != null)
+                _sfx.PlayFizz();
+
+            if (_particles == null)
+                return;
+
+            // 点着的是木头还是羊毛已经不重要了，统一撒橙黄色碎屑（火的颜色）
+            for (int i = 0; i < Fire.LastIgnited.Count; i++)
+            {
+                Vector3Int c = Fire.LastIgnited[i];
+                _particles.EmitCell(c.x, c.y, c.z, BlockCatalog.OakLogId > 0 ? BlockCatalog.OakLogId : 1, 1);
+            }
+        }
+
+        /// <summary>
+        /// 有方块烧光了：格子清空、撒一把碎块、嘶一声收尾。
+        /// 壳交给下一帧的 SyncFire 摘（那一格的火已经被逻辑层摘掉了）。
+        /// </summary>
+        void OnBlocksBurned()
+        {
+            if (_view == null)
+                return;
+
+            for (int i = 0; i < _loop.LastBurnedOut.Count; i++)
+            {
+                Vector3Int c = _loop.LastBurnedOut[i];
+                _view.SetCell(c.x, c.y, c.z, 0);
+
+                int blockId = i < _loop.LastBurnedBlocks.Count ? _loop.LastBurnedBlocks[i] : 0;
+                if (_particles != null && blockId > 0)
+                    _particles.EmitCell(c.x, c.y, c.z, blockId, 3);
+            }
+
+            if (_sfx != null)
+                _sfx.PlayFizz();
+        }
+
+        /// <summary>
         /// 召出傀儡了：清掉场地里那两格、撒碎块、播一下身体方块的放置音，
         /// 再在场外右侧摆一个小雕像。
         /// </summary>
@@ -1677,6 +1807,49 @@ namespace MinecraftTetris
                 _view.SetCellFlash(p.X, p.Y, p.Z, Tnt.FlashOn(p.Total - p.Fuse));
             }
         }
+
+        /// <summary>
+        /// 把「哪些格子正在烧」同步给视图层，让它给那些格子套上橙色的火光壳。
+        ///
+        /// 每帧都重算而不是只在点燃时设一次：方块可能被消行带走、被水浇灭、被重力挪走，
+        /// 火得跟着一起没 —— 逻辑层那边已经把失效的火摘掉了，这里照着抄一遍就行。
+        /// </summary>
+        void SyncFire()
+        {
+            if (_view == null)
+                return;
+
+            System.Collections.Generic.List<Fire.Burning> burning = Fire.BurningCells;
+
+            // 上一帧在烧、这一帧不在了的：把壳摘掉
+            for (int i = 0; i < _lastBurning.Count; i++)
+            {
+                Vector3Int c = _lastBurning[i];
+                bool still = false;
+                for (int j = 0; j < burning.Count; j++)
+                {
+                    if (burning[j].X == c.x && burning[j].Y == c.y && burning[j].Z == c.z)
+                    {
+                        still = true;
+                        break;
+                    }
+                }
+                if (!still)
+                    _view.SetCellBurning(c.x, c.y, c.z, false);
+            }
+
+            _lastBurning.Clear();
+            for (int i = 0; i < burning.Count; i++)
+            {
+                Fire.Burning b = burning[i];
+                _view.SetCellBurning(b.X, b.Y, b.Z, true);
+                _lastBurning.Add(new Vector3Int(b.X, b.Y, b.Z));
+            }
+        }
+
+        /// <summary>上一帧哪些格子在烧（SyncFire 用来找出「火灭了」的那些）。</summary>
+        readonly System.Collections.Generic.List<Vector3Int> _lastBurning
+            = new System.Collections.Generic.List<Vector3Int>();
 
         /// <summary>
         /// 水岩浆结晶：把那几格换成黑曜石 / 原石，冒一点碎屑，播 MC 的嘶声（random.fizz）。

@@ -1022,7 +1022,7 @@ namespace MinecraftTetris.EditorTools
                 tiny.scale >= 0.5f && tiny.width > 0f && tiny.height > 0f && tiny.gap >= 0f);
 
             // ---------- 特殊方块机制开关 ----------
-            Check("机制开关一共十二项", GameSettings.MechCount == 12);
+            Check("机制开关一共十四项", GameSettings.MechCount == 14);
 
             int mechSand = 0, mechLog = 0, mechObsidian = 0;
             for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
@@ -1281,6 +1281,122 @@ namespace MinecraftTetris.EditorTools
             Gravity.Settle(gMeltDrop);
             Check("雪块化掉之后上面压着的沙落到地上",
                 meltedDrop == 1 && gMeltDrop.Get(1, 0, 0) == mechSand && gMeltDrop.Get(1, 1, 0) == 0);
+
+            // ---------- 着火与蔓延 ----------
+            int firePlanks = 0, fireWool = 0, fireLeaves = 0, fireStone = 0;
+            for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
+            {
+                string n = BlockCatalog.Blocks[i].Name;
+                if (n == "oak_planks") firePlanks = i + 1;
+                else if (n == "white_wool") fireWool = i + 1;
+                else if (n == "oak_leaves") fireLeaves = i + 1;
+                else if (n == "stone") fireStone = i + 1;
+            }
+            Check("方块表里有木板 / 羊毛 / 树叶 / 石头",
+                  firePlanks > 0 && fireWool > 0 && fireLeaves > 0 && fireStone > 0);
+            Check("木板 / 羊毛 / 树叶算可燃，石头不算",
+                  Fire.IsFlammable(firePlanks) && Fire.IsFlammable(fireWool) &&
+                  Fire.IsFlammable(fireLeaves) && !Fire.IsFlammable(fireStone));
+            Check("空格子不算可燃", !Fire.IsFlammable(0));
+
+            GameSettings.SetMech(GameSettings.MechKind.FireBurn, true);
+
+            // 木板下面压着一满格岩浆 → 点着
+            var gFire = new Grid(4, 6, 1);
+            Fluids.Reset();
+            Fluids.Prepare(gFire);
+            Fire.Reset();
+            gFire.Set(1, 1, 0, firePlanks);
+            Fluids.SetAmount(1, 0, 0, Fluids.MaxAmount, Fluids.LavaId);
+            Check("木板贴着岩浆就被点着", Fire.IgniteContact(gFire) == 1 && Fire.IsBurning(1, 1, 0));
+            Check("刚点着时进度是 0", Mathf.Abs(Fire.BurnProgress(1, 1, 0)) < 0.01f);
+
+            // 烧到底：那一格要空掉，坐标和烧掉前的方块都要报出来。
+            // 放在这里而不是所有点火用例之后：后面每个用例开头都 Fire.Reset()，
+            // 会把这一处火一起清掉，再 Tick 就什么都烧不到了。
+            bool burnedOut = false;
+            for (int i = 0; i < 40 && !burnedOut; i++)
+                burnedOut = Fire.Tick(gFire, 0.25f);
+            Check("烧完之后那一格空了", burnedOut && gFire.Get(1, 1, 0) == 0);
+            Check("烧完的格子和方块都报了出来",
+                  Fire.LastBurnedOut.Count == 1 && Fire.LastBurnedOut[0].x == 1 &&
+                  Fire.LastBurnedOut[0].y == 1 && Fire.LastBurnedBlocks.Count == 1 &&
+                  Fire.LastBurnedBlocks[0] == firePlanks);
+            Check("烧完之后就不再烧了（那格已经空了）", Fire.BurningCells.Count == 0);
+
+            // 离岩浆远的不点；斜对角的也不点（只认六向）
+            var gFireFar = new Grid(5, 5, 1);
+            Fluids.Reset();
+            Fluids.Prepare(gFireFar);
+            Fire.Reset();
+            gFireFar.Set(1, 1, 0, firePlanks);
+            Fluids.SetAmount(3, 3, 0, Fluids.MaxAmount, Fluids.LavaId);
+            Check("离岩浆远就不着火", Fire.IgniteContact(gFireFar) == 0);
+
+            var gFireDiag = new Grid(5, 5, 1);
+            Fluids.Reset();
+            Fluids.Prepare(gFireDiag);
+            Fire.Reset();
+            gFireDiag.Set(2, 2, 0, firePlanks);
+            Fluids.SetAmount(3, 3, 0, Fluids.MaxAmount, Fluids.LavaId);
+            Check("斜对角挨着岩浆不算（只认六向）", Fire.IgniteContact(gFireDiag) == 0);
+
+            // 石头挨着岩浆也不着
+            var gFireStone = new Grid(4, 4, 1);
+            Fluids.Reset();
+            Fluids.Prepare(gFireStone);
+            Fire.Reset();
+            gFireStone.Set(1, 1, 0, fireStone);
+            Fluids.SetAmount(1, 0, 0, Fluids.MaxAmount, Fluids.LavaId);
+            Check("石头贴着岩浆不着火", Fire.IgniteContact(gFireStone) == 0);
+
+            // 火顺着木柱往上窜：底下点着，整根烧光
+            var gSpread = new Grid(3, 6, 1);
+            Fluids.Reset();
+            Fluids.Prepare(gSpread);
+            Fire.Reset();
+            for (int y = 1; y <= 4; y++)
+                gSpread.Set(1, y, 0, y % 2 == 1 ? firePlanks : fireWool);
+            Fluids.SetAmount(1, 0, 0, Fluids.MaxAmount, Fluids.LavaId);
+            Check("木柱底下那格先着", Fire.IgniteContact(gSpread) == 1);
+            for (int i = 0; i < 60; i++)
+                Fire.Tick(gSpread, 0.25f);
+            bool allGone = true;
+            for (int y = 1; y <= 4; y++)
+                if (gSpread.Get(1, y, 0) != 0)
+                    allGone = false;
+            Check("火顺着柱子往上烧，整根烧光", allGone && Fire.BurningCells.Count == 0);
+
+            // 水能灭火：烧着的方块旁边有水 → 火灭，方块留着
+            var gDouse = new Grid(4, 4, 1);
+            Fluids.Reset();
+            Fluids.Prepare(gDouse);
+            Fire.Reset();
+            gDouse.Set(1, 1, 0, firePlanks);
+            Check("干燥的木板点得着", Fire.Ignite(gDouse, 1, 1, 0));
+            Fluids.SetAmount(2, 1, 0, Fluids.MaxAmount, Fluids.WaterId);
+            Fire.Tick(gDouse, 0.1f);
+            Check("水漫过来火就灭了（方块还在）",
+                  !Fire.IsBurning(1, 1, 0) && gDouse.Get(1, 1, 0) == firePlanks);
+            Check("旁边有水的方块点不着", !Fire.Ignite(gDouse, 1, 1, 0));
+
+            // 关掉开关：点不着，已经在烧的也直接掐灭
+            var gFireOff = new Grid(4, 4, 1);
+            Fluids.Reset();
+            Fluids.Prepare(gFireOff);
+            Fire.Reset();
+            gFireOff.Set(1, 1, 0, firePlanks);
+            Fluids.SetAmount(1, 0, 0, Fluids.MaxAmount, Fluids.LavaId);
+            GameSettings.SetMech(GameSettings.MechKind.FireBurn, false);
+            Check("关掉着火开关就点不着", Fire.IgniteContact(gFireOff) == 0);
+            GameSettings.SetMech(GameSettings.MechKind.FireBurn, true);
+            Fire.Ignite(gFireOff, 1, 1, 0);
+            GameSettings.SetMech(GameSettings.MechKind.FireBurn, false);
+            Fire.Tick(gFireOff, 0.1f);
+            Check("中途关掉开关，正在烧的直接掐灭（方块留着）",
+                  Fire.BurningCells.Count == 0 && gFireOff.Get(1, 1, 0) == firePlanks);
+            GameSettings.SetMech(GameSettings.MechKind.FireBurn, true);
+            Fire.Reset();
 
             // ---------- 傀儡召唤 ----------
             int golemHead = BlockCatalog.CarvedPumpkinId > 0

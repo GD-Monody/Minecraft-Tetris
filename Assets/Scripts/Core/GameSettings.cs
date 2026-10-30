@@ -172,23 +172,25 @@ namespace MinecraftTetris
             GlassCrush = 9,
             SnowMelt = 10,
             Golem = 11,
+            FireBurn = 12,
+            SpongeSoak = 13,
         }
 
         /// <summary>开关总数。设置页和自检都按它遍历。</summary>
-        public const int MechCount = 12;
+        public const int MechCount = 14;
 
         static readonly string[] MechKeys =
         {
             "mech.tnt", "mech.ignite", "mech.sand", "mech.leaves", "mech.water",
             "mech.lava", "mech.structure", "mech.bedrock", "mech.blastproof", "mech.glass",
-            "mech.melt", "mech.golem",
+            "mech.melt", "mech.golem", "mech.fire", "mech.sponge",
         };
 
         static readonly string[] MechLabels =
         {
             "TNT 爆炸", "接触点火", "沙子与沙砾下落", "原木长树叶", "水会流动",
             "岩浆会流动", "结构方块还原", "基岩钉住不动", "防爆方块炸不掉", "玻璃被压碎",
-            "雪与冰遇岩浆融化", "傀儡召唤",
+            "雪与冰遇岩浆融化", "傀儡召唤", "木头羊毛树叶会着火", "海绵吸水",
         };
 
         public static string MechLabel(MechKind kind)
@@ -227,5 +229,7 @@ namespace MinecraftTetris
         public static bool GlassCrushes { get { return Mech(MechKind.GlassCrush); } }
         public static bool SnowMelts { get { return Mech(MechKind.SnowMelt); } }
         public static bool GolemsSummon { get { return Mech(MechKind.Golem); } }
+        public static bool FireBurns { get { return Mech(MechKind.FireBurn); } }
+        public static bool SpongeSoaks { get { return Mech(MechKind.SpongeSoak); } }
     }
 }

@@ -30,6 +30,13 @@ namespace MinecraftTetris
         /// <summary>哪些格子现在该画成白闪（点着的 TNT）。SetCell 重建时也要照着它选材质。</summary>
         bool[,,] _flashing;
 
+        /// <summary>正在烧的格子外面那层橙色光壳（火）。方块表没有「火」这种方块，
+        /// 所以用一层加色混合的壳裹住它 —— 比换材质染色更容易看出「这一格在烧」。</summary>
+        GameObject[,,] _fireCovers;
+        bool[,,] _burning;
+        Material _fireMaterial;
+        float _fireTime;
+
         /// <summary>流体（水/岩浆）按水位分档的矮方块 mesh：blockId -> [level0..levelMax]。</summary>
         readonly Dictionary<int, Mesh[]> _fluidMeshes = new Dictionary<int, Mesh[]>();
 
@@ -51,6 +58,8 @@ namespace MinecraftTetris
             _cells = new GameObject[grid.SizeX, grid.SizeY, grid.SizeZ];
             _cellVisual = new Vector3[grid.SizeX, grid.SizeY, grid.SizeZ];
             _flashing = new bool[grid.SizeX, grid.SizeY, grid.SizeZ];
+            _burning = new bool[grid.SizeX, grid.SizeY, grid.SizeZ];
+            _fireCovers = new GameObject[grid.SizeX, grid.SizeY, grid.SizeZ];
             BuildResources();
 
             _pieceRoot = new GameObject("Piece").transform;
@@ -135,6 +144,7 @@ namespace MinecraftTetris
                 return;
 
             float k = 1f - Mathf.Exp(-Smooth * Time.deltaTime);
+            _fireTime += Time.deltaTime;
 
             // 落定的方块：朝自己的格子追，追上后就停在格子上
             for (int x = 0; x < Grid.SizeX; x++)
@@ -147,6 +157,10 @@ namespace MinecraftTetris
                         Vector3 target = new Vector3(x, y, z);
                         _cellVisual[x, y, z] = Vector3.Lerp(_cellVisual[x, y, z], target, k);
                         go.transform.position = _cellVisual[x, y, z];
+
+                        // 火壳也跟着走（方块塌下来的时候火不能留在原地）
+                        if (_burning != null && _burning[x, y, z])
+                            UpdateFireCover(x, y, z);
                     }
 
             // 正在下落的方块：位置追目标，朝向也慢慢转到新角度
@@ -292,6 +306,104 @@ namespace MinecraftTetris
             if (id <= 0)
                 return;
             go.GetComponent<MeshRenderer>().sharedMaterial = on ? FlashMaterial : _materials[id - 1];
+        }
+
+        /// <summary>
+        /// 给一格套上 / 摘掉火光壳。壳是加色混合的橙色立方体，比方块稍微大一圈，
+        /// 看着像火苗裹住这一格；大小每帧抖一下（见 Update），静止不动的火看着像死的。
+        /// </summary>
+        public void SetCellBurning(int x, int y, int z, bool on)
+        {
+            if (!InCells(x, y, z) || _burning == null)
+                return;
+            if (_burning[x, y, z] == on)
+                return;
+
+            _burning[x, y, z] = on;
+
+            GameObject cover = _fireCovers[x, y, z];
+            if (!on)
+            {
+                if (cover != null)
+                    cover.SetActive(false);
+                return;
+            }
+
+            if (cover == null)
+            {
+                cover = NewCubeObject("Fire_" + x + "_" + y + "_" + z);
+                cover.transform.SetParent(transform, false);
+                _fireCovers[x, y, z] = cover;
+            }
+
+            // 壳跟着方块本来的形状走（都是立方体，直接借用那一格的 mesh）
+            GameObject cell = _cells[x, y, z];
+            Mesh mesh = null;
+            if (cell != null)
+            {
+                var filter = cell.GetComponent<MeshFilter>();
+                if (filter != null)
+                    mesh = filter.sharedMesh;
+            }
+            if (mesh == null && _meshes != null && _meshes.Length > 0)
+                mesh = _meshes[0];
+
+            cover.GetComponent<MeshFilter>().sharedMesh = mesh;
+            cover.GetComponent<MeshRenderer>().sharedMaterial = FireMaterial;
+            cover.SetActive(true);
+        }
+
+        /// <summary>火壳每帧跟着方块的位置走，并抖一下大小。</summary>
+        void UpdateFireCover(int x, int y, int z)
+        {
+            GameObject cover = _fireCovers[x, y, z];
+            if (cover == null || !cover.activeSelf)
+                return;
+
+            cover.transform.position = _cellVisual[x, y, z];
+            // 每格给个不同的相位，一片木头烧起来才是一起跳而不是整齐地一起鼓
+            float phase = x * 1.7f + y * 0.9f + z * 2.3f;
+            float pulse = 1f + 0.10f * Mathf.Sin(_fireTime * 9f + phase);
+            cover.transform.localScale = new Vector3(pulse, 1f + 0.16f * Mathf.Sin(_fireTime * 7f + phase), pulse);
+        }
+
+        /// <summary>清掉所有火光壳（重开一局时用）。</summary>
+        public void ClearFire()
+        {
+            if (_burning == null)
+                return;
+            for (int x = 0; x < Grid.SizeX; x++)
+                for (int y = 0; y < Grid.SizeY; y++)
+                    for (int z = 0; z < Grid.SizeZ; z++)
+                        if (_burning[x, y, z])
+                            SetCellBurning(x, y, z, false);
+        }
+
+        /// <summary>
+        /// 火光壳用的橙色材质。克隆 GridGlowMat（它引用了 GlowAdditive 这个加色 shader，
+        /// 是工程里的资源），理由和上面 FlashMaterial 一样：构建版里裸 Shader.Find 常拿到 null。
+        /// </summary>
+        Material FireMaterial
+        {
+            get
+            {
+                if (_fireMaterial != null)
+                    return _fireMaterial;
+
+                Material baseMat = Resources.Load<Material>("GridGlowMat");
+                if (baseMat != null)
+                    _fireMaterial = new Material(baseMat);
+                else
+                {
+                    Shader shader = Shader.Find("MinecraftTetris/GlowAdditive");
+                    if (shader != null)
+                        _fireMaterial = new Material(shader);
+                }
+
+                if (_fireMaterial != null)
+                    _fireMaterial.color = new Color(1f, 0.42f, 0.08f, 0.42f);
+                return _fireMaterial;
+            }
         }
 
         /// <summary>清掉所有闪白标记（重开一局时用）。</summary>
