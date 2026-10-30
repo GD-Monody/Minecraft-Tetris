@@ -1162,11 +1162,6 @@ namespace MinecraftTetris
                     KeyName(KeyboardInput.GetPrimaryKey(action)), _guideKeyBig);
             }
 
-            float noteY = top + perCol * (rowH + rowGap) + Pg(14f);
-            GUI.Label(new Rect(left, noteY, w - Pg(80f), Pg(28f)),
-                "改键：设置 → 按键设置，点一下键位再按新键；这一栏会跟着变。", _guideNoteBig);
-            GUI.Label(new Rect(left, noteY + Pg(32f), w - Pg(80f), Pg(28f)),
-                "绕竖直轴转和前后翻要场地深度 z ≥ 2 才有意义，I 型要 4。", _guideNoteBig);
         }
 
         /// <summary>特殊方块栏：十一项三列，图标从方块图集里切。两列六行在放大后放不下。</summary>
