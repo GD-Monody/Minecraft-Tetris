@@ -30,12 +30,40 @@ namespace MinecraftTetris
         /// <summary>哪些格子现在该画成白闪（点着的 TNT）。SetCell 重建时也要照着它选材质。</summary>
         bool[,,] _flashing;
 
-        /// <summary>正在烧的格子外面那层橙色光壳（火）。方块表没有「火」这种方块，
-        /// 所以用一层加色混合的壳裹住它 —— 比换材质染色更容易看出「这一格在烧」。</summary>
+        /// <summary>正在烧的格子外面那层火苗（火）。方块表没有「火」这种方块，
+        /// 所以用几片贴着原版火贴图的面片裹住它 —— 比换材质染色更像火。</summary>
         GameObject[,,] _fireCovers;
         bool[,,] _burning;
+        /// <summary>每格火苗当前的「露脸方向」组合（见 FireBit*）。邻居变了要换网格。</summary>
+        int[,,] _fireMask;
         Material _fireMaterial;
         float _fireTime;
+
+        /// <summary>火苗贴图一帧 16 行、一共 32 帧（原版 fire_0.png 就是 16x512）。</summary>
+        const int FireFrames = 32;
+        /// <summary>每帧停留多久：原版 mcmeta 没写 frametime，默认 1 tick = 0.05 秒。</summary>
+        const float FireFrameTime = 0.05f;
+        /// <summary>原版 mcmeta 的播放顺序是从第 16 帧起头的。</summary>
+        const int FireFrameOffset = 16;
+
+        /// <summary>露脸方向的位：+x / -x / +z / -z / +y。+y 那一位同时决定火苗窜多高。</summary>
+        public const int FireBitPx = 1;
+        public const int FireBitNx = 2;
+        public const int FireBitPz = 4;
+        public const int FireBitNz = 8;
+        public const int FireBitUp = 16;
+
+        /// <summary>火苗面片离方块表面一点点，别和方块自己的面重合（方块比 1 格大 0.04 会打架）。</summary>
+        const float FireOffset = 0.06f;
+
+        /// <summary>
+        /// 贴图是 32 宽：左半列是原版的 fire_0，右半列是 fire_1。
+        /// 各往里缩半格，免得点采样刚好采到隔壁那一列。
+        /// </summary>
+        const float FireU0A = 0.5f / 32f;
+        const float FireU1A = 15.5f / 32f;
+        const float FireU0B = 31.5f / 32f;
+        const float FireU1B = 16.5f / 32f;
 
         /// <summary>流体（水/岩浆）按水位分档的矮方块 mesh：blockId -> [level0..levelMax]。</summary>
         readonly Dictionary<int, Mesh[]> _fluidMeshes = new Dictionary<int, Mesh[]>();
@@ -59,6 +87,7 @@ namespace MinecraftTetris
             _cellVisual = new Vector3[grid.SizeX, grid.SizeY, grid.SizeZ];
             _flashing = new bool[grid.SizeX, grid.SizeY, grid.SizeZ];
             _burning = new bool[grid.SizeX, grid.SizeY, grid.SizeZ];
+            _fireMask = new int[grid.SizeX, grid.SizeY, grid.SizeZ];
             _fireCovers = new GameObject[grid.SizeX, grid.SizeY, grid.SizeZ];
             BuildResources();
 
@@ -145,6 +174,7 @@ namespace MinecraftTetris
 
             float k = 1f - Mathf.Exp(-Smooth * Time.deltaTime);
             _fireTime += Time.deltaTime;
+            UpdateFireFrame();
 
             // 落定的方块：朝自己的格子追，追上后就停在格子上
             for (int x = 0; x < Grid.SizeX; x++)
@@ -158,7 +188,7 @@ namespace MinecraftTetris
                         _cellVisual[x, y, z] = Vector3.Lerp(_cellVisual[x, y, z], target, k);
                         go.transform.position = _cellVisual[x, y, z];
 
-                        // 火壳也跟着走（方块塌下来的时候火不能留在原地）
+                        // 火苗也跟着走（方块塌下来的时候火不能留在原地）
                         if (_burning != null && _burning[x, y, z])
                             UpdateFireCover(x, y, z);
                     }
@@ -309,8 +339,9 @@ namespace MinecraftTetris
         }
 
         /// <summary>
-        /// 给一格套上 / 摘掉火光壳。壳是加色混合的橙色立方体，比方块稍微大一圈，
-        /// 看着像火苗裹住这一格；大小每帧抖一下（见 Update），静止不动的火看着像死的。
+        /// 给一格套上 / 摘掉火苗。火苗是几片贴着原版火贴图的面片，只长在这一格
+        /// 露在外面的那几个面上 —— 埋在方块堆里的那一面本来就看不见，画了也是白画，
+        /// 还会从上一格的缝隙里露出半截火苗。
         /// </summary>
         public void SetCellBurning(int x, int y, int z, bool on)
         {
@@ -336,24 +367,16 @@ namespace MinecraftTetris
                 _fireCovers[x, y, z] = cover;
             }
 
-            // 壳跟着方块本来的形状走（都是立方体，直接借用那一格的 mesh）
-            GameObject cell = _cells[x, y, z];
-            Mesh mesh = null;
-            if (cell != null)
-            {
-                var filter = cell.GetComponent<MeshFilter>();
-                if (filter != null)
-                    mesh = filter.sharedMesh;
-            }
-            if (mesh == null && _meshes != null && _meshes.Length > 0)
-                mesh = _meshes[0];
-
-            cover.GetComponent<MeshFilter>().sharedMesh = mesh;
+            int mask = FireMask(x, y, z);
+            _fireMask[x, y, z] = mask;
+            cover.GetComponent<MeshFilter>().sharedMesh = GetFireMesh(mask);
             cover.GetComponent<MeshRenderer>().sharedMaterial = FireMaterial;
+            // 火苗不跟着方块转：落定的方块可能带着落下时的朝向，火跟着转就躺下了
+            cover.transform.rotation = Quaternion.identity;
             cover.SetActive(true);
         }
 
-        /// <summary>火壳每帧跟着方块的位置走，并抖一下大小。</summary>
+        /// <summary>火苗每帧跟着方块的位置走；邻居变了就换成另一套面片。</summary>
         void UpdateFireCover(int x, int y, int z)
         {
             GameObject cover = _fireCovers[x, y, z];
@@ -361,13 +384,162 @@ namespace MinecraftTetris
                 return;
 
             cover.transform.position = _cellVisual[x, y, z];
-            // 每格给个不同的相位，一片木头烧起来才是一起跳而不是整齐地一起鼓
-            float phase = x * 1.7f + y * 0.9f + z * 2.3f;
-            float pulse = 1f + 0.10f * Mathf.Sin(_fireTime * 9f + phase);
-            cover.transform.localScale = new Vector3(pulse, 1f + 0.16f * Mathf.Sin(_fireTime * 7f + phase), pulse);
+
+            // 消行塌下来、上面的方块被烧掉之后，露脸的方向就变了
+            int mask = FireMask(x, y, z);
+            if (mask == _fireMask[x, y, z])
+                return;
+
+            _fireMask[x, y, z] = mask;
+            var filter = cover.GetComponent<MeshFilter>();
+            if (filter != null)
+                filter.sharedMesh = GetFireMesh(mask);
         }
 
-        /// <summary>清掉所有火光壳（重开一局时用）。</summary>
+        /// <summary>这一格哪几个面是露在外面的（旁边的格子空着、或者在场地外）。</summary>
+        int FireMask(int x, int y, int z)
+        {
+            int mask = 0;
+            if (FireFaceOpen(x + 1, y, z)) mask |= FireBitPx;
+            if (FireFaceOpen(x - 1, y, z)) mask |= FireBitNx;
+            if (FireFaceOpen(x, y, z + 1)) mask |= FireBitPz;
+            if (FireFaceOpen(x, y, z - 1)) mask |= FireBitNz;
+            if (FireFaceOpen(x, y + 1, z)) mask |= FireBitUp;
+            return mask;
+        }
+
+        /// <summary>
+        /// 场地只有左右和底下有边框，前后两面是敞开的，所以越界也算「露在外面」；
+        /// 上面那格空着的时候火苗才窜得比方块高。
+        /// </summary>
+        bool FireFaceOpen(int x, int y, int z)
+        {
+            if (Grid == null)
+                return false;
+            if (x < 0 || y < 0 || z < 0 || x >= Grid.SizeX || y >= Grid.SizeY || z >= Grid.SizeZ)
+                return true;
+            return Grid.Get(x, y, z) <= 0;
+        }
+
+        /// <summary>
+        /// 按露脸方向取火苗网格。31 种组合最多各建一次，之后全是共享的
+        /// （一片木头一起烧的时候，每格的面片组合就那么几种）。
+        /// </summary>
+        Mesh GetFireMesh(int mask)
+        {
+            if (_fireMeshes == null)
+                _fireMeshes = new Dictionary<int, Mesh>();
+
+            Mesh mesh;
+            if (_fireMeshes.TryGetValue(mask, out mesh))
+                return mesh;
+
+            mesh = BuildFireMesh(mask);
+            _fireMeshes[mask] = mesh;
+            return mesh;
+        }
+
+        Dictionary<int, Mesh> _fireMeshes;
+
+        /// <summary>
+        /// 照原版的火方块模型摆面片：
+        /// - 侧面是一片竖着的火苗（原版 template_fire_side：16 宽 x 22.4 高，比一格高 0.4，
+        ///   火苗才像往上窜）。上面那格被压着的时候就只长到和方块齐平，免得插进上一格里。
+        /// - 每个面铺两层，一层 fire_0 一层 fire_1（原版 fire_floor0 + fire_floor1 就是这么叠的），
+        ///   两层贴同一张平面、第二层把贴图左右翻一下 —— 一层看着太稀。
+        /// - 顶面那片是躺着铺的（原版 template_fire_up 也是在顶上铺一片），
+        ///   方块四周都被埋住的时候，就靠它告诉玩家「这一格在烧」。
+        /// </summary>
+        public static Mesh BuildFireMesh(int mask)
+        {
+            bool tall = (mask & FireBitUp) != 0;
+            // 格心在原点，方块占 -0.5 ~ 0.5；窜得高的时候到 0.9
+            float top = tall ? 0.9f : 0.5f;
+            float off = FireOffset;
+
+            var verts = new List<Vector3>();
+            var uvs = new List<Vector2>();
+            var tris = new List<int>();
+
+            // 第一层：fire_0，正常朝向
+            if ((mask & FireBitPx) != 0)
+                FireQuad(verts, uvs, tris, FireU0A, FireU1A,
+                    new Vector3(off + 0.5f, -0.5f, 0.5f), new Vector3(off + 0.5f, -0.5f, -0.5f),
+                    new Vector3(off + 0.5f, top, -0.5f), new Vector3(off + 0.5f, top, 0.5f));
+            if ((mask & FireBitNx) != 0)
+                FireQuad(verts, uvs, tris, FireU0A, FireU1A,
+                    new Vector3(-off - 0.5f, -0.5f, -0.5f), new Vector3(-off - 0.5f, -0.5f, 0.5f),
+                    new Vector3(-off - 0.5f, top, 0.5f), new Vector3(-off - 0.5f, top, -0.5f));
+            if ((mask & FireBitPz) != 0)
+                FireQuad(verts, uvs, tris, FireU0A, FireU1A,
+                    new Vector3(-0.5f, -0.5f, off + 0.5f), new Vector3(0.5f, -0.5f, off + 0.5f),
+                    new Vector3(0.5f, top, off + 0.5f), new Vector3(-0.5f, top, off + 0.5f));
+            if ((mask & FireBitNz) != 0)
+                FireQuad(verts, uvs, tris, FireU0A, FireU1A,
+                    new Vector3(0.5f, -0.5f, -off - 0.5f), new Vector3(-0.5f, -0.5f, -off - 0.5f),
+                    new Vector3(-0.5f, top, -off - 0.5f), new Vector3(0.5f, top, -off - 0.5f));
+
+            // 顶面：贴图底边（火苗那一头）朝着 +z，也就是朝着相机那一侧
+            if ((mask & FireBitUp) != 0)
+                FireQuad(verts, uvs, tris, FireU0A, FireU1A,
+                    new Vector3(-0.5f, off + 0.5f, 0.5f), new Vector3(0.5f, off + 0.5f, 0.5f),
+                    new Vector3(0.5f, off + 0.5f, -0.5f), new Vector3(-0.5f, off + 0.5f, -0.5f));
+
+            // 第二层：fire_1，同一张平面、贴图左右翻过来
+            if ((mask & FireBitPx) != 0)
+                FireQuad(verts, uvs, tris, FireU0B, FireU1B,
+                    new Vector3(off + 0.5f, -0.5f, 0.5f), new Vector3(off + 0.5f, -0.5f, -0.5f),
+                    new Vector3(off + 0.5f, top, -0.5f), new Vector3(off + 0.5f, top, 0.5f));
+            if ((mask & FireBitNx) != 0)
+                FireQuad(verts, uvs, tris, FireU0B, FireU1B,
+                    new Vector3(-off - 0.5f, -0.5f, -0.5f), new Vector3(-off - 0.5f, -0.5f, 0.5f),
+                    new Vector3(-off - 0.5f, top, 0.5f), new Vector3(-off - 0.5f, top, -0.5f));
+            if ((mask & FireBitPz) != 0)
+                FireQuad(verts, uvs, tris, FireU0B, FireU1B,
+                    new Vector3(-0.5f, -0.5f, off + 0.5f), new Vector3(0.5f, -0.5f, off + 0.5f),
+                    new Vector3(0.5f, top, off + 0.5f), new Vector3(-0.5f, top, off + 0.5f));
+            if ((mask & FireBitNz) != 0)
+                FireQuad(verts, uvs, tris, FireU0B, FireU1B,
+                    new Vector3(0.5f, -0.5f, -off - 0.5f), new Vector3(-0.5f, -0.5f, -off - 0.5f),
+                    new Vector3(-0.5f, top, -off - 0.5f), new Vector3(0.5f, top, -off - 0.5f));
+            if ((mask & FireBitUp) != 0)
+                FireQuad(verts, uvs, tris, FireU0B, FireU1B,
+                    new Vector3(-0.5f, off + 0.5f, 0.5f), new Vector3(0.5f, off + 0.5f, 0.5f),
+                    new Vector3(0.5f, off + 0.5f, -0.5f), new Vector3(-0.5f, off + 0.5f, -0.5f));
+
+            Mesh mesh = new Mesh();
+            mesh.SetVertices(verts);
+            mesh.SetUVs(0, uvs);
+            mesh.SetTriangles(tris, 0);
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            return mesh;
+        }
+
+        /// <summary>铺一片火苗。a、b 是底边两头，c、d 是顶边两头（贴图底边 = 火苗那一头）。</summary>
+        static void FireQuad(List<Vector3> v, List<Vector2> uv, List<int> t, float u0, float u1,
+                             Vector3 a, Vector3 b, Vector3 c, Vector3 d)
+        {
+            int i = v.Count;
+            v.Add(a);
+            v.Add(b);
+            v.Add(c);
+            v.Add(d);
+
+            uv.Add(new Vector2(u0, 0f));
+            uv.Add(new Vector2(u1, 0f));
+            uv.Add(new Vector2(u1, 1f));
+            uv.Add(new Vector2(u0, 1f));
+
+            t.Add(i);
+            t.Add(i + 1);
+            t.Add(i + 2);
+            t.Add(i);
+            t.Add(i + 2);
+            t.Add(i + 3);
+        }
+
+        /// <summary>清掉所有火苗（重开一局时用）。</summary>
         public void ClearFire()
         {
             if (_burning == null)
@@ -380,8 +552,9 @@ namespace MinecraftTetris
         }
 
         /// <summary>
-        /// 火光壳用的橙色材质。克隆 GridGlowMat（它引用了 GlowAdditive 这个加色 shader，
-        /// 是工程里的资源），理由和上面 FlashMaterial 一样：构建版里裸 Shader.Find 常拿到 null。
+        /// 火苗用的材质：原版火贴图（32 帧动画条）+ alpha test 的不吃光 shader。
+        /// 克隆 FireMat（工程里的资源），理由和 FlashMaterial 一样：
+        /// 构建版里裸 Shader.Find 常拿到 null。
         /// </summary>
         Material FireMaterial
         {
@@ -390,20 +563,46 @@ namespace MinecraftTetris
                 if (_fireMaterial != null)
                     return _fireMaterial;
 
-                Material baseMat = Resources.Load<Material>("GridGlowMat");
+                Material baseMat = Resources.Load<Material>("FireMat");
                 if (baseMat != null)
+                {
                     _fireMaterial = new Material(baseMat);
+                }
                 else
                 {
-                    Shader shader = Shader.Find("MinecraftTetris/GlowAdditive");
+                    Shader shader = Shader.Find("MinecraftTetris/FireCutout");
                     if (shader != null)
+                    {
                         _fireMaterial = new Material(shader);
+                        Texture2D tex = Resources.Load<Texture2D>("Fire");
+                        if (tex != null)
+                        {
+                            tex.filterMode = FilterMode.Point;
+                            _fireMaterial.mainTexture = tex;
+                        }
+                    }
                 }
-
-                if (_fireMaterial != null)
-                    _fireMaterial.color = new Color(1f, 0.42f, 0.08f, 0.42f);
                 return _fireMaterial;
             }
+        }
+
+        /// <summary>
+        /// 每帧把材质切到动画条的下一帧。全场共用一份材质，所以所有火苗是同步跳的
+        /// （原版也是：贴图动画按全局时间走，一片火一起烧就是一起跳）。
+        ///
+        /// v 往里缩了半格：网格里 UV 是 0~1，正好落在帧边界上时点采样会采到隔壁那一帧，
+        /// 缩半格才能保证取到的是这一帧自己的像素。
+        /// </summary>
+        void UpdateFireFrame()
+        {
+            Material mat = FireMaterial;
+            if (mat == null || mat.mainTexture == null)
+                return;
+
+            int f = ((int)(_fireTime / FireFrameTime) + FireFrameOffset) % FireFrames;
+            float h = (float)(FireFrames * 16);
+            mat.SetTextureScale("_MainTex", new Vector2(1f, 15f / h));
+            mat.SetTextureOffset("_MainTex", new Vector2(0f, 1f - (float)f / FireFrames - 15.5f / h));
         }
 
         /// <summary>清掉所有闪白标记（重开一局时用）。</summary>

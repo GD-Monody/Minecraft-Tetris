@@ -1398,6 +1398,72 @@ namespace MinecraftTetris.EditorTools
             GameSettings.SetMech(GameSettings.MechKind.FireBurn, true);
             Fire.Reset();
 
+            // 火苗贴图：原版 fire_0 / fire_1 两张 16x512 拼成的 32 帧动画条（左半 / 右半）
+            string firePng = System.IO.Path.Combine(Application.dataPath, "Resources/Fire.png");
+            bool firePngOk = System.IO.File.Exists(firePng);
+            Check("火苗贴图在（Resources/Fire.png）", firePngOk);
+            if (firePngOk)
+            {
+                var fireTex = new Texture2D(2, 2);
+                fireTex.LoadImage(System.IO.File.ReadAllBytes(firePng));
+                Check("火苗贴图是 32 帧动画条（32x512）", fireTex.width == 32 && fireTex.height == 512);
+
+                // GetPixels32 是左下原点，图片第 f 帧那 16 行倒过来数
+                Color32[] fpx = fireTex.GetPixels32();
+                int opaque = 0;
+                bool everyFrame = true;
+                for (int f = 0; f < 32; f++)
+                {
+                    int frameOpaque = 0;
+                    int pyTop = 512 - f * 16;
+                    for (int y = pyTop - 16; y < pyTop; y++)
+                        for (int x = 0; x < 32; x++)
+                            if (fpx[y * 32 + x].a > 0)
+                                frameOpaque++;
+                    if (frameOpaque == 0)
+                        everyFrame = false;
+                    opaque += frameOpaque;
+                }
+                Check("32 帧每一帧都有火苗", everyFrame);
+                // 黑底必须转成透明（原版靠 PNG 的 tRNS），不然火苗就是一整块黑方块
+                Check("火苗是镂空的（黑底转成了透明）",
+                      opaque > 32 * 512 * 0.2 && opaque < 32 * 512 * 0.9);
+
+                int halves = 0;
+                for (int y = 0; y < 512; y += 7)
+                    for (int x = 0; x < 16; x++)
+                        if (fpx[y * 32 + x].a != fpx[y * 32 + x + 16].a)
+                            halves++;
+                Check("左半是 fire_0、右半是 fire_1（两套火苗叠着放）", halves > 20);
+            }
+
+            Material fireMat = Resources.Load<Material>("FireMat");
+            Check("火苗材质挂的是那张动画条 + alpha test shader",
+                  fireMat != null && fireMat.shader != null &&
+                  fireMat.shader.name == "MinecraftTetris/FireCutout" &&
+                  fireMat.mainTexture != null);
+
+            // 火苗面片：露几个面铺几片，两层（fire_0 + fire_1）
+            int allSides = GridView.FireBitPx | GridView.FireBitNx | GridView.FireBitPz |
+                           GridView.FireBitNz | GridView.FireBitUp;
+            Mesh fireAll = GridView.BuildFireMesh(allSides);
+            Check("五面全露着：铺 10 片火苗（两层 x 五面）",
+                  fireAll.vertexCount == 40 && fireAll.GetTriangles(0).Length == 60);
+            float hiY = 0f;
+            for (int i = 0; i < fireAll.vertexCount; i++)
+                if (fireAll.vertices[i].y > hiY)
+                    hiY = fireAll.vertices[i].y;
+            Check("上面那格空着，火苗窜得比方块高一截", Mathf.Abs(hiY - 0.9f) < 0.001f);
+
+            float flatY = 0f;
+            Mesh fireFlat = GridView.BuildFireMesh(GridView.FireBitPz);
+            for (int i = 0; i < fireFlat.vertexCount; i++)
+                if (fireFlat.vertices[i].y > flatY)
+                    flatY = fireFlat.vertices[i].y;
+            Check("上面被压着，火苗只长到和方块齐平（不插进上一格）",
+                  fireFlat.vertexCount == 8 && Mathf.Abs(flatY - 0.5f) < 0.001f);
+            Check("埋在方块堆里就一片都不画", GridView.BuildFireMesh(0).vertexCount == 0);
+
             // ---------- 海绵吸水 ----------
             int fireSponge = Sponge.SpongeId;
             int fireWetSponge = Sponge.WetSpongeId;
