@@ -1399,6 +1399,74 @@ namespace MinecraftTetris.EditorTools
                       pCopper[1].Cubes[0].D == 10);
             }
 
+            // 雪傀儡的手臂：得是「上面接肩膀、往外下斜」。
+            //
+            // 这个只能算，不能看形状 —— 反过来做的时候，12 像素的杆照样是一根斜杆，
+            // 从正面看也能「像手臂」，只是近端落在身体下缘、远端翘到肩膀以上，
+            // 玩家一眼看出来的「手臂接反了」就是这么回事。
+            // 判据：越往外（|x| 越大）越往下，外端的 y 必须明显低于内端的 y。
+            {
+                GolemPartDef[] arms = { GolemModel.Snow()[3], GolemModel.Snow()[4] };
+                for (int a = 0; a < arms.Length; a++)
+                {
+                    Mesh m = GolemModel.BuildPart(arms[a], 64, 64);
+                    Vector3[] vs = m.vertices;
+                    // 网格顶点是关节空间的（没带旋转），旋转在 Transform 上，这里得手动套一遍
+                    Quaternion rot = Quaternion.Euler(arms[a].Rot);
+
+                    float minAx = 999f, maxAx = -1f;
+                    for (int i = 0; i < vs.Length; i++)
+                    {
+                        Vector3 p = rot * vs[i];
+                        float ax = Mathf.Abs(p.x) * GolemModel.PixelsPerBlock;
+                        minAx = Mathf.Min(minAx, ax);
+                        maxAx = Mathf.Max(maxAx, ax);
+                    }
+
+                    float sumIn = 0f, sumOut = 0f;
+                    int nIn = 0, nOut = 0;
+                    for (int i = 0; i < vs.Length; i++)
+                    {
+                        Vector3 p = rot * vs[i];
+                        float ax = Mathf.Abs(p.x) * GolemModel.PixelsPerBlock;
+                        float y = p.y * GolemModel.PixelsPerBlock;
+                        if (ax <= minAx + 0.5f) { sumIn += y; nIn++; }
+                        if (ax >= maxAx - 0.5f) { sumOut += y; nOut++; }
+                    }
+                    float yIn = nIn > 0 ? sumIn / nIn : 0f;
+                    float yOut = nOut > 0 ? sumOut / nOut : 0f;
+
+                    Check("雪傀儡" + (a == 0 ? "左" : "右") + "臂是上面接肩膀、往外下斜" +
+                          "（内端 y " + yIn.ToString("0.0") + "、外端 y " + yOut.ToString("0.0") + " 像素）",
+                          yOut < yIn - 4f);
+                }
+            }
+
+            // 铜傀儡的眼睛：原版是 LivingEntityEmissiveLayer 单独刷的一层，
+            // 贴图 copper_golem_eyes*.png 里只有那几个像素不透明。
+            // 它们必须正好落在头「正面」那块的 UV 矩形里 —— 偏移一格就跑到侧面，
+            // 或者干脆采不到、眼睛就不见了。
+            {
+                GolemCube head = GolemModel.Copper()[1].Cubes[0];
+                int fx0 = head.U + head.D, fy0 = head.V + head.D;
+                int fx1 = fx0 + head.W, fy1 = fy0 + head.H;
+
+                string[] eyeTex =
+                {
+                    "copper_golem_eyes", "copper_golem_eyes_exposed",
+                    "copper_golem_eyes_weathered", "copper_golem_eyes_oxidized",
+                };
+                string badEye = "";
+                for (int i = 0; i < eyeTex.Length; i++)
+                {
+                    string r = CheckEyeBox(eyeTex[i], fx0, fy0, fx1, fy1);
+                    if (r.Length > 0)
+                        badEye += eyeTex[i] + "（" + r + "）";
+                }
+                Check("铜傀儡四张眼睛贴图都有眼睛、且都落在头的正面" +
+                      (badEye.Length == 0 ? "" : "：" + badEye), badEye.Length == 0);
+            }
+
             // 整体高度得对上原版：雪 28 像素、铁 43、铜 24（天线顶），换算成格是 /16
             {
                 Check("铁傀儡模型高 43 像素（原版 2.69 格）",
@@ -1502,6 +1570,23 @@ namespace MinecraftTetris.EditorTools
                                "  x " + b.min.x.ToString("0.000") + "~" + b.max.x.ToString("0.000") +
                                "  z " + b.min.z.ToString("0.000") + "~" + b.max.z.ToString("0.000");
                     }
+
+                    // 铜傀儡多的那一层眼睛：得真的建出来，而且贴图是 eyes 那张，
+                    // 不是被身体那张盖掉（氧化换贴图时很容易顺手把眼睛也改了）。
+                    if (k == GolemKind.Copper)
+                    {
+                        bool hasEyes = false;
+                        for (int i = 0; i < rs.Length; i++)
+                        {
+                            if (rs[i].gameObject.name != "eyes")
+                                continue;
+                            Material mat = rs[i].sharedMaterial;
+                            hasEyes = mat != null && mat.mainTexture != null &&
+                                      mat.mainTexture.name.StartsWith("copper_golem_eyes");
+                        }
+                        Check("铜傀儡头上有单独一层眼睛（用的是 eyes 贴图）", hasEyes);
+                    }
+
                     Object.DestroyImmediate(sizeProbe);
                 }
                 Debug.Log("[golem] 傀儡实际尺寸（原版：雪 1.9 / 铁 2.7 / 铜 0.98）" + log);
@@ -1623,6 +1708,48 @@ namespace MinecraftTetris.EditorTools
             }
 
             return bad == 0 ? "" : bad + " 个面采到空白：" + where.Trim();
+        }
+
+        /// <summary>
+        /// 检查铜傀儡的眼睛贴图：不透明像素必须存在、数量对得上（原版就 8 个），
+        /// 而且要全部落在头「正面」那块 UV 矩形里。返回空字符串表示没问题。
+        /// </summary>
+        static string CheckEyeBox(string texName, int x0, int y0, int x1, int y1)
+        {
+            string path = System.IO.Path.Combine(Application.dataPath, "Resources/Golem/" + texName + ".png");
+            if (!System.IO.File.Exists(path))
+                return "找不到 " + path;
+
+            var tex = new Texture2D(2, 2);
+            tex.LoadImage(System.IO.File.ReadAllBytes(path));
+            int w = tex.width, h = tex.height;
+            Color32[] px = tex.GetPixels32();   // 左下原点
+
+            int bx0 = 9999, by0 = 9999, bx1 = -1, by1 = -1, n = 0;
+            for (int y = 0; y < h; y++)
+            {
+                for (int x = 0; x < w; x++)
+                {
+                    if (px[(h - 1 - y) * w + x].a == 0)
+                        continue;
+                    n++;
+                    if (x < bx0) bx0 = x;
+                    if (y < by0) by0 = y;
+                    if (x > bx1) bx1 = x;
+                    if (y > by1) by1 = y;
+                }
+            }
+
+            if (n == 0)
+                return "整张全透明，没有眼睛";
+            if (n > 40)
+                return "不透明像素 " + n + " 个，太多，不像只有眼睛";
+
+            if (bx0 < x0 || by0 < y0 || bx1 >= x1 || by1 >= y1)
+                return "眼睛在 (" + bx0 + "," + by0 + ")-(" + bx1 + "," + by1 +
+                       ")，超出了头正面 (" + x0 + "," + y0 + ")-(" + x1 + "," + y1 + ")";
+
+            return "";
         }
 
         /// <summary>把一条还原动画跑完（消失 + 重建）。</summary>
