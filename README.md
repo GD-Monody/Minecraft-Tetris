@@ -5,6 +5,12 @@
 
 ![游戏截图](docs/images/screenshot.png)
 
+**不想编译？直接下现成的 Windows 试玩版**：
+[Releases → v0.1（Minecraft-Tetris-v0.1-win64.zip，56 MB）](https://github.com/GD-Monody/Minecraft-Tetris/releases/download/v0.1/Minecraft-Tetris-v0.1-win64.zip)
+—— 解压双击 `MinecraftTetris.exe` 就能玩，不用装 Unity。
+（仓库里只有源码，构建产物不进 git：160 MB 的二进制每次构建都变，存进历史会让仓库膨胀到几个 G。
+要自己编译见下面「从源码运行」。）
+
 ## 这是什么
 
 2022 年 B 站 UP 主「马克杯MarkCup」做过一个 MC 版俄罗斯方块（TetrisM），已经下不到了。
@@ -85,7 +91,7 @@ v0.1 可玩版，Windows 已验证。详细进度见 [任务清单](docs/任务�
 
 键位都能在设置里改，改完立即生效。
 
-## 怎么打开
+## 从源码运行
 
 需要 Unity **2022.3.62f3c1**（内置渲染管线）。
 
@@ -93,7 +99,7 @@ v0.1 可玩版，Windows 已验证。详细进度见 [任务清单](docs/任务�
 2. 打开 `Assets/Scenes/Game.unity`；如果场景丢了或报错，用菜单 `MinecraftTetris → 生成游戏场景` 重新生成
 3. 点 Play
 
-跑逻辑自检（不进 Play 模式，直接批处理，304 项）：
+跑逻辑自检（不进 Play 模式，直接批处理，355 项）：
 
 ```bash
 "C:/Program Files/Unity/Hub/Editor/2022.3.62f3c1/Editor/Unity.exe" -batchmode -quit \
