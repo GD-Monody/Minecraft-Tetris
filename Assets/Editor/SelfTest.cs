@@ -1627,6 +1627,42 @@ namespace MinecraftTetris.EditorTools
                     Object.DestroyImmediate(probes[i]);
             }
 
+            // 桌宠互相排斥：两个摆到完全重合，跑两秒（120 帧 × 1/60）必须分开到
+            // 「半径和 + 余量」之外；而且是一帧一帧推开的，不能瞬移。
+            {
+                Vector3 pmin = new Vector3(0f, 0f, 0f), pmax = new Vector3(10f, 0f, 6f);
+                var aGo = new GameObject("golem_push_a");
+                var bGo = new GameObject("golem_push_b");
+                var ga = aGo.AddComponent<GolemPet>();
+                var gb = bGo.AddComponent<GolemPet>();
+                ga.Build(GolemKind.Iron, 0, new Vector3(5f, 0f, 3f), 0f, pmin, pmax);
+                gb.Build(GolemKind.Iron, 0, new Vector3(5f, 0f, 3f), 0f, pmin, pmax);
+
+                float want = ga.BodyRadius + gb.BodyRadius + 0.1f;
+                float firstStep = 0f;
+                for (int f = 0; f < 120; f++)
+                {
+                    Vector3 prevPos = ga.transform.position;
+                    ga.Separate(1f / 60f);
+                    Vector3 moved = ga.transform.position - prevPos;
+                    moved.y = 0f;
+                    if (f == 0)
+                        firstStep = moved.magnitude;
+                }
+
+                Vector3 gap = ga.transform.position - gb.transform.position;
+                gap.y = 0f;
+                Check("两个傀儡叠在一起会被挤开（间距 " + gap.magnitude.ToString("0.00") +
+                      " >= " + want.ToString("0.00") + "，场上 " + GolemPet.AliveCount + " 个）",
+                      gap.magnitude >= want - 0.02f);
+                Check("挤开是渐进推开的、不瞬移（第一帧只挪 " + firstStep.ToString("0.000") +
+                      " 格，上限 " + (2.2f / 60f).ToString("0.000") + "）",
+                      firstStep > 0f && firstStep <= 2.2f / 60f + 0.001f);
+
+                Object.DestroyImmediate(aGo);
+                Object.DestroyImmediate(bGo);
+            }
+
             // 拨回全开，别把开关状态留给玩家
             for (int i = 0; i < GameSettings.MechCount; i++)
                 GameSettings.SetMech((GameSettings.MechKind)i, true);

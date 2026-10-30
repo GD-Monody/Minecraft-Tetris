@@ -56,8 +56,20 @@ namespace MinecraftTetris
         /// <summary>场上还活着的傀儡。挑出生点和散步目标时用来互相避开。</summary>
         static readonly List<GolemPet> Registry = new List<GolemPet>();
 
-        void OnEnable()
+        /// <summary>现在场上有几个傀儡（自检用）。</summary>
+        public static int AliveCount { get { return Registry.Count; } }
+
+        // 注册放在 Build 里而不是 OnEnable：编辑器非 Play 模式下 AddComponent 不保证
+        // 触发 OnEnable，自检就会看到「场上 0 个」。Build 是一定会被调到的那个。
+        void Register()
         {
+            // 顺手把已销毁的残留项扫掉：Destroy 会走 OnDestroy，但 DestroyImmediate
+            // （自检里用的）在批处理下不保证触发，不清的话列表会越堆越长。
+            for (int i = Registry.Count - 1; i >= 0; i--)
+                if (Registry[i] == null)
+                    Registry.RemoveAt(i);
+
+            Registry.Remove(this);
             Registry.Add(this);
         }
 
@@ -119,6 +131,7 @@ namespace MinecraftTetris
             Oxidation = Mathf.Clamp(oxidation, 0, 3);
             RangeMin = rangeMin;
             RangeMax = rangeMax;
+            Register();
             transform.position = groundPos;
             _groundY = groundPos.y;
             _yaw = yaw;
@@ -369,6 +382,76 @@ namespace MinecraftTetris
                 WalkStep(dt);
             else
                 IdleStep(dt);
+
+            Separate(dt);
+        }
+
+        /// <summary>
+        /// 身体半径（格），按原版碰撞箱的宽度取一半：铁 1.4 宽 → 0.7，雪 0.7 → 0.4（模型雪球 0.75 稍宽），
+        /// 铜 0.49 → 0.3（模型身体 0.5）。只用来算「两个傀儡靠多近才算挤到了」。
+        /// </summary>
+        public float BodyRadius
+        {
+            get
+            {
+                if (Kind == GolemKind.Iron) return 0.7f;
+                if (Kind == GolemKind.Snow) return 0.4f;
+                return 0.3f;
+            }
+        }
+
+        /// <summary>
+        /// 和其它傀儡挤在一起时互相推开 —— 相当于原版实体的碰撞箱，但做的是**软推**不是硬碰撞。
+        ///
+        /// 为什么不做硬碰撞：桌宠的目标点是自己随便挑的，硬碰撞会被对方顶住、卡在原地来回抖；
+        /// 软推是「每帧最多挪一点点」，两边各推一半，几帧就自然分开了，也不会穿模。
+        /// 推开量按 dt 缩放，不会瞬移；推完再 clamp 到活动范围，免得被推出场外空地。
+        /// </summary>
+        public void Separate(float dt)
+        {
+            float maxStep = 2.2f * dt;      // 每秒最多被挤开 2.2 格
+            if (maxStep <= 0f)
+                return;
+
+            Vector3 pos = transform.position;
+            bool pushed = false;
+
+            for (int i = 0; i < Registry.Count; i++)
+            {
+                GolemPet other = Registry[i];
+                if (other == null || other == this)
+                    continue;
+
+                Vector3 d = pos - other.transform.position;
+                d.y = 0f;
+                float dist = d.magnitude;
+                float want = BodyRadius + other.BodyRadius + 0.1f;   // 留一点余量，别贴着皮
+                if (dist >= want)
+                    continue;
+
+                Vector3 dir;
+                if (dist > 0.0001f)
+                {
+                    dir = d / dist;
+                }
+                else
+                {
+                    // 完全重合：各挑一个相反的方向分开，不然两边会往同一边挤
+                    float a = (GetInstanceID() & 1) == 0 ? 0f : Mathf.PI;
+                    dir = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
+                }
+
+                pos += dir * Mathf.Min(want - dist, maxStep);
+                pushed = true;
+            }
+
+            if (!pushed)
+                return;
+
+            pos.x = Mathf.Clamp(pos.x, RangeMin.x, RangeMax.x);
+            pos.z = Mathf.Clamp(pos.z, RangeMin.z, RangeMax.z);
+            pos.y = _groundY;
+            transform.position = pos;
         }
 
         /// <summary>铜傀儡氧化：隔一段时间升一级，到顶就停。换贴图即可，模型不动。</summary>
@@ -416,7 +499,9 @@ namespace MinecraftTetris
             Vector3 to = _target - pos;
             to.y = 0f;
 
-            if (to.magnitude < 0.06f)
+            // 到达判定放宽到半个身位：目标点附近可能被别的傀儡占着，一直被软推开的话
+            // 按 0.06 的严阈值会「永远差一点」，就站在原地和对方顶。0.35 够近了，歇会儿换目标。
+            if (to.magnitude < 0.35f)
             {
                 _walking = false;
                 _idleTimer = Random.Range(1.2f, 3.2f);
