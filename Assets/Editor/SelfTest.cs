@@ -1669,6 +1669,21 @@ namespace MinecraftTetris.EditorTools
                   !LayerMap.UsefulFor(2) && LayerMap.UsefulFor(3));
 
             {
+                // 层号只由玩家拖滑条决定。早先它会自己跟着当前方块跳层，结果刚翻到
+                // 某一层看缺口，画面就被方块带走了 —— 这里钉死「没有跟随逻辑」。
+                var go = new GameObject("selftest_layermap");
+                LayerMap lm = go.AddComponent<LayerMap>();
+                lm.LayerY = 5;
+                Check("俯视图的层号设了就是设了（第 5 层）", lm.LayerY == 5);
+                Check("俯视图不再自带跟随方块跳层的逻辑",
+                      typeof(LayerMap).GetMethod("FollowPiece",
+                          System.Reflection.BindingFlags.Instance |
+                          System.Reflection.BindingFlags.Public |
+                          System.Reflection.BindingFlags.NonPublic) == null);
+                Object.DestroyImmediate(go);
+            }
+
+            {
                 // 10×16×3，最底层只差一格 —— 这就是「看着铺满了却没消」的样子
                 var g = new Grid(10, 16, 3);
                 for (int x = 0; x < 10; x++)

@@ -16,17 +16,19 @@ namespace MinecraftTetris
         public GameLoop Loop;
         public bool Hidden;
 
-        /// <summary>当前看着第几层（0 = 最底层）。外面改这个值会退出自动跟随。</summary>
+        /// <summary>
+        /// 当前看着第几层（0 = 最底层）。**只由玩家调**：滑条拖到哪儿就是哪儿，
+        /// 方块往下掉不带动它 —— 早先会自动跟着当前方块跳层，结果玩家刚翻到某一层
+        /// 看缺口，画面自己就跳走了，反而更难找。
+        /// </summary>
         public int LayerY
         {
             get { return _y; }
-            set { _y = value; _follow = false; }
+            set { _y = value; }
         }
 
         int _y;
-        bool _follow = true;
         bool _drag;
-        Piece _piece;
 
         GUIStyle _titleStyle;
         GUIStyle _smallStyle;
@@ -103,37 +105,10 @@ namespace MinecraftTetris
             UiSkin.Apply();
             EnsureStyles();
 
-            FollowPiece(grid);
+            // 只做范围收拢：改场地尺寸（16 → 更高）时别让层号跑到界外，
+            // 剩下的全交给玩家拖滑条。
             _y = Mathf.Clamp(_y, 0, grid.SizeY - 1);
             Draw(grid);
-        }
-
-        /// <summary>
-        /// 默认跟着当前方块走：看它所在的最低那一层，落下去时视野自动往下跟。
-        /// 玩家一拖滑条就退出跟随（_follow = false），换下一个新方块再自动跟回来 ——
-        /// 不然手动翻到某一层看完之后，就永远停在那一层了。
-        /// </summary>
-        void FollowPiece(Grid grid)
-        {
-            Piece p = Loop.Current;
-            if (p != _piece)
-            {
-                _piece = p;
-                _follow = true;
-            }
-
-            if (!_follow || p == null)
-                return;
-
-            int minY = int.MaxValue;
-            for (int i = 0; i < p.Cells.Length; i++)
-            {
-                Vector3Int c = p.WorldCell(i);
-                if (c.y < minY)
-                    minY = c.y;
-            }
-            if (minY != int.MaxValue)
-                _y = Mathf.Clamp(minY, 0, grid.SizeY - 1);
         }
 
         void EnsureStyles()
@@ -223,6 +198,15 @@ namespace MinecraftTetris
             if (HasPartialWater(grid, _y))
                 GUI.Label(new Rect(x, fy + UiSkin.P(20f), mapW, UiSkin.P(20f)),
                     "有半格水，不算填满", _smallStyle);
+            else
+            {
+                // 不再自动跟着方块跳层之后，方块掉到别的层就看不见了，
+                // 这里指一下它在第几层 —— 想看就自己拖过去，别替玩家做决定。
+                int py = PieceMinY();
+                if (py >= 0 && py != _y)
+                    GUI.Label(new Rect(x, fy + UiSkin.P(20f), mapW, UiSkin.P(20f)),
+                        "当前方块在 y = " + py, _smallStyle);
+            }
 
             Hud.DrawAccentLine(panel);
         }
@@ -243,10 +227,7 @@ namespace MinecraftTetris
                 float nt = Mathf.Clamp01((e.mousePosition.x - r.x - handle * 0.5f) / travel);
                 int ny = Mathf.RoundToInt(nt * (sizeY - 1));
                 if (ny != _y)
-                {
                     _y = ny;
-                    _follow = false;   // 手动挑了层就别再自动跳了
-                }
                 e.Use();
             }
 
@@ -336,6 +317,23 @@ namespace MinecraftTetris
                 GUI.DrawTexture(new Rect(r.xMax - t, r.y, t, r.height), Texture2D.whiteTexture);
                 GUI.color = Color.white;
             }
+        }
+
+        /// <summary>当前方块所在的最低那一层；没有方块就给 -1。</summary>
+        int PieceMinY()
+        {
+            Piece p = Loop != null ? Loop.Current : null;
+            if (p == null)
+                return -1;
+
+            int minY = int.MaxValue;
+            for (int i = 0; i < p.Cells.Length; i++)
+            {
+                Vector3Int c = p.WorldCell(i);
+                if (c.y < minY)
+                    minY = c.y;
+            }
+            return minY == int.MaxValue ? -1 : minY;
         }
 
         static bool HasPartialWater(Grid grid, int y)
