@@ -66,9 +66,20 @@ namespace MinecraftTetris
         ///   left/right_arm (32,0) 12×2×2     两根棕色木棍，绕 z 轴斜伸出去
         /// 以前只做了 upper_body + head，缺了底下那个 12³ 雪球，所以看着「少一块身体」。
         ///
-        /// 手臂：原版 texOffs(32,0)、addBox(-1,0,-1,12,2,2)，pivot 在 (±5,18,∓1)，
-        /// 左臂 rot z=+1rad、右臂 yRot=π + zRot=-1rad。这里换成本地等价写法：
-        /// 盒子从关节往下伸 12 像素，关节绕 z 轴外倾 57.3°（1 弧度），左右对称。
+        /// 手臂：原版 texOffs(32,0)、addBox(-1,0,-1,12,2,2)，枢轴在 (±5,18,∓1)，
+        /// 左臂 zRot=+1rad、右臂 yRot=π + zRot=-1rad。
+        ///
+        /// 这里有个容易做反的地方：原版的盒子是**沿 +x 横着伸出 12 像素**（x 从 -1 到 11），
+        /// 枢轴那端就贴在身体侧面，所以手臂是「上面接肩膀、往外下斜」。
+        /// 我最初把盒子摆在关节正下方（中心 y=-6），12 像素的长度还是沿 x 铺的，
+        /// 于是成了一块横板挂在关节下面，转 57° 之后近端落在身体下缘、远端翘到肩膀以上 ——
+        /// 看着就是「手臂反了、下面接身子」。
+        ///
+        /// 正确值：盒子中心相对关节是 (5, -1, 0)（= MC 的 addBox 中心 x=5、y=1、z=0 换成 y 向上）。
+        /// 旋转角要取反：MC 的模型空间 y 向下，+1rad 让杆往下掉；我们的空间 y 向上，
+        /// 同一个角度会让杆往上翘，所以左臂用 -57.3°。右臂原版是 yRot=π + zRot=-1，
+        /// 等价于镜像写法「枢轴取 -x、盒子中心取 -x、zRot 取 +57.3°」，这样走路摆动时
+        /// 两条手臂的本地 x 轴朝向一致，不会摆成反相。
         /// </summary>
         public static GolemPartDef[] Snow()
         {
@@ -83,11 +94,11 @@ namespace MinecraftTetris
                 Part(GolemPart.Head, new Vector3(0f, 20f, 0f), Vector3.zero,
                     Cube(0, 0, 8, 8, 8, 0f, 4f, 0f)),
 
-                Part(GolemPart.ArmLeft, new Vector3(5f, 18f, -1f), new Vector3(0f, 0f, 57.3f),
-                    Cube(32, 0, 12, 2, 2, 0f, -6f, 0f)),
+                Part(GolemPart.ArmLeft, new Vector3(5f, 18f, 1f), new Vector3(0f, 0f, -57.3f),
+                    Cube(32, 0, 12, 2, 2, 5f, -1f, 0f)),
 
-                Part(GolemPart.ArmRight, new Vector3(-5f, 18f, 1f), new Vector3(0f, 0f, -57.3f),
-                    Cube(32, 0, 12, 2, 2, 0f, -6f, 0f)),
+                Part(GolemPart.ArmRight, new Vector3(-5f, 18f, -1f), new Vector3(0f, 0f, 57.3f),
+                    Cube(32, 0, 12, 2, 2, -5f, -1f, 0f)),
             };
         }
 
