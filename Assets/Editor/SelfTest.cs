@@ -1663,6 +1663,45 @@ namespace MinecraftTetris.EditorTools
                 Object.DestroyImmediate(bGo);
             }
 
+            // ---------- 层俯视图 ----------
+            // 只在三格以上出现：两格深的中间列其实紧贴着前后两层，从正面转一下就能看全
+            Check("俯视图只在 z > 2 时挂（z=2 不挂、z=3 挂）",
+                  !LayerMap.UsefulFor(2) && LayerMap.UsefulFor(3));
+
+            {
+                // 10×16×3，最底层只差一格 —— 这就是「看着铺满了却没消」的样子
+                var g = new Grid(10, 16, 3);
+                for (int x = 0; x < 10; x++)
+                    for (int z = 0; z < 3; z++)
+                        g.Set(x, 0, z, 1);
+                Check("整层填满时俯视图报「还差 0」", LayerMap.MissingInLayer(g, 0) == 0);
+
+                g.Set(7, 0, 1, 0);       // 中间列挖一个洞：正面完全看不出来
+                Check("中间列差一格时俯视图报「还差 1」", LayerMap.MissingInLayer(g, 0) == 1);
+                Check("那一排自己的差数也是 1（另外两排是 0）",
+                      LayerMap.MissingInRow(g, 0, 1) == 1 &&
+                      LayerMap.MissingInRow(g, 0, 0) == 0 &&
+                      LayerMap.MissingInRow(g, 0, 2) == 0);
+                Check("还差一格时整层不算满（不会消）", !g.IsLayerFullPublic(0));
+
+                // 水：只有攒满一格才算填满，半格水必须照样报「差」。
+                // CountsAsFilled 平时是 Bootstrap 启动时挂上去的，自检里得自己挂一遍，
+                // 不然「水算不算填满」永远是 false，这条就测了个寂寞。
+                System.Func<int, int, int, bool> savedFill = Grid.CountsAsFilled;
+                Grid.CountsAsFilled = (x, y, z) => Fluids.AmountAt(x, y, z) >= Fluids.MaxAmount;
+                Fluids.Prepare(g);
+                Fluids.SetAmount(7, 0, 1, Fluids.MaxAmount, Fluids.WaterId);
+                Check("水攒满一格就算填满（还差 0，这一层可以消）",
+                      LayerMap.MissingInLayer(g, 0) == 0 && g.IsLayerFullPublic(0));
+
+                Fluids.SetAmount(7, 0, 1, Fluids.MaxAmount - 1, Fluids.WaterId);
+                Check("半格水不算填满（还差 1，这一层不消）",
+                      LayerMap.MissingInLayer(g, 0) == 1 && !g.IsLayerFullPublic(0));
+
+                Fluids.SetAmount(7, 0, 1, 0, 0);
+                Grid.CountsAsFilled = savedFill;
+            }
+
             // 拨回全开，别把开关状态留给玩家
             for (int i = 0; i < GameSettings.MechCount; i++)
                 GameSettings.SetMech((GameSettings.MechKind)i, true);

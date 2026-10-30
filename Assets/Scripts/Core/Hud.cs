@@ -307,7 +307,8 @@ namespace MinecraftTetris
             }
         }
 
-        static void DrawPanel(Rect r)
+        /// <summary>MC 风格的深色半透明面板 + 细边框。俯视图那块也用同一套，别各画一份。</summary>
+        public static void DrawPanel(Rect r)
         {
             // 面板下方稍微加一点深色投影，让面板浮在场景上面
             GUI.color = new Color(0f, 0f, 0f, 0.35f);
@@ -323,7 +324,7 @@ namespace MinecraftTetris
             GUI.color = Color.white;
         }
 
-        static void DrawAccentLine(Rect panel)
+        public static void DrawAccentLine(Rect panel)
         {
             GUI.color = Accent;
             GUI.DrawTexture(new Rect(panel.x + 1f, panel.yMax - 3f, panel.width * 0.42f, 2f), Texture2D.whiteTexture);

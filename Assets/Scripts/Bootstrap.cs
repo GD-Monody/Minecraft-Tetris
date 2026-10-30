@@ -18,6 +18,7 @@ namespace MinecraftTetris
         SfxPlayer _sfx;
         MusicPlayer _music;
         Hud _hud;
+        LayerMap _layerMap;
         TitleScreen _title;
         NextPreview _nextPreview;
         ParticleBurst _particles;
@@ -77,6 +78,15 @@ namespace MinecraftTetris
             _nextPreview = gameObject.AddComponent<NextPreview>();
             _nextPreview.Init(_view);
             _hud.Preview = _nextPreview;
+
+            // 场地三格以上才有必要挂俯视图：中间列和后排从正面看不见，
+            // 层消差在哪一格只能靠它。两格深不建，省得白占一块屏幕。
+            if (LayerMap.UsefulFor(SizeZ))
+            {
+                _layerMap = gameObject.AddComponent<LayerMap>();
+                _layerMap.Loop = _loop;
+                _layerMap.Hidden = true;    // 开始界面盖着的时候不画
+            }
 
             _particles = gameObject.AddComponent<ParticleBurst>();
             _particles.Init(_view);
@@ -319,8 +329,7 @@ namespace MinecraftTetris
             if (_title != null && _title.Visible)
             {
                 _title.HasContinue = GameSave.HasSave;
-                if (_hud != null)
-                    _hud.Hidden = true;
+                SetHudHidden(true);
                 if (_mainCam != null)
                     _mainCam.cullingMask = 0;
                 if (_music != null)
@@ -334,8 +343,7 @@ namespace MinecraftTetris
                     StartNewGame();
                 return;
             }
-            if (_hud != null)
-                _hud.Hidden = false;
+            SetHudHidden(false);
             if (_music != null)
                 _music.SetMenuMode(false);
             if (_mainCam != null && _mainCam.cullingMask != _normalCullMask)
@@ -404,9 +412,17 @@ namespace MinecraftTetris
             _nextPreview.Show(_loop.Next, _loop.NextBlockId);
             if (_title != null)
                 _title.Show(false);
-            if (_hud != null)
-                _hud.Hidden = false;
+            SetHudHidden(false);
             GameSave.Save(_loop);
+        }
+
+        /// <summary>开始界面盖着的时候 HUD 和俯视图一起收起来，别露在标题画面上。</summary>
+        void SetHudHidden(bool hidden)
+        {
+            if (_hud != null)
+                _hud.Hidden = hidden;
+            if (_layerMap != null)
+                _layerMap.Hidden = hidden;
         }
 
         void ContinueGame()
@@ -426,8 +442,7 @@ namespace MinecraftTetris
             _nextPreview.Show(_loop.Next, _loop.NextBlockId);
             if (_title != null)
                 _title.Show(false);
-            if (_hud != null)
-                _hud.Hidden = false;
+            SetHudHidden(false);
             GameSave.Save(_loop);
         }
 

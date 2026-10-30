@@ -271,6 +271,12 @@ namespace MinecraftTetris
             return IsLayerFull(y);
         }
 
+        /// <summary>这一格算不算「填满」：有方块，或水攒满一格。俯视图和自检要用这个判断。</summary>
+        public bool IsFilledPublic(int x, int y, int z)
+        {
+            return Filled(x, y, z);
+        }
+
         /// <summary>取这一层里第一个非空方块的编号，没有则返回 0。</summary>
         public int FirstBlockInLayer(int y)
         {
