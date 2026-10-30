@@ -77,6 +77,10 @@ def main():
     rows = (len(tiles) + COLS - 1) // COLS
     atlas = Image.new("RGBA", (COLS * CELL, rows * CELL), (0, 0, 0, 0))
 
+    # 哪些贴图是镂空的（有整块透明的像素）。渲染时这些方块得走 alpha test，
+    # 不然铜格栅那种网格贴图的透明格子会被画成实心，看着就是一块砖。
+    tile_cutout = [False] * len(tiles)
+
     for i, png in enumerate(tiles):
         path = "assets/minecraft/textures/block/%s.png" % png
         if png in LOCAL_TILES:
@@ -113,6 +117,8 @@ def main():
             f[:, :, 1] *= t[1]
             f[:, :, 2] *= t[2]
             arr = np.clip(f, 0, 255).astype(np.uint8)
+        # 只数中间那 16x16，padding 是复制出来的边缘像素，不该影响判定
+        tile_cutout[i] = bool(np.any(arr[:, :, 3] < 128))
         arr = np.pad(arr, ((PAD, PAD), (PAD, PAD), (0, 0)), mode="edge")
         atlas.paste(Image.fromarray(arr), ((i % COLS) * CELL, (i // COLS) * CELL))
 
@@ -149,6 +155,7 @@ def main():
     lines.append("        // 每个方块六个面：up, down, north, south, east, west 对应的图集格子编号")
     lines.append("        public static readonly int[] FaceTiles =")
     lines.append("        {")
+    block_cutout = []
     for b in blocks:
         faces = []
         fallback = None
@@ -165,7 +172,21 @@ def main():
             fallback = 0
         faces = [fallback if v is None else v for v in faces]
         lines.append("            %s," % ", ".join(str(v) for v in faces))
+        # 六个面里有一面是镂空的，这方块就得按镂空渲染
+        block_cutout.append(any(tile_cutout[v] for v in faces))
     lines.append("        };")
+    lines.append("")
+
+    lines.append("        // 哪些方块的贴图带镂空（有整块透明的像素）：渲染要走 alpha test，")
+    lines.append("        // 不然透明的地方会被画成实心（铜格栅就会变成一块砖）。")
+    lines.append("        // 已经走半透明材质的（玻璃 / 树叶 / 冰）由 BlockCatalog 那边排除。")
+    lines.append("        public static readonly byte[] CutoutFlags =")
+    lines.append("        {")
+    for i in range(0, len(block_cutout), 20):
+        chunk = block_cutout[i:i + 20]
+        lines.append("            %s," % ", ".join("1" if v else "0" for v in chunk))
+    lines.append("        };")
+    print("cutout: %d / %d blocks" % (sum(1 for v in block_cutout if v), len(block_cutout)))
     lines.append("    }")
     lines.append("}")
 

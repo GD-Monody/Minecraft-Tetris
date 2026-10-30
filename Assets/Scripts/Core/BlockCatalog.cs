@@ -35,9 +35,15 @@ namespace MinecraftTetris
 
         public readonly bool Transparent;
 
+        /// <summary>
+        /// 贴图里有没有整块透明的像素（铜格栅的网格洞）。有的话要用 alpha test 的材质画，
+        /// 不然那些洞会被画成实心，格栅看着就是一块铜砖。
+        /// </summary>
+        public readonly bool Cutout;
+
         public BlockDef(string name, string nameZh,
                         Tile up, Tile down, Tile north, Tile south, Tile east, Tile west,
-                        string placeSfxGroup, bool transparent)
+                        string placeSfxGroup, bool transparent, bool cutout)
         {
             Name = name;
             NameZh = nameZh;
@@ -49,6 +55,7 @@ namespace MinecraftTetris
             West = west;
             PlaceSfxGroup = placeSfxGroup;
             Transparent = transparent;
+            Cutout = cutout;
         }
     }
 
@@ -189,12 +196,14 @@ namespace MinecraftTetris
                 }
 
                 string name = BlockCatalogData.Names[i];
+                bool transparent = IsTransparent(name);
                 defs[i] = new BlockDef(
                     name,
                     BlockCatalogData.NamesZh[i],
                     tiles[0], tiles[1], tiles[2], tiles[3], tiles[4], tiles[5],
                     PlaceSfxGroupOf(i),
-                    IsTransparent(name));
+                    transparent,
+                    IsCutout(i, name, transparent));
             }
             return defs;
         }
@@ -212,6 +221,27 @@ namespace MinecraftTetris
             // 冰和玻璃、树叶一样是半透明材质：贴图自带 alpha，得走 BlockTransparentMat，
             // 不然冰块会被画成一块不透明的白板。
             return name.Contains("glass") || name.Contains("leaves") || name.Contains("ice");
+        }
+
+        /// <summary>
+        /// 贴图带镂空的方块要按 alpha test 画。数据在 BlockCatalogData.CutoutFlags
+        /// （图集脚本扫出来的：六个面里只要有一面有整块透明的像素就算）。
+        /// </summary>
+        static bool IsCutout(int index, string name, bool transparent)
+        {
+            // 玻璃 / 树叶 / 冰已经是半透明材质了，别动它们 —— 换回镂空会让冰块的
+            // 半透明变成硬边，是回归。
+            if (transparent)
+                return false;
+            if (BlockCatalogData.CutoutFlags == null || index >= BlockCatalogData.CutoutFlags.Length)
+                return false;
+            return BlockCatalogData.CutoutFlags[index] != 0;
+        }
+
+        /// <summary>这一格要不要按镂空渲染（贴图有透明的洞）。</summary>
+        public static bool IsCutoutBlock(int blockId)
+        {
+            return blockId > 0 && blockId <= Blocks.Length && Blocks[blockId - 1].Cutout;
         }
     }
 }

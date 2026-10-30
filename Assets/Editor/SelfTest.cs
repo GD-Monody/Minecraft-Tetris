@@ -294,6 +294,85 @@ namespace MinecraftTetris.EditorTools
             }
             Check("图集格子全部在范围内", badTiles == 0);
 
+            // ---------- 镂空贴图（铜格栅那类带洞的方块） ----------
+            // 贴图里整块透明的地方要真的透过去，否则铜格栅的网格会被画成一块铜砖。
+            int IdOf(string n)
+            {
+                for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
+                    if (BlockCatalog.Blocks[i].Name == n)
+                        return i + 1;
+                return 0;
+            }
+
+            Check("镂空表和方块表对齐",
+                  BlockCatalogData.CutoutFlags.Length == BlockCatalog.Blocks.Length);
+
+            int cutCount = 0;
+            for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
+                if (BlockCatalog.Blocks[i].Cutout)
+                    cutCount++;
+            Check("只有少数方块是镂空的（带洞的贴图）", cutCount > 0 && cutCount < 60);
+
+            // 四种氧化程度的铜格栅都要镂空；实心铜块不能镂空
+            bool gratesCut = true;
+            foreach (string g in new[] { "copper_grate", "exposed_copper_grate",
+                                         "weathered_copper_grate", "oxidized_copper_grate" })
+            {
+                int id = IdOf(g);
+                if (id == 0 || !BlockCatalog.IsCutoutBlock(id))
+                    gratesCut = false;
+            }
+            Check("四种铜格栅都按镂空渲染", gratesCut);
+            Check("实心铜块不镂空", !BlockCatalog.IsCutoutBlock(IdOf("copper_block")) &&
+                                    !BlockCatalog.IsCutoutBlock(IdOf("cut_copper")));
+            Check("空格子 / 越界不算镂空", !BlockCatalog.IsCutoutBlock(0) &&
+                                           !BlockCatalog.IsCutoutBlock(BlockCatalog.Blocks.Length + 1));
+
+            // 图集里那一格确实有透明的像素（表和贴图对得上）
+            string atlasPng = System.IO.Path.Combine(Application.dataPath, "Resources/atlas.png");
+            if (System.IO.File.Exists(atlasPng))
+            {
+                var atlasTex = new Texture2D(2, 2);
+                atlasTex.LoadImage(System.IO.File.ReadAllBytes(atlasPng));
+                Color32[] apx = atlasTex.GetPixels32();
+                int cell = BlockCatalog.CellPixels;
+                int pad = BlockCatalog.TilePadding;
+
+                int Holes(int blockId)
+                {
+                    BlockDef d = BlockCatalog.Of(blockId);
+                    int holes = 0;
+                    int ox = d.North.Col * cell + pad;
+                    // GetPixels32 是左下原点，图集格子编号是从左上数的，行要翻过来
+                    int oy = atlasTex.height - (d.North.Row * cell + pad) - 16;
+                    for (int y = 0; y < 16; y++)
+                        for (int x = 0; x < 16; x++)
+                            if (apx[(oy + y) * atlasTex.width + ox + x].a < 128)
+                                holes++;
+                    return holes;
+                }
+
+                Check("铜格栅贴图确实有洞（侧面 16x16 里有透明像素）",
+                      Holes(IdOf("copper_grate")) > 20);
+                Check("实心铜块贴图没有洞", Holes(IdOf("copper_block")) == 0);
+            }
+
+            Material cutMat = Resources.Load<Material>("AtlasCutoutMat");
+            Check("镂空材质挂的是方块图集 + alpha test shader",
+                  cutMat != null && cutMat.shader != null &&
+                  cutMat.shader.name == "MinecraftTetris/AtlasCutout" &&
+                  cutMat.mainTexture != null);
+            if (cutMat != null)
+            {
+                Check("铜格栅用的是镂空材质",
+                      BlockMesh.GetMaterial(BlockCatalog.Of(IdOf("copper_grate"))) == cutMat);
+                Check("实心方块还是用普通图集材质",
+                      BlockMesh.GetMaterial(BlockCatalog.Of(IdOf("copper_block"))) == BlockMesh.AtlasMaterial);
+                // 玻璃 / 树叶本来就是半透明材质，别被镂空这条规则改回去
+                Check("玻璃仍然是半透明材质（没被镂空规则改掉）",
+                      BlockMesh.GetMaterial(BlockCatalog.Of(BlockCatalog.GlassId)) != cutMat);
+            }
+
             // 放置音效：按 MC 原版材质分组，数据由 tools/build_place_sfx.py 生成
             Check("音效分组数和方块表对齐",
                 BlockSfxData.BlockGroup.Length == BlockCatalogData.Names.Length);

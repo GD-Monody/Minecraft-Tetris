@@ -45,6 +45,10 @@ namespace MinecraftTetris
 
         public static Material GetMaterial(BlockDef def)
         {
+            // 贴图有镂空（铜格栅的网格洞）的走 alpha test：洞真的要透过去。
+            if (!def.Transparent && def.Cutout)
+                return CutoutMaterial;
+
             if (!def.Transparent)
                 return AtlasMaterial;
 
@@ -56,6 +60,26 @@ namespace MinecraftTetris
             }
             return _transparentMaterial;
         }
+
+        /// <summary>
+        /// 镂空方块用的材质（AtlasCutout shader：alpha test）。和火的 FireCutout 一个道理，
+        /// 只是这里采的是方块图集。
+        /// </summary>
+        public static Material CutoutMaterial
+        {
+            get
+            {
+                if (_cutoutMaterial == null)
+                {
+                    _cutoutMaterial = Resources.Load<Material>("AtlasCutoutMat");
+                    if (_cutoutMaterial == null)
+                        _cutoutMaterial = BuildFallback("Unlit/Transparent Cutout");
+                }
+                return _cutoutMaterial;
+            }
+        }
+
+        static Material _cutoutMaterial;
 
         static Material BuildFallback(string shaderName)
         {
