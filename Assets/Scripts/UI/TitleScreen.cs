@@ -113,6 +113,9 @@ namespace MinecraftTetris
         /// <summary>下滑条正在被拖的是哪一个（-1 = 没在拖）。IMGUI 没有内置拖动条，自己记。</summary>
         int _dragSlider = -1;
         const int SliderSpeed = 0;
+
+        /// <summary>特殊方块机制页的滚动位置。列表改成滚轮滚动后，切进页面时归零。</summary>
+        Vector2 _mechScroll;
         const int SliderMusic = 1;
         const int SliderSizeX = 2;
         const int SliderSizeY = 3;
@@ -168,6 +171,7 @@ namespace MinecraftTetris
         {
             ShowSettings = true;
             _page = (SettingsPage)Mathf.Clamp(page, 0, (int)SettingsPage.Mech);
+            _mechScroll = Vector2.zero;
             _tmpSpeed = GameSettings.FallSpeed;
             _tmpMusic = GameSettings.MusicVolume;
             _capturingAction = -1;
@@ -512,7 +516,10 @@ namespace MinecraftTetris
             // 特殊方块各机制的开关（TNT 炸不炸、沙子落不落…）都收在这一页里，
             // 原来「基岩进池」「结构方块进池」两个开关已经去掉：方块常驻池，行为由机制开关决定
             if (GUI.Button(new Rect(bx, y, bw, bh), "特殊方块开关", _btnBig))
+            {
+                _mechScroll = Vector2.zero;        // 每次进来都从头看
                 _page = SettingsPage.Mech;
+            }
             y += Pg(62f);
 
             if (GUI.Button(new Rect(bx, y, bw, bh), "返回", _btnBig))
@@ -525,34 +532,63 @@ namespace MinecraftTetris
         /// </summary>
         void DrawSettingsMech()
         {
-            // 十一项排两列（6 + 5）：和按键页同理，一条竖列在放大一倍后会顶出屏幕。
-            // 每列取 6 是为了让两列长度接近；按 5 分的话会变成 5+5+1，第三列孤零零一个按钮。
-            const int perCol = 6;
+            // 十四项改单列 + 滚轮滚动。原来排三列，界面放大一倍后宽度直接溢出屏幕；
+            // 而且机制以后还会加，行数变多固定面板迟早又出事。改成滚动列表一劳永逸：
+            // 面板高度钳在屏幕内，装不下的部分用滚轮看，右侧画一条自绘的滚动指示条。
             float rowH = Pg(46f);
             float rowGap = Pg(10f);
             float colW = Pg(400f);
-            float colGap = Pg(50f);
-            int cols = (GameSettings.MechCount + perCol - 1) / perCol;
 
-            float w = Pg(80f) + cols * colW + (cols - 1) * colGap;
-            float h = Pg(80f) + perCol * (rowH + rowGap) + Pg(150f);
+            float w = Pg(80f) + colW;
+            float maxH = Screen.height - Pg(60f);      // 上下各留一截，标题和返回键永远在屏内
+            float h = Mathf.Min(Pg(900f), maxH);
             Rect panel = CenterPanel(w, h);
             DrawPanel(panel);
 
             GUI.Label(new Rect(panel.x, panel.y + Pg(12f), w, Pg(44f)), "特殊方块机制", _panelTitleBig);
 
-            float top = panel.y + Pg(70f);
+            float top = panel.y + Pg(66f);
+            float bottomReserve = Pg(120f);            // 底下固定不滚的：说明行 + 返回按钮
+            float viewH = Mathf.Max(rowH, panel.yMax - bottomReserve - top);
+            float contentH = GameSettings.MechCount * (rowH + rowGap) - rowGap;
+            float maxScroll = Mathf.Max(0f, contentH - viewH);
+
+            Rect clip = new Rect(panel.x + Pg(40f), top, colW, viewH);
+
+            // 滚轮：悬停在列表上就滚。这里手动消费 ScrollWheel 事件，步长一行多一点，
+            // 不用 BeginScrollView 是因为它的滚动条样式和这套手绘 UI 对不上，
+            // 隐藏滚动条之后滚轮行为又没法控制，干脆 BeginGroup 裁剪 + 自己记滚动量。
+            if (Event.current.type == EventType.ScrollWheel && clip.Contains(Event.current.mousePosition))
+            {
+                _mechScroll.y = Mathf.Clamp(_mechScroll.y + Event.current.delta.y * Pg(48f), 0f, maxScroll);
+                Event.current.Use();
+            }
+
+            GUI.BeginGroup(clip);
             for (int i = 0; i < GameSettings.MechCount; i++)
             {
                 GameSettings.MechKind kind = (GameSettings.MechKind)i;
                 bool on = GameSettings.Mech(kind);
                 string label = GameSettings.MechLabel(kind) + (on ? "：开" : "：关");
 
-                float x = panel.x + Pg(40f) + (i / perCol) * (colW + colGap);
-                float y = top + (i % perCol) * (rowH + rowGap);
+                float y = i * (rowH + rowGap) - _mechScroll.y;
+                if (y + rowH < 0f || y > viewH)        // 看不见的不画，省一点开销
+                    continue;
 
-                if (GUI.Button(new Rect(x, y, colW, rowH), label, _btnBig))
+                if (GUI.Button(new Rect(0f, y, colW, rowH), label, _btnBig))
                     GameSettings.SetMech(kind, !on);
+            }
+            GUI.EndGroup();
+
+            // 自绘滚动指示条（内容放得下时不画）
+            if (maxScroll > 0f)
+            {
+                float barX = clip.xMax + Pg(10f);
+                float barW = Pg(6f);
+                float barH = Mathf.Max(Pg(36f), viewH * viewH / contentH);
+                float barY = top + (viewH - barH) * (_mechScroll.y / maxScroll);
+                DrawRect(new Rect(barX, top, barW, viewH), new Color(1f, 1f, 1f, 0.08f));
+                DrawRect(new Rect(barX, barY, barW, barH), new Color(0.35f, 0.37f, 0.44f, 0.95f));
             }
 
             GUI.Label(new Rect(panel.x, panel.y + h - Pg(120f), w, Pg(30f)),
