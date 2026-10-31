@@ -14,17 +14,24 @@ namespace MinecraftTetris
     /// 冻住的做法（松手后自动还原，不留痕迹）：
     /// - Time.timeScale = 0：所有动画停摆。deltaTime 归零，方块不再追位、粒子不再飞、
     ///   光尘不再飘，各系统 Update 里的活自然降到最低，不用挨个去加判断。
-    /// - targetFrameRate 压到 8（要顺带关掉 vsync 才生效）：一秒只渲染 8 次，
+    /// - targetFrameRate 压到 30（要顺带关掉 vsync 才生效）：一秒只渲染 30 次，
     ///   后台缓冲的重建次数同比例降下来，剩下的时间留给 Windows 处理拖动。
-    /// - IMGUI 那一大块由 UiSkin.WorthDrawing 挡掉，冻结期干脆不画。
+    /// - UI 照常画：UiSkin.WorthDrawing 只挡掉纯鼠标移动那几趟冗余的 OnGUI，
+    ///   冻结期间 UI 也不会消失 —— 拖动时看不到 HUD 反而更像卡死。
     /// </summary>
     public static class ResizeGuard
     {
         /// <summary>尺寸停止变化后还要维持多久（秒）。WM_SIZE 是断续来的，太短会来回切档。</summary>
         const float Hold = 0.35f;
 
-        /// <summary>冻结期的帧率上限。够低才省得出时间，再低就只是白等。</summary>
-        const int FrozenFps = 8;
+        /// <summary>
+        /// 冻结期的帧率上限。
+        ///
+        /// 这个值决定「拖的时候看着顺不顺」：太低画面一跳一跳，太高主线程又被拖住。
+        /// 实测 8 帧/秒时拖动明显发涩，30 帧/秒下每帧耗时仍稳在目标周期附近
+        /// （这一帧的活只剩「重画一遍画面」，玩法/动画/输入全都停了）。要再调就改这一个数。
+        /// </summary>
+        const int FrozenFps = 30;
 
         static int _w;
         static int _h;
@@ -34,6 +41,17 @@ namespace MinecraftTetris
         static int _vsync;
         static int _fps;
         static float _timeScale;
+
+        /// <summary>
+        /// 调试开关：-resizebench。为 true 时冻结期不限帧，每帧耗时才反映真实成本。
+        /// 正常游玩一直是 false —— 限速本身就是省开销的手段。
+        /// </summary>
+        public static bool Bench;
+
+        // 冻结期的观察值：帧数、平均/最长一帧耗时，出口日志见 Restore。
+        static int _frames;
+        static float _maxDt;
+        static float _sumDt;
 
         /// <summary>当前是否处在「刚缩放过 / 还在缩放」的冻结期。</summary>
         public static bool Frozen { get { return _frozen; } }
@@ -51,6 +69,14 @@ namespace MinecraftTetris
 
             if (_frozen)
             {
+                // 限速在 8 帧/秒，正常一帧 125ms 上下。明显超过就是这一帧摊上了
+                // 后台缓冲重建（GPU 同步），拖起来的「拽手感」就是从这儿来的。
+                _frames++;
+                float dt = Time.unscaledDeltaTime;
+                _sumDt += dt;
+                if (dt > _maxDt)
+                    _maxDt = dt;
+
                 // 用 unscaled：冻结期 deltaTime 恒为 0，用它倒计时永远退不出去
                 _hold -= Time.unscaledDeltaTime;
                 if (_hold <= 0f)
@@ -84,10 +110,14 @@ namespace MinecraftTetris
             // Application.targetFrameRate 只在关掉垂直同步时才生效，所以两个一起改。
             // 改的是 present 参数，不会重建后台缓冲 —— 那才是缩放时最贵的一步。
             QualitySettings.vSyncCount = 0;
-            Application.targetFrameRate = FrozenFps;
+            Application.targetFrameRate = Bench ? 0 : FrozenFps;
 
             // 冻结动画：deltaTime 归零，所有靠 Update 推进的东西自动停下。
             Time.timeScale = 0f;
+
+            _frames = 0;
+            _maxDt = 0f;
+            _sumDt = 0f;
 
             Debug.Log("[resize] 冻住画面 " + Screen.width + "x" + Screen.height
                 + "（松手 " + Hold + " 秒后恢复，期间只渲染 " + FrozenFps + " 帧/秒）");
@@ -104,6 +134,10 @@ namespace MinecraftTetris
 
             Debug.Log("[resize] 恢复 " + Screen.width + "x" + Screen.height
                 + "（timeScale=" + _timeScale.ToString("0.##") + "，帧率 " + (_fps <= 0 ? "默认" : _fps.ToString()) + "）");
+            if (_frames > 0)
+                Debug.Log("[resize] 冻住期间 " + _frames + " 帧，平均 "
+                    + (_sumDt / _frames * 1000f).ToString("0") + "ms，最长一帧 "
+                    + (_maxDt * 1000f).ToString("0") + "ms");
         }
     }
 }

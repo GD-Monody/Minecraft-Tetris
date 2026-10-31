@@ -109,9 +109,6 @@ namespace MinecraftTetris
         /// </summary>
         public static bool WorthDrawing()
         {
-            if (ResizeGuard.Frozen)
-                return false;
-
             Event e = Event.current;
             if (e == null)
                 return true;

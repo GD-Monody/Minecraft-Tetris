@@ -36,6 +36,7 @@ namespace MinecraftTetris
         int _resizeStep;
         float _resizeT;
         bool _resizeDone;
+        float _resizeDelay = 4f;      // 等 Unity 启动画面走完、进到游戏界面再开始切
         static readonly float[] TitleShotTimes = { 0.4f, 1.3f, 2.5f, 3.4f, 4.2f };
         Camera _mainCam;
         CameraRig _rig;
@@ -199,10 +200,16 @@ namespace MinecraftTetris
                 RunStructureTest();
             }
 
-            // -resizetest：每 0.6 秒把窗口在两档尺寸之间来回切，共 8 次。
-            // 每次切都会触发 ResizeGuard 冻结 → 0.35 秒后恢复，日志里能数出几组。
+            // -resizetest：每 0.2 秒把窗口在两档尺寸之间来回切，共 8 次。
+            // 切换比冻结窗口（0.35 秒）更密，所以整段测试会一直保持冻结，最后
+            // 在日志里吐出一条「冻住期间」的帧耗时统计。
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-resizetest") >= 0)
                 _resizeTest = true;
+
+            // -resizebench：配合 -resizetest。冻结期不做限速，让每帧耗时反映真实
+            // 的缩放成本（限速状态下每帧都被压成 125ms，什么都看不出来）。
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-resizebench") >= 0)
+                ResizeGuard.Bench = true;
 
             // -glasstest：玻璃柱上压沙，看玻璃被压碎、沙落下来
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-glasstest") >= 0)
@@ -441,8 +448,16 @@ namespace MinecraftTetris
             if (_resizeDone)
                 return;
 
+            if (_resizeDelay > 0f)
+            {
+                _resizeDelay -= Time.unscaledDeltaTime;
+                return;
+            }
+
+            // 间隔压到 0.2 秒：比 ResizeGuard 的 0.35 秒窗口短，整段测试会一直处于
+            // 冻结状态，最后吐出一条完整的「冻住期间」统计。
             _resizeT += Time.unscaledDeltaTime;
-            if (_resizeT < 0.6f)
+            if (_resizeT < 0.2f)
                 return;
             _resizeT = 0f;
 
@@ -459,6 +474,11 @@ namespace MinecraftTetris
             int h = odd ? 680 : 560;
             Screen.SetResolution(w, h, false);
             Debug.Log("[resizetest] 第 " + _resizeStep + " 档 " + w + "x" + h);
+
+            // 这一步必定处在冻结期（每一步都比 ResizeGuard 的 0.35 秒窗口短），
+            // 截图用来确认「拖窗口时 UI 是不是还在」。
+            if (_resizeStep == 4)
+                CaptureShot("resize_frozen.png");
         }
 
         void OnDestroy()
