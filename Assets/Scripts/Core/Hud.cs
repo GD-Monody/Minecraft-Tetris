@@ -106,13 +106,12 @@ namespace MinecraftTetris
             _btnStyle.padding = new RectOffset(0, 0, 0, 0);
             _btnStyle.contentOffset = new Vector2(0f, UiSkin.P(3f));
 
-            // 暂停面板专用的大号样式（放大一倍，见 DrawPausePanel 里的 PauseScale）。
-            _pauseTitleBig = MakeStyle(68, ValueColor);
+            // 暂停面板专用样式。字号在这里不定死：DrawPausePanel 每帧按实际
+            // 缩放系数设置，屏幕装不下两倍时会自动折减，字号跟着面板走。
+            _pauseTitleBig = MakeStyle(34, ValueColor);
             _pauseTitleBig.alignment = TextAnchor.MiddleCenter;
-            // 拷贝构造会把按钮底图、文字色、padding 这些一并带上，只改字号和垂直偏移。
+            // 拷贝构造会把按钮底图、文字色、padding 这些一并带上。
             _pauseBtnBig = new GUIStyle(_btnStyle);
-            _pauseBtnBig.fontSize = UiSkin.Size(36);
-            _pauseBtnBig.contentOffset = new Vector2(0f, UiSkin.P(6f));
         }
 
         static Texture2D SolidTexture(Color c)
@@ -255,14 +254,8 @@ namespace MinecraftTetris
             DrawAccentLine(panel);
         }
 
-        /// <summary>暂停面板的放大倍数。设置页那套 Big 样式是 ×2，这里保持一致。</summary>
+        /// <summary>暂停面板的目标放大倍数。屏幕装不下时按屏高自动折减，见 DrawPausePanel。</summary>
         const float PauseScale = 2f;
-
-        /// <summary>暂停面板专用：设计值 × 2 再过 UiSkin.P。</summary>
-        static float Ps(float design)
-        {
-            return UiSkin.P(design * PauseScale);
-        }
 
         void DrawPausePanel()
         {
@@ -270,31 +263,42 @@ namespace MinecraftTetris
             GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
             GUI.color = Color.white;
 
+            // 目标放大 PauseScale 倍；窗口高度装不下就折减倍数。字号、面板、按钮
+            // 全部跟同一个 scale 走，任何分辨率下面板都完整、比例都一致。
+            // 上一版踩的坑：面板高按 ×1 的设计值传了 Ps(262)，×2 的内容塞进一半高的
+            // 面板，按钮整排跑出去；根因是布局值和容器尺寸用了两套基准，现在统一。
+            float scale = Mathf.Min(PauseScale, (Screen.height - UiSkin.P(40f)) / UiSkin.P(262f));
+            float Ps(float design) => UiSkin.P(design * scale);
+
+            _pauseTitleBig.fontSize = UiSkin.Size(Mathf.RoundToInt(34f * scale));
+            _pauseBtnBig.fontSize = UiSkin.Size(Mathf.RoundToInt(18f * scale));
+            _pauseBtnBig.contentOffset = new Vector2(0f, UiSkin.P(3f * scale));
+
             float w = Mathf.Clamp(Screen.width * 0.48f, Ps(300f), Ps(440f));
-            w = Mathf.Min(w, Screen.width - Ps(40f));      // 小屏保底：面板再大也不能出屏
-            float h = Mathf.Min(Ps(262f), Screen.height - Ps(40f));
+            w = Mathf.Min(w, Screen.width - UiSkin.P(40f));    // 宽度同样保底，小窗不出屏
+            float h = Ps(262f);
             var panel = new Rect((Screen.width - w) * 0.5f, (Screen.height - h) * 0.5f, w, h);
             DrawPanel(panel);
 
-            GUI.Label(new Rect(panel.x, panel.y + Ps(16f), panel.width, Ps(84f)), "已暂停", _pauseTitleBig);
+            GUI.Label(new Rect(panel.x, panel.y + Ps(16f), panel.width, Ps(42f)), "已暂停", _pauseTitleBig);
 
             float bw = panel.width - Ps(160f);
             float bx = panel.x + (panel.width - bw) * 0.5f;
-            float by = panel.y + Ps(148f);
+            float by = panel.y + Ps(74f);
 
-            if (GUI.Button(new Rect(bx, by, bw, Ps(80f)), "继续游戏", _pauseBtnBig))
+            if (GUI.Button(new Rect(bx, by, bw, Ps(40f)), "继续游戏", _pauseBtnBig))
             {
                 if (OnResumeClick != null)
                     OnResumeClick();
             }
-            by += Ps(104f);
-            if (GUI.Button(new Rect(bx, by, bw, Ps(80f)), "重新开始", _pauseBtnBig))
+            by += Ps(52f);
+            if (GUI.Button(new Rect(bx, by, bw, Ps(40f)), "重新开始", _pauseBtnBig))
             {
                 if (OnRestartClick != null)
                     OnRestartClick();
             }
-            by += Ps(104f);
-            if (GUI.Button(new Rect(bx, by, bw, Ps(80f)), "退出到主界面", _pauseBtnBig))
+            by += Ps(52f);
+            if (GUI.Button(new Rect(bx, by, bw, Ps(40f)), "退出到主界面", _pauseBtnBig))
             {
                 if (OnQuitToTitleClick != null)
                     OnQuitToTitleClick();
