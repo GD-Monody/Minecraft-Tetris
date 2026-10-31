@@ -181,7 +181,11 @@ namespace MinecraftTetris
         /// <summary>海绵吸到水了：视图层刷流体层、撒水花（结果见 LastSpongeSoaks）。</summary>
         public event Action WaterSoaked;
 
-        /// <summary>最近一次落定里压碎的玻璃格子（可以有两轮以上，越靠下越先碎）。</summary>
+        /// <summary>
+        /// 这一轮压碎的玻璃格子，随 GlassCrushed 事件一起发。
+        /// 连碎多层时事件每轮发一次、各装各的格子（越靠下越先碎），
+        /// 攒到最后一口气发的话，视图层会把前面几轮的碎块再撒一遍。
+        /// </summary>
         public readonly System.Collections.Generic.List<Vector3Int> LastGlassCrushed
             = new System.Collections.Generic.List<Vector3Int>();
 
@@ -641,25 +645,28 @@ namespace MinecraftTetris
         ///
         /// 为什么是个循环：玻璃上面压着沙，沙掉下来又压到下一层玻璃，一次落定里能连碎好几层。
         /// 每一轮至少碎掉一格玻璃，玻璃总数有限，所以循环一定会停；64 轮只是保险。
+        ///
+        /// 为什么每轮必须「先发 GlassCrushed 清画面、再结算重力」：GravitySettled 一发，
+        /// 视图层就会把沙子的显示对象搬进刚空出来的玻璃格子里，格子上原来的玻璃对象
+        /// 就被从格位表里顶掉了——这时候再想清玻璃已经找不到它，残影会永远留在场上。
+        /// 所以碎的事件（清画面、音效、碎块）得赶在沙子搬进去之前发。
+        ///
+        /// public 是给自检用的：事件顺序本身就是要锁死的行为。
         /// </summary>
-        void CrushGlass()
+        public void CrushGlass()
         {
-            LastGlassCrushed.Clear();
-
-            bool any = false;
             for (int guard = 0; guard < 64; guard++)
             {
+                LastGlassCrushed.Clear();
                 if (Glass.Crush(Grid, LastGlassCrushed) == 0)
                     break;
 
-                any = true;
+                GlassCrushed?.Invoke();
+
                 LastGravityMoves.Clear();
                 if (Gravity.Settle(Grid, LastGravityMoves))
                     GravitySettled?.Invoke();
             }
-
-            if (any)
-                GlassCrushed?.Invoke();
         }
 
         /// <summary>

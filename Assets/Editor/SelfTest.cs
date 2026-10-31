@@ -1310,6 +1310,24 @@ namespace MinecraftTetris.EditorTools
             Check("下一轮沙把剩下那块也压碎，一路落到底",
                 glassCrushed2 == 1 && CountFilled(gGlassStack) == 1 && gGlassStack.Get(2, 0, 0) == mechSand);
 
+            // 回归：玻璃压碎后场上留下擦不掉的玻璃残影。
+            // 根因是事件顺序——以前先结算重力、后发 GlassCrushed，视图层已经把沙子的
+            // 显示对象搬进玻璃格、把玻璃对象从格位表里顶丢了，再清就找不到它。
+            // 现在锁死顺序：每轮先发 GlassCrushed（玻璃画面还在，清得掉），再结算重力。
+            var gOrder = new GameLoop(5, 8, 1, 7);
+            var order = new System.Collections.Generic.List<string>();
+            gOrder.GlassCrushed += () => order.Add("crush" + gOrder.LastGlassCrushed.Count);
+            gOrder.GravitySettled += () => order.Add("settle");
+            gOrder.Grid.Set(2, 0, 0, glassId);
+            gOrder.Grid.Set(2, 1, 0, glassId);
+            gOrder.Grid.Set(2, 2, 0, mechSand);
+            gOrder.CrushGlass();
+            Check("玻璃压碎的事件顺序：每轮先清画面再落重力",
+                order.Count == 4 && order[0] == "crush1" && order[1] == "settle"
+                    && order[2] == "crush1" && order[3] == "settle");
+            Check("连碎两层后沙落到底，全程没有多报格子",
+                gOrder.Grid.Get(2, 0, 0) == mechSand && CountFilled(gOrder.Grid) == 1);
+
             // ---------- 雪与冰遇岩浆融化 ----------
             int snowId = BlockCatalog.SnowId;
             int iceId = BlockCatalog.IceId;

@@ -700,6 +700,12 @@ namespace MinecraftTetris
                 GameObject go = _cells[m.FromX, m.FromY, m.FromZ];
                 if (go == null)
                     continue;
+                // 目标格里要是还挂着一个显示对象（比如刚被压碎、画面还没来得及清的玻璃），
+                // 直接覆盖会把它的引用顶丢——对象还 active 在场上，就成了擦不掉的残影。
+                // 搬进来之前先把它收掉，格位表里不丢东西。
+                GameObject prev = _cells[m.ToX, m.ToY, m.ToZ];
+                if (prev != null && prev != go && prev.activeSelf)
+                    prev.SetActive(false);
                 _cells[m.ToX, m.ToY, m.ToZ] = go;
                 _cells[m.FromX, m.FromY, m.FromZ] = null;
                 _cellVisual[m.ToX, m.ToY, m.ToZ] = new Vector3(m.FromX, m.FromY, m.FromZ);
