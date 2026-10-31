@@ -36,7 +36,8 @@ namespace MinecraftTetris
         GUIStyle _valueSmallShadow;
         GUIStyle _center;
         GUIStyle _centerShadow;
-        GUIStyle _pauseTitle;
+        GUIStyle _pauseTitleBig;
+        GUIStyle _pauseBtnBig;
         GUIStyle _gameOverTitle;
         GUIStyle _gameOverTitleShadow;
         GUIStyle _labelCenter;
@@ -78,7 +79,6 @@ namespace MinecraftTetris
             _center = MakeStyle(26, ValueColor);
             _centerShadow = MakeStyle(26, ShadowColor);
 
-            _pauseTitle = MakeStyle(34, ValueColor);
             _gameOverTitle = MakeStyle(40, ValueColor);
             _gameOverTitle.alignment = TextAnchor.MiddleCenter;
             _gameOverTitle.fontStyle = FontStyle.Bold;
@@ -87,7 +87,6 @@ namespace MinecraftTetris
             _gameOverTitleShadow.fontStyle = FontStyle.Bold;
             _labelCenter = MakeStyle(16, LabelColor);
             _labelCenter.alignment = TextAnchor.MiddleCenter;
-            _pauseTitle.alignment = TextAnchor.MiddleCenter;
 
             _btnNormal = SolidTexture(new Color(0.13f, 0.15f, 0.19f, 0.96f));
             _btnHover = SolidTexture(new Color(0.20f, 0.24f, 0.30f, 0.98f));
@@ -106,6 +105,14 @@ namespace MinecraftTetris
             // 不显式清掉 padding / contentOffset 的话，文字会贴着按钮上半部（继承 GUI.skin.button 的默认值）
             _btnStyle.padding = new RectOffset(0, 0, 0, 0);
             _btnStyle.contentOffset = new Vector2(0f, UiSkin.P(3f));
+
+            // 暂停面板专用的大号样式（放大一倍，见 DrawPausePanel 里的 PauseScale）。
+            _pauseTitleBig = MakeStyle(68, ValueColor);
+            _pauseTitleBig.alignment = TextAnchor.MiddleCenter;
+            // 拷贝构造会把按钮底图、文字色、padding 这些一并带上，只改字号和垂直偏移。
+            _pauseBtnBig = new GUIStyle(_btnStyle);
+            _pauseBtnBig.fontSize = UiSkin.Size(36);
+            _pauseBtnBig.contentOffset = new Vector2(0f, UiSkin.P(6f));
         }
 
         static Texture2D SolidTexture(Color c)
@@ -248,36 +255,46 @@ namespace MinecraftTetris
             DrawAccentLine(panel);
         }
 
+        /// <summary>暂停面板的放大倍数。设置页那套 Big 样式是 ×2，这里保持一致。</summary>
+        const float PauseScale = 2f;
+
+        /// <summary>暂停面板专用：设计值 × 2 再过 UiSkin.P。</summary>
+        static float Ps(float design)
+        {
+            return UiSkin.P(design * PauseScale);
+        }
+
         void DrawPausePanel()
         {
             GUI.color = new Color(0f, 0f, 0f, 0.55f);
             GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
             GUI.color = Color.white;
 
-            float w = Mathf.Clamp(Screen.width * 0.24f, UiSkin.P(300f), UiSkin.P(440f));
-            float h = UiSkin.P(262f);
+            float w = Mathf.Clamp(Screen.width * 0.48f, Ps(300f), Ps(440f));
+            w = Mathf.Min(w, Screen.width - Ps(40f));      // 小屏保底：面板再大也不能出屏
+            float h = Mathf.Min(Ps(262f), Screen.height - Ps(40f));
             var panel = new Rect((Screen.width - w) * 0.5f, (Screen.height - h) * 0.5f, w, h);
             DrawPanel(panel);
 
-            GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(16f), panel.width, UiSkin.P(42f)), "已暂停", _pauseTitle);
+            GUI.Label(new Rect(panel.x, panel.y + Ps(16f), panel.width, Ps(84f)), "已暂停", _pauseTitleBig);
 
-            float bw = w - UiSkin.P(80f);
+            float bw = panel.width - Ps(160f);
             float bx = panel.x + (panel.width - bw) * 0.5f;
-            float by = panel.y + UiSkin.P(74f);
+            float by = panel.y + Ps(148f);
 
-            if (GUI.Button(new Rect(bx, by, bw, UiSkin.P(40f)), "继续游戏", _btnStyle))
+            if (GUI.Button(new Rect(bx, by, bw, Ps(80f)), "继续游戏", _pauseBtnBig))
             {
                 if (OnResumeClick != null)
                     OnResumeClick();
             }
-            by += UiSkin.P(52f);
-            if (GUI.Button(new Rect(bx, by, bw, UiSkin.P(40f)), "重新开始", _btnStyle))
+            by += Ps(104f);
+            if (GUI.Button(new Rect(bx, by, bw, Ps(80f)), "重新开始", _pauseBtnBig))
             {
                 if (OnRestartClick != null)
                     OnRestartClick();
             }
-            by += UiSkin.P(52f);
-            if (GUI.Button(new Rect(bx, by, bw, UiSkin.P(40f)), "退出到主界面", _btnStyle))
+            by += Ps(104f);
+            if (GUI.Button(new Rect(bx, by, bw, Ps(80f)), "退出到主界面", _pauseBtnBig))
             {
                 if (OnQuitToTitleClick != null)
                     OnQuitToTitleClick();
