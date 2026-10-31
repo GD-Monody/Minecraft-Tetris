@@ -1533,11 +1533,12 @@ namespace MinecraftTetris
             float bh = Pg(34f);
 
             GUI.Label(new Rect(viewX, rowY + Pg(2f), Pg(28f), Pg(30f)), "层", _rowLabelStyle);
-            if (GUI.Button(new Rect(viewX + Pg(30f), rowY, Pg(36f), bh), "◀", _btnStyle) && Workbench != null)
+            // 箭头用 ← →（GB2312 里有）：◀ ▶ 楷体里没有，两个字形都被替换成同一个三角，分不出左右
+            if (GUI.Button(new Rect(viewX + Pg(30f), rowY, Pg(36f), bh), "←", _btnStyle) && Workbench != null)
                 Workbench.Layer = Workbench.Layer - 1;
             GUI.Label(new Rect(viewX + Pg(70f), rowY, Pg(56f), bh),
                 Workbench != null ? (Workbench.Layer + 1) + " / " + MoldData.Size : "-", _rowLabelStyle);
-            if (GUI.Button(new Rect(viewX + Pg(130f), rowY, Pg(36f), bh), "▶", _btnStyle) && Workbench != null)
+            if (GUI.Button(new Rect(viewX + Pg(130f), rowY, Pg(36f), bh), "→", _btnStyle) && Workbench != null)
                 Workbench.Layer = Workbench.Layer + 1;
             if (GUI.Button(new Rect(viewX + Pg(178f), rowY, Pg(140f), bh),
                     Workbench != null && Workbench.DimOthers ? "只亮当前层：开" : "只亮当前层：关", _btnStyle)
@@ -1580,8 +1581,8 @@ namespace MinecraftTetris
                 GUI.Label(new Rect(bx, hintY + Pg(28f), Pg(600f), Pg(26f)), MoldStatus(), _rowLabelStyle);
             }
 
-            // 底部按钮
-            float by = hintY + Pg(62f);
+            // 底部按钮（比提示行收紧 6 格：再往下那行说明字正好压在面板边框上）
+            float by = hintY + Pg(56f);
             float bh2 = Pg(40f);
 
             if (GUI.Button(new Rect(bx, by, Pg(110f), bh2), "新建模具", _btnStyle))
