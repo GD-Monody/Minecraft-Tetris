@@ -31,6 +31,11 @@ namespace MinecraftTetris
         bool _titleMode;
         int _titleShotIndex;
         bool _structureDemo;
+        // -resizetest：自动把窗口来回改大小，验证缩放冻结链路（日志里看 [resize] 冻住/恢复）
+        bool _resizeTest;
+        int _resizeStep;
+        float _resizeT;
+        bool _resizeDone;
         static readonly float[] TitleShotTimes = { 0.4f, 1.3f, 2.5f, 3.4f, 4.2f };
         Camera _mainCam;
         CameraRig _rig;
@@ -194,6 +199,11 @@ namespace MinecraftTetris
                 RunStructureTest();
             }
 
+            // -resizetest：每 0.6 秒把窗口在两档尺寸之间来回切，共 8 次。
+            // 每次切都会触发 ResizeGuard 冻结 → 0.35 秒后恢复，日志里能数出几组。
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-resizetest") >= 0)
+                _resizeTest = true;
+
             // -glasstest：玻璃柱上压沙，看玻璃被压碎、沙落下来
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-glasstest") >= 0)
                 RunGlassTest();
@@ -287,6 +297,14 @@ namespace MinecraftTetris
         {
             // 放在最前面：窗口一变尺寸就让各系统进入降载状态，这一帧它们才吃得上。
             ResizeGuard.Tick();
+
+            if (_resizeTest)
+                TickResizeTest();
+
+            // 拖窗口期间整个游戏停摆：动画冻结、界面不画，输入也不读。
+            // 松手 0.35 秒后 ResizeGuard 自己还原，这里不用管恢复。
+            if (ResizeGuard.Frozen)
+                return;
 
             HideSystemCursor();
 
@@ -412,6 +430,35 @@ namespace MinecraftTetris
         {
             if (Cursor.visible)
                 Cursor.visible = false;
+        }
+
+        /// <summary>
+        /// -resizetest 的驱动：每 0.6 秒换一档窗口尺寸。用 unscaled 计时，
+        /// 冻结期 deltaTime 是 0，用它就永远走不到下一步。
+        /// </summary>
+        void TickResizeTest()
+        {
+            if (_resizeDone)
+                return;
+
+            _resizeT += Time.unscaledDeltaTime;
+            if (_resizeT < 0.6f)
+                return;
+            _resizeT = 0f;
+
+            _resizeStep++;
+            if (_resizeStep > 8)
+            {
+                _resizeDone = true;
+                Debug.Log("[resizetest] 完成，共切了 8 档");
+                return;
+            }
+
+            bool odd = (_resizeStep & 1) == 1;
+            int w = odd ? 920 : 760;
+            int h = odd ? 680 : 560;
+            Screen.SetResolution(w, h, false);
+            Debug.Log("[resizetest] 第 " + _resizeStep + " 档 " + w + "x" + h);
         }
 
         void OnDestroy()

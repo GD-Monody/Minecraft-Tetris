@@ -181,18 +181,32 @@ namespace MinecraftTetris
             return _materials[idx];
         }
 
+        /// <summary>上一帧是不是冻结期。用来在进入冻结的那一帧做一次收尾。</summary>
+        bool _wasFrozen;
+
         void Update()
         {
             if (Grid == null)
                 return;
 
+            // 拖窗口期间整段不跑：进入冻结的第一帧把还在半路的方块一步按到位
+            // （画面正在变形，看不出是滑过去的还是一步到位的），之后连循环都不进。
+            // 冻结期 deltaTime 恒为 0，本来也不会动，这里省的是那一整趟遍历
+            // 和 UpdateFireFrame 的开销。
+            if (ResizeGuard.Frozen)
+            {
+                if (!_wasFrozen)
+                {
+                    _wasFrozen = true;
+                    SnapAll();
+                }
+                return;
+            }
+            _wasFrozen = false;
+
             float k = 1f - Mathf.Exp(-Smooth * Time.deltaTime);
             _fireTime += Time.deltaTime;
             UpdateFireFrame();
-
-            // 拖窗口那几帧直接就位：那一帧的时间本来就紧，而且画面正在变形，
-            // 看不出这一格是滑过去的还是一步到位的。
-            bool snapAll = ResizeGuard.Busy;
 
             // 落定的方块：朝自己的格子追，追上后就停在格子上（之后不再碰它）
             for (int x = 0; x < Grid.SizeX; x++)
@@ -202,7 +216,7 @@ namespace MinecraftTetris
                         GameObject go = _cells[x, y, z];
                         if (go == null || !go.activeSelf)
                             continue;
-                        if (_settled[x, y, z] && !snapAll)
+                        if (_settled[x, y, z])
                             continue;
 
                         // 火苗也跟着走（方块塌下来的时候火不能留在原地）
@@ -214,7 +228,7 @@ namespace MinecraftTetris
                         float dz = v.z - z;
                         // 差不到百分之一格就算到了：屏幕上不到半个像素，看不出来，
                         // 再追下去是指数收敛，永远追不到 0。
-                        if (snapAll || dx * dx + dy * dy + dz * dz < 0.0001f)
+                        if (dx * dx + dy * dy + dz * dz < 0.0001f)
                         {
                             var p = new Vector3(x, y, z);
                             _cellVisual[x, y, z] = p;
@@ -244,6 +258,45 @@ namespace MinecraftTetris
                 _pieceVisual[i] = Vector3.Lerp(_pieceVisual[i], _pieceTarget[i], k);
                 go.transform.position = _pieceVisual[i];
                 go.transform.rotation = rot;
+            }
+        }
+
+        /// <summary>
+        /// 把所有还在半路的方块（含正在下落的那块）一步放到目标格位上。
+        /// 只在进入缩放冻结的那一帧调一次：冻结期间画面不再更新，滑行中的
+        /// 方块要是不收尾，解冻后会看到它们从半路继续滑。
+        /// </summary>
+        void SnapAll()
+        {
+            for (int x = 0; x < Grid.SizeX; x++)
+                for (int y = 0; y < Grid.SizeY; y++)
+                    for (int z = 0; z < Grid.SizeZ; z++)
+                    {
+                        GameObject go = _cells[x, y, z];
+                        if (go == null || !go.activeSelf)
+                            continue;
+
+                        var p = new Vector3(x, y, z);
+                        _cellVisual[x, y, z] = p;
+                        go.transform.position = p;
+                        _settled[x, y, z] = true;
+
+                        if (_burning != null && _burning[x, y, z])
+                            UpdateFireCover(x, y, z);
+                    }
+
+            if (_pieceCells == null)
+                return;
+
+            _pieceRot = _pieceRotTarget;
+            for (int i = 0; i < _pieceCells.Length; i++)
+            {
+                GameObject go = _pieceCells[i];
+                if (go == null || !go.activeSelf)
+                    continue;
+                _pieceVisual[i] = _pieceTarget[i];
+                go.transform.position = _pieceVisual[i];
+                go.transform.rotation = _pieceRot;
             }
         }
 

@@ -67,6 +67,21 @@ namespace MinecraftTetris
             return Mathf.RoundToInt(design * TextScale);
         }
 
+        /// <summary>
+        /// 给定一页的设计宽高和当前可用空间，算出这一页最多能放大到几倍。
+        /// 目标倍数装不下就按最紧的那一维折减，折到 minScale 为止。
+        ///
+        /// 纯函数、不碰 GUI，自检可以直接拿它断言「各页在任何窗口尺寸下都装得进屏幕」。
+        /// 设置 / 规则那几页和暂停面板共用这一套，免得各自写一遍 clamp 又各漏一边。
+        /// </summary>
+        public static float FitScale(float designW, float designH, float target,
+            float availW, float availH, float minScale)
+        {
+            float byW = availW / Mathf.Max(1f, designW * TextScale);
+            float byH = availH / Mathf.Max(1f, designH * TextScale);
+            return Mathf.Clamp(Mathf.Min(target, byW, byH), minScale, target);
+        }
+
         /// <summary>在 OnGUI 开头调一次，让整块 IMGUI 皮肤都用这套字体。</summary>
         public static void Apply()
         {
@@ -87,9 +102,16 @@ namespace MinecraftTetris
         ///
         /// Layout 那一趟不能跳：控件的 id 是在 Layout 阶段从头分配的，跳掉之后 id 会一路
         /// 漂移，按钮按下时记的 id 和抬起时对不上，点击就失灵了。
+        ///
+        /// 另外：拖窗口的冻结期（ResizeGuard.Frozen）整段都不画 —— 那几帧画面正在变形，
+        /// 画出来的界面下一帧就作废，纯属白烧 CPU；松手后自动恢复。跳过的是「整段」而不是
+        /// 单独跳某一趟，所以不会出现 id 漂移：恢复后的第一帧 Layout 会从头分配。
         /// </summary>
         public static bool WorthDrawing()
         {
+            if (ResizeGuard.Frozen)
+                return false;
+
             Event e = Event.current;
             if (e == null)
                 return true;
