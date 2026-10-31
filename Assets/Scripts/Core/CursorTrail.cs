@@ -138,6 +138,10 @@ namespace MinecraftTetris
                 return;
             if (!_seenMouse)
                 return;
+            // 拖窗口那几帧先不画：尾巴最多能拆出几百个光斑（每个都是一趟 DrawTexture），
+            // 那几帧正好最挤。反正这时鼠标压在窗口边框上，拖尾本来也看不清。
+            if (ResizeGuard.Busy)
+                return;
 
             _drawnFrame = Time.frameCount;
 

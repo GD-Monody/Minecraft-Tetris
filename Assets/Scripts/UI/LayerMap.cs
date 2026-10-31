@@ -102,6 +102,11 @@ namespace MinecraftTetris
             if (Hidden || grid == null || !UsefulFor(grid.SizeZ))
                 return;
 
+            // 这一块是全场最费的一块 IMGUI：每格两趟贴图 + 四趟边框，还要扫好几遍格子
+            // 数缺口。鼠标动一下就被重画一遍，拖窗口时一帧十几遍，挡掉白跑的那些。
+            if (!UiSkin.WorthDrawing())
+                return;
+
             UiSkin.Apply();
             EnsureStyles();
 

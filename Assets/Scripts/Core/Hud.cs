@@ -20,6 +20,13 @@ namespace MinecraftTetris
         int _lastScore;
         float _scoreFlash;
 
+        /// <summary>最高分刷新过、但还没落盘。</summary>
+        bool _bestDirty;
+        float _bestSaveTimer;
+
+        /// <summary>最高分最多多久落盘一次（秒）。</summary>
+        const float BestSaveInterval = 2f;
+
         static readonly Color PanelFill = new Color(0.10f, 0.11f, 0.15f, 0.90f);
         static readonly Color PanelBorder = new Color(0.35f, 0.37f, 0.44f, 0.95f);
         static readonly Color Accent = new Color(0.52f, 0.78f, 0.30f, 1f);
@@ -32,6 +39,7 @@ namespace MinecraftTetris
         GUIStyle _labelShadow;
         GUIStyle _value;
         GUIStyle _valueShadow;
+        GUIStyle _valueFlash;
         GUIStyle _valueSmall;
         GUIStyle _valueSmallShadow;
         GUIStyle _center;
@@ -63,6 +71,40 @@ namespace MinecraftTetris
 
             if (_scoreFlash > 0f)
                 _scoreFlash -= Time.deltaTime;
+
+            // 最高分放在这里写，而不是 OnGUI 里（以前就是写在 OnGUI 里的）：
+            // OnGUI 不是「一帧一次」，鼠标动一下就再来一趟，而 PlayerPrefs.Save() 是同步
+            // 落盘，一趟几毫秒被放大到十几趟，正好撞在拖窗口那几秒上。这里一帧最多一次，
+            // 而且攒够间隔才真写一次盘 —— 分数是一路往上涨的，每帧都写没有意义。
+            if (Loop != null && Loop.Score > _best)
+            {
+                _best = Loop.Score;
+                _bestDirty = true;
+            }
+
+            if (_bestDirty)
+            {
+                _bestSaveTimer -= Time.unscaledDeltaTime;
+                if (_bestSaveTimer <= 0f)
+                    SaveBest();
+            }
+        }
+
+        void SaveBest()
+        {
+            if (!_bestDirty)
+                return;
+
+            _bestDirty = false;
+            _bestSaveTimer = BestSaveInterval;
+            PlayerPrefs.SetInt("best_score", _best);
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>退出前补一次：攒着的那次还没到间隔，别把最后的记录丢了。</summary>
+        void OnApplicationQuit()
+        {
+            SaveBest();
         }
 
         void EnsureStyles()
@@ -74,6 +116,8 @@ namespace MinecraftTetris
             _labelShadow = MakeStyle(15, ShadowColor);
             _value = MakeStyle(30, ValueColor);
             _valueShadow = MakeStyle(30, ShadowColor);
+            // 分数跳动时用的那一档：只改它的文字颜色，不每帧 new 一个样式。
+            _valueFlash = MakeStyle(30, FlashColor);
             _valueSmall = MakeStyle(18, ValueColor);
             _valueSmallShadow = MakeStyle(18, ShadowColor);
             _center = MakeStyle(26, ValueColor);
@@ -143,16 +187,14 @@ namespace MinecraftTetris
             if (Hidden)
                 return;
 
+            // 鼠标每动一下 IMGUI 就再跑一趟，拖窗口时一帧能跑十几趟，
+            // 界面画的是绝对位置、结果一模一样，这种白跑的趟数直接挡掉。
+            if (!UiSkin.WorthDrawing())
+                return;
+
             UiSkin.Apply();
 
             EnsureStyles();
-
-            if (Loop.Score > _best)
-            {
-                _best = Loop.Score;
-                PlayerPrefs.SetInt("best_score", _best);
-                PlayerPrefs.Save();
-            }
 
             DrawScorePanel();
             DrawNextPanel();
@@ -213,9 +255,14 @@ namespace MinecraftTetris
             Rect valueRect = new Rect(x + UiSkin.P(46f), y - UiSkin.P(6f), UiSkin.P(200f), UiSkin.P(40f));
             GUI.matrix = Matrix4x4.TRS(new Vector3(valueRect.x, valueRect.y, 0f), Quaternion.identity,
                 new Vector3(scale, scale, 1f));
-            GUIStyle scoreStyle = _scoreFlash > 0f
-                ? MakeStyle(30, Color.Lerp(ValueColor, FlashColor, _scoreFlash / 0.4f))
-                : _value;
+            // 以前这里每帧 new GUIStyle(30, 渐变的颜色)：一帧一个垃圾，拖窗口时被放大到
+            // 十几个。改成只改已有样式的文字颜色，样式本身建一次就够。
+            GUIStyle scoreStyle = _value;
+            if (_scoreFlash > 0f)
+            {
+                _valueFlash.normal.textColor = Color.Lerp(ValueColor, FlashColor, _scoreFlash / 0.4f);
+                scoreStyle = _valueFlash;
+            }
             GUI.Label(new Rect(1f, 2f, UiSkin.P(200f), UiSkin.P(40f)), Loop.Score.ToString(), _valueShadow);
             GUI.Label(new Rect(0f, 0f, UiSkin.P(200f), UiSkin.P(40f)), Loop.Score.ToString(), scoreStyle);
             GUI.matrix = Matrix4x4.identity;

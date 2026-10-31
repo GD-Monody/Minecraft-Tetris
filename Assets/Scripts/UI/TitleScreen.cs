@@ -223,6 +223,11 @@ namespace MinecraftTetris
             if (!Visible)
                 return;
 
+            // 标题 / 设置页是画得最多的一块（光尘、标题、按钮、滑条）。鼠标动一下
+            // IMGUI 就整段重画一遍，拖窗口时一帧十几遍 —— 挡掉白跑的那几趟。
+            if (!UiSkin.WorthDrawing())
+                return;
+
             UiSkin.Apply();
             EnsureStyles();
 

@@ -285,6 +285,9 @@ namespace MinecraftTetris
 
         void Update()
         {
+            // 放在最前面：窗口一变尺寸就让各系统进入降载状态，这一帧它们才吃得上。
+            ResizeGuard.Tick();
+
             HideSystemCursor();
 
             if (_loop == null)

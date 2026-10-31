@@ -13,6 +13,13 @@ namespace MinecraftTetris
         GameObject[,,] _cells;
         Vector3[,,] _cellVisual;
 
+        /// <summary>
+        /// 这一格的视觉位置是不是已经贴在格子上了。贴上之后 Update 就完全不管它 ——
+        /// 场上一大半格子是静止的，以前每帧照样给它们算一次 Lerp、写一次 transform，
+        /// 深度开到 6 就是上千次白做的写。
+        /// </summary>
+        bool[,,] _settled;
+
         GameObject[] _pieceCells;
         Vector3[] _pieceVisual;
         Vector3[] _pieceTarget;
@@ -89,6 +96,7 @@ namespace MinecraftTetris
             Grid = grid;
             _cells = new GameObject[grid.SizeX, grid.SizeY, grid.SizeZ];
             _cellVisual = new Vector3[grid.SizeX, grid.SizeY, grid.SizeZ];
+            _settled = new bool[grid.SizeX, grid.SizeY, grid.SizeZ];
             _flashing = new bool[grid.SizeX, grid.SizeY, grid.SizeZ];
             _burning = new bool[grid.SizeX, grid.SizeY, grid.SizeZ];
             _fireMask = new int[grid.SizeX, grid.SizeY, grid.SizeZ];
@@ -182,7 +190,11 @@ namespace MinecraftTetris
             _fireTime += Time.deltaTime;
             UpdateFireFrame();
 
-            // 落定的方块：朝自己的格子追，追上后就停在格子上
+            // 拖窗口那几帧直接就位：那一帧的时间本来就紧，而且画面正在变形，
+            // 看不出这一格是滑过去的还是一步到位的。
+            bool snapAll = ResizeGuard.Busy;
+
+            // 落定的方块：朝自己的格子追，追上后就停在格子上（之后不再碰它）
             for (int x = 0; x < Grid.SizeX; x++)
                 for (int y = 0; y < Grid.SizeY; y++)
                     for (int z = 0; z < Grid.SizeZ; z++)
@@ -190,12 +202,32 @@ namespace MinecraftTetris
                         GameObject go = _cells[x, y, z];
                         if (go == null || !go.activeSelf)
                             continue;
-                        Vector3 target = new Vector3(x, y, z);
-                        _cellVisual[x, y, z] = Vector3.Lerp(_cellVisual[x, y, z], target, k);
-                        go.transform.position = _cellVisual[x, y, z];
+                        if (_settled[x, y, z] && !snapAll)
+                            continue;
 
                         // 火苗也跟着走（方块塌下来的时候火不能留在原地）
-                        if (_burning != null && _burning[x, y, z])
+                        bool burn = _burning != null && _burning[x, y, z];
+
+                        Vector3 v = _cellVisual[x, y, z];
+                        float dx = v.x - x;
+                        float dy = v.y - y;
+                        float dz = v.z - z;
+                        // 差不到百分之一格就算到了：屏幕上不到半个像素，看不出来，
+                        // 再追下去是指数收敛，永远追不到 0。
+                        if (snapAll || dx * dx + dy * dy + dz * dz < 0.0001f)
+                        {
+                            var p = new Vector3(x, y, z);
+                            _cellVisual[x, y, z] = p;
+                            go.transform.position = p;
+                            _settled[x, y, z] = true;
+                            if (burn)
+                                UpdateFireCover(x, y, z);
+                            continue;
+                        }
+
+                        _cellVisual[x, y, z] = Vector3.Lerp(v, new Vector3(x, y, z), k);
+                        go.transform.position = _cellVisual[x, y, z];
+                        if (burn)
                             UpdateFireCover(x, y, z);
                     }
 
@@ -242,12 +274,14 @@ namespace MinecraftTetris
                 go.transform.SetParent(transform, false);
                 _cells[x, y, z] = go;
                 _cellVisual[x, y, z] = new Vector3(x, y, z);
+                _settled[x, y, z] = true;
             }
             else if (!go.activeSelf)
             {
                 // 这一格刚由空变成有：直接出现在格子里。
                 // 不复用上一次留下的视觉位置，否则会看到它从别处滑进来（硬降后尤其明显）。
                 _cellVisual[x, y, z] = new Vector3(x, y, z);
+                _settled[x, y, z] = true;
                 // 朝向也归零：这个物体以前可能装过别的方块、被转过去过。
                 go.transform.rotation = Quaternion.identity;
             }
@@ -323,6 +357,7 @@ namespace MinecraftTetris
 
             _cellVisual[x, y, z] = new Vector3(x, y + drop, z);
             go.transform.position = _cellVisual[x, y, z];
+            _settled[x, y, z] = false;   // 从上面掉下来，交给 Update 追
         }
 
         /// <summary>把一格画成白闪（TNT 引信）或还原。</summary>
@@ -710,6 +745,7 @@ namespace MinecraftTetris
                 _cells[m.FromX, m.FromY, m.FromZ] = null;
                 _cellVisual[m.ToX, m.ToY, m.ToZ] = new Vector3(m.FromX, m.FromY, m.FromZ);
                 go.transform.position = _cellVisual[m.ToX, m.ToY, m.ToZ];
+                _settled[m.ToX, m.ToY, m.ToZ] = false;   // 从原来那一格滑下来
             }
         }
 
@@ -734,7 +770,10 @@ namespace MinecraftTetris
                             if (clearedRows[i] < y)
                                 below++;
                         if (below > 0)
+                        {
                             _cellVisual[x, y, z] = new Vector3(x, y + below, z);
+                            _settled[x, y, z] = false;   // 等下从高处追下来
+                        }
                     }
         }
 

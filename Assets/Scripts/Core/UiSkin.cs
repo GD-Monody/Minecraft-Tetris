@@ -74,5 +74,28 @@ namespace MinecraftTetris
             if (f != null && GUI.skin.font != f)
                 GUI.skin.font = f;
         }
+
+        /// <summary>
+        /// 这一趟 OnGUI 值不值得干活。
+        ///
+        /// IMGUI 不是「一帧一次」：Layout 和 Repaint 各一趟，鼠标每动一下还会再来一趟
+        /// MouseMove。拖窗口边框时鼠标一直动，OnGUI 一帧能被叫十几次，里面的活也跟着
+        /// 做十几遍 —— 那是缩放卡顿的一大半来源。
+        ///
+        /// 界面画的都是绝对 Rect，鼠标动过之后画出来的东西一模一样（按钮悬停也是 Repaint
+        /// 时照鼠标位置现算的），所以 MouseMove 这一趟直接跳过。
+        ///
+        /// Layout 那一趟不能跳：控件的 id 是在 Layout 阶段从头分配的，跳掉之后 id 会一路
+        /// 漂移，按钮按下时记的 id 和抬起时对不上，点击就失灵了。
+        /// </summary>
+        public static bool WorthDrawing()
+        {
+            Event e = Event.current;
+            if (e == null)
+                return true;
+
+            EventType t = e.type;
+            return t != EventType.MouseMove && t != EventType.Ignore;
+        }
     }
 }
