@@ -104,9 +104,23 @@ namespace MinecraftTetris
 
         public void Set(int x, int y, int z, int block)
         {
+            int old = _cells[x, y, z];
             _cells[x, y, z] = block;
             // 写一块就盖一个更晚的序号；清空则归零
             _stamp[x, y, z] = block == 0 ? 0 : ++_stampSeq;
+
+            // 方块被清掉时，这一格可能残留的流体份数要跟着清。
+            // 正常情况下方块格子里没有份数（落定时 OnSolidPlaced 会把流体挤走），
+            // 但清格子的路径有十来处——爆炸、烧掉、玻璃碎、融化、傀儡退场、重力挪走……
+            // 只有消行那条挂了 OnCellCleared，其余都是直接 Set 0。哪条漏了，
+            // 那格就剩一份看不见的岩浆，隔空把旁边的可燃方块点着，
+            // 火烧起来的时候岩浆早就没了，玩家看到的就是「凭空冒火」。
+            // 与其给每条路径挨个打补丁，不如在唯一的写入口把住：
+            // 旧格子非空、新格子为空，就算「这一格被清掉了」，通知出去
+            // （Bootstrap 把这个事件接到 Fluids.ClearCell；ClearCell 幂等，
+            // 消行路径先手动调一次再从这里触发一次，清两遍无害）。
+            if (old != 0 && block == 0 && OnCellCleared != null)
+                OnCellCleared(x, y, z);
         }
 
         public void Clear()

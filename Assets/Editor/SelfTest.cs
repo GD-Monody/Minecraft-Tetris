@@ -886,6 +886,48 @@ namespace MinecraftTetris.EditorTools
             Check("半径内的方块被炸掉", gTnt.Get(5, 5, 0) == 0 && gTnt.Get(4, 6, 0) == 0);
             Check("半径外的方块留着", gTnt.Get(7, 5, 0) == stoneId);
 
+            // —— 清格子必须连流体份数一起清（「凭空冒火」的根治）——
+            // 方块格子里本不该有份数（落定时 OnSolidPlaced 会把流体挤走），
+            // 但清格子的路径有十来处（爆炸 / 烧掉 / 玻璃碎 / 融化 / 傀儡退场 / 重力挪走），
+            // 哪条漏清就会剩一份看不见的岩浆，隔着老远把可燃方块点着，
+            // 火烧起来的时候岩浆早没了——玩家看到的就是「没有岩浆却冒火」。
+            // 修法是在 Grid.Set 这个唯一写入口把住：旧格子非空、新格子为空就触发
+            // OnCellCleared，外面接到 Fluids.ClearCell（正式游戏在 Bootstrap 接线，
+            // 这里照着接一份，下面两条走的就是真实链路）。
+            Grid.OnCellCleared = (cx, cy, cz) => Fluids.ClearCell(cx, cy, cz);
+
+            var gResidue = new Grid(6, 6, 1);
+            gResidue.Set(1, 1, 0, stoneId);
+            Fluids.SetAmount(1, 1, 0, 8, Fluids.LavaId);   // 强塞一份，构造「方块格藏岩浆」的异常态
+            gResidue.Set(1, 1, 0, 0);
+            Check("方块被清掉时格子里的份数跟着清", Fluids.AmountAt(1, 1, 0) == 0);
+
+            gResidue.Set(4, 1, 0, stoneId);
+            Fluids.SetAmount(4, 1, 0, 8, Fluids.LavaId);
+            gResidue.Set(3, 1, 0, Tnt.TntId);
+            Tnt.Reset();
+            Tnt.Prime(gResidue, 3, 1, 0, 0.05f);
+            Tnt.Tick(gResidue, 0.1f);
+            Check("爆炸炸掉的方块格不留隐形岩浆",
+                gResidue.Get(4, 1, 0) == 0 && Fluids.AmountAt(4, 1, 0) == 0);
+
+            bool fireWasOn = GameSettings.FireBurns;
+            GameSettings.SetMech(GameSettings.MechKind.FireBurn, true);
+            int flamId = 0;
+            for (int i = 1; i <= BlockCatalog.Blocks.Length && flamId == 0; i++)
+                if (Fire.IsFlammable(i))
+                    flamId = i;
+            var gBurn = new Grid(4, 4, 1);
+            gBurn.Set(1, 1, 0, flamId);
+            Fluids.SetAmount(1, 1, 0, 2, Fluids.LavaId);
+            Fire.Reset();
+            Check("藏着的岩浆照样把可燃方块点着", Fire.Ignite(gBurn, 1, 1, 0));
+            for (int i = 0; i < 200 && Fire.IsBurning(1, 1, 0); i++)
+                Fire.Tick(gBurn, 0.05f);
+            Check("方块烧光后格子空了", gBurn.Get(1, 1, 0) == 0);
+            Check("烧掉的格子也不留隐形岩浆", Fluids.AmountAt(1, 1, 0) == 0);
+            GameSettings.SetMech(GameSettings.MechKind.FireBurn, fireWasOn);
+
             // 连锁：第一颗炸到第二颗，第二颗被点着而不是直接消失
             var gChain = new Grid(10, 20, 1);
             gChain.Set(2, 5, 0, Tnt.TntId);
