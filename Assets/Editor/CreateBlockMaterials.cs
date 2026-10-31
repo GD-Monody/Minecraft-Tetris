@@ -25,6 +25,8 @@ namespace MinecraftTetris.EditorTools
             // 网格边框：核心亮线 + 外面一层加色光晕（海天蓝）
             CreateSolidMaterial("Assets/Resources/GridCoreMat.mat", "Unlit/Color", new Color(0.42f, 0.86f, 1f));
             CreateSolidMaterial("Assets/Resources/GridGlowMat.mat", "MinecraftTetris/GlowAdditive", new Color(0.10f, 0.55f, 1f, 0.34f));
+            // 创意工坊建造台里的半透明方块（非当前层 / 幽灵预览）
+            CreateMaterial("Assets/Resources/MoldGhostMat.mat", "MinecraftTetris/MoldGhost", atlas);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -38,6 +40,17 @@ namespace MinecraftTetris.EditorTools
             if (shader == null)
             {
                 Debug.LogError("[MinecraftTetris] 找不到 shader: " + shaderName);
+                return;
+            }
+
+            // 重复跑一次不该报「文件已存在」：材质资源是跟着 shader 一起进仓库的，
+            // 已经有了就改它指向的 shader 和贴图就行
+            Material existing = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (existing != null)
+            {
+                existing.shader = shader;
+                existing.mainTexture = texture;
+                EditorUtility.SetDirty(existing);
                 return;
             }
 

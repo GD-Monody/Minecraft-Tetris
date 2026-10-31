@@ -378,6 +378,76 @@ namespace MinecraftTetris.EditorTools
                 Vector3Int.one * MoldData.Size, c => oneSolid.Contains(c), out hx, 1.5f);
             Check("超过最大距离就不再追了", !hx.Valid);
 
+            // ---- 建造台的纯几何：地板落点 / 镜像 / 居中 ----
+            // 建造台本体是个 MonoBehaviour（要建相机和网格），但「点下去落在哪一格」这类
+            // 换算都是静态纯函数，能直接在批处理里断言。
+            var boxSize = Vector3Int.one * MoldData.Size;
+
+            Vector3Int gc;
+            bool gOk = MoldWorkbench.GroundCell(new Vector3(2.5f, 8f, 2.5f), Vector3.down, boxSize, out gc);
+            Check("垂直打到地板正中：落在 (2,0,2)", gOk && gc == new Vector3Int(2, 0, 2));
+            Check("射线朝上打不到地板",
+                !MoldWorkbench.GroundCell(new Vector3(2.5f, 1f, 2.5f), Vector3.up, boxSize, out gc));
+            Check("射线和地板平行：没有交点",
+                !MoldWorkbench.GroundCell(new Vector3(2.5f, 1f, 2.5f), Vector3.right, boxSize, out gc));
+            // 斜射：交点要跟着射线往前挪（dir=(0.5,-1,0) 归一化后走 5 格高、2.5 格远）
+            bool gDiag = MoldWorkbench.GroundCell(new Vector3(0.5f, 5f, 0.5f),
+                new Vector3(0.5f, -1f, 0f).normalized, boxSize, out gc);
+            Check("斜射地板：交点跟着射线往前挪", gDiag && gc == new Vector3Int(3, 0, 0));
+            Check("射线太斜、交点落到盒子外面：不给落点",
+                !MoldWorkbench.GroundCell(new Vector3(0.5f, 5f, 0.5f),
+                    new Vector3(1f, -0.5f, 0f).normalized, boxSize, out gc));
+
+            var lShape = new[]
+            {
+                new Vector3Int(1, 1, 0), new Vector3Int(2, 1, 0),
+                new Vector3Int(3, 1, 0), new Vector3Int(3, 2, 0),
+            };
+            Vector3Int[] mirX = MoldWorkbench.Mirrored(lShape, 0);
+            Vector3Int[] back = MoldWorkbench.Mirrored(mirX, 0);
+            Check("左右镜像：x 按整条边翻（不是按形状自己的包围盒）",
+                mirX[0].x == MoldData.Size - 1 - 1 && mirX[3].x == MoldData.Size - 1 - 3);
+            Check("镜像的 y、z 不动", mirX[3].y == 2 && mirX[3].z == 0);
+            Check("镜像两次回到原样", back[0] == lShape[0] && back[3] == lShape[3]);
+            Vector3Int[] mirZ = MoldWorkbench.Mirrored(new[] { new Vector3Int(1, 1, 0) }, 2);
+            Check("沿 z 镜像：最外面那层翻到最里面", mirZ[0] == new Vector3Int(1, 1, MoldData.Size - 1));
+
+            var corner = new[] { new Vector3Int(0, 0, 0), new Vector3Int(1, 0, 0) };
+            Vector3Int[] mid = MoldWorkbench.Centered(corner);
+            int midMin = Mathf.Min(mid[0].x, mid[1].x);
+            int midMax = Mathf.Max(mid[0].x, mid[1].x);
+            Check("居中：两格宽的形状在 5 格盒子里两边各留 1 格", midMin == 1 && midMax == 2);
+            Vector3Int[] mid2 = MoldWorkbench.Centered(mid);
+            Check("居中之后再居中：原地不动", mid2[0] == mid[0] && mid2[1] == mid[1]);
+            // 存档被手改成超出盒子宽度时，居中也不能把方块甩出盒外
+            var wide = new List<Vector3Int>();
+            for (int i = 0; i < 7; i++)
+                wide.Add(new Vector3Int(i, 0, 0));
+            Vector3Int[] cw = MoldWorkbench.Centered(wide);
+            bool wideInBox = true;
+            for (int i = 0; i < cw.Length; i++)
+            {
+                if (!MoldData.InBox(cw[i]))
+                    wideInBox = false;
+            }
+            Check("超宽形状居中后被夹回盒子里", wideInBox);
+
+            Check("建造台找得到编辑器里用的那种方块", BlockCatalog.IdOf("diamond_block") > 0);
+
+            // 贴着盒壁的方块：命中的那一面朝外，外侧那一格已经出盒 —— 建造台要判「放不下」
+            VoxelHit hw;
+            var wallSolid = new HashSet<Vector3Int> { new Vector3Int(0, 1, 1) };
+            VoxelRaycast.Trace(new Vector3(-6f, 1.5f, 1.5f), Vector3.right, boxSize,
+                c => wallSolid.Contains(c), out hw);
+            Check("贴着盒壁的方块：法线外侧那一格在盒子外面",
+                hw.Valid && hw.Face == new Vector3Int(-1, 0, 0) && !MoldData.InBox(hw.Cell + hw.Face));
+            var innerSolid = new HashSet<Vector3Int> { new Vector3Int(2, 1, 1) };
+            VoxelRaycast.Trace(new Vector3(-6f, 1.5f, 1.5f), Vector3.right, boxSize,
+                c => innerSolid.Contains(c), out hw);
+            Check("不贴壁的方块：法线外侧那一格能放",
+                hw.Valid && hw.Cell + hw.Face == new Vector3Int(1, 1, 1)
+                && MoldData.InBox(hw.Cell + hw.Face));
+
             // ---- 下落速度：范围 (0, 2]，两位小数 ----
             Check("下落速度下限吃掉 0 和负数", GameSettings.ClampFallSpeed(0f) == 0.01f &&
                 GameSettings.ClampFallSpeed(-3f) == 0.01f);

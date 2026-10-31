@@ -21,6 +21,7 @@ namespace MinecraftTetris
         LayerMap _layerMap;
         TitleScreen _title;
         NextPreview _nextPreview;
+        MoldWorkbench _workbench;
         ParticleBurst _particles;
         bool _paused;
         float _autoShotTimer = 6f;
@@ -84,6 +85,12 @@ namespace MinecraftTetris
             _nextPreview = gameObject.AddComponent<NextPreview>();
             _nextPreview.Init(_view);
             _hud.Preview = _nextPreview;
+
+            // 创意工坊的三维建造台：自带一台相机渲到贴图里，只有打开那一页时才开着
+            _workbench = gameObject.AddComponent<MoldWorkbench>();
+            _workbench.Init();
+            _title.Workbench = _workbench;
+            _workbench.OnChanged += _title.SaveMoldEdit;
 
             // 场地三格以上才有必要挂俯视图：中间列和后排从正面看不见，
             // 层消差在哪一格只能靠它。两格深不建，省得白占一块屏幕。
@@ -364,6 +371,14 @@ namespace MinecraftTetris
                     CaptureShot("auto_shot.png");
                 }
             }
+
+            if (_workbench != null && _title != null)
+                _workbench.Active = _title.Visible && _title.WorkshopOpen;
+
+            // 建造台里右键拖动是转盒子、滚轮是缩放，主相机的轨道脚本读的是同一套输入。
+            // 不把它关掉的话，转完建造台回到游戏，场地的视角也跟着被转走了。
+            if (_rig != null)
+                _rig.enabled = !(_title != null && _title.Visible && _title.WorkshopOpen);
 
             if (_title != null && _title.Visible)
             {
@@ -2156,8 +2171,9 @@ namespace MinecraftTetris
 
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(0.08f, 0.09f, 0.12f);
-            // 预览层只给「下一个」相机渲染，主相机不画
+            // 预览层只给「下一个」相机渲染，主相机不画；建造台同理，它有自己的相机
             cam.cullingMask &= ~(1 << NextPreview.PreviewLayer);
+            cam.cullingMask &= ~(1 << MoldWorkbench.WorkLayer);
 
             CameraRig rig = cam.GetComponent<CameraRig>();
             if (rig == null)

@@ -174,6 +174,12 @@ namespace MinecraftTetris
             return 0;
         }
 
+        /// <summary>按英文名查编号（0 = 表里没这个方块）。创意工坊的建造台要用它挑编辑器里的外观。</summary>
+        public static int IdOf(string name)
+        {
+            return FindId(name);
+        }
+
         public static BlockDef Of(int blockId)
         {
             int index = blockId - 1;

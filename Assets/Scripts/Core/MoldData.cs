@@ -137,7 +137,7 @@ namespace MinecraftTetris
             return result.ToArray();
         }
 
-        public static string Encode(IList<Vector3Int> cells)
+        public static string Encode(IReadOnlyList<Vector3Int> cells)
         {
             var sb = new StringBuilder();
             for (int i = 0; i < cells.Count; i++)
@@ -162,7 +162,7 @@ namespace MinecraftTetris
         }
 
         /// <summary>六连通检查：能不能从某一格出发走到每一格。</summary>
-        public static bool IsConnected(IList<Vector3Int> cells)
+        public static bool IsConnected(IReadOnlyList<Vector3Int> cells)
         {
             if (cells.Count == 0)
                 return false;
@@ -196,7 +196,7 @@ namespace MinecraftTetris
         }
 
         /// <summary>模具在 z 方向占了几层，决定它能不能在当前场地深度里出块。</summary>
-        public static int SpanZ(IList<Vector3Int> cells)
+        public static int SpanZ(IReadOnlyList<Vector3Int> cells)
         {
             int min = int.MaxValue;
             int max = int.MinValue;
@@ -211,7 +211,7 @@ namespace MinecraftTetris
         }
 
         /// <summary>校验一整块模具。返回 null 表示合格，否则返回给人看的原因。</summary>
-        public static string Validate(IList<Vector3Int> cells)
+        public static string Validate(IReadOnlyList<Vector3Int> cells)
         {
             if (cells == null || cells.Count == 0)
                 return "至少要放一格";
@@ -283,7 +283,7 @@ namespace MinecraftTetris
             Save();
         }
 
-        public static void SetCells(int index, IList<Vector3Int> cells)
+        public static void SetCells(int index, IReadOnlyList<Vector3Int> cells)
         {
             if (index < 0 || index >= _items.Count)
                 return;

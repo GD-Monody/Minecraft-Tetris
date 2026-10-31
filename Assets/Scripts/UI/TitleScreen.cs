@@ -1366,7 +1366,7 @@ namespace MinecraftTetris
                 case SettingsPage.Main: return new Vector2(420f, 594f);
                 case SettingsPage.Keys: return new Vector2(940f, 478f);
                 case SettingsPage.Size: return new Vector2(460f, 500f);
-                case SettingsPage.Workshop: return new Vector2(680f, 640f);
+                case SettingsPage.Workshop: return new Vector2(680f, 690f);
                 case SettingsPage.Speed: return new Vector2(500f, 360f);
                 case SettingsPage.Music: return new Vector2(500f, 360f);
                 case SettingsPage.Guide: return new Vector2(1000f, 596f);   // 取三栏里最高那一栏
@@ -1423,8 +1423,19 @@ namespace MinecraftTetris
 
         // ---------- 创意工坊 ----------
 
+        /// <summary>
+        /// 三维建造台。由 Bootstrap 接进来，形状就存在它里面 —— 这一页不再自己留一份，
+        /// 免得界面和建造台各记一套、改了这边忘了那边。
+        /// </summary>
+        public MoldWorkbench Workbench;
+
+        /// <summary>这一页正开着。Bootstrap 据此决定建造台的相机要不要渲染。</summary>
+        public bool WorkshopOpen
+        {
+            get { return ShowSettings && _page == SettingsPage.Workshop; }
+        }
+
         int _moldSel;
-        readonly List<Vector3Int> _moldEdit = new List<Vector3Int>();
         bool _renaming;
         string _renameText = "";
 
@@ -1439,105 +1450,149 @@ namespace MinecraftTetris
 
         void LoadMoldEdit()
         {
-            _moldEdit.Clear();
+            if (Workbench == null)
+                return;
+            var cells = new List<Vector3Int>();
             if (_moldSel >= 0 && _moldSel < MoldData.Items.Count)
             {
-                Vector3Int[] cells = MoldData.Parse(MoldData.Items[_moldSel].cells);
-                for (int i = 0; i < cells.Length; i++)
-                    _moldEdit.Add(cells[i]);
+                Vector3Int[] parsed = MoldData.Parse(MoldData.Items[_moldSel].cells);
+                for (int i = 0; i < parsed.Length; i++)
+                    cells.Add(parsed[i]);
             }
+            Workbench.SetCells(cells);
         }
 
-        void SaveMoldEdit()
+        /// <summary>建造台动过一格就调一次，把当前形状写回存档。</summary>
+        public void SaveMoldEdit()
         {
+            if (Workbench == null)
+                return;
             if (_moldSel >= 0 && _moldSel < MoldData.Items.Count)
-                MoldData.SetCells(_moldSel, _moldEdit.ToArray());
+                MoldData.SetCells(_moldSel, Workbench.Cells);
         }
 
         void DrawWorkshop()
         {
-            // 这一页的设计值本来就是按 1 倍写的（680×640），目标倍数传 1：
+            // 这一页的设计值本来就是按 1 倍写的，目标倍数传 1：
             // 屏幕够大时和原来一模一样，装不下才跟着折减。
-            Rect panel = BeginPage(680f, 640f, 1f);
+            Rect panel = BeginPage(680f, 690f, 1f);
             float w = panel.width;
-            float h = panel.height;
             DrawPanel(panel);
 
             GUI.Label(new Rect(panel.x, panel.y + Pg(12f), w, Pg(44f)), "创意工坊", _panelTitleStyle);
 
+            if (GUI.Button(new Rect(panel.x + w - Pg(94f), panel.y + Pg(18f), Pg(70f), Pg(32f)),
+                    "返回", _btnStyle))
+            {
+                _renaming = false;
+                ShowSettings = false;
+            }
+
             // 左边的模具列表
             float listX = panel.x + Pg(24f);
-            float listY = panel.y + Pg(96f);
-            float itemH = Pg(38f);
+            float listY = panel.y + Pg(92f);
+            float itemH = Pg(34f);
             float itemGap = Pg(6f);
 
-            GUI.Label(new Rect(listX, listY - Pg(30f), Pg(280f), Pg(30f)),
-                "模具列表（点一下选中编辑）", _rowLabelStyle);
+            GUI.Label(new Rect(listX, listY - Pg(28f), Pg(280f), Pg(26f)), "模具列表", _rowLabelStyle);
 
             int count = MoldData.Items.Count;
             for (int i = 0; i < count && i < 7; i++)
             {
                 MoldEntry m = MoldData.Items[i];
-                string label = (i == _moldSel ? "▸ " : "   ") + m.name + (m.enabled != 0 ? "     ✓ 启用" : "     ○ 未启用");
-                var rect = new Rect(listX, listY + i * (itemH + itemGap), Pg(260f), itemH);
+                string label = (i == _moldSel ? "▸ " : "   ") + m.name + (m.enabled != 0 ? "  ✓" : "  ○");
+                var rect = new Rect(listX, listY + i * (itemH + itemGap), Pg(230f), itemH);
                 if (i == _moldSel)
                     DrawRect(rect, new Color(0.42f, 0.86f, 1f, 0.22f));
                 if (GUI.Button(rect, label, _listStyle) && i != _moldSel)
                 {
                     _moldSel = i;
+                    _renaming = false;
                     LoadMoldEdit();
                 }
             }
 
             if (count > 7)
-                GUI.Label(new Rect(listX, listY + 7 * (itemH + itemGap), Pg(260f), Pg(30f)),
+                GUI.Label(new Rect(listX, listY + 7 * (itemH + itemGap), Pg(230f), Pg(26f)),
                     "（只显示前 7 个）", _rowLabelStyle);
 
-            // 右边的 5x5 画布
-            float cell = Pg(46f);
-            float gridX = panel.x + Pg(348f);
-            float gridY = panel.y + Pg(96f);
+            // 右边：三维建造盒。建造台自己带一台相机渲到贴图里，这里只负责给它一块矩形，
+            // 鼠标在里面点哪儿由它自己换算成射线。
+            float viewX = panel.x + Pg(272f);
+            float viewW = Pg(372f);
+            var viewRect = new Rect(viewX, listY, viewW, viewW);
 
-            GUI.Label(new Rect(gridX, gridY - Pg(30f), Pg(300f), Pg(30f)),
-                "点格子摆形状（再点一次取消）", _rowLabelStyle);
+            if (Workbench != null)
+                Workbench.Draw(viewRect);
+            else
+                DrawRect(viewRect, new Color(0f, 0f, 0f, 0.45f));
+            DrawViewBorder(viewRect);
 
-            for (int row = 0; row < MoldData.Size; row++)
+            // 建造盒下方两排工具
+            float rowY = viewRect.yMax + Pg(10f);
+            float bh = Pg(34f);
+
+            GUI.Label(new Rect(viewX, rowY + Pg(2f), Pg(28f), Pg(30f)), "层", _rowLabelStyle);
+            if (GUI.Button(new Rect(viewX + Pg(30f), rowY, Pg(36f), bh), "◀", _btnStyle) && Workbench != null)
+                Workbench.Layer = Workbench.Layer - 1;
+            GUI.Label(new Rect(viewX + Pg(70f), rowY, Pg(56f), bh),
+                Workbench != null ? (Workbench.Layer + 1) + " / " + MoldData.Size : "-", _rowLabelStyle);
+            if (GUI.Button(new Rect(viewX + Pg(130f), rowY, Pg(36f), bh), "▶", _btnStyle) && Workbench != null)
+                Workbench.Layer = Workbench.Layer + 1;
+            if (GUI.Button(new Rect(viewX + Pg(178f), rowY, Pg(140f), bh),
+                    Workbench != null && Workbench.DimOthers ? "只亮当前层：开" : "只亮当前层：关", _btnStyle)
+                && Workbench != null)
+                Workbench.DimOthers = !Workbench.DimOthers;
+
+            float row2 = rowY + Pg(40f);
+            if (GUI.Button(new Rect(viewX, row2, Pg(78f), bh), "镜像", _btnStyle) && Workbench != null)
+                Workbench.Mirror();
+            if (GUI.Button(new Rect(viewX + Pg(86f), row2, Pg(78f), bh), "居中", _btnStyle) && Workbench != null)
+                Workbench.Recenter();
+            if (GUI.Button(new Rect(viewX + Pg(172f), row2, Pg(78f), bh), "清空", _btnStyle) && Workbench != null)
+                Workbench.Clear();
+            if (GUI.Button(new Rect(viewX + Pg(258f), row2, Pg(104f), bh), "复位视角", _btnStyle) && Workbench != null)
+                Workbench.ResetView();
+
+            // 提示行 / 状态行。重命名时这一块让给输入框，不然两排字会叠在一起
+            float hintY = row2 + Pg(40f);
+            float bx = panel.x + Pg(40f);
+
+            if (_renaming)
             {
-                for (int col = 0; col < MoldData.Size; col++)
+                GUI.Label(new Rect(bx, hintY + Pg(2f), Pg(56f), Pg(30f)), "名字", _rowLabelStyle);
+                _renameText = GUI.TextField(new Rect(bx + Pg(58f), hintY, Pg(300f), Pg(32f)),
+                    _renameText, 16, _btnStyle);
+                if (GUI.Button(new Rect(bx + Pg(370f), hintY, Pg(70f), Pg(32f)), "确定", _btnStyle))
                 {
-                    int gx = col;
-                    int gy = MoldData.Size - 1 - row;
-                    var point = new Vector3Int(gx, gy, 0);
-                    bool on = _moldEdit.Contains(point);
-
-                    var rc = new Rect(gridX + col * cell, gridY + row * cell, cell - 3f, cell - 3f);
-                    DrawRect(rc, on ? new Color(0.42f, 0.86f, 1f, 0.92f) : new Color(1f, 1f, 1f, 0.07f));
-                    if (GUI.Button(rc, "", GUIStyle.none))
-                    {
-                        if (on)
-                            _moldEdit.Remove(point);
-                        else
-                            _moldEdit.Add(point);
-                        SaveMoldEdit();
-                    }
+                    MoldData.Rename(_moldSel, _renameText);
+                    _renaming = false;
                 }
+                if (GUI.Button(new Rect(bx + Pg(452f), hintY, Pg(70f), Pg(32f)), "取消", _btnStyle))
+                    _renaming = false;
+            }
+            else
+            {
+                string hint = Workbench != null ? Workbench.Hint : null;
+                GUI.Label(new Rect(bx, hintY, Pg(600f), Pg(26f)),
+                    hint ?? "左键放在方块朝外那一面 · 右键擦除 · 右键拖动转视角 · 滚轮缩放",
+                    _rowLabelStyle);
+                GUI.Label(new Rect(bx, hintY + Pg(28f), Pg(600f), Pg(26f)), MoldStatus(), _rowLabelStyle);
             }
 
             // 底部按钮
-            float bx = panel.x + Pg(40f);
-            float by = panel.y + Pg(430f);
-            float bw2 = Pg(110f);
+            float by = hintY + Pg(62f);
             float bh2 = Pg(40f);
-            float bgap = Pg(12f);
 
-            if (GUI.Button(new Rect(bx, by, bw2, bh2), "新建模具", _btnStyle))
+            if (GUI.Button(new Rect(bx, by, Pg(110f), bh2), "新建模具", _btnStyle))
             {
                 MoldData.Add();
                 _moldSel = MoldData.Items.Count - 1;
+                _renaming = false;
                 LoadMoldEdit();
             }
 
-            if (GUI.Button(new Rect(bx + bw2 + bgap, by, bw2, bh2), "删除模具", _btnStyle))
+            if (GUI.Button(new Rect(bx + Pg(122f), by, Pg(110f), bh2), "删除模具", _btnStyle))
             {
                 MoldData.Remove(_moldSel);
                 if (_moldSel >= MoldData.Items.Count)
@@ -1545,7 +1600,7 @@ namespace MinecraftTetris
                 LoadMoldEdit();
             }
 
-            if (GUI.Button(new Rect(bx + (bw2 + bgap) * 2f, by, bw2, bh2), "重命名", _btnStyle))
+            if (GUI.Button(new Rect(bx + Pg(244f), by, Pg(100f), bh2), "重命名", _btnStyle))
             {
                 if (_moldSel >= 0 && _moldSel < MoldData.Items.Count)
                 {
@@ -1554,46 +1609,47 @@ namespace MinecraftTetris
                 }
             }
 
-            string enableLabel = "未启用（点一下启用）";
-            if (_moldSel >= 0 && _moldSel < MoldData.Items.Count && MoldData.Items[_moldSel].enabled != 0)
-                enableLabel = "启用中（点一下禁用）";
-
-            if (GUI.Button(new Rect(bx + (bw2 + bgap) * 3f, by, Pg(200f), bh2), enableLabel, _btnStyle))
+            bool on = _moldSel >= 0 && _moldSel < MoldData.Items.Count
+                      && MoldData.Items[_moldSel].enabled != 0;
+            if (GUI.Button(new Rect(bx + Pg(356f), by, Pg(180f), bh2),
+                    on ? "启用中（点一下禁用）" : "未启用（点一下启用）", _btnStyle))
             {
                 if (_moldSel >= 0 && _moldSel < MoldData.Items.Count)
-                {
-                    MoldData.SetEnabled(_moldSel, MoldData.Items[_moldSel].enabled == 0);
-                    LoadMoldEdit();
-                }
+                    MoldData.SetEnabled(_moldSel, !on);
             }
 
-            // 重命名输入行（在按钮上方）
-            if (_renaming)
-            {
-                float ry = by - Pg(46f);
-                float rh = Pg(32f);
-                GUI.Label(new Rect(bx, ry + Pg(2f), Pg(56f), Pg(30f)), "名字", _rowLabelStyle);
-                _renameText = GUI.TextField(new Rect(bx + Pg(58f), ry, Pg(300f), rh),
-                    _renameText, 16, _btnStyle);
-                if (GUI.Button(new Rect(bx + Pg(370f), ry, Pg(70f), rh), "确定", _btnStyle))
-                {
-                    MoldData.Rename(_moldSel, _renameText);
-                    _renaming = false;
-                    LoadMoldEdit();
-                }
-                if (GUI.Button(new Rect(bx + Pg(452f), ry, Pg(70f), rh), "取消", _btnStyle))
-                    _renaming = false;
-            }
-
-            GUI.Label(new Rect(panel.x + Pg(40f), by + bh2 + Pg(20f), Pg(520f), Pg(30f)),
+            GUI.Label(new Rect(bx, by + bh2 + Pg(10f), Pg(560f), Pg(26f)),
                 "启用的模具会和 7 种默认方块一起随机出现", _rowLabelStyle);
+        }
 
-            if (GUI.Button(new Rect(panel.x + w - Pg(170f), by + bh2 + Pg(22f),
-                Pg(130f), bh2), "返回", _btnStyle))
-            {
-                _renaming = false;
-                ShowSettings = false;
-            }
+        /// <summary>建造盒那块矩形的框线，把「窗口」和面板背景分开。</summary>
+        void DrawViewBorder(Rect r)
+        {
+            Color c = new Color(0.35f, 0.37f, 0.44f, 0.95f);
+            DrawRect(new Rect(r.x - 1f, r.y - 1f, r.width + 2f, 1f), c);
+            DrawRect(new Rect(r.x - 1f, r.yMax, r.width + 2f, 1f), c);
+            DrawRect(new Rect(r.x - 1f, r.y - 1f, 1f, r.height + 2f), c);
+            DrawRect(new Rect(r.xMax, r.y - 1f, 1f, r.height + 2f), c);
+        }
+
+        /// <summary>当前模具的状态：合不合格、要不要更深的场地、用了几格。</summary>
+        string MoldStatus()
+        {
+            if (Workbench == null)
+                return string.Empty;
+            if (_moldSel < 0 || _moldSel >= MoldData.Items.Count)
+                return "先选一个模具";
+
+            string bad = MoldData.Validate(Workbench.Cells);
+            if (bad != null)
+                return bad;
+
+            int spanZ = MoldData.SpanZ(Workbench.Cells);
+            if (spanZ > GameSettings.SizeZ)
+                return "需要场地深度 ≥ " + spanZ;
+
+            string tail = " · " + Workbench.Cells.Count + "/" + MoldData.MaxCells + " 格";
+            return MoldData.Items[_moldSel].enabled != 0 ? "可用" + tail : "未启用" + tail;
         }
 
         void EnsureStyles()
