@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 using MinecraftTetris;
 using UnityEditor;
@@ -302,6 +303,80 @@ namespace MinecraftTetris.EditorTools
                 .Rotate(RotationAxis.Yaw, true)
                 .Rotate(RotationAxis.Yaw, true);
             Check("绕竖直轴转四次回到原来的样子", deepMold.Rot.SameAs(PieceRotation.Identity));
+
+            // ---- 三维拾取：一次点击怎么解出深度 ----
+            // 参照物是一份算法完全不同的暴力实现：每个格子单独做一次射线 vs 立方体相交
+            // （slab 法），取距离最小的那个。DDA 步进必须和它完全一致，否则体素遍历的
+            // 「先跨哪个轴」一定是错的。
+            var bSolid = new HashSet<Vector3Int>();
+            bSolid.Add(new Vector3Int(1, 0, 1));
+            bSolid.Add(new Vector3Int(3, 2, 2));
+            bSolid.Add(new Vector3Int(0, 0, 0));
+            bSolid.Add(new Vector3Int(2, 2, 2));
+
+            int mismatchCell = 0;
+            int mismatchMiss = 0;
+            int traced = 0;
+            var rnd = new System.Random(20261031);
+            for (int k = 0; k < 4000; k++)
+            {
+                // 起点随机散布在盒子四周（模仿相机绕着盒子转），方向对着盒子
+                Vector3 o = new Vector3(
+                    (float)rnd.NextDouble() * 20f - 5f,
+                    (float)rnd.NextDouble() * 20f - 5f,
+                    (float)rnd.NextDouble() * 20f - 5f);
+                Vector3 aim = new Vector3(
+                    (float)rnd.NextDouble() * MoldData.Size,
+                    (float)rnd.NextDouble() * MoldData.Size,
+                    (float)rnd.NextDouble() * MoldData.Size);
+                Vector3 dir = aim - o;
+
+                VoxelHit h;
+                bool hitA = VoxelRaycast.Trace(o, dir, Vector3Int.one * MoldData.Size, c => bSolid.Contains(c), out h);
+
+                Vector3Int refCell;
+                float refT;
+                bool hitB = BruteFirstHit(o, dir, MoldData.Size, bSolid, out refCell, out refT);
+
+                if (!hitA && hitB)
+                    mismatchMiss++;
+                else if (hitA && hitB)
+                {
+                    traced++;
+                    if (h.Cell != refCell)
+                        mismatchCell++;
+                }
+            }
+            Check("4000 条随机射线：步进命中的格子和暴力相交完全一致",
+                mismatchCell == 0 && traced > 500);
+            Check("射线擦不到任何方块时两边都判「没打中」", mismatchMiss == 0);
+
+            // 打在已知方块上时，法线必须指向来路：新方块就长在这一格的法线外侧
+            VoxelHit hx;
+            var oneSolid = new HashSet<Vector3Int>();
+            oneSolid.Add(new Vector3Int(1, 1, 1));
+            VoxelRaycast.Trace(new Vector3(-6f, 1.5f, 1.5f), Vector3.right,
+                Vector3Int.one * MoldData.Size, c => oneSolid.Contains(c), out hx);
+            Check("从 -x 打过来：命中 x 负方向的面",
+                hx.Valid && hx.Cell == new Vector3Int(1, 1, 1) && hx.Face == new Vector3Int(-1, 0, 0));
+            VoxelRaycast.Trace(new Vector3(1.5f, 1.5f, -6f), Vector3.forward,
+                Vector3Int.one * MoldData.Size, c => oneSolid.Contains(c), out hx);
+            Check("从 -z 打过来：新方块要长在 z+ 一侧",
+                hx.Valid && hx.Face == new Vector3Int(0, 0, -1));
+            VoxelRaycast.Trace(new Vector3(1.5f, 8f, 1.5f), Vector3.down,
+                Vector3Int.one * MoldData.Size, c => oneSolid.Contains(c), out hx);
+            Check("从上方打下来：命中顶面", hx.Valid && hx.Face == new Vector3Int(0, 1, 0));
+
+            // 空盒子和偏掉的射线都不能给出答案
+            bool emptyHit = VoxelRaycast.Trace(new Vector3(-6f, 1.5f, 1.5f), Vector3.right,
+                Vector3Int.one * MoldData.Size, c => false, out hx);
+            Check("空盒子里打不到东西", !emptyHit);
+            bool missHit = VoxelRaycast.Trace(new Vector3(-6f, 40f, 1.5f), Vector3.right,
+                Vector3Int.one * MoldData.Size, c => oneSolid.Contains(c), out hx);
+            Check("射线整个擦过盒子上方：判没打中", !missHit);
+            VoxelRaycast.Trace(new Vector3(-6f, 1.5f, 1.5f), Vector3.right,
+                Vector3Int.one * MoldData.Size, c => oneSolid.Contains(c), out hx, 1.5f);
+            Check("超过最大距离就不再追了", !hx.Valid);
 
             // ---- 下落速度：范围 (0, 2]，两位小数 ----
             Check("下落速度下限吃掉 0 和负数", GameSettings.ClampFallSpeed(0f) == 0.01f &&
@@ -2412,6 +2487,65 @@ namespace MinecraftTetris.EditorTools
         {
             for (int i = 0; i < 4000 && Structure.Busy; i++)
                 Structure.Tick(g, 0.05f);
+        }
+
+        /// <summary>
+        /// 拾取的参照实现：不管什么步进算法，对每个格子单独做一次「射线 vs 单位立方体」
+        /// 的 slab 相交，取最近的一个。写得又慢又啰嗦，就是为了跟 VoxelRaycast 的思路
+        /// 完全不同——两边一致才有说服力。
+        /// </summary>
+        static bool BruteFirstHit(Vector3 origin, Vector3 dir, int size,
+            HashSet<Vector3Int> solid, out Vector3Int cell, out float dist)
+        {
+            cell = Vector3Int.zero;
+            dist = float.MaxValue;
+            bool found = false;
+
+            foreach (Vector3Int c in solid)
+            {
+                float tMin = float.NegativeInfinity;
+                float tMax = float.PositiveInfinity;
+                bool ok = true;
+
+                for (int axis = 0; axis < 3 && ok; axis++)
+                {
+                    float oComp = axis == 0 ? origin.x : (axis == 1 ? origin.y : origin.z);
+                    float dComp = axis == 0 ? dir.x : (axis == 1 ? dir.y : dir.z);
+                    float loP = axis == 0 ? c.x : (axis == 1 ? c.y : c.z);
+
+                    if (Mathf.Abs(dComp) < 1e-9f)
+                    {
+                        if (oComp < loP || oComp > loP + 1f)
+                            ok = false;
+                        continue;
+                    }
+
+                    float t1 = (loP - oComp) / dComp;
+                    float t2 = (loP + 1f - oComp) / dComp;
+                    if (t1 > t2)
+                    {
+                        float tmp = t1; t1 = t2; t2 = tmp;
+                    }
+                    if (t1 > tMin) tMin = t1;
+                    if (t2 < tMax) tMax = t2;
+                    if (tMin > tMax) ok = false;
+                }
+
+                if (!ok || tMax < 0f)
+                    continue;
+
+                // 起点已经在格子里面时入射距离是负的，按 0 算——它肯定比任何
+                // 后面的格子都近，这和 DDA「入射那一格优先」的规则一致
+                float t = tMin < 0f ? 0f : tMin;
+                if (t < dist)
+                {
+                    dist = t;
+                    cell = c;
+                    found = true;
+                }
+            }
+
+            return found;
         }
     }
 }
