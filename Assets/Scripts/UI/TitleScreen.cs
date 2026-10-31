@@ -1341,7 +1341,7 @@ namespace MinecraftTetris
         /// 宽高和字号共用同一个系数，所以任何窗口尺寸下面板都装得下内容、字也不出框
         /// （只缩面板不缩字、字会顶破按钮这个坑在暂停面板上踩过一次）。
         /// </summary>
-        /// <param name="target">这一页想放大的倍数；创意工坊这类本来就用 1 倍的传 1。</param>
+        /// <param name="target">这一页想放大的倍数，默认 PageTarget；装不下由 FitScale 折减。</param>
         Rect BeginPage(float designW, float designH, float target = PageTarget)
         {
             float margin = UiSkin.P(PageMargin);
@@ -1375,10 +1375,10 @@ namespace MinecraftTetris
             return new Vector2(420f, 594f);
         }
 
-        /// <summary>自检用：某一页的目标倍数。创意工坊本来就是按 1 倍设计的。</summary>
+        /// <summary>自检用：某一页的目标倍数。各页统一走 PageTarget，由 FitScale 在装不下时折减。</summary>
         public static float PageTargetOf(int page)
         {
-            return (SettingsPage)page == SettingsPage.Workshop ? 1f : PageTarget;
+            return PageTarget;
         }
 
         /// <summary>
@@ -1475,7 +1475,7 @@ namespace MinecraftTetris
         {
             // 这一页的设计值本来就是按 1 倍写的，目标倍数传 1：
             // 屏幕够大时和原来一模一样，装不下才跟着折减。
-            Rect panel = BeginPage(680f, 690f, 1f);
+            Rect panel = BeginPage(680f, 690f);
             float w = panel.width;
             DrawPanel(panel);
 
@@ -1612,8 +1612,8 @@ namespace MinecraftTetris
 
             bool on = _moldSel >= 0 && _moldSel < MoldData.Items.Count
                       && MoldData.Items[_moldSel].enabled != 0;
-            if (GUI.Button(new Rect(bx + Pg(356f), by, Pg(180f), bh2),
-                    on ? "启用中（点一下禁用）" : "未启用（点一下启用）", _btnStyle))
+            if (GUI.Button(new Rect(bx + Pg(356f), by, Pg(110f), bh2),
+                    on ? "启用中" : "未启用", _btnStyle))
             {
                 if (_moldSel >= 0 && _moldSel < MoldData.Items.Count)
                     MoldData.SetEnabled(_moldSel, !on);
