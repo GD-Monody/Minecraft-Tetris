@@ -86,11 +86,11 @@ namespace MinecraftTetris
             _nextPreview.Init(_view);
             _hud.Preview = _nextPreview;
 
-            // 创意工坊的三维建造台：自带一台相机渲到贴图里，只有打开那一页时才开着
+            // 创意工坊的三维建造台：自带一台相机渲到贴图里，只有打开那一页时才开着。
+            // 建在这里（TitleScreen 之前）只是先建对象，接 _title 那两行得等下面建完它才能跑，
+            // 不然 _title 还是 null，Start 直接炸——第一次跑就栽在这。
             _workbench = gameObject.AddComponent<MoldWorkbench>();
             _workbench.Init();
-            _title.Workbench = _workbench;
-            _workbench.OnChanged += _title.SaveMoldEdit;
 
             // 场地三格以上才有必要挂俯视图：中间列和后排从正面看不见，
             // 层消差在哪一格只能靠它。两格深不建，省得白占一块屏幕。
@@ -118,6 +118,10 @@ namespace MinecraftTetris
             _title.OnFallSpeedChanged += OnFallSpeedChanged;
             _title.OnMusicChanged += OnMusicChanged;
             _sfx.Enabled = _title.SfxEnabled;
+
+            // 建造台和标题界面对上号：它改一格就存盘
+            _title.Workbench = _workbench;
+            _workbench.OnChanged += _title.SaveMoldEdit;
 
             // 命令行带 -auto 时跳过开始界面，方便自动化截图与调试
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-auto") >= 0)
