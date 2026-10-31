@@ -6,7 +6,7 @@ namespace MinecraftTetris
     /// <summary>出块池里的一个形状：默认 7 种方块，或者玩家在创意工坊里做的模具。</summary>
     public class ShapeEntry
     {
-        public Vector2Int[] Cells;
+        public Vector3Int[] Cells;
         public string Label;
         public PieceType Type;
         public bool IsMold;
@@ -15,7 +15,7 @@ namespace MinecraftTetris
         {
             return new ShapeEntry
             {
-                Cells = (Vector2Int[])Cells.Clone(),
+                Cells = (Vector3Int[])Cells.Clone(),
                 Label = Label,
                 Type = Type,
                 IsMold = IsMold,
@@ -64,7 +64,7 @@ namespace MinecraftTetris
 
             foreach (MoldEntry mold in MoldData.EnabledMolds())
             {
-                Vector2Int[] cells = MoldData.Parse(mold.cells);
+                Vector3Int[] cells = MoldData.Parse(mold.cells);
                 if (cells.Length == 0)
                     continue;
                 all.Add(new ShapeEntry
@@ -85,20 +85,22 @@ namespace MinecraftTetris
             _queue.AddRange(all);
         }
 
-        /// <summary>把形状平移到左下角，方便按左下角定位生成。</summary>
-        public static Vector2Int[] Normalize(Vector2Int[] cells)
+        /// <summary>把形状平移到最小角的三条轴上都贴 0，方便按最小角定位生成。</summary>
+        public static Vector3Int[] Normalize(Vector3Int[] cells)
         {
             int minX = int.MaxValue;
             int minY = int.MaxValue;
+            int minZ = int.MaxValue;
             for (int i = 0; i < cells.Length; i++)
             {
                 minX = Mathf.Min(minX, cells[i].x);
                 minY = Mathf.Min(minY, cells[i].y);
+                minZ = Mathf.Min(minZ, cells[i].z);
             }
 
-            var result = new Vector2Int[cells.Length];
+            var result = new Vector3Int[cells.Length];
             for (int i = 0; i < cells.Length; i++)
-                result[i] = new Vector2Int(cells[i].x - minX, cells[i].y - minY);
+                result[i] = new Vector3Int(cells[i].x - minX, cells[i].y - minY, cells[i].z - minZ);
             return result;
         }
     }

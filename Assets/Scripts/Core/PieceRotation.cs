@@ -42,13 +42,16 @@ namespace MinecraftTetris
             return new PieceRotation(Mul(c0, c1, c2, X), Mul(c0, c1, c2, Y), Mul(c0, c1, c2, Z));
         }
 
-        /// <summary>平面形状里的某一格（本地 x-y，z 恒为 0）转成世界方向。</summary>
-        public Vector3Int Apply(Vector2Int cell)
+        /// <summary>
+        /// 立体形状的某一格转成世界方向：本地 xyz 各乘对应的世界轴向量。
+        /// 二十四朝向里每格都走得准 —— 三维模具能转起来就靠这一步。
+        /// </summary>
+        public Vector3Int Apply(Vector3Int cell)
         {
             return new Vector3Int(
-                X.x * cell.x + Y.x * cell.y,
-                X.y * cell.x + Y.y * cell.y,
-                X.z * cell.x + Y.z * cell.y);
+                X.x * cell.x + Y.x * cell.y + Z.x * cell.z,
+                X.y * cell.x + Y.y * cell.y + Z.y * cell.z,
+                X.z * cell.x + Y.z * cell.y + Z.z * cell.z);
         }
 
         /// <summary>给 Unity 用的四元数。由这个矩阵反推，所以和逻辑层一定一致。</summary>

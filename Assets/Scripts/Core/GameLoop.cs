@@ -40,15 +40,16 @@ namespace MinecraftTetris
         public int OriginY;
         public int OriginZ;
 
-        /// <summary>形状（方块本地 x-y 平面里的格子，最小角在 0）。读档会直接改它，改完要调 RebuildOffsets。</summary>
-        public Vector2Int[] Cells;
+        /// <summary>形状（方块本地坐标系里的格子，最小角在 0）。创意工坊的模具可以占三个轴，
+        /// 默认七种躺在本地 z = 0 平面上。读档会直接改它，改完要调 RebuildOffsets。</summary>
+        public Vector3Int[] Cells;
 
         PieceRotation _rot;
         Vector3Int[] _offsets;
 
-        public Piece(Vector2Int[] cells, string label, PieceType type, int blockId, int x, int y, int z)
+        public Piece(Vector3Int[] cells, string label, PieceType type, int blockId, int x, int y, int z)
         {
-            Cells = (Vector2Int[])cells.Clone();
+            Cells = (Vector3Int[])cells.Clone();
             Label = label;
             Type = type;
             BlockId = blockId;
@@ -794,10 +795,14 @@ namespace MinecraftTetris
             Next = _bag.Next();
             NextBlockId = RandomBlockId();
 
-            Vector2Int[] cells = entry.Cells;
+            Vector3Int[] cells = entry.Cells;
             int maxX = 0;
+            int maxZ = 0;
             for (int i = 0; i < cells.Length; i++)
+            {
                 maxX = Mathf.Max(maxX, cells[i].x);
+                maxZ = Mathf.Max(maxZ, cells[i].z);
+            }
 
             int minY = 0;
             for (int i = 0; i < cells.Length; i++)
@@ -808,7 +813,9 @@ namespace MinecraftTetris
             // 在框外生成：让方块最低的那一格正好落在场地顶部（y = SizeY），整块都在框上方，
             // 然后往下掉进来。IsFree 把顶部以上算作空，所以这一段不会判成放不下。
             int oy = Grid.SizeY - minY;
-            int oz = (Grid.SizeZ - 1) / 2;
+            // 三维模具也要在两个水平方向上居中，不然紧贴着正面往里塞
+            int depth = maxZ + 1;
+            int oz = Mathf.Max(0, (Grid.SizeZ - depth) / 2);
             Current = new Piece(cells, entry.Label, entry.Type, blockId, ox, oy, oz);
             _fallTimer = 0f;
 
@@ -955,7 +962,7 @@ namespace MinecraftTetris
                 if (d.curCellsX != null && d.curCellsY != null && d.curCellsX.Length == Current.Cells.Length)
                 {
                     for (int i = 0; i < Current.Cells.Length; i++)
-                        Current.Cells[i] = new Vector2Int(d.curCellsX[i], d.curCellsY[i]);
+                        Current.Cells[i] = new Vector3Int(d.curCellsX[i], d.curCellsY[i], 0);
                 }
                 // 形状先落地，再套朝向（赋 Rot 会按新形状重算偏移）
                 Current.Rot = d.rot > 0 ? PieceRotation.FromCode(d.rot - 1) : PieceRotation.FromYaw(d.facing);
@@ -980,9 +987,10 @@ namespace MinecraftTetris
 
             if (xs != null && ys != null && xs.Length == ys.Length && xs.Length > 0)
             {
-                var cells = new Vector2Int[xs.Length];
+                // 存档里没有 z 这一维（旧档），一律当贴近玩家那一面的第一层
+                var cells = new Vector3Int[xs.Length];
                 for (int i = 0; i < xs.Length; i++)
-                    cells[i] = new Vector2Int(xs[i], ys[i]);
+                    cells[i] = new Vector3Int(xs[i], ys[i], 0);
                 return new ShapeEntry
                 {
                     Cells = cells,

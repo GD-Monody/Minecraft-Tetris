@@ -83,7 +83,7 @@ namespace MinecraftTetris.EditorTools
 
             // 旋转能返回稳定结果
             var loop2 = new GameLoop(10, 20, 1, 7);
-            Vector2Int[] before = (Vector2Int[])loop2.Current.Cells.Clone();
+            Vector3Int[] before = (Vector3Int[])loop2.Current.Cells.Clone();
             bool rotated = loop2.TryRotate(true);
             Check("旋转调用不抛异常", rotated || !rotated);
             Check("旋转后仍是四格", loop2.Current.Cells.Length == 4);
@@ -165,7 +165,12 @@ namespace MinecraftTetris.EditorTools
 
             // ---- 场地里转：转得动 / 转不动 ----
             // 深度只有 1 格时，俯视旋转和前后翻都必然失败（转过去要占 z ≥ 2）
+            // 钉一块标准的 T：出块池洗手后有可能会先甩一个自定义模具出来，那种模具
+            // 可能整个 y 只有一行（比如默认清单里的「五连条」），前后翻过去仍然只占一层 z，
+            // 在 z=1 的场地里就转得动 —— 这条断言就随机翻脸了。它是测「深度不够时转不动」，
+            // 不该被出块顺序绑架，所以把方块固定下来。
             var shallow = new GameLoop(10, 20, 1, 5);
+            shallow.Current = new Piece(PieceType.T, 1, 3, 10, 0);
             Check("z=1 的场地转不动俯视旋转",
                 !shallow.TryRotateYaw(true) && shallow.Current.Rot.SameAs(PieceRotation.Identity));
             Check("z=1 的场地也翻不动",
@@ -239,6 +244,65 @@ namespace MinecraftTetris.EditorTools
                 saveLoop2.Current.Rot.SameAs(savedRot) &&
                 savedRot.SameAs(PieceRotation.Identity) == false);
 
+            // ---- 创意工坊：三维模具 ----
+            Check("旧存档 \"x,y\" 缺的那一维补 0",
+                MoldData.Parse("1,2").Length == 1 && MoldData.Parse("1,2")[0] == new Vector3Int(1, 2, 0));
+            Check("新存档 \"x,y,z\" 保住深度",
+                MoldData.Parse("1,2,3")[0] == new Vector3Int(1, 2, 3));
+            Check("同一个格子写两遍只留一格", MoldData.Parse("1,1,0;1,1,0").Length == 1);
+            Check("坏片段跳过，好片段照留", MoldData.Parse("1,1,0;x;2,1,0").Length == 2);
+            Check("编码再解回来是一模一样的形状",
+                MoldData.Parse(MoldData.Encode(new[] { new Vector3Int(1, 0, 2), new Vector3Int(3, 4, 0) }))
+                    .Length == 2);
+
+            Check("空模具不给存", MoldData.Validate(new Vector3Int[0]) != null);
+            Check("超过格数上限不给存",
+                MoldData.Validate(new[]
+                {
+                    new Vector3Int(0, 0, 0), new Vector3Int(1, 0, 0), new Vector3Int(2, 0, 0),
+                    new Vector3Int(3, 0, 0), new Vector3Int(4, 0, 0), new Vector3Int(0, 1, 0),
+                    new Vector3Int(1, 1, 0), new Vector3Int(2, 1, 0), new Vector3Int(3, 1, 0),
+                }) != null);
+            Check("出建造盒的格子不给存",
+                MoldData.Validate(new[] { new Vector3Int(0, 0, 0), new Vector3Int(MoldData.Size, 0, 0) }) != null);
+            Check("挨在一起的两格连通",
+                MoldData.IsConnected(new[] { new Vector3Int(0, 0, 0), new Vector3Int(1, 0, 0) }));
+            // 只对角碰上的两格不算连通：它们之间没有公共面，一旋转就散架
+            Check("只有角挨着的两格不算连通",
+                !MoldData.IsConnected(new[] { new Vector3Int(0, 0, 0), new Vector3Int(1, 1, 0) }));
+            Check("隔着一层空气的两格在 z 上也不算连通",
+                !MoldData.IsConnected(new[] { new Vector3Int(0, 0, 0), new Vector3Int(0, 0, 2) }));
+            Check("两截不连通的模具存不下来",
+                MoldData.Validate(new[]
+                {
+                    new Vector3Int(0, 0, 0), new Vector3Int(1, 0, 0),
+                    new Vector3Int(3, 0, 0), new Vector3Int(4, 0, 0),
+                }) != null);
+            Check("深度跨度按占了几层算",
+                MoldData.SpanZ(new[] { new Vector3Int(0, 0, 0), new Vector3Int(0, 0, 2) }) == 3 &&
+                MoldData.SpanZ(new[] { new Vector3Int(0, 0, 1), new Vector3Int(0, 0, 1) }) == 1);
+            Check("归一化把最小角挪到三条轴的原点",
+                PieceBag.Normalize(new[] { new Vector3Int(2, 3, 4), new Vector3Int(3, 3, 4) })[0]
+                    == Vector3Int.zero);
+
+            // 三维形状真的能装进三维场地：跨两层的 L 形，四次转回来还得是它自己
+            var deepCells = new[]
+            {
+                new Vector3Int(0, 0, 0), new Vector3Int(1, 0, 0), new Vector3Int(1, 0, 1),
+            };
+            var deepMold = new Piece(deepCells, "深L", PieceType.I, 1, 2, 2, 1);
+            Check("三维模具每格都落在三维方向上", deepMold.CellOffset(2).z == 1);
+            int justify = 0;
+            for (int i = 0; i < deepMold.Cells.Length; i++)
+                if (deepMold.CellOffset(i).x >= 0 && deepMold.CellOffset(i).y >= 0 && deepMold.CellOffset(i).z >= 0)
+                    justify++;
+            Check("朝向矩阵把整块摆到非负（原点就是最小角）", justify == deepMold.Cells.Length);
+            deepMold.Rot = deepMold.Rot.Rotate(RotationAxis.Yaw, true)
+                .Rotate(RotationAxis.Yaw, true)
+                .Rotate(RotationAxis.Yaw, true)
+                .Rotate(RotationAxis.Yaw, true);
+            Check("绕竖直轴转四次回到原来的样子", deepMold.Rot.SameAs(PieceRotation.Identity));
+
             // ---- 下落速度：范围 (0, 2]，两位小数 ----
             Check("下落速度下限吃掉 0 和负数", GameSettings.ClampFallSpeed(0f) == 0.01f &&
                 GameSettings.ClampFallSpeed(-3f) == 0.01f);
@@ -278,7 +342,7 @@ namespace MinecraftTetris.EditorTools
             // 七种方块形状都是四格
             for (int i = 0; i < 7; i++)
             {
-                Vector2Int[] shape = Tetromino.GetShape((PieceType)i);
+                Vector3Int[] shape = Tetromino.GetShape((PieceType)i);
                 Check("方块形状四格: " + (PieceType)i, shape.Length == 4);
             }
 
@@ -853,9 +917,9 @@ namespace MinecraftTetris.EditorTools
             Check("每片叶子落在不同的格子里", distinct && Foliage.LastGrown.Count == 4);
 
             // 大模具不会一次刷出一整面叶子墙：一次落定有上限
-            var bigCells = new Vector2Int[16];
+            var bigCells = new Vector3Int[16];
             for (int i = 0; i < 16; i++)
-                bigCells[i] = new Vector2Int(i % 4, i / 4);
+                bigCells[i] = new Vector3Int(i % 4, i / 4, 0);
             var gMold = new Grid(12, 12, 1);
             var moldPiece = new Piece(bigCells, "big", PieceType.I, oakLog, 3, 3, 0);
             for (int i = 0; i < moldPiece.Cells.Length; i++)

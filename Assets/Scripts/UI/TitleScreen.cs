@@ -1424,7 +1424,7 @@ namespace MinecraftTetris
         // ---------- 创意工坊 ----------
 
         int _moldSel;
-        readonly List<Vector2Int> _moldEdit = new List<Vector2Int>();
+        readonly List<Vector3Int> _moldEdit = new List<Vector3Int>();
         bool _renaming;
         string _renameText = "";
 
@@ -1442,7 +1442,7 @@ namespace MinecraftTetris
             _moldEdit.Clear();
             if (_moldSel >= 0 && _moldSel < MoldData.Items.Count)
             {
-                Vector2Int[] cells = MoldData.Parse(MoldData.Items[_moldSel].cells);
+                Vector3Int[] cells = MoldData.Parse(MoldData.Items[_moldSel].cells);
                 for (int i = 0; i < cells.Length; i++)
                     _moldEdit.Add(cells[i]);
             }
@@ -1507,7 +1507,7 @@ namespace MinecraftTetris
                 {
                     int gx = col;
                     int gy = MoldData.Size - 1 - row;
-                    var point = new Vector2Int(gx, gy);
+                    var point = new Vector3Int(gx, gy, 0);
                     bool on = _moldEdit.Contains(point);
 
                     var rc = new Rect(gridX + col * cell, gridY + row * cell, cell - 3f, cell - 3f);

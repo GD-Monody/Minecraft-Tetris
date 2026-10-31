@@ -68,18 +68,24 @@ namespace MinecraftTetris
             if (_view == null || entry == null)
                 return;
 
-            Vector2Int[] shape = entry.Cells;
+            // 三个轴都要居中：模具现在可以往深处长，只看 xy 的话 z 方向的两格会叠在一起，
+            // 预览里根本看不出它是立体的（预览容器本身有一个斜角，摆正了就能看出厚度）。
+            Vector3Int[] shape = entry.Cells;
             int minX = int.MaxValue, maxX = int.MinValue;
             int minY = int.MaxValue, maxY = int.MinValue;
+            int minZ = int.MaxValue, maxZ = int.MinValue;
             for (int i = 0; i < shape.Length; i++)
             {
                 minX = Mathf.Min(minX, shape[i].x);
                 maxX = Mathf.Max(maxX, shape[i].x);
                 minY = Mathf.Min(minY, shape[i].y);
                 maxY = Mathf.Max(maxY, shape[i].y);
+                minZ = Mathf.Min(minZ, shape[i].z);
+                maxZ = Mathf.Max(maxZ, shape[i].z);
             }
             float cx = (minX + maxX) * 0.5f;
             float cy = (minY + maxY) * 0.5f;
+            float cz = (minZ + maxZ) * 0.5f;
 
             Mesh mesh = _view.GetMesh(blockId);
             Material mat = _view.GetMaterial(blockId);
@@ -93,7 +99,7 @@ namespace MinecraftTetris
                     continue;
                 }
                 go.SetActive(true);
-                go.transform.localPosition = new Vector3(shape[i].x - cx, shape[i].y - cy, 0f);
+                go.transform.localPosition = new Vector3(shape[i].x - cx, shape[i].y - cy, shape[i].z - cz);
                 _filters[i].sharedMesh = mesh;
                 _renderers[i].sharedMaterial = mat;
             }
