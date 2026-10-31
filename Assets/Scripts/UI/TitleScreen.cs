@@ -86,7 +86,7 @@ namespace MinecraftTetris
         /// <summary>「游戏规则」按键栏：键名居中。</summary>
         GUIStyle _guideKeyStyle;
 
-        // ---------- 设置各页的大号样式（尺寸统统 ×PageScale） ----------
+        // ---------- 设置各页的大号样式（尺寸统统 × 当前页倍数，见 BeginPage） ----------
         GUIStyle _btnBig;
         GUIStyle _panelTitleBig;
         GUIStyle _rowLabelBig;
@@ -433,10 +433,9 @@ namespace MinecraftTetris
 
         void DrawSettingsMain()
         {
-            float w = Pg(420f);
             // 按钮数 × 54 + 上下留白；加一项就跟着涨，不然会压到「返回」上
-            float h = Pg(594f);
-            Rect panel = CenterPanel(w, h);
+            Rect panel = BeginPage(420f, 594f);
+            float w = panel.width;
             DrawPanel(panel);
 
             GUI.Label(new Rect(panel.x, panel.y + Pg(16f), w, Pg(44f)), "设置", _panelTitleBig);
@@ -540,15 +539,16 @@ namespace MinecraftTetris
             // 十四项改单列 + 滚轮滚动。原来排三列，界面放大一倍后宽度直接溢出屏幕；
             // 而且机制以后还会加，行数变多固定面板迟早又出事。改成滚动列表一劳永逸：
             // 面板高度钳在屏幕内，装不下的部分用滚轮看，右侧画一条自绘的滚动指示条。
+            // 必须先 BeginPage：下面的 rowH / colW 都要用这一页刚算出来的倍数
+            // 上下各留一截、装不下就折减倍数：标题和返回键永远在屏内
+            Rect panel = BeginPage(480f, 900f);
+            float w = panel.width;
+            float h = panel.height;
+            DrawPanel(panel);
+
             float rowH = Pg(46f);
             float rowGap = Pg(10f);
             float colW = Pg(400f);
-
-            float w = Pg(80f) + colW;
-            float maxH = Screen.height - Pg(60f);      // 上下各留一截，标题和返回键永远在屏内
-            float h = Mathf.Min(Pg(900f), maxH);
-            Rect panel = CenterPanel(w, h);
-            DrawPanel(panel);
 
             GUI.Label(new Rect(panel.x, panel.y + Pg(12f), w, Pg(44f)), "特殊方块机制", _panelTitleBig);
 
@@ -609,16 +609,19 @@ namespace MinecraftTetris
             // 12 组键排成两列（每列 6 行）。原来是一条竖列 12 行，整页放大一倍之后
             // 行数 × 行高会直接顶出屏幕，只能改成两列。
             const int perCol = 6;
+            int cols = (AllActions.Length + perCol - 1) / perCol;
+
+            // 必须先 BeginPage：下面的 rowH / colW 都要用这一页刚算出来的倍数
+            // 设计值：80 + 2×400 + 60 宽；62 + 6×52 + 104 高
+            Rect panel = BeginPage(940f, 478f);
+            float w = panel.width;
+            float h = panel.height;
+            DrawPanel(panel);
+
             float rowH = Pg(44f);
             float rowGap = Pg(8f);
             float colW = Pg(400f);
             float colGap = Pg(60f);
-            int cols = (AllActions.Length + perCol - 1) / perCol;
-
-            float w = Pg(80f) + cols * colW + (cols - 1) * colGap;
-            float h = Pg(62f) + perCol * (rowH + rowGap) + Pg(104f);
-            Rect panel = CenterPanel(w, h);
-            DrawPanel(panel);
 
             GUI.Label(new Rect(panel.x, panel.y + Pg(12f), w, Pg(44f)), "按键设置", _panelTitleBig);
 
@@ -662,9 +665,8 @@ namespace MinecraftTetris
 
         void DrawSettingsSize()
         {
-            float w = Pg(460f);
-            float h = Pg(500f);
-            Rect panel = CenterPanel(w, h);
+            Rect panel = BeginPage(460f, 500f);
+            float w = panel.width;
             DrawPanel(panel);
 
             GUI.Label(new Rect(panel.x, panel.y + Pg(14f), w, Pg(44f)), "场地尺寸", _panelTitleBig);
@@ -714,9 +716,9 @@ namespace MinecraftTetris
 
         void DrawSettingsSpeed()
         {
-            float w = Pg(500f);
-            float h = Pg(360f);
-            Rect panel = CenterPanel(w, h);
+            Rect panel = BeginPage(500f, 360f);
+            float w = panel.width;
+            float h = panel.height;
             DrawPanel(panel);
 
             GUI.Label(new Rect(panel.x, panel.y + Pg(14f), w, Pg(44f)), "下落速度", _panelTitleBig);
@@ -773,9 +775,9 @@ namespace MinecraftTetris
         /// </summary>
         void DrawSettingsMusic()
         {
-            float w = Pg(500f);
-            float h = Pg(360f);
-            Rect panel = CenterPanel(w, h);
+            Rect panel = BeginPage(500f, 360f);
+            float w = panel.width;
+            float h = panel.height;
             DrawPanel(panel);
 
             GUI.Label(new Rect(panel.x, panel.y + Pg(14f), w, Pg(44f)), "音乐音量", _panelTitleBig);
@@ -1124,13 +1126,13 @@ namespace MinecraftTetris
             if (_guideTab < 0 || _guideTab >= GuideTabCount)
                 _guideTab = GuideTabPlay;
 
-            // 这一页内容最多，放大一倍之后宽高都顶到屏幕边上，所以横向铺满（1000 设计单位 = 2500px）
-            float w = Pg(1000f);
+            // 这一页内容最多（设计 1000 宽），横向基本铺满；屏幕不够宽就自动折减倍数
             // 三栏内容长短差得多，面板高度跟着栏走，免得短栏下面空一大块
-            float h = _guideTab == GuideTabBlocks ? Pg(596f)
-                : _guideTab == GuideTabKeys ? Pg(576f)
-                : Pg(520f);
-            Rect panel = CenterPanel(w, h);
+            float designH = _guideTab == GuideTabBlocks ? 596f
+                : _guideTab == GuideTabKeys ? 576f
+                : 520f;
+            Rect panel = BeginPage(1000f, designH);
+            float w = panel.width;
             DrawPanel(panel);
 
             GUI.Label(new Rect(panel.x, panel.y + Pg(12f), w, Pg(46f)), "游戏规则", _panelTitleBig);
@@ -1295,23 +1297,112 @@ namespace MinecraftTetris
         }
 
         /// <summary>
-        /// 设置这几页（主页 / 按键 / 场地尺寸 / 下滑速度 / 音量 / 机制开关 / 游戏规则）相对基准再放大一倍。
+        /// 设置这几页（主页 / 按键 / 场地尺寸 / 下落速度 / 音量 / 机制开关 / 游戏规则）
+        /// 相对基准想放大到的倍数。
         ///
         /// 为什么要单独一套：界面尺寸是写死的像素（P() 只乘 1.25），不随分辨率走。
         /// 在 2560×1494 这类高分屏上整块设置面板只占屏幕中间一小块，字看着就小。
-        /// 这几页内容少、改起来可控，所以整页翻倍；页内每个尺寸过 Pg()、每个字号过 Fg()，
-        /// 两套数字同一个系数，等比长大不会出现「字大了框没大」的错位。
+        /// 页内每个尺寸过 Pg()、每个字号过 Fg()，两套数字同一个系数，
+        /// 等比长大不会出现「字大了框没大」的错位。
+        ///
+        /// 注意这是「目标倍数」不是「一定倍数」：屏幕装不下时按可用空间自动折减，
+        /// 见 BeginPage。写死 2 倍的话规则页（设计 1000×596）要 2500×1490 像素，
+        /// 1080p 的窗口根本装不下，面板直接跑到屏幕外面去。
         /// </summary>
-        const float PageScale = 2f;
+        const float PageTarget = 2f;
+
+        /// <summary>
+        /// 折减下限。再小字就看不清了 —— 但下限不能设太高：设成 0.5 的话
+        /// 机制页（设计高 900）在 800×600 的窗口里会顶出屏幕。0.35 是实测
+        /// 640×480 都还装得下的值。
+        /// </summary>
+        const float PageMin = 0.35f;
+
+        /// <summary>面板四周至少留出的边距（设计像素）。</summary>
+        const float PageMargin = 24f;
+
+        /// <summary>当前页实际采用的放大倍数。每页画之前由 BeginPage 算好。</summary>
+        static float _pageScale = PageTarget;
 
         static float Pg(float design)
         {
-            return UiSkin.P(design * PageScale);
+            return UiSkin.P(design * _pageScale);
         }
 
         static int Fg(int size)
         {
-            return UiSkin.Size(Mathf.RoundToInt(size * PageScale));
+            return UiSkin.Size(Mathf.RoundToInt(size * _pageScale));
+        }
+
+        /// <summary>
+        /// 每页画之前调一次：拿这一页的设计宽高跟当前屏幕比，算出最多能放大到几倍，
+        /// 把字号同步到样式上，返回居中后的面板矩形。
+        ///
+        /// 宽高和字号共用同一个系数，所以任何窗口尺寸下面板都装得下内容、字也不出框
+        /// （只缩面板不缩字、字会顶破按钮这个坑在暂停面板上踩过一次）。
+        /// </summary>
+        /// <param name="target">这一页想放大的倍数；创意工坊这类本来就用 1 倍的传 1。</param>
+        Rect BeginPage(float designW, float designH, float target = PageTarget)
+        {
+            float margin = UiSkin.P(PageMargin);
+            _pageScale = UiSkin.FitScale(designW, designH, target,
+                Mathf.Max(1f, Screen.width - margin * 2f),
+                Mathf.Max(1f, Screen.height - margin * 2f),
+                PageMin);
+
+            SyncPageFonts();
+
+            return CenterPanel(Pg(designW), Pg(designH));
+        }
+
+        /// <summary>
+        /// 自检用：某一设置页的设计宽高（下标 = SettingsPage 的值）。
+        /// 改了某一页的布局，这里的数字要跟着改 —— 自检拿它在各种窗口尺寸下算装不装得下。
+        /// </summary>
+        public static Vector2 PageDesign(int page)
+        {
+            switch ((SettingsPage)page)
+            {
+                case SettingsPage.Main: return new Vector2(420f, 594f);
+                case SettingsPage.Keys: return new Vector2(940f, 478f);
+                case SettingsPage.Size: return new Vector2(460f, 500f);
+                case SettingsPage.Workshop: return new Vector2(680f, 640f);
+                case SettingsPage.Speed: return new Vector2(500f, 360f);
+                case SettingsPage.Music: return new Vector2(500f, 360f);
+                case SettingsPage.Guide: return new Vector2(1000f, 596f);   // 取三栏里最高那一栏
+                case SettingsPage.Mech: return new Vector2(480f, 900f);
+            }
+            return new Vector2(420f, 594f);
+        }
+
+        /// <summary>自检用：某一页的目标倍数。创意工坊本来就是按 1 倍设计的。</summary>
+        public static float PageTargetOf(int page)
+        {
+            return (SettingsPage)page == SettingsPage.Workshop ? 1f : PageTarget;
+        }
+
+        /// <summary>
+        /// 大号样式的字号按当前 _pageScale 现算。样式本身只在 EnsureStyles 里建一次，
+        /// 每帧改的是 fontSize —— 建一个 GUIStyle 的开销远比改一个字段大。
+        /// </summary>
+        void SyncPageFonts()
+        {
+            _panelTitleBig.fontSize = Fg(32);
+            _rowLabelBig.fontSize = Fg(18);
+            _hintBig.fontSize = Fg(18);
+            _valueBig.fontSize = Fg(22);
+            _sliderShadowBig.fontSize = Fg(22);
+            _guideNameBig.fontSize = Fg(19);
+            _guideDescBig.fontSize = Fg(14);
+            _guideNoteBig.fontSize = Fg(17);
+            _guideKeyBig.fontSize = Fg(19);
+            _btnBig.fontSize = Fg(18);
+
+            // 创意工坊用的是没放大那套样式（目标 1 倍），同样跟着折减
+            _panelTitleStyle.fontSize = Fg(32);
+            _rowLabelStyle.fontSize = Fg(18);
+            _listStyle.fontSize = Fg(17);
+            _btnStyle.fontSize = Fg(18);
         }
 
         static Rect CenterPanel(float w, float h)
@@ -1365,20 +1456,22 @@ namespace MinecraftTetris
 
         void DrawWorkshop()
         {
-            float w = UiSkin.P(680f);
-            float h = UiSkin.P(640f);
-            Rect panel = CenterPanel(w, h);
+            // 这一页的设计值本来就是按 1 倍写的（680×640），目标倍数传 1：
+            // 屏幕够大时和原来一模一样，装不下才跟着折减。
+            Rect panel = BeginPage(680f, 640f, 1f);
+            float w = panel.width;
+            float h = panel.height;
             DrawPanel(panel);
 
-            GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(12f), w, UiSkin.P(44f)), "创意工坊", _panelTitleStyle);
+            GUI.Label(new Rect(panel.x, panel.y + Pg(12f), w, Pg(44f)), "创意工坊", _panelTitleStyle);
 
             // 左边的模具列表
-            float listX = panel.x + UiSkin.P(24f);
-            float listY = panel.y + UiSkin.P(96f);
-            float itemH = UiSkin.P(38f);
-            float itemGap = UiSkin.P(6f);
+            float listX = panel.x + Pg(24f);
+            float listY = panel.y + Pg(96f);
+            float itemH = Pg(38f);
+            float itemGap = Pg(6f);
 
-            GUI.Label(new Rect(listX, listY - UiSkin.P(30f), UiSkin.P(280f), UiSkin.P(30f)),
+            GUI.Label(new Rect(listX, listY - Pg(30f), Pg(280f), Pg(30f)),
                 "模具列表（点一下选中编辑）", _rowLabelStyle);
 
             int count = MoldData.Items.Count;
@@ -1386,7 +1479,7 @@ namespace MinecraftTetris
             {
                 MoldEntry m = MoldData.Items[i];
                 string label = (i == _moldSel ? "▸ " : "   ") + m.name + (m.enabled != 0 ? "     ✓ 启用" : "     ○ 未启用");
-                var rect = new Rect(listX, listY + i * (itemH + itemGap), UiSkin.P(260f), itemH);
+                var rect = new Rect(listX, listY + i * (itemH + itemGap), Pg(260f), itemH);
                 if (i == _moldSel)
                     DrawRect(rect, new Color(0.42f, 0.86f, 1f, 0.22f));
                 if (GUI.Button(rect, label, _listStyle) && i != _moldSel)
@@ -1397,15 +1490,15 @@ namespace MinecraftTetris
             }
 
             if (count > 7)
-                GUI.Label(new Rect(listX, listY + 7 * (itemH + itemGap), UiSkin.P(260f), UiSkin.P(30f)),
+                GUI.Label(new Rect(listX, listY + 7 * (itemH + itemGap), Pg(260f), Pg(30f)),
                     "（只显示前 7 个）", _rowLabelStyle);
 
             // 右边的 5x5 画布
-            float cell = UiSkin.P(46f);
-            float gridX = panel.x + UiSkin.P(348f);
-            float gridY = panel.y + UiSkin.P(96f);
+            float cell = Pg(46f);
+            float gridX = panel.x + Pg(348f);
+            float gridY = panel.y + Pg(96f);
 
-            GUI.Label(new Rect(gridX, gridY - UiSkin.P(30f), UiSkin.P(300f), UiSkin.P(30f)),
+            GUI.Label(new Rect(gridX, gridY - Pg(30f), Pg(300f), Pg(30f)),
                 "点格子摆形状（再点一次取消）", _rowLabelStyle);
 
             for (int row = 0; row < MoldData.Size; row++)
@@ -1431,11 +1524,11 @@ namespace MinecraftTetris
             }
 
             // 底部按钮
-            float bx = panel.x + UiSkin.P(40f);
-            float by = panel.y + UiSkin.P(430f);
-            float bw2 = UiSkin.P(110f);
-            float bh2 = UiSkin.P(40f);
-            float bgap = UiSkin.P(12f);
+            float bx = panel.x + Pg(40f);
+            float by = panel.y + Pg(430f);
+            float bw2 = Pg(110f);
+            float bh2 = Pg(40f);
+            float bgap = Pg(12f);
 
             if (GUI.Button(new Rect(bx, by, bw2, bh2), "新建模具", _btnStyle))
             {
@@ -1465,7 +1558,7 @@ namespace MinecraftTetris
             if (_moldSel >= 0 && _moldSel < MoldData.Items.Count && MoldData.Items[_moldSel].enabled != 0)
                 enableLabel = "启用中（点一下禁用）";
 
-            if (GUI.Button(new Rect(bx + (bw2 + bgap) * 3f, by, UiSkin.P(200f), bh2), enableLabel, _btnStyle))
+            if (GUI.Button(new Rect(bx + (bw2 + bgap) * 3f, by, Pg(200f), bh2), enableLabel, _btnStyle))
             {
                 if (_moldSel >= 0 && _moldSel < MoldData.Items.Count)
                 {
@@ -1477,26 +1570,26 @@ namespace MinecraftTetris
             // 重命名输入行（在按钮上方）
             if (_renaming)
             {
-                float ry = by - UiSkin.P(46f);
-                float rh = UiSkin.P(32f);
-                GUI.Label(new Rect(bx, ry + UiSkin.P(2f), UiSkin.P(56f), UiSkin.P(30f)), "名字", _rowLabelStyle);
-                _renameText = GUI.TextField(new Rect(bx + UiSkin.P(58f), ry, UiSkin.P(300f), rh),
+                float ry = by - Pg(46f);
+                float rh = Pg(32f);
+                GUI.Label(new Rect(bx, ry + Pg(2f), Pg(56f), Pg(30f)), "名字", _rowLabelStyle);
+                _renameText = GUI.TextField(new Rect(bx + Pg(58f), ry, Pg(300f), rh),
                     _renameText, 16, _btnStyle);
-                if (GUI.Button(new Rect(bx + UiSkin.P(370f), ry, UiSkin.P(70f), rh), "确定", _btnStyle))
+                if (GUI.Button(new Rect(bx + Pg(370f), ry, Pg(70f), rh), "确定", _btnStyle))
                 {
                     MoldData.Rename(_moldSel, _renameText);
                     _renaming = false;
                     LoadMoldEdit();
                 }
-                if (GUI.Button(new Rect(bx + UiSkin.P(452f), ry, UiSkin.P(70f), rh), "取消", _btnStyle))
+                if (GUI.Button(new Rect(bx + Pg(452f), ry, Pg(70f), rh), "取消", _btnStyle))
                     _renaming = false;
             }
 
-            GUI.Label(new Rect(panel.x + UiSkin.P(40f), by + bh2 + UiSkin.P(20f), UiSkin.P(520f), UiSkin.P(30f)),
+            GUI.Label(new Rect(panel.x + Pg(40f), by + bh2 + Pg(20f), Pg(520f), Pg(30f)),
                 "启用的模具会和 7 种默认方块一起随机出现", _rowLabelStyle);
 
-            if (GUI.Button(new Rect(panel.x + w - UiSkin.P(170f), by + bh2 + UiSkin.P(22f),
-                UiSkin.P(130f), bh2), "返回", _btnStyle))
+            if (GUI.Button(new Rect(panel.x + w - Pg(170f), by + bh2 + Pg(22f),
+                Pg(130f), bh2), "返回", _btnStyle))
             {
                 _renaming = false;
                 ShowSettings = false;
@@ -1554,7 +1647,7 @@ namespace MinecraftTetris
             _menuBtnStyle = new GUIStyle(_btnStyle);
             _menuBtnStyle.alignment = TextAnchor.MiddleCenter;
             _menuBtnStyle.fontSize = UiSkin.Size(18);
-            // 设置各页的大号版本：颜色、对齐、换行设置和上面一一对应，只是字号 ×PageScale
+            // 设置各页的大号版本：颜色、对齐、换行设置和上面一一对应，字号每帧由 SyncPageFonts 改写
             _panelTitleBig = MakeStylePx(Fg(32), Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
             _rowLabelBig = MakeStylePx(Fg(18), new Color(0.72f, 0.76f, 0.82f, 1f), TextAnchor.MiddleLeft, FontStyle.Normal);
             _hintBig = MakeStylePx(Fg(18), new Color(0.72f, 0.76f, 0.82f, 1f), TextAnchor.MiddleLeft, FontStyle.Normal);
@@ -1584,7 +1677,7 @@ namespace MinecraftTetris
             return s;
         }
 
-        /// <summary>同 MakeStyle，但字号已经是最终像素值（大号样式已经乘过 PageScale，不能再缩一次）。</summary>
+        /// <summary>同 MakeStyle，但字号已经是最终像素值（大号样式的字号由 SyncPageFonts 现算，不能再缩一次）。</summary>
         static GUIStyle MakeStylePx(int px, Color color, TextAnchor anchor, FontStyle style)
         {
             var s = new GUIStyle(GUI.skin.label);

@@ -1149,6 +1149,52 @@ namespace MinecraftTetris.EditorTools
             Check("极小窗口有缩放下限，不会算出 0 或负数",
                 tiny.scale >= 0.5f && tiny.width > 0f && tiny.height > 0f && tiny.gap >= 0f);
 
+            // 设置 / 规则各页的自适应：面板必须整块装进屏幕，不能只 clamp 宽不管高
+            float pageMargin = UiSkin.P(24f);
+            var screens = new[]
+            {
+                new Vector2(2560f, 1440f), new Vector2(1920f, 1080f), new Vector2(1600f, 900f),
+                new Vector2(1366f, 768f), new Vector2(1280f, 720f), new Vector2(1024f, 640f),
+                new Vector2(800f, 600f), new Vector2(640f, 480f),
+            };
+
+            bool pagesFit = true;
+            bool pagesPositive = true;
+            for (int pi = 0; pi <= (int)TitleScreen.PageMech; pi++)
+            {
+                Vector2 design = TitleScreen.PageDesign(pi);
+                float target = TitleScreen.PageTargetOf(pi);
+
+                for (int si = 0; si < screens.Length; si++)
+                {
+                    float availW = screens[si].x - pageMargin * 2f;
+                    float availH = screens[si].y - pageMargin * 2f;
+                    float s = UiSkin.FitScale(design.x, design.y, target, availW, availH, 0.35f);
+
+                    float pw = UiSkin.P(design.x * s);
+                    float ph = UiSkin.P(design.y * s);
+                    if (pw > availW + 0.5f || ph > availH + 0.5f)
+                        pagesFit = false;
+                    if (s <= 0f || pw <= 0f || ph <= 0f)
+                        pagesPositive = false;
+                }
+            }
+            Check("设置 / 规则每一页在 640×480 ~ 2560×1440 下都装得进屏幕", pagesFit);
+            Check("各页缩放系数永远是正数", pagesPositive);
+
+            // 大屏要真吃到 2 倍，小屏要真的降下来（否则等于自适应没生效）
+            Vector2 guideDesign = TitleScreen.PageDesign(TitleScreen.PageGuide);
+            float bigScale = UiSkin.FitScale(guideDesign.x, guideDesign.y, TitleScreen.PageTargetOf(TitleScreen.PageGuide),
+                2560f - pageMargin * 2f, 1440f - pageMargin * 2f, 0.35f);
+            float smallScale = UiSkin.FitScale(guideDesign.x, guideDesign.y, TitleScreen.PageTargetOf(TitleScreen.PageGuide),
+                1280f - pageMargin * 2f, 720f - pageMargin * 2f, 0.35f);
+            // 1440 高装不下 596 设计高的 2 倍（要 1490px），所以只能到 1.85 倍左右
+            Check("2560×1440 下规则页接近目标 2 倍", bigScale > 1.5f && bigScale <= 2f + 0.001f);
+            Check("1280×720 下规则页自动折减（写死 2 倍会溢出）", smallScale < 1.5f && smallScale > 0.35f);
+            Check("规则页在 1080p 下宽度不超屏",
+                UiSkin.P(guideDesign.x * UiSkin.FitScale(guideDesign.x, guideDesign.y, 2f,
+                    1920f - pageMargin * 2f, 1080f - pageMargin * 2f, 0.35f)) <= 1920f - pageMargin * 2f + 0.5f);
+
             // ---------- 特殊方块机制开关 ----------
             Check("机制开关一共十四项", GameSettings.MechCount == 14);
 
