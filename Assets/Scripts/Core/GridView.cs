@@ -467,6 +467,12 @@ namespace MinecraftTetris
             cover.GetComponent<MeshRenderer>().sharedMaterial = FireMaterial;
             // 火苗不跟着方块转：落定的方块可能带着落下时的朝向，火跟着转就躺下了
             cover.transform.rotation = Quaternion.identity;
+            // 新建的物体默认站在世界原点，也就是场地左下角那一格（0,0,0）。
+            // 落定的格子是「贴上格子就不再进 Update 的追赶循环」的（见 _settled 的短路），
+            // 所以 UpdateFireCover 永远不会轮到它们 —— 只靠那里挪位置，
+            // 结果就是所有火苗都堆在左下角，真正烧着的那一格反而一片火都没有。
+            // 点着的这一刻必须先把它摆到格子上，之后交给 UpdateFireCover 跟着走。
+            cover.transform.position = _cellVisual[x, y, z];
             cover.SetActive(true);
         }
 
