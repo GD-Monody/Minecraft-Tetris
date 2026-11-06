@@ -187,11 +187,6 @@ namespace MinecraftTetris
             }
         }
 
-        public bool AnyInputPressed()
-        {
-            return Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return);
-        }
-
         void LoadAssets()
         {
             _titleTex = Resources.Load<Texture2D>("title");
