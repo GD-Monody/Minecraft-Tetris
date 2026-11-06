@@ -264,7 +264,7 @@ namespace MinecraftTetris
 
             // 凡是「摆一个场面给你看」的开关，都自动跳过标题界面。
             // 不这么做的话：标题显示时相机的 cullingMask 是 0（画面里只有菜单，场地是空的），
-            // 而按空格开始游戏又会 Grid.Clear() 把刚摆好的场面一起清掉 —— 单给 -tnttest 什么都看不见。
+            // 而点「开始游戏」开新局又会 Grid.Clear() 把刚摆好的场面一起清掉 —— 单给 -tnttest 什么都看不见。
             string[] sceneTests =
             {
                 "-sandtest", "-reacttest", "-tnttest", "-leaftest", "-bedrocktest", "-structuretest",
@@ -399,8 +399,9 @@ namespace MinecraftTetris
                     _music.SetPaused(false);
                     _music.SetMenuMode(true);
                 }
-                if (_title.AnyInputPressed())
-                    StartNewGame();
+                // 这里原本是「按空格 / 回车直接开局」。问题在于设置、游戏规则、创意工坊
+                // 都是盖在标题界面上的弹层，Visible 期间一直是 true，于是在里面拖滑条、
+                // 绑键位时按到空格就会误开一局。开局改成只能鼠标点「开始游戏」按钮。
                 return;
             }
             SetHudHidden(false);
