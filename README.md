@@ -6,9 +6,8 @@
 ![游戏截图](docs/images/screenshot.png)
 
 **不想编译？直接下现成的 Windows 试玩版**：
-[Releases → v0.1（Minecraft-Tetris-v0.1-win64.zip，56 MB）](https://github.com/GD-Monody/Minecraft-Tetris/releases/download/v0.1/Minecraft-Tetris-v0.1-win64.zip)
-—— 解压双击 `MinecraftTetris.exe` 就能玩，不用装 Unity。
-（这是较早的版本：**不含创意工坊等后续内容**，想玩最新的请从源码构建。）
+[Releases → v0.2（Minecraft-Tetris-v0.2-win64.zip，57 MB）](https://github.com/GD-Monody/Minecraft-Tetris/releases/download/v0.2/Minecraft-Tetris-v0.2-win64.zip)
+—— 解压双击 `MinecraftTetris.exe` 就能玩，不用装 Unity，包内附 `游戏说明.txt`。
 （仓库里只有源码，构建产物不进 git：160 MB 的二进制每次构建都变，存进历史会让仓库膨胀到几个 G。
 要自己编译见下面「从源码运行」。）
 
@@ -33,7 +32,7 @@
 
 ## 当前状态
 
-v0.1 可玩版，Windows 已验证。详细进度见 [任务清单](docs/任务清单-v0.1.md)。
+v0.2 试玩版，Windows 已验证。详细进度见 [任务清单](docs/任务清单-v0.1.md)。
 
 已完成：
 
