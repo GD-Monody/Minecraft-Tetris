@@ -309,6 +309,9 @@ namespace MinecraftTetris
             _nextPreview.Show(_loop.Next, _loop.NextBlockId);
 
             SetupScene();
+
+            // -record：离线逐帧录制（见 FrameRecorder 的注释），只在做宣传片/演示时用
+            FrameRecorder.Attach(gameObject);
         }
 
         void Update()
