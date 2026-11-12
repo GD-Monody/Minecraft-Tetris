@@ -65,8 +65,9 @@ namespace MinecraftTetris
                             if (!grid.IsFree(x, y - 1, z))
                                 continue;
 
-                            grid.Set(x, y - 1, z, b);
-                            grid.Set(x, y, z, 0);
+                            // 用 Move 而不是「写目标 + 清源格」：朝向和序号得跟着方块一起走，
+                            // 不然掉下来的那块会继承目标格上一任的朝向
+                            grid.Move(x, y, z, x, y - 1, z);
                             if (moves != null)
                             {
                                 moves.Add(new GravityStep

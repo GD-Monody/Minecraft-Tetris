@@ -335,8 +335,6 @@ namespace MinecraftTetris
                 // 不复用上一次留下的视觉位置，否则会看到它从别处滑进来（硬降后尤其明显）。
                 _cellVisual[x, y, z] = new Vector3(x, y, z);
                 _settled[x, y, z] = true;
-                // 朝向也归零：这个物体以前可能装过别的方块、被转过去过。
-                go.transform.rotation = Quaternion.identity;
             }
 
             int idx;
@@ -374,13 +372,12 @@ namespace MinecraftTetris
 
             go.SetActive(true);
             go.transform.position = _cellVisual[x, y, z];
-            if (isFluid)
-            {
-                // 水/岩浆是一块矮方块（高度 = 水位），不是正方体。
-                // 一旦继承了上一次落定时留下的面内旋转（roll），它就会从「一片水面」立成「一片竖墙」。
-                // 水面永远是水平的，所以流体格子不吃任何旋转。
-                go.transform.rotation = Quaternion.identity;
-            }
+            // 朝向每次都从网格里那一格读，不留在显示对象上：对象是按格位复用的，
+            // 留着就等于「这一格的上一任」的朝向，方块一下落就换了脸
+            // （幽匿催化剂顶面和侧面差得最远，一眼就能看出来材质「变了」）。
+            // 流体不吃旋转：水是矮方块，一点角度就会立成一片竖墙。
+            go.transform.rotation = CellRotation(isFluid,
+                QuaternionOf(Grid.RotationCode(x, y, z)));
             go.GetComponent<MeshFilter>().sharedMesh = mesh;
             // 点着的 TNT 画白闪。这里也要判一次：RefreshAll / SetCell 会重设材质，
             // 只在 SetCellFlash 里改一次的话，下一次重建就丢了。
@@ -748,29 +745,27 @@ namespace MinecraftTetris
         }
 
         /// <summary>
-        /// 沙子塌落这类"整格位移"：把 from 格的显示对象搬到 to 格，
-        /// 视觉上还留在 from，下一帧开始自己滑过去。
-        /// </summary>
-        /// <summary>落定时把方块当时的朝向记到这一格：旋转过的方块落下去要保持下落时的朝向。</summary>
-        public void SetCellRotation(int x, int y, int z, Quaternion rotation)
-        {
-            if (!InCells(x, y, z))
-                return;
-            GameObject go = _cells[x, y, z];
-            if (go == null)
-                return;
-            // 这一格如果装的是流体（网格里没有方块、但有水量），朝向要丢掉：
-            // 水是矮方块，随便一点角度都会让它变成竖着的切片。
-            bool isFluid = Grid.Get(x, y, z) <= 0 && Fluids.AmountAt(x, y, z) > 0;
-            go.transform.rotation = CellRotation(isFluid, rotation);
-        }
-
-        /// <summary>
         /// 某一格该用的朝向。流体一律不转——它比正方体矮，任何角度都会让它立起来变成竖切片。
         /// </summary>
         public static Quaternion CellRotation(bool isFluid, Quaternion rotation)
         {
             return isFluid ? Quaternion.identity : rotation;
+        }
+
+        /// <summary>
+        /// 朝向编码 → 四元数。一共就 24 种朝向，缓存起来：RefreshAll 一次要读几百格，
+        /// PieceRotation.FromCode 每次都会新建一个 int[9]，不缓存纯属白扔 GC。
+        /// </summary>
+        static readonly Dictionary<int, Quaternion> _rotCache = new Dictionary<int, Quaternion>();
+
+        static Quaternion QuaternionOf(int code)
+        {
+            Quaternion q;
+            if (_rotCache.TryGetValue(code, out q))
+                return q;
+            q = PieceRotation.FromCode(code).ToQuaternion();
+            _rotCache[code] = q;
+            return q;
         }
 
         /// <summary>当前方块的目标朝向（四元数）。</summary>
@@ -779,6 +774,10 @@ namespace MinecraftTetris
             get { return _pieceRotTarget; }
         }
 
+        /// <summary>
+        /// 沙子塌落这类"整格位移"：把 from 格的显示对象搬到 to 格，
+        /// 视觉上还留在 from，下一帧开始自己滑过去。
+        /// </summary>
         public void ApplyGravityMoves(List<GravityStep> moves)
         {
             if (moves == null || moves.Count == 0)

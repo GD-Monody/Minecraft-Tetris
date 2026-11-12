@@ -530,6 +530,10 @@ namespace MinecraftTetris
                 else
                 {
                     Grid.Set(c.x, c.y, c.z, blockId);
+                    // 朝向记在方块的格子里，跟着方块一起下落 / 消行。
+                    // 只让视图层记的话，一块幽匿催化剂掉下来会继承上一任的朝向，
+                    // 顶面跑到正面去，看着就像「材质变了」。
+                    Grid.SetRotationCode(c.x, c.y, c.z, Current.Rot.Code);
                 }
             }
 

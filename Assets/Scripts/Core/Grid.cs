@@ -38,6 +38,19 @@ namespace MinecraftTetris
         readonly int[,,] _stamp;
         int _stampSeq;
 
+        /// <summary>
+        /// 每格方块的朝向，存 PieceRotation.Code（三进制压成的整数）。
+        ///
+        /// 为什么放在网格里而不是视图层：方块下落、消行、重力搬格子时，朝向必须跟着**方块**走。
+        /// 视图层的 GameObject 是按格位复用的，朝向要是也按格位存，一块幽匿催化剂掉下来就会
+        /// 继承上一任的朝向 —— 它的顶面和侧面差得很远，看起来就是「材质变了」。
+        /// 只存在内存里，不进存档：读档之后一律摆正（和 _stamp 一个待遇）。
+        /// </summary>
+        readonly int[,,] _rot;
+
+        /// <summary>不转的朝向。PieceRotation.Identity 的编码，不是 0。</summary>
+        static readonly int IdentityRot = PieceRotation.Identity.Code;
+
         public Grid(int sizeX, int sizeY, int sizeZ)
         {
             SizeX = Mathf.Max(1, sizeX);
@@ -45,6 +58,16 @@ namespace MinecraftTetris
             SizeZ = Mathf.Max(1, sizeZ);
             _cells = new int[SizeX, SizeY, SizeZ];
             _stamp = new int[SizeX, SizeY, SizeZ];
+            _rot = new int[SizeX, SizeY, SizeZ];
+            FillIdentityRot();
+        }
+
+        void FillIdentityRot()
+        {
+            for (int x = 0; x < SizeX; x++)
+                for (int y = 0; y < SizeY; y++)
+                    for (int z = 0; z < SizeZ; z++)
+                        _rot[x, y, z] = IdentityRot;
         }
 
         public bool InBounds(int x, int y, int z)
@@ -100,6 +123,8 @@ namespace MinecraftTetris
             // 读档进来的格子没有先后可言，全部归零，免得玻璃以为上面压着「后来的」方块
             System.Array.Clear(_stamp, 0, _stamp.Length);
             _stampSeq = 0;
+            // 存档不带朝向：读档之后一律摆正
+            FillIdentityRot();
         }
 
         public void Set(int x, int y, int z, int block)
@@ -108,6 +133,8 @@ namespace MinecraftTetris
             _cells[x, y, z] = block;
             // 写一块就盖一个更晚的序号；清空则归零
             _stamp[x, y, z] = block == 0 ? 0 : ++_stampSeq;
+            // 新写进来的一块还没有朝向，先摆正；落定的方块由 GameLoop 紧接着写真正的朝向
+            _rot[x, y, z] = IdentityRot;
 
             // 方块被清掉时，这一格可能残留的流体份数要跟着清。
             // 正常情况下方块格子里没有份数（落定时 OnSolidPlaced 会把流体挤走），
@@ -128,6 +155,37 @@ namespace MinecraftTetris
             System.Array.Clear(_cells, 0, _cells.Length);
             System.Array.Clear(_stamp, 0, _stamp.Length);
             _stampSeq = 0;
+            FillIdentityRot();
+        }
+
+        /// <summary>这一格的方块朝向（PieceRotation.Code）。空格 / 读档进来的都是单位朝向。</summary>
+        public int RotationCode(int x, int y, int z)
+        {
+            return _rot[x, y, z];
+        }
+
+        /// <summary>记下这一格的朝向。落定的方块由 GameLoop 写进来，之后跟着方块一起搬。</summary>
+        public void SetRotationCode(int x, int y, int z, int code)
+        {
+            _rot[x, y, z] = code;
+        }
+
+        /// <summary>
+        /// 把一格整体搬到另一格：编号、先后序号、朝向一起走。
+        /// 消行 / 层消 / 重力都走这里，省得每加一份"跟着方块的数据"就得记得改三处搬移。
+        /// </summary>
+        public void Move(int fx, int fy, int fz, int tx, int ty, int tz)
+        {
+            int id = _cells[fx, fy, fz];
+            int stamp = _stamp[fx, fy, fz];
+            int rot = _rot[fx, fy, fz];
+
+            // 走唯一的写入口：清空时的流体清理照旧会触发
+            Set(tx, ty, tz, id);
+            // Set 会给新格子盖一个新序号、把朝向抹正，这里再还原成方块自己的
+            _stamp[tx, ty, tz] = stamp;
+            _rot[tx, ty, tz] = rot;
+            Set(fx, fy, fz, 0);
         }
 
         /// <summary>
@@ -213,6 +271,7 @@ namespace MinecraftTetris
             {
                 _cells[x, y, z] = 0;
                 _stamp[x, y, z] = 0;
+                _rot[x, y, z] = IdentityRot;
             }
 
             for (int yy = y + 1; yy < SizeY; yy++)
@@ -231,8 +290,11 @@ namespace MinecraftTetris
                     // 序号跟着方块一起走：整列平移只是换了个位置，谁先谁后没变，
                     // 所以玻璃不会因为「被搬下来的旧方块压到」而碎（真正新落下的走 Set，会拿到新序号）
                     _stamp[x, yy - 1, z] = _stamp[x, yy, z];
+                    // 朝向也得跟着走，不然掉下来的方块会换一张脸
+                    _rot[x, yy - 1, z] = _rot[x, yy, z];
                     _cells[x, yy, z] = 0;
                     _stamp[x, yy, z] = 0;
+                    _rot[x, yy, z] = IdentityRot;
                 }
             }
         }
@@ -310,6 +372,7 @@ namespace MinecraftTetris
                 {
                     _cells[x, y, z] = 0;
                     _stamp[x, y, z] = 0;
+                    _rot[x, y, z] = IdentityRot;
                 }
 
             for (int yy = y + 1; yy < SizeY; yy++)
@@ -326,8 +389,10 @@ namespace MinecraftTetris
 
                         _cells[x, yy - 1, z] = id;
                         _stamp[x, yy - 1, z] = _stamp[x, yy, z];
+                        _rot[x, yy - 1, z] = _rot[x, yy, z];
                         _cells[x, yy, z] = 0;
                         _stamp[x, yy, z] = 0;
+                        _rot[x, yy, z] = IdentityRot;
                     }
                 }
             }

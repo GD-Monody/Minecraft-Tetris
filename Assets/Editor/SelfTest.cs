@@ -67,6 +67,36 @@ namespace MinecraftTetris.EditorTools
             g4.ClearFullLines();
             Check("上面的方块落下来", g4.Get(0, 0, 0) == 2);
 
+            // 朝向要跟着方块走。这一条是给「幽匿催化剂每次下落都换一张脸」钉的：
+            // 朝向只存在格位上的话，方块掉进下一格就会继承上一任的朝向，
+            // 它的顶面（深色带荧光点）跑到正面，看着就是材质变了。
+            int rotA = PieceRotation.FromYaw(1).Code;
+            int rotB = PieceRotation.FromYaw(2).Code;
+            var gRot = new Grid(4, 6, 1);
+            for (int x = 0; x < 4; x++)
+                gRot.Set(x, 0, 0, 1);
+            gRot.Set(1, 2, 0, 2);
+            gRot.SetRotationCode(1, 2, 0, rotA);
+            gRot.Set(2, 3, 0, 3);
+            gRot.SetRotationCode(2, 3, 0, rotB);
+            gRot.ClearFullLines();
+            Check("消行后方块还在原位上方", gRot.Get(1, 1, 0) == 2 && gRot.Get(2, 2, 0) == 3);
+            Check("消行后朝向跟着方块走（不会串到下一格）",
+                gRot.RotationCode(1, 1, 0) == rotA && gRot.RotationCode(2, 2, 0) == rotB);
+            Check("被消掉那一格的朝向归零",
+                gRot.RotationCode(1, 0, 0) == PieceRotation.Identity.Code);
+
+            // 重力 / 消行搬格子走的都是 Move，朝向也得跟着搬
+            var gMove = new Grid(4, 6, 1);
+            gMove.Set(1, 3, 0, 2);
+            gMove.SetRotationCode(1, 3, 0, rotB);
+            gMove.Move(1, 3, 0, 1, 2, 0);
+            Check("搬格子时编号和朝向一起走",
+                gMove.Get(1, 2, 0) == 2 && gMove.RotationCode(1, 2, 0) == rotB);
+            Check("搬走的源格清空且朝向归零",
+                gMove.Get(1, 3, 0) == 0 &&
+                gMove.RotationCode(1, 3, 0) == PieceRotation.Identity.Code);
+
             // 游戏循环
             var loop = new GameLoop(10, 20, 1, 42);
             Check("开局有当前方块", loop.Current != null);

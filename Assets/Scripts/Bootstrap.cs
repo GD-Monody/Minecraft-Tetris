@@ -249,6 +249,11 @@ namespace MinecraftTetris
             if (btAt >= 0 && btAt + 1 < btArgv.Length)
                 RunBlockTest(btArgv[btAt + 1]);
 
+            // -cellrottest：场上摆三格幽匿催化剂，分别不转 / 俯视转 / 面内转，
+            // 核对「朝向是从格子里那份记录读出来的」——它的顶面和侧面差得最远，一眼能看出来
+            if (System.Array.IndexOf(btArgv, "-cellrottest") >= 0)
+                RunCellRotTest();
+
             // -fluidtest water|lava：在半空放一汪水/岩浆，看它流下来再漫开
             int ftAt = System.Array.IndexOf(btArgv, "-fluidtest");
             if (ftAt >= 0 && ftAt + 1 < btArgv.Length)
@@ -269,7 +274,7 @@ namespace MinecraftTetris
             {
                 "-sandtest", "-reacttest", "-tnttest", "-leaftest", "-bedrocktest", "-structuretest",
                 "-blocktest", "-fluidtest", "-yawtest", "-pitchtest", "-glasstest", "-glassdroptest",
-                "-melttest", "-golemtest", "-golempose", "-firetest", "-spongetest",
+                "-melttest", "-golemtest", "-golempose", "-firetest", "-spongetest", "-cellrottest",
             };
             for (int i = 0; i < sceneTests.Length; i++)
             {
@@ -1687,6 +1692,46 @@ namespace MinecraftTetris
             Debug.Log("[blocktest] " + name + " id=" + id);
         }
 
+        /// <summary>
+        /// -cellrottest：三格幽匿催化剂，从左到右分别是「不转 / 俯视转 90° / 面内转 90°」。
+        /// 它的顶面（深色带荧光点）、底面（浅色）、侧面（半深半浅）差得最远，
+        /// 所以正不正、转没转一眼就能看出来。
+        /// </summary>
+        void RunCellRotTest()
+        {
+            int id = BlockCatalog.IdOf("sculk_catalyst");
+            if (id <= 0 || _loop == null || _view == null)
+            {
+                Debug.Log("[cellrottest] 找不到幽匿催化剂");
+                return;
+            }
+
+            var grid = _loop.Grid;
+            int cx = grid.SizeX / 2;
+            int cz = grid.SizeZ / 2;
+            int y = grid.SizeY / 2;
+
+            PieceRotation[] rots =
+            {
+                PieceRotation.Identity,
+                PieceRotation.Identity.Rotate(RotationAxis.Yaw, true),
+                PieceRotation.Identity.Rotate(RotationAxis.Screen, true),
+            };
+
+            for (int i = 0; i < rots.Length; i++)
+            {
+                int x = cx - 2 + i * 2;
+                grid.Set(x, y, cz, id);
+                grid.SetRotationCode(x, y, cz, rots[i].Code);
+            }
+            _view.RefreshAll();
+
+            Debug.Log("[cellrottest] 三格朝向编码 " + rots[0].Code + " / " + rots[1].Code +
+                      " / " + rots[2].Code + "，读回来 " +
+                      grid.RotationCode(cx - 2, y, cz) + " / " + grid.RotationCode(cx, y, cz) +
+                      " / " + grid.RotationCode(cx + 2, y, cz));
+        }
+
         void OnGravitySettled()
         {
             if (_view != null)
@@ -2100,10 +2145,8 @@ namespace MinecraftTetris
         void OnPieceLocked(Piece piece)
         {
             _sfx.PlayPlace(BlockCatalog.Of(piece.BlockId));
-            // 保住朝向：旋转过的方块，落定那一瞬间如果朝向归零，看起来就是“啪”地转了一下。
-            // 朝向直接从方块身上取（逻辑层的整数矩阵转四元数），不读视图层的动画状态——
-            // 同一帧里"转完立刻硬降"也能拿到正确角度。
-            Quaternion rot = piece.Rot.ToQuaternion();
+            // 朝向不在这里设：GameLoop 落定时已经把朝向写进网格那一格了，视图层刷新时
+            // 自己会读出来（这样它才能跟着方块一起下落 / 消行，见 Grid._rot 的注释）。
             for (int i = 0; i < piece.Cells.Length; i++)
             {
                 Vector3Int c = piece.WorldCell(i);
@@ -2113,7 +2156,6 @@ namespace MinecraftTetris
                     ? _loop.Grid.Get(c.x, c.y, c.z)
                     : piece.BlockId;
                 _view.SetCell(c.x, c.y, c.z, cellId);
-                _view.SetCellRotation(c.x, c.y, c.z, rot);
             }
         }
 
