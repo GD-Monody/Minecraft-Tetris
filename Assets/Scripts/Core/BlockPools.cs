@@ -27,8 +27,8 @@ namespace MinecraftTetris
         public const int MeltEvery = 30;
 
         // 南瓜头是「道具」，和 TNT 一样不进普通池：召傀儡得靠它在场上凑摆法，
-        // 埋在三百多分之一的普通池里等于这个玩法不存在。发给它的时候顺手把身体
-        // （雪块 / 铁块 / 铜块）也塞过去，见 NextRandomId。
+        // 埋在三百多分之一的普通池里等于这个玩法不存在。到点的时候先把身体
+        // （雪块 / 铁块 / 铜块）放下来，南瓜头紧跟其后 —— 顺序见 NextRandomId。
         // 间隔比玻璃长：傀儡是收藏品，一场游戏见两三个就够了，满地南瓜头反而怪。
         public const int PumpkinEvery = 90;
 
@@ -61,9 +61,11 @@ namespace MinecraftTetris
         static int _pumpkinCount;
         /// <summary>抽到 TNT 之后，下一次抽必然给红石块 —— 见 NextRandomId。</summary>
         static bool _forceRedstone;
-        /// <summary>抽到南瓜头之后，接下来要给它的「身体」是哪种方块、还给几块。</summary>
-        static int _forceBodyId;
-        static int _forceBodyLeft;
+        /// <summary>南瓜头要用的「身体」是哪种方块、还欠几块（身体在前，见 NextRandomId）。</summary>
+        static int _bodyId;
+        static int _bodyLeft;
+        /// <summary>身体给完了，下一次抽就是南瓜头。</summary>
+        static bool _pendingPumpkin;
 
         public static int[] Special { get { Ensure(); return _special; } }
         public static int[] Normal { get { Ensure(); return _normal; } }
@@ -108,8 +110,9 @@ namespace MinecraftTetris
             _meltCount = 0;
             _pumpkinCount = 0;
             _forceRedstone = false;
-            _forceBodyId = 0;
-            _forceBodyLeft = 0;
+            _bodyId = 0;
+            _bodyLeft = 0;
+            _pendingPumpkin = false;
             for (int i = 0; i < blocks.Length; i++)
             {
                 string n = blocks[i].Name;
@@ -220,11 +223,17 @@ namespace MinecraftTetris
                     return _redstoneId;
             }
 
-            // 南瓜头后面的「身体」同理：光给南瓜头，它自己坐在那儿召不出任何傀儡。
-            if (_forceBodyLeft > 0)
+            // 傀儡是「身体先落、南瓜头后压」：南瓜头必须压在身体上面才召得出来，
+            // 先给南瓜头的话它落在底下，后到的身体反倒堆在它头上，这套摆法永远凑不成。
+            if (_bodyLeft > 0)
             {
-                _forceBodyLeft--;
-                return _forceBodyId;
+                _bodyLeft--;
+                return _bodyId;
+            }
+            if (_pendingPumpkin)
+            {
+                _pendingPumpkin = false;
+                return _pumpkinId;
             }
 
             _count++;
@@ -298,8 +307,15 @@ namespace MinecraftTetris
                 // 开关关掉也照发：池子不跟着设置变（见上面基岩 / 结构方块那段）。
                 // 身体还是给，不然南瓜头孤零零落在场上，看着像 bug。
                 _pumpkinCount = 0;
-                _forceBodyLeft = PickGolemBody(out _forceBodyId);
-                return _pumpkinId;
+                int need = PickGolemBody(out _bodyId);
+                if (need > 0)
+                {
+                    // 这一抽先给身体，剩下的欠着；南瓜头排在最后 —— 顺序见函数开头那段
+                    _bodyLeft = need - 1;
+                    _pendingPumpkin = true;
+                    return _bodyId;
+                }
+                return _pumpkinId;   // 方块表里一种身体都没有，只好单独给个南瓜头
             }
 
             if (_normal.Length == 0)

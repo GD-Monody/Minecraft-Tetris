@@ -822,7 +822,8 @@ namespace MinecraftTetris.EditorTools
             Check("抽 3000 块能同时抽到雪块和冰", sawSnow && sawIce);
 
             // 南瓜头 + 身体：只给南瓜头的话它自己坐在场上召不出傀儡，
-            // 身体又都埋在三百多分之一的普通池里，所以抽到南瓜头必须紧跟身体
+            // 身体又都埋在三百多分之一的普通池里；顺序还必须是身体在前 ——
+            // 南瓜头要压在身体上面才召得出来，先落南瓜头就永远凑不成。
             int pumpkinPool = BlockCatalog.CarvedPumpkinId > 0
                 ? BlockCatalog.CarvedPumpkinId
                 : BlockCatalog.PumpkinId;
@@ -840,32 +841,40 @@ namespace MinecraftTetris.EditorTools
             Random.InitState(20261112);
             int pumpkinSeen = 0;
             int[] bodyHit = new int[3];          // 雪 / 铁 / 铜各抽到几回
-            bool bodyAlwaysFollows = true;
+            bool bodyAlwaysLeads = true;
             bool ironGivesTwo = true;
+            int prev1 = 0, prev2 = 0;            // 上两块抽到的编号
             for (int i = 0; i < 6000 && pumpkinSeen < 18; i++)
             {
-                if (BlockPools.NextRandomId() != pumpkinPool)
-                    continue;
-                pumpkinSeen++;
-
-                int body = BlockPools.NextRandomId();
-                bool isSnow = body == snowPool;
-                bool isIron = body == ironPool;
-                bool isCopper = body == copperPool;
-                if (!isSnow && !isIron && !isCopper)
+                int id = BlockPools.NextRandomId();
+                if (id == pumpkinPool)
                 {
-                    bodyAlwaysFollows = false;
-                    continue;
-                }
-                bodyHit[isSnow ? 0 : (isIron ? 1 : 2)]++;
+                    pumpkinSeen++;
 
-                // 铁傀儡是倒 T 的四块铁，一块四格方块得正好抽成 T 型才拼得出来，
-                // 所以铁身体必须连着给两块；雪 / 铜一块就够
-                if (isIron && BlockPools.NextRandomId() != ironPool)
-                    ironGivesTwo = false;
+                    bool isSnow = prev1 == snowPool;
+                    bool isIron = prev1 == ironPool;
+                    bool isCopper = prev1 == copperPool;
+                    if (!isSnow && !isIron && !isCopper)
+                    {
+                        bodyAlwaysLeads = false;
+                    }
+                    else
+                    {
+                        bodyHit[isSnow ? 0 : (isIron ? 1 : 2)]++;
+
+                        // 铁傀儡是倒 T 的四块铁，一块四格方块得正好抽成 T 型才拼得出来，
+                        // 所以铁身体必须连着给两块：紧挨南瓜头的那块前面还得有一块铁。
+                        // 雪 / 铜一块就够。
+                        if (isIron && prev2 != ironPool)
+                            ironGivesTwo = false;
+                    }
+                }
+                prev2 = prev1;
+                prev1 = id;
             }
             Check("抽得到南瓜头", pumpkinSeen > 0);
-            Check("南瓜头后面紧跟雪块 / 铁块 / 铜块", bodyAlwaysFollows);
+            Check("南瓜头前面紧挨着雪块 / 铁块 / 铜块（身体先落，头才压得上去）",
+                bodyAlwaysLeads);
             Check("铁块身体连着给两块（倒 T 四格才拼得出来）", ironGivesTwo);
             Check("三种身体都能抽到", bodyHit[0] > 0 && bodyHit[1] > 0 && bodyHit[2] > 0);
 
