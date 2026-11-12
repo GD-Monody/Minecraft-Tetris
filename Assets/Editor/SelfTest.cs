@@ -821,6 +821,54 @@ namespace MinecraftTetris.EditorTools
             }
             Check("抽 3000 块能同时抽到雪块和冰", sawSnow && sawIce);
 
+            // 南瓜头 + 身体：只给南瓜头的话它自己坐在场上召不出傀儡，
+            // 身体又都埋在三百多分之一的普通池里，所以抽到南瓜头必须紧跟身体
+            int pumpkinPool = BlockCatalog.CarvedPumpkinId > 0
+                ? BlockCatalog.CarvedPumpkinId
+                : BlockCatalog.PumpkinId;
+            int ironPool = BlockCatalog.IronBlockId;
+            int copperPool = BlockCatalog.CopperBlockId;
+            Check("南瓜头不在普通池和特殊池里（单独按块数发）",
+                pumpkinPool > 0 &&
+                System.Array.IndexOf(BlockPools.Normal, pumpkinPool) < 0 &&
+                System.Array.IndexOf(BlockPools.Special, pumpkinPool) < 0);
+            Check("铁块和铜块仍留在普通池里（自然出现也能凑傀儡）",
+                ironPool > 0 && copperPool > 0 &&
+                System.Array.IndexOf(BlockPools.Normal, ironPool) >= 0 &&
+                System.Array.IndexOf(BlockPools.Normal, copperPool) >= 0);
+
+            Random.InitState(20261112);
+            int pumpkinSeen = 0;
+            int[] bodyHit = new int[3];          // 雪 / 铁 / 铜各抽到几回
+            bool bodyAlwaysFollows = true;
+            bool ironGivesTwo = true;
+            for (int i = 0; i < 6000 && pumpkinSeen < 18; i++)
+            {
+                if (BlockPools.NextRandomId() != pumpkinPool)
+                    continue;
+                pumpkinSeen++;
+
+                int body = BlockPools.NextRandomId();
+                bool isSnow = body == snowPool;
+                bool isIron = body == ironPool;
+                bool isCopper = body == copperPool;
+                if (!isSnow && !isIron && !isCopper)
+                {
+                    bodyAlwaysFollows = false;
+                    continue;
+                }
+                bodyHit[isSnow ? 0 : (isIron ? 1 : 2)]++;
+
+                // 铁傀儡是倒 T 的四块铁，一块四格方块得正好抽成 T 型才拼得出来，
+                // 所以铁身体必须连着给两块；雪 / 铜一块就够
+                if (isIron && BlockPools.NextRandomId() != ironPool)
+                    ironGivesTwo = false;
+            }
+            Check("抽得到南瓜头", pumpkinSeen > 0);
+            Check("南瓜头后面紧跟雪块 / 铁块 / 铜块", bodyAlwaysFollows);
+            Check("铁块身体连着给两块（倒 T 四格才拼得出来）", ironGivesTwo);
+            Check("三种身体都能抽到", bodyHit[0] > 0 && bodyHit[1] > 0 && bodyHit[2] > 0);
+
             int stoneId = 1;
             for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
             {

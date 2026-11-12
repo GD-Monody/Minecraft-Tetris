@@ -26,6 +26,12 @@ namespace MinecraftTetris
         // 所以定期发，间隔比玻璃短一点（融化是消耗品，化一次就没了）。
         public const int MeltEvery = 30;
 
+        // 南瓜头是「道具」，和 TNT 一样不进普通池：召傀儡得靠它在场上凑摆法，
+        // 埋在三百多分之一的普通池里等于这个玩法不存在。发给它的时候顺手把身体
+        // （雪块 / 铁块 / 铜块）也塞过去，见 NextRandomId。
+        // 间隔比玻璃长：傀儡是收藏品，一场游戏见两三个就够了，满地南瓜头反而怪。
+        public const int PumpkinEvery = 90;
+
         static int[] _special;
         static int[] _normal;
         static int _waterId = -1;
@@ -41,13 +47,23 @@ namespace MinecraftTetris
         /// <summary>雪块 / 冰的编号。同样不进普通池，按块数定期发，见 MeltEvery。</summary>
         static int _snowId = -1;
         static int _iceId = -1;
+        /// <summary>南瓜头编号。不进普通池，按块数定期发，见 PumpkinEvery。</summary>
+        static int _pumpkinId = -1;
+        /// <summary>铁块 / 铜块编号。它们照旧留在普通池里，只是南瓜头会拉一块过来。</summary>
+        static int _ironId = -1;
+        static int _copperId = -1;
         static int _count;
         /// <summary>距上一块玻璃又抽了几块（只数普通池那一路）。</summary>
         static int _glassCount;
         /// <summary>距上一块雪/冰又抽了几块。</summary>
         static int _meltCount;
+        /// <summary>距上一块南瓜头又抽了几块。</summary>
+        static int _pumpkinCount;
         /// <summary>抽到 TNT 之后，下一次抽必然给红石块 —— 见 NextRandomId。</summary>
         static bool _forceRedstone;
+        /// <summary>抽到南瓜头之后，接下来要给它的「身体」是哪种方块、还给几块。</summary>
+        static int _forceBodyId;
+        static int _forceBodyLeft;
 
         public static int[] Special { get { Ensure(); return _special; } }
         public static int[] Normal { get { Ensure(); return _normal; } }
@@ -85,9 +101,15 @@ namespace MinecraftTetris
             _glassId = -1;
             _snowId = -1;
             _iceId = -1;
+            _pumpkinId = -1;
+            _ironId = -1;
+            _copperId = -1;
             _glassCount = 0;
             _meltCount = 0;
+            _pumpkinCount = 0;
             _forceRedstone = false;
+            _forceBodyId = 0;
+            _forceBodyLeft = 0;
             for (int i = 0; i < blocks.Length; i++)
             {
                 string n = blocks[i].Name;
@@ -149,6 +171,25 @@ namespace MinecraftTetris
                         _iceId = i + 1;
                     continue;
                 }
+                if (n == "carved_pumpkin" || n == "pumpkin")
+                {
+                    // 南瓜头单独发（见 PumpkinEvery）。两种都认，雕刻南瓜优先：
+                    // 原版能召傀儡的是它，普通南瓜只是同一件东西的另一张贴图，
+                    // 万一哪天方块表里只剩一种也不至于失效。
+                    if (n == "carved_pumpkin" || _pumpkinId <= 0)
+                        _pumpkinId = i + 1;
+                    continue;
+                }
+                if (n == "iron_block")
+                {
+                    // 铁块 / 铜块不拿出来：它们本来就是普通砖，偶尔自然出现也能拿去凑傀儡。
+                    // 这里只记编号，南瓜头出场时按编号拉一块过来。
+                    _ironId = i + 1;
+                }
+                if (n == "copper_block")
+                {
+                    _copperId = i + 1;
+                }
                 if (IsSpecial(n))
                     special.Add(i + 1);
                 else
@@ -161,7 +202,8 @@ namespace MinecraftTetris
                       " 种 / 水 " + _waterId + " 岩浆 " + _lavaId +
                       " / TNT " + _tntId + " 红石 " + _redstoneId +
                       " 基岩 " + _bedrockId + " 结构 " + _structureId + " 玻璃 " + _glassId +
-                      " 雪 " + _snowId + " 冰 " + _iceId);
+                      " 雪 " + _snowId + " 冰 " + _iceId +
+                      " / 南瓜 " + _pumpkinId + " 铁块 " + _ironId + " 铜块 " + _copperId);
         }
 
         /// <summary>抽一个材质编号。每隔 SpecialEvery 个方块抽一次特殊池，水和岩浆在特殊池里占比较高。</summary>
@@ -176,6 +218,13 @@ namespace MinecraftTetris
                 _forceRedstone = false;
                 if (_redstoneId > 0)
                     return _redstoneId;
+            }
+
+            // 南瓜头后面的「身体」同理：光给南瓜头，它自己坐在那儿召不出任何傀儡。
+            if (_forceBodyLeft > 0)
+            {
+                _forceBodyLeft--;
+                return _forceBodyId;
             }
 
             _count++;
@@ -217,29 +266,66 @@ namespace MinecraftTetris
                 }
                 return _special[Random.Range(0, _special.Length)];
             }
-            // 玻璃和雪/冰按块数发：普通池抽一次，两个计数器各加一，攒够各自的间隔就给一块。
+            // 玻璃 / 雪与冰 / 南瓜头按块数发：普通池抽一次，三个计数器各加一，攒够各自的间隔就给一块。
             // 放在特殊池之后，特殊方块那一抽不参与计数，间隔才稳定。
-            // 两个计数器先一起加，再决定给谁 —— 写完一个 return 再数另一个的话，
-            // 撞在同一次（每 120 块）的时候雪/冰的计数会少加一回，节奏慢慢就歪了。
+            // 三个计数器先一起加，再决定给谁；谁先轮到谁先发，被挡下的那个当场清零、
+            // 下一块马上补上。原来用「% 间隔 == 0」判断，撞在同一次时被挡的那个要再等一整轮
+            // 才轮得到（雪块 30、南瓜头 90，每 90 块必撞一次），攒三路之后这个偏差就明显了。
             if (_glassId > 0)
                 _glassCount++;
             if (_snowId > 0 || _iceId > 0)
                 _meltCount++;
+            if (_pumpkinId > 0)
+                _pumpkinCount++;
 
-            if (_glassId > 0 && _glassCount % GlassEvery == 0)
+            if (_glassId > 0 && _glassCount >= GlassEvery)
+            {
+                _glassCount = 0;
                 return _glassId;
+            }
 
-            if (_meltCount > 0 && _meltCount % MeltEvery == 0)
+            if (_meltCount >= MeltEvery)
             {
                 // 雪块和冰各一半：两个都给的话一轮里就能凑出「雪挨着冰」的局面，看不出融化
+                _meltCount = 0;
                 if (_snowId > 0 && _iceId > 0)
                     return Random.value < 0.5f ? _snowId : _iceId;
                 return _snowId > 0 ? _snowId : _iceId;
             }
 
+            if (_pumpkinId > 0 && _pumpkinCount >= PumpkinEvery)
+            {
+                // 开关关掉也照发：池子不跟着设置变（见上面基岩 / 结构方块那段）。
+                // 身体还是给，不然南瓜头孤零零落在场上，看着像 bug。
+                _pumpkinCount = 0;
+                _forceBodyLeft = PickGolemBody(out _forceBodyId);
+                return _pumpkinId;
+            }
+
             if (_normal.Length == 0)
                 return 1;
             return _normal[Random.Range(0, _normal.Length)];
+        }
+
+        /// <summary>
+        /// 挑一种傀儡身体，返回「要塞几块」，bodyId 给出方块编号（挑不到就是 0 块）。
+        ///
+        /// 铁傀儡的摆法是倒 T 的四块铁，一块四格方块只有正好抽成 T 型才拼得出来，
+        /// 所以给它两块；雪傀儡两块竖着、铜傀儡一块，一块四格方块都够用。
+        /// </summary>
+        static int PickGolemBody(out int bodyId)
+        {
+            int pick = Random.Range(0, 3);
+            for (int i = 0; i < 3; i++)
+            {
+                // 从随机起点往后找一个方块表里真有的：缺哪种就顺延到下一个，不至于整套落空
+                int kind = (pick + i) % 3;
+                bodyId = kind == 0 ? _snowId : (kind == 1 ? _ironId : _copperId);
+                if (bodyId > 0)
+                    return kind == 1 ? 2 : 1;
+            }
+            bodyId = 0;
+            return 0;
         }
     }
 }

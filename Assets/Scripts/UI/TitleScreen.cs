@@ -1089,7 +1089,7 @@ namespace MinecraftTetris
                 {
                     Ids = new[] { BlockCatalog.CarvedPumpkinId, BlockCatalog.SnowId },
                     Title = "傀儡",
-                    Desc = "南瓜头压着雪块 / 铁块 / 铜块就召出傀儡，两格消失，傀儡摆到场外。",
+                    Desc = "南瓜头跟雪 / 铁 / 铜块一起下来，压上去就召出傀儡，摆在场地外。",
                 },
                 new GuideItem
                 {
