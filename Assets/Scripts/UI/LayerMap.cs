@@ -143,32 +143,48 @@ namespace MinecraftTetris
 
         void Draw(Grid grid)
         {
+            // TODO(竖屏): 手机上面板还是压在场地右上角，方块刚出生时会挡住右半边。
+            // 思路是缩窄面板（去掉每排「差 N」那列、按屏宽比例反推格宽）塞进右边那条黑边，
+            // 但改完还没跑过自检和构建，先回退到已验证的版本。
+            bool compact = MobileMode.Enabled;
+
             float pad = UiSkin.P(12f);
-            float labelW = UiSkin.P(48f);
-            float avail = Mathf.Min(Screen.width * 0.34f, UiSkin.P(360f));
+            float labelW = UiSkin.P(compact ? 34f : 48f);
+            float avail = Mathf.Min(Screen.width * (compact ? 0.42f : 0.34f), UiSkin.P(360f));
+            // 窄屏上单元格会被最小宽度顶住，整块面板反而比 avail 宽 —— 手机上下限放低一点
             float cell = Mathf.Clamp((avail - pad * 2f - labelW) / grid.SizeX,
-                UiSkin.P(14f), UiSkin.P(26f));
+                UiSkin.P(compact ? 8f : 14f), UiSkin.P(26f));
 
             float mapW = cell * grid.SizeX + labelW;
             float mapH = cell * grid.SizeZ;
             float headH = UiSkin.P(30f);
             float sliderH = UiSkin.P(32f);
-            float footH = UiSkin.P(44f);
+            float footH = UiSkin.P(compact ? 26f : 44f);
             float w = mapW + pad * 2f;
             float h = pad * 2f + headH + UiSkin.P(6f) + sliderH + UiSkin.P(8f) + mapH
                       + UiSkin.P(6f) + footH;
 
-            var panel = new Rect(Screen.width - w - UiSkin.P(14f), UiSkin.P(14f), w, h);
+            // 手机上顶部有一条分数横条，俯视图得让开，不然两块面板会叠在一起
+            float topY = compact ? Hud.MobileBarHeight + UiSkin.P(8f) : UiSkin.P(14f);
+            var panel = new Rect(Screen.width - w - UiSkin.P(14f), topY, w, h);
             Hud.DrawPanel(panel);
 
             float x = panel.x + pad;
             float y = panel.y + pad;
 
             int missing = MissingInLayer(grid, _y);
-            GUI.Label(new Rect(x, y, mapW - UiSkin.P(96f), headH), "俯视图  y = " + _y, _titleStyle);
-            GUI.Label(new Rect(x + mapW - UiSkin.P(96f), y, UiSkin.P(96f), headH),
-                missing == 0 ? "已满" : "还差 " + missing,
-                missing == 0 ? _headFullStyle : _headMissStyle);
+            if (compact)
+            {
+                // 窄屏放不下「俯视图 y = 12」加「还差 40」两段，缺口数字挪到底下那行
+                GUI.Label(new Rect(x, y, mapW, headH), "俯视图 y=" + _y, _titleStyle);
+            }
+            else
+            {
+                GUI.Label(new Rect(x, y, mapW - UiSkin.P(96f), headH), "俯视图  y = " + _y, _titleStyle);
+                GUI.Label(new Rect(x + mapW - UiSkin.P(96f), y, UiSkin.P(96f), headH),
+                    missing == 0 ? "已满" : "还差 " + missing,
+                    missing == 0 ? _headFullStyle : _headMissStyle);
+            }
 
             y += headH + UiSkin.P(6f);
             DrawYSlider(new Rect(x, y, mapW, sliderH), grid.SizeY);
@@ -197,20 +213,28 @@ namespace MinecraftTetris
             DrawPieceMark(grid, mapX, mapY, cell);
 
             float fy = mapY + mapH + UiSkin.P(6f);
-            bool layerMode = GameSettings.ElimMode == GameSettings.ElimLayer;
-            GUI.Label(new Rect(x, fy, mapW, UiSkin.P(20f)),
-                layerMode ? "层消：整层填满才消" : "行消：每一排单独消", _smallStyle);
-            if (HasPartialWater(grid, _y))
-                GUI.Label(new Rect(x, fy + UiSkin.P(20f), mapW, UiSkin.P(20f)),
-                    "有半格水，不算填满", _smallStyle);
+            if (compact)
+            {
+                GUI.Label(new Rect(x, fy, mapW, UiSkin.P(22f)),
+                    missing == 0 ? "本层已满" : "还差 " + missing + " 格", _smallStyle);
+            }
             else
             {
-                // 不再自动跟着方块跳层之后，方块掉到别的层就看不见了，
-                // 这里指一下它在第几层 —— 想看就自己拖过去，别替玩家做决定。
-                int py = PieceMinY();
-                if (py >= 0 && py != _y)
+                bool layerMode = GameSettings.ElimMode == GameSettings.ElimLayer;
+                GUI.Label(new Rect(x, fy, mapW, UiSkin.P(20f)),
+                    layerMode ? "层消：整层填满才消" : "行消：每一排单独消", _smallStyle);
+                if (HasPartialWater(grid, _y))
                     GUI.Label(new Rect(x, fy + UiSkin.P(20f), mapW, UiSkin.P(20f)),
-                        "当前方块在 y = " + py, _smallStyle);
+                        "有半格水，不算填满", _smallStyle);
+                else
+                {
+                    // 不再自动跟着方块跳层之后，方块掉到别的层就看不见了，
+                    // 这里指一下它在第几层 —— 想看就自己拖过去，别替玩家做决定。
+                    int py = PieceMinY();
+                    if (py >= 0 && py != _y)
+                        GUI.Label(new Rect(x, fy + UiSkin.P(20f), mapW, UiSkin.P(20f)),
+                            "当前方块在 y = " + py, _smallStyle);
+                }
             }
 
             Hud.DrawAccentLine(panel);

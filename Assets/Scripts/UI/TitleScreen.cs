@@ -190,6 +190,8 @@ namespace MinecraftTetris
         void LoadAssets()
         {
             _titleTex = Resources.Load<Texture2D>("title");
+            if (_titleTex != null)
+                _titleTexW = _titleTex.width;
             _atlasTex = Resources.Load<Texture2D>("atlas");
             TextAsset meta = Resources.Load<TextAsset>("title_meta");
             if (meta != null)
@@ -251,9 +253,16 @@ namespace MinecraftTetris
         // ---------- 动画各段 ----------
 
         /// <summary>标题（那张像素 logo）的缩放步长与高度。</summary>
+        /// <summary>logo 原图的宽度，加载后写入 —— 竖屏窄的时候要靠它把倍数压下来。</summary>
+        static int _titleTexW = 140;
+
         static int TitlePixelScale()
         {
-            return Mathf.Max(2, Mathf.RoundToInt(Screen.height * 0.105f / 16f));
+            int byHeight = Mathf.Max(2, Mathf.RoundToInt(Screen.height * 0.105f / 16f));
+            // 只按屏高算的话，竖屏（宽高比 0.47）上 logo 会宽出屏幕一大截，
+            // 两边都被切掉 —— 按可用宽度再卡一道，取小的那个
+            int byWidth = Mathf.Max(2, Mathf.FloorToInt(Screen.width * 0.94f / Mathf.Max(1, _titleTexW)));
+            return Mathf.Min(byHeight, byWidth);
         }
 
         static float TitleHeight()
@@ -345,7 +354,11 @@ namespace MinecraftTetris
             items.Add(new KeyValuePair<string, Action>("创意工坊", OpenWorkshop));
             items.Add(new KeyValuePair<string, Action>("游戏规则", () => { ShowSettings = true; _guideTab = GuideTabPlay; _page = SettingsPage.Guide; }));
             items.Add(new KeyValuePair<string, Action>("设置", () => { ShowSettings = true; _page = SettingsPage.Main; }));
+#if !UNITY_WEBGL
+            // 网页版没有「退出」这回事：Application.Quit 在浏览器里是空操作，
+            // 摆一个点了没反应的按钮比不摆更让人困惑（关标签页就行）
             items.Add(new KeyValuePair<string, Action>("退出", () => Fire(OnQuit)));
+#endif
 
             int n = items.Count;
 
@@ -1123,18 +1136,33 @@ namespace MinecraftTetris
 
             // 这一页内容最多（设计 1000 宽），横向基本铺满；屏幕不够宽就自动折减倍数
             // 三栏内容长短差得多，面板高度跟着栏走，免得短栏下面空一大块
-            float designH = _guideTab == GuideTabBlocks ? 596f
-                : _guideTab == GuideTabKeys ? 576f
-                : 520f;
-            Rect panel = BeginPage(1000f, designH);
+            //
+            // 手机上换成单列（460 宽）：按 1000 宽去缩，竖屏只有 0.35 倍，字小到看不清。
+            // 单列以后每栏都往下排，高度跟着内容长，字体才保得住。
+            bool compact = MobileMode.Enabled;
+            float designW = compact ? 460f : 1000f;
+            float designH;
+            if (compact)
+            {
+                designH = _guideTab == GuideTabBlocks ? 1180f
+                    : _guideTab == GuideTabKeys ? 790f
+                    : 790f;
+            }
+            else
+            {
+                designH = _guideTab == GuideTabBlocks ? 596f
+                    : _guideTab == GuideTabKeys ? 576f
+                    : 520f;
+            }
+            Rect panel = BeginPage(designW, designH);
             float w = panel.width;
             DrawPanel(panel);
 
             GUI.Label(new Rect(panel.x, panel.y + Pg(12f), w, Pg(46f)), "游戏规则", _panelTitleBig);
 
-            float tw = Pg(200f);
+            float tw = Pg(compact ? 132f : 200f);
             float th = Pg(40f);
-            float tgap = Pg(16f);
+            float tgap = Pg(compact ? 8f : 16f);
             float tx = panel.x + (w - (tw * GuideTabCount + tgap * (GuideTabCount - 1))) * 0.5f;
             float ty = panel.y + Pg(56f);
             for (int i = 0; i < GuideTabCount; i++)
@@ -1147,7 +1175,10 @@ namespace MinecraftTetris
             }
 
             string tabNote = GuideTabNotes[_guideTab];
-            if (!string.IsNullOrEmpty(tabNote))
+            // 手机上 460 宽放不下那句长提示（特殊方块栏那句有四十多字，会横着溢出面板），
+            // 干脆不画：下面每一项都写着自己的机制，开关在设置页
+            bool noteFits = !compact || string.IsNullOrEmpty(tabNote) || tabNote.Length <= 26;
+            if (!string.IsNullOrEmpty(tabNote) && noteFits)
                 GUI.Label(new Rect(panel.x, panel.y + Pg(100f), w, Pg(28f)), tabNote, _guideNoteBig);
 
             if (_guideTab == GuideTabPlay)
@@ -1165,6 +1196,21 @@ namespace MinecraftTetris
         /// <summary>玩法栏：六段小标题 + 正文。放大之后一列放不下六段，改成两列每列三段。</summary>
         void DrawRulesPlay(Rect panel, float w)
         {
+            if (MobileMode.Enabled)
+            {
+                // 手机单列：六段竖着排。两列在 460 宽里每列只剩 200，正文会挤成一条
+                float narrowW = w - Pg(80f);
+                float narrowRow = Pg(88f);
+                float narrowTop = panel.y + Pg(116f);
+                for (int i = 0; i < PlayRules.Length; i++)
+                {
+                    float y = narrowTop + i * narrowRow;
+                    GUI.Label(new Rect(panel.x + Pg(40f), y, narrowW, Pg(28f)), PlayRules[i][0], _guideNameBig);
+                    GUI.Label(new Rect(panel.x + Pg(40f), y + Pg(28f), narrowW, Pg(56f)), PlayRules[i][1], _guideDescBig);
+                }
+                return;
+            }
+
             const int perCol = 3;
             float colW = Pg(430f);
             float colGap = Pg(40f);
@@ -1184,6 +1230,33 @@ namespace MinecraftTetris
         /// <summary>按键栏：读当前键位，两列排开；这里只显示，改键在设置里。</summary>
         void DrawRulesKeys(Rect panel, float w)
         {
+            if (MobileMode.Enabled)
+            {
+                // 单列：十二行竖着排，键帽宽度吃满剩余空间，比两列挤在 460 里好认
+                float mLeft = panel.x + Pg(40f);
+                float mLabel = Pg(210f);
+                float mKeyW = Mathf.Max(Pg(80f), w - Pg(80f) - mLabel);
+                float mRow = Pg(34f);
+                float mGap = Pg(6f);
+                float mTop = panel.y + Pg(126f);
+
+                for (int i = 0; i < AllActions.Length; i++)
+                {
+                    GameAction action = AllActions[i];
+                    float y = mTop + i * (mRow + mGap);
+                    GUI.Label(new Rect(mLeft, y, mLabel, mRow), ActionLabel(action), _rowLabelBig);
+                    DrawRect(new Rect(mLeft + mLabel, y + Pg(2f), mKeyW, mRow - Pg(4f)),
+                        new Color(1f, 1f, 1f, 0.07f));
+                    GUI.Label(new Rect(mLeft + mLabel, y, mKeyW, mRow),
+                        KeyName(KeyboardInput.GetPrimaryKey(action)), _guideKeyBig);
+                }
+
+                float mNoteY = mTop + AllActions.Length * (mRow + mGap) + Pg(10f);
+                GUI.Label(new Rect(mLeft, mNoteY, w - Pg(80f), Pg(28f)),
+                    "手机上：左半屏拖动移动，右侧按键旋转和降落", _guideNoteBig);
+                return;
+            }
+
             const int perCol = 6;
             float colW = Pg(440f);
             float labelW = Pg(240f);
@@ -1215,6 +1288,17 @@ namespace MinecraftTetris
         /// <summary>特殊方块栏：十一项三列，图标从方块图集里切。两列六行在放大后放不下。</summary>
         void DrawRulesBlocks(Rect panel)
         {
+            if (MobileMode.Enabled)
+            {
+                // 手机单列：十一项竖着排，图标和说明并排（DrawGuideRow 本来就是这么画的）
+                float narrowW = panel.width - Pg(80f);
+                float narrowRow = Pg(78f);
+                float narrowTop = panel.y + Pg(126f);
+                for (int i = 0; i < _guideItems.Length; i++)
+                    DrawGuideRow(panel.x + Pg(40f), narrowTop + i * narrowRow, narrowW, _guideItems[i]);
+                return;
+            }
+
             const int perCol = 4;
             float colW = Pg(293f);
             // 标题、切换栏、提示各占一段之后只剩这么多，行高再大就压到「返回」上了

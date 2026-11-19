@@ -19,6 +19,7 @@ namespace MinecraftTetris
         int _best;
         int _lastScore;
         float _scoreFlash;
+        float _styleScale;
 
         /// <summary>最高分刷新过、但还没落盘。</summary>
         bool _bestDirty;
@@ -49,6 +50,7 @@ namespace MinecraftTetris
         GUIStyle _gameOverTitle;
         GUIStyle _gameOverTitleShadow;
         GUIStyle _labelCenter;
+        GUIStyle _mobileSub;
         GUIStyle _btnStyle;
         Texture2D _btnNormal;
         Texture2D _btnHover;
@@ -109,8 +111,10 @@ namespace MinecraftTetris
 
         void EnsureStyles()
         {
-            if (_label != null)
+            // 手机横竖屏切换会换掉整体倍数，字号得跟着重建；桌面一直是 1.25，这里不会触发
+            if (_label != null && Mathf.Approximately(_styleScale, UiSkin.TextScale))
                 return;
+            _styleScale = UiSkin.TextScale;
 
             _label = MakeStyle(15, LabelColor);
             _labelShadow = MakeStyle(15, ShadowColor);
@@ -131,6 +135,9 @@ namespace MinecraftTetris
             _gameOverTitleShadow.fontStyle = FontStyle.Bold;
             _labelCenter = MakeStyle(16, LabelColor);
             _labelCenter.alignment = TextAnchor.MiddleCenter;
+
+            _mobileSub = MakeStyle(16, LabelColor);
+            _mobileSub.alignment = TextAnchor.MiddleLeft;
 
             _btnNormal = SolidTexture(new Color(0.13f, 0.15f, 0.19f, 0.96f));
             _btnHover = SolidTexture(new Color(0.20f, 0.24f, 0.30f, 0.98f));
@@ -196,8 +203,15 @@ namespace MinecraftTetris
 
             EnsureStyles();
 
-            DrawScorePanel();
-            DrawNextPanel();
+            if (MobileMode.Enabled)
+            {
+                DrawMobileBar();
+            }
+            else
+            {
+                DrawScorePanel();
+                DrawNextPanel();
+            }
 
             if (Paused && !Loop.GameOver)
                 DrawPausePanel();
@@ -216,13 +230,17 @@ namespace MinecraftTetris
             GUI.color = Color.white;
 
             float w = Mathf.Clamp(Screen.width * 0.34f, UiSkin.P(380f), UiSkin.P(560f));
+            // 手机上 UiSkin.P(380) 可能比整个屏幕还宽（430 宽的屏算出来是 437）
+            w = Mathf.Min(w, Screen.width - UiSkin.P(40f));
             float h = UiSkin.P(312f);
             var panel = new Rect((Screen.width - w) * 0.5f, (Screen.height - h) * 0.5f, w, h);
             DrawPanel(panel);
 
             Text(new Rect(panel.x, panel.y + UiSkin.P(22f), panel.width, UiSkin.P(58f)),
                 "游戏结束", _gameOverTitle, _gameOverTitleShadow);
-            GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(90f), panel.width, UiSkin.P(28f)), "按 R 重开", _labelCenter);
+            // 手机上没键盘，提示「按 R」等于没说
+            GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(90f), panel.width, UiSkin.P(28f)),
+                MobileMode.Enabled ? "点下面的按钮重开" : "按 R 重开", _labelCenter);
 
             float bw = Mathf.Min(w - UiSkin.P(100f), UiSkin.P(220f));
             var btn = new Rect(panel.x + (panel.width - bw) * 0.5f, panel.y + UiSkin.P(150f), bw, UiSkin.P(46f));
@@ -237,6 +255,76 @@ namespace MinecraftTetris
                 if (OnQuitToTitleClick != null)
                     OnQuitToTitleClick();
             }
+        }
+
+        /// <summary>
+        /// 手机横条 HUD 占掉的总高度（含顶部安全区）。
+        ///
+        /// 相机渲染区要按它往下让一块，否则刚生成的那几行会被面板压住 ——
+        /// 方块正好从被挡住的地方下来，玩家看不见自己要接的是什么。
+        /// </summary>
+        public static float MobileBarHeight
+        {
+            get
+            {
+                Rect safe = Screen.safeArea;
+                float topInset = Screen.height - (safe.y + safe.height);
+                return topInset + UiSkin.P(10f) + UiSkin.P(104f) + UiSkin.P(10f);
+            }
+        }
+
+        /// <summary>
+        /// 手机竖屏的一行式 HUD。
+        ///
+        /// 桌面版左上那两块 246 宽的面板，按手机倍数放大后要吃掉近半屏宽；
+        /// 场地本身是竖的、只占中间一条，面板会直接压上去。所以手机上改成横条：
+        /// 分数一行、消除和最高并到第二行，「下一个」缩成右侧一个小方块。
+        /// </summary>
+        void DrawMobileBar()
+        {
+            // 先铺满整条底色：相机把上面这一条让出来了，不铺就是没清过的旧像素
+            GUI.color = new Color(0.05f, 0.06f, 0.08f, 1f);
+            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, MobileBarHeight), Texture2D.whiteTexture);
+            GUI.color = new Color(0.35f, 0.72f, 1f, 0.45f);
+            GUI.DrawTexture(new Rect(0f, MobileBarHeight - 1f, Screen.width, 1f), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+
+            Rect safe = Screen.safeArea;
+            float topInset = Screen.height - (safe.y + safe.height);
+            float rightInset = Screen.width - (safe.x + safe.width);
+            float m = UiSkin.P(10f);
+
+            // 右上角留给暂停键（MobileControls 负责画和判定），这里让开它的宽度
+            float pause = Mathf.Clamp(Screen.width * 0.11f, 44f, 96f);
+            float w = Screen.width - safe.x - rightInset - m * 3f - pause;
+            if (w < UiSkin.P(240f))
+                w = Screen.width - m * 2f;   // 极窄的屏：宁可和暂停键挤一挤，也别把分数挤没
+
+            var bar = new Rect(safe.x + m, topInset + m, w, UiSkin.P(104f));
+            DrawPanel(bar);
+
+            float previewSize = bar.height - UiSkin.P(12f);
+            var preview = new Rect(bar.xMax - previewSize - UiSkin.P(8f),
+                bar.y + UiSkin.P(6f), previewSize, previewSize);
+            if (Preview != null && Preview.Texture != null)
+                GUI.DrawTexture(preview, Preview.Texture, ScaleMode.ScaleToFit, true);
+
+            float x = bar.x + UiSkin.P(14f);
+            // 分数那一列最多画到预览图左边为止；再往右就压到方块上了
+            float leftW = Mathf.Max(UiSkin.P(90f), preview.x - x - UiSkin.P(10f));
+
+            GUI.Label(new Rect(x, bar.y + UiSkin.P(12f), UiSkin.P(60f), UiSkin.P(26f)), "分数", _label);
+            GUI.Label(new Rect(x + UiSkin.P(58f), bar.y + UiSkin.P(4f), Mathf.Max(1f, leftW - UiSkin.P(58f)), UiSkin.P(50f)),
+                Loop.Score.ToString(), _value);
+
+            // 第二行拆成两段：一段写消除，一段写最高。
+            // 拼成一整条的话，窄屏上「最高」后面那个数字正好被右边界切掉（实测 400px 宽的窗口就是这样）
+            string unit = GameSettings.ElimMode == GameSettings.ElimLayer ? " 层" : " 行";
+            float half = leftW * 0.5f;
+            GUI.Label(new Rect(x, bar.y + UiSkin.P(62f), half, UiSkin.P(28f)),
+                "消除 " + Loop.LinesCleared + unit, _mobileSub);
+            GUI.Label(new Rect(x + half, bar.y + UiSkin.P(62f), half, UiSkin.P(28f)),
+                "最高 " + _best, _mobileSub);
         }
 
         void DrawScorePanel()
@@ -329,7 +417,10 @@ namespace MinecraftTetris
 
             GUI.Label(new Rect(panel.x, panel.y + Ps(16f), panel.width, Ps(42f)), "已暂停", _pauseTitleBig);
 
-            float bw = panel.width - Ps(160f);
+            // 左右留白：最多各占面板宽的 15%。
+            // 原来直接减 Ps(160)，窄屏上这个数可能比整个面板还宽（430 宽的屏上它算出 368），
+            // 按钮被压成一条竖线，字只剩下半个 —— 手机暂停页就是这么坏的
+            float bw = panel.width - Mathf.Min(Ps(160f), panel.width * 0.3f);
             float bx = panel.x + (panel.width - bw) * 0.5f;
             float by = panel.y + Ps(74f);
 

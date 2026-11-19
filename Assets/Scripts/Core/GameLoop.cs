@@ -18,6 +18,29 @@ namespace MinecraftTetris
         public bool RotateYawCCW;   // 俯视逆时针
         public bool RotatePitchCW;  // 往背面翻（顶面朝画面深处倒）
         public bool RotatePitchCCW; // 往正面翻
+
+        /// <summary>
+        /// 两个来源按位或：同一帧里键盘和触屏都可以动方块。
+        /// 各字段都是「这一帧按下过」的意思，或起来正好是「任一路按下过」。
+        /// </summary>
+        public static InputState Merge(InputState a, InputState b)
+        {
+            return new InputState
+            {
+                Left = a.Left || b.Left,
+                Right = a.Right || b.Right,
+                Up = a.Up || b.Up,
+                Down = a.Down || b.Down,
+                SoftDrop = a.SoftDrop || b.SoftDrop,
+                HardDrop = a.HardDrop || b.HardDrop,
+                RotateCW = a.RotateCW || b.RotateCW,
+                RotateCCW = a.RotateCCW || b.RotateCCW,
+                RotateYawCW = a.RotateYawCW || b.RotateYawCW,
+                RotateYawCCW = a.RotateYawCCW || b.RotateYawCCW,
+                RotatePitchCW = a.RotatePitchCW || b.RotatePitchCW,
+                RotatePitchCCW = a.RotatePitchCCW || b.RotatePitchCCW,
+            };
+        }
     }
 
     /// <summary>绕哪个轴转。三个轴对应屏幕上三个方向，手感完全不同。</summary>

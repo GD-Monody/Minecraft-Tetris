@@ -1469,6 +1469,21 @@ namespace MinecraftTetris.EditorTools
             Check("字号放大倍数生效", Mathf.Approximately(UiSkin.P(40f), 40f * UiSkin.TextScale));
             Check("字号取整按倍数走", UiSkin.Size(18) == Mathf.RoundToInt(18f * UiSkin.TextScale));
 
+            // 触屏和键盘两路输入按位或：同一帧里任一路按下都算按下，
+            // 没按的字段不能被另一路「凑」出来（凑出来就是方块自己乱动）
+            var kbIn = new InputState { Left = true, RotateCW = true };
+            var touchIn = new InputState { Right = true, HardDrop = true };
+            InputState both = InputState.Merge(kbIn, touchIn);
+            Check("两路输入合并：左右同时按着两个方向都在", both.Left && both.Right);
+            Check("两路输入合并：没按的字段保持 false",
+                !both.Up && !both.Down && !both.SoftDrop && !both.RotateYawCW && !both.RotatePitchCCW);
+            Check("两路输入合并：旋转和硬降都保留", both.RotateCW && both.HardDrop);
+
+            // 批处理跑在桌面上，必须认成非移动端 —— 认错了会把触屏层挂进桌面版
+            Check("桌面环境不判定为移动端", !MobileMode.Enabled);
+            Check("控制条高度占屏比在 20%~50% 之间",
+                MobileControls.StripRatio > 0.2f && MobileControls.StripRatio < 0.5f);
+
             // 主菜单按钮放大后的排布：目标 2 倍，装不下要自动降，且绝不能越过下边界
             float mw = UiSkin.P(280f), mh = UiSkin.P(44f), mg = UiSkin.P(10f);
 

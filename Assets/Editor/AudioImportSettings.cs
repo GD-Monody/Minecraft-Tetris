@@ -35,6 +35,19 @@ namespace MinecraftTetris.EditorTools
 
             importer.forceToMono = false;
             importer.loadInBackground = true;
+
+            // WebGL 上 Streaming 是不支持的（浏览器没法对 ogg 做随机读取），
+            // 照搬的话手机网页版会一首曲子都放不出来，只在控制台留一行警告。
+            // 改成「压缩进内存」：压缩数据常驻内存、播放时由浏览器解码，
+            // 内存占用和 Streaming 差不多，也是十几首歌里只留压缩包那份。
+            var webgl = new AudioImporterSampleSettings
+            {
+                loadType = AudioClipLoadType.CompressedInMemory,
+                compressionFormat = AudioCompressionFormat.Vorbis,
+                quality = 0.7f,
+                preloadAudioData = false,
+            };
+            importer.SetOverrideSampleSettings(BuildTargetGroup.WebGL, webgl);
         }
     }
 }

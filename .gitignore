@@ -59,3 +59,9 @@ Thumbs.db
 # 压缩包 / 临时输出
 *.zip
 *.7z
+
+# WebGL 构建产物
+BuildWebGL/
+
+# 编辑器本机的包管理器注册表配置（含镜像地址，因人而异）
+ProjectSettings/PackageManagerSettings.asset

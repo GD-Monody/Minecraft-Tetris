@@ -15,6 +15,7 @@ namespace MinecraftTetris
         GameLoop _loop;
         GridView _view;
         KeyboardInput _input;
+        MobileControls _mobile;
         SfxPlayer _sfx;
         MusicPlayer _music;
         Hud _hud;
@@ -41,6 +42,8 @@ namespace MinecraftTetris
         static readonly float[] TitleShotTimes = { 0.4f, 1.3f, 2.5f, 3.4f, 4.2f };
         Camera _mainCam;
         CameraRig _rig;
+        float _fieldHalfW;
+        float _fieldHalfH;
         bool _camLogged;
         int _normalCullMask;
 
@@ -50,6 +53,13 @@ namespace MinecraftTetris
 
         void Start()
         {
+            // -window 400x890：指定窗口大小。手机是竖的，桌面屏放不下 1080 高的窗口，
+            // 拿一个等比例的小窗口就能对着截图调版式。
+            ApplySizeArg();
+
+            // 先认平台：后面建光标拖尾、挂操作层、相机取景都要问它
+            MobileMode.Detect();
+
             SizeX = GameSettings.SizeX;
             SizeY = GameSettings.SizeY;
             SizeZ = GameSettings.SizeZ;
@@ -72,6 +82,20 @@ namespace MinecraftTetris
             _view.Setup(_loop.Grid);
 
             _input = gameObject.AddComponent<KeyboardInput>();
+
+            if (MobileMode.Enabled)
+            {
+                _mobile = gameObject.AddComponent<MobileControls>();
+                _mobile.OnPause = TogglePause;
+                _mobile.Visible = false;
+                // 手机上没人帮你关垂直同步：不锁帧的话一直贴着屏幕刷新跑，发热掉电都难看
+                QualitySettings.vSyncCount = 0;
+                Application.targetFrameRate = 60;
+                Screen.sleepTimeout = SleepTimeout.NeverSleep;
+                // 画质档从 Ultra 降到 Medium：Ultra 是照桌面显卡拉的，手机上先求稳，
+                // 真要往回加再说（这游戏没有实时阴影，档位差的是光照数量和贴图过滤）
+                QualitySettings.SetQualityLevel(Mathf.Min(2, QualitySettings.names.Length - 1), true);
+            }
             _sfx = gameObject.AddComponent<SfxPlayer>();
             _music = gameObject.AddComponent<MusicPlayer>();
             _music.SetVolume(GameSettings.MusicVolume);
@@ -104,8 +128,10 @@ namespace MinecraftTetris
             _particles = gameObject.AddComponent<ParticleBurst>();
             _particles.Init(_view);
 
-            // 光标深蓝荧光拖尾（纯 IMGUI 绘制，不参与游戏逻辑）
-            gameObject.AddComponent<CursorTrail>();
+            // 光标深蓝荧光拖尾（纯 IMGUI 绘制，不参与游戏逻辑）。
+            // 手机上没光标，拖尾只会跟着最后一根手指留下一道蓝光，白费性能。
+            if (!MobileMode.Enabled)
+                gameObject.AddComponent<CursorTrail>();
 
             _title = gameObject.AddComponent<TitleScreen>();
             _title.HasContinue = GameSave.HasSave;
@@ -332,6 +358,7 @@ namespace MinecraftTetris
             if (ResizeGuard.Frozen)
                 return;
 
+            SyncMobileUi();
             HideSystemCursor();
 
             if (_loop == null)
@@ -419,7 +446,7 @@ namespace MinecraftTetris
                 _mainCam.cullingMask = _normalCullMask;
 
             if (Input.GetKeyDown(KeyCode.Escape))
-                _paused = !_paused;
+                TogglePause();
 
             if (_hud != null)
                 _hud.Paused = _paused;
@@ -439,7 +466,11 @@ namespace MinecraftTetris
             if (_paused)
                 return;
 
-            _loop.Tick(Time.deltaTime, _input.Read());
+            InputState input = _input.Read();
+            if (_mobile != null)
+                input = InputState.Merge(input, _mobile.Read());
+
+            _loop.Tick(Time.deltaTime, input);
             _view.RefreshPiece(_loop.Current);
             SyncTntFlash();
             SyncFire();
@@ -463,8 +494,78 @@ namespace MinecraftTetris
         /// </summary>
         static void HideSystemCursor()
         {
+            // 手机上 Cursor 是空的，反复设它没意义；有些浏览器还会在画面上留一个假光标
+            if (MobileMode.Enabled)
+                return;
             if (Cursor.visible)
                 Cursor.visible = false;
+        }
+
+        void ApplySizeArg()
+        {
+            // 注意别和 -size 混了：那个是场地尺寸（-size 10 20 1），这里是窗口像素
+            string[] argv = System.Environment.GetCommandLineArgs();
+            int at = System.Array.IndexOf(argv, "-window");
+            if (at < 0 || at + 1 >= argv.Length)
+                return;
+
+            string[] parts = argv[at + 1].Split('x', 'X');
+            if (parts.Length != 2)
+                return;
+
+            int w, h;
+            if (!int.TryParse(parts[0], out w) || !int.TryParse(parts[1], out h))
+                return;
+            if (w < 160 || h < 160)
+                return;
+
+            Screen.SetResolution(w, h, false);
+            Debug.Log("[window] 窗口设为 " + w + "x" + h);
+        }
+
+        /// <summary>暂停 / 恢复。Esc 和手机上的暂停键都走这里，免得两处各写一遍。</summary>
+        void TogglePause()
+        {
+            _paused = !_paused;
+            if (_paused)
+                SaveNow();
+        }
+
+        /// <summary>
+        /// 手机上的控制条只在真正能玩的时候露面：标题页、暂停面板、结束面板都要让开，
+        /// 否则那些面板的按钮会被控制条压住。
+        ///
+        /// 同时把主相机的渲染区截掉下面这一条。用 viewport rect 而不是把场地往上挪：
+        /// 挪世界坐标会带来透视变形（场地越靠上越歪），viewport 只是少画几行像素，
+        /// 场地本身还是正的，长宽比变了相机距离会自动重算。
+        /// </summary>
+        void SyncMobileUi()
+        {
+            if (_mobile == null || _mainCam == null)
+                return;
+
+            bool playing = _loop != null && _title != null
+                           && !_title.Visible && !_paused && !_loop.GameOver;
+            _mobile.Visible = playing;
+
+            // 上下各让一条：下面是操作条，上面是分数横条。让出来的部分由界面自己铺底色，
+            // 3D 只画中间那块，方块从顶上下来的位置和落点都不会被压住。
+            float bottom = playing ? _mobile.StripHeight / Mathf.Max(1f, Screen.height) : 0f;
+            float top = playing ? Hud.MobileBarHeight / Mathf.Max(1f, Screen.height) : 0f;
+            float height = Mathf.Max(0.25f, 1f - bottom - top);
+            Rect want = new Rect(0f, bottom, 1f, height);
+            if (_mainCam.rect == want)
+                return;
+
+            _mainCam.rect = want;
+            if (_rig != null)
+                _rig.FitToField(_fieldHalfW, _fieldHalfH, 1.06f);   // 长宽比变了，重新取景
+        }
+
+        void SaveNow()
+        {
+            if (_loop != null && !_loop.GameOver)
+                GameSave.Save(_loop);
         }
 
         /// <summary>
@@ -513,6 +614,26 @@ namespace MinecraftTetris
         {
             // 还回去：编辑器里停掉 Play 之后要是没鼠标就麻烦了
             Cursor.visible = true;
+        }
+
+        /// <summary>
+        /// 切到后台（来电、锁屏、从桌面滑走）自动暂停并落盘。
+        ///
+        /// 不暂停的话，Unity 在后台本来就不跑 Update，回来时 dt 是一大跳，
+        /// 方块会瞬间掉好几格甚至直接判负 —— 玩家什么都没按就输了。
+        /// 存盘是因为安卓 / iOS 都可能在后台直接把进程杀掉，回来就是重启。
+        /// </summary>
+        void OnApplicationPause(bool paused)
+        {
+            if (!paused || !MobileMode.Enabled || _loop == null)
+                return;
+            if (_title != null && _title.Visible)
+                return;
+            if (!_paused && !_loop.GameOver)
+            {
+                _paused = true;
+                SaveNow();
+            }
         }
 
         void CaptureShot(string fileName)
@@ -2232,6 +2353,12 @@ namespace MinecraftTetris
             rig.Target = center;
             // 场地变深以后，相机要退得够远才看得全
             rig.Distance = Mathf.Max(SizeY * 1.05f, SizeZ * 1.8f);
+
+            // 外面留一格半：边框有厚度，转视角的时候四个角也不会被切掉
+            _fieldHalfW = Mathf.Max(SizeX, SizeZ) * 0.5f + 1.5f;
+            _fieldHalfH = SizeY * 0.5f + 1.5f;
+            rig.FitToField(_fieldHalfW, _fieldHalfH, 1.06f);
+            rig.Controls = _mobile;
 
             _mainCam = cam;
             _rig = rig;

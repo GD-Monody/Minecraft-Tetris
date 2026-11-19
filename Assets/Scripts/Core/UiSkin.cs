@@ -12,8 +12,8 @@ namespace MinecraftTetris
     /// </summary>
     public static class UiSkin
     {
-        /// <summary>字号 / 间距的整体放大倍数。1 = 原始尺寸（15~40px 那套）。</summary>
-        public const float TextScale = 1.25f;
+        /// <summary>桌面版的放大倍数。1 = 原始尺寸（15~40px 那套）。</summary>
+        public const float DesktopScale = 1.25f;
 
         /// <summary>
         /// 主菜单按钮相对当前尺寸的目标放大倍数（2 = 放大一倍）。
@@ -26,6 +26,48 @@ namespace MinecraftTetris
 
         /// <summary>字体资源在 Resources 下的路径（不含扩展名）。</summary>
         public const string FontPath = "Fonts/STKaiTi";
+
+        static float _scale = -1f;
+        static int _w;
+        static int _h;
+
+        /// <summary>
+        /// 字号 / 间距的整体放大倍数。
+        ///
+        /// 桌面固定 1.25；手机上按屏幕密度算（见 ComputeMobileScale），因为同一个 19px 的字
+        /// 在 96dpi 的显示器上约 4 毫米高，在 400dpi 的手机上只有 1 毫米 —— 直接照搬会小到看不清。
+        ///
+        /// 注意这是**缓存**值：屏幕尺寸变了才重算。布局代码一帧要问它几十次，
+        /// 每次去读 Screen.dpi 是白烧。
+        /// </summary>
+        public static float TextScale
+        {
+            get
+            {
+                if (_scale > 0f && Screen.width == _w && Screen.height == _h)
+                    return _scale;
+                _w = Screen.width;
+                _h = Screen.height;
+                _scale = MobileMode.Enabled ? ComputeMobileScale() : DesktopScale;
+                return _scale;
+            }
+        }
+
+        /// <summary>
+        /// 手机上的倍数：以 dp（= dpi/160 个像素）为单位。
+        ///
+        /// dpi/160 正好是「1 个设计像素 ≈ 1 个设备无关像素」，按它放大，按钮的物理大小
+        /// 在所有手机上基本一致，也够到 48dp 的触摸下限。
+        /// 上限卡在 2.4：再大，主菜单那摞按钮会把屏幕撑满，场地一点都看不见。
+        /// 取不到 dpi 的浏览器按 320 兜底（约 2 倍）。
+        /// </summary>
+        static float ComputeMobileScale()
+        {
+            float dpi = Screen.dpi;
+            if (dpi < 1f)
+                dpi = 320f;
+            return Mathf.Clamp(dpi / 160f, 1.15f, 2.4f);
+        }
 
         static Font _font;
         static bool _tried;

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <!-- viewport-fit=cover：刘海屏也铺满；user-scalable=no：手指操作时页面不会被缩放 -->
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#14171f">
+    <title>Minecraft 俄罗斯方块</title>
+    <style>
+      html, body {
+        margin: 0; padding: 0; width: 100%; height: 100%;
+        background: #14171f; overflow: hidden;
+        -webkit-user-select: none; user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        overscroll-behavior: none;
+      }
+      #unity-container { position: fixed; inset: 0; }
+      #unity-canvas {
+        display: block; width: 100%; height: 100%;
+        background: #14171f;
+        /* 不让浏览器把拖动当成滚动/缩放，否则拖方块会连带页面动 */
+        touch-action: none;
+      }
+      #unity-loading-bar {
+        position: absolute; left: 50%; top: 50%;
+        transform: translate(-50%, -50%);
+        display: none; width: 60%; max-width: 420px;
+      }
+      #unity-progress-bar-empty {
+        width: 100%; height: 8px; border-radius: 4px;
+        background: rgba(255, 255, 255, 0.12);
+      }
+      #unity-progress-bar-full {
+        width: 0%; height: 100%; border-radius: 4px;
+        background: #6bd0ff; transition: width 0.15s linear;
+      }
+      #unity-warning {
+        position: absolute; left: 0; right: 0; top: 0;
+        color: #fff; font: 14px/1.5 sans-serif; z-index: 10;
+      }
+      /* 竖屏时提示用户转回来（横屏也一样能玩，只是场地会窄一点） */
+      #rotate-hint {
+        position: absolute; left: 0; right: 0; bottom: 8px;
+        text-align: center; color: rgba(255, 255, 255, 0.45);
+        font: 12px/1.4 sans-serif; display: none; pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="unity-container">
+      <canvas id="unity-canvas" width={{{ WIDTH }}} height={{{ HEIGHT }}} tabindex="-1"></canvas>
+      <div id="unity-loading-bar">
+        <div id="unity-progress-bar-empty">
+          <div id="unity-progress-bar-full"></div>
+        </div>
+      </div>
+      <div id="unity-warning"> </div>
+      <div id="rotate-hint">建议竖屏游玩</div>
+    </div>
+    <script>
+      var container = document.querySelector("#unity-container");
+      var canvas = document.querySelector("#unity-canvas");
+      var loadingBar = document.querySelector("#unity-loading-bar");
+      var progressBarFull = document.querySelector("#unity-progress-bar-full");
+      var warningBanner = document.querySelector("#unity-warning");
+      var rotateHint = document.querySelector("#rotate-hint");
+
+      function unityShowBanner(msg, type) {
+        var div = document.createElement('div');
+        div.innerHTML = msg;
+        div.style.padding = '10px';
+        if (type == 'error') div.style.background = '#8b1a1a';
+        else if (type == 'warning') div.style.background = '#8a6d12';
+        else div.style.background = 'rgba(0,0,0,0.6)';
+        warningBanner.appendChild(div);
+        if (type != 'error') {
+          setTimeout(function () {
+            if (div.parentNode) div.parentNode.removeChild(div);
+          }, 5000);
+        }
+      }
+
+      // 手机浏览器上自动把 mobile=1 补进网址：Unity 里判断「要不要挂触屏操作层」
+      // 会读 Application.absoluteURL，靠这个参数兜底，省得用户手打。
+      // 用 replaceState 改地址不会刷新页面，Unity 拿到的就是新地址。
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+          && location.search.indexOf('mobile=1') < 0) {
+        try {
+          history.replaceState(null, '', location.pathname + '?mobile=1' + (location.hash || ''));
+        } catch (e) { /* 某些内嵌浏览器不让改，忽略即可 */ }
+      }
+
+      var buildUrl = "Build";
+      var loaderUrl = buildUrl + "/{{{ LOADER_FILENAME }}}";
+      var config = {
+        dataUrl: buildUrl + "/{{{ DATA_FILENAME }}}",
+        frameworkUrl: buildUrl + "/{{{ FRAMEWORK_FILENAME }}}",
+#if USE_THREADS
+        workerUrl: buildUrl + "/{{{ WORKER_FILENAME }}}",
+#endif
+#if USE_WASM
+        codeUrl: buildUrl + "/{{{ CODE_FILENAME }}}",
+#endif
+#if MEMORY_FILENAME
+        memoryUrl: buildUrl + "/{{{ MEMORY_FILENAME }}}",
+#endif
+#if SYMBOLS_FILENAME
+        symbolsUrl: buildUrl + "/{{{ SYMBOLS_FILENAME }}}",
+#endif
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: {{{ JSON.stringify(COMPANY_NAME) }}},
+        productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
+        productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
+        showBanner: unityShowBanner,
+      };
+
+      // 高分屏手机是 3 倍甚至 4 倍像素密度，照原样渲染等于让 GPU 干三倍的活。
+      // 封在 2 倍：肉眼看不出区别，帧数能稳住。
+      var dpr = window.devicePixelRatio || 1;
+      if (dpr > 2) config.devicePixelRatio = 2;
+
+      // 存档（PlayerPrefs）落到 IndexedDB 时自动同步，刷新页面还接着上一局
+      config.autoSyncPersistentDataPath = true;
+
+      function updateHint() {
+        rotateHint.style.display = (window.innerHeight > window.innerWidth) ? 'none' : 'block';
+      }
+      window.addEventListener('resize', updateHint);
+      updateHint();
+
+      loadingBar.style.display = "block";
+
+      var script = document.createElement("script");
+      script.src = loaderUrl;
+      script.onload = function () {
+        createUnityInstance(canvas, config, function (progress) {
+          progressBarFull.style.width = 100 * progress + "%";
+        }).then(function (unityInstance) {
+          loadingBar.style.display = "none";
+          // 手机上点一下画面就全屏，把地址栏收掉，多出可用的高度
+          canvas.addEventListener('pointerdown', function once() {
+            canvas.removeEventListener('pointerdown', once);
+            if (unityInstance.SetFullscreen) unityInstance.SetFullscreen(1);
+          });
+        }).catch(function (message) {
+          alert(message);
+        });
+      };
+      document.body.appendChild(script);
+    </script>
+  </body>
+</html>
