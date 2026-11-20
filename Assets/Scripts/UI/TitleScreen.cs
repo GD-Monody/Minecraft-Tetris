@@ -518,13 +518,18 @@ namespace MinecraftTetris
                 GameSettings.SetGhostPiece(!GameSettings.GhostPiece);
             y += step;
 
-            if (GUI.Button(new Rect(bx, y, bw, bh), "按键设置", _btnBig))
+            // 手机上只有触屏，键盘映射这一页没有意义，整块跳过
+            // （连 y += step 也跳过，不然中间会空出一格）
+            if (!MobileMode.Enabled)
             {
-                _page = SettingsPage.Keys;
-                _capturingAction = -1;
-                _keyScroll = 0f;    // 每次进来都从第一项看起
+                if (GUI.Button(new Rect(bx, y, bw, bh), "按键设置", _btnBig))
+                {
+                    _page = SettingsPage.Keys;
+                    _capturingAction = -1;
+                    _keyScroll = 0f;    // 每次进来都从第一项看起
+                }
+                y += step;
             }
-            y += step;
 
             if (GUI.Button(new Rect(bx, y, bw, bh), "场地尺寸", _btnBig))
             {
@@ -1075,6 +1080,15 @@ namespace MinecraftTetris
         const int GuideTabCount = 3;
 
         static readonly string[] GuideTabNames = { "玩法", "按键", "特殊方块" };
+
+        /// <summary>
+        /// 这一栏在当前平台上显不显示。
+        /// 手机只有触屏，键盘映射没有意义，按键栏整栏不出现（设置页里那个入口也一起去掉了）。
+        /// </summary>
+        static bool GuideTabVisible(int tab)
+        {
+            return !(MobileMode.Enabled && tab == GuideTabKeys);
+        }
         static readonly string[] GuideTabNotes =
         {
             // 玩法栏不放提示行：六条本身就够直白，多一句反而显得啰嗦（玩家要求去掉）
@@ -1093,10 +1107,21 @@ namespace MinecraftTetris
             new[] { "游戏玩法", "参照经典游戏《俄罗斯方块》。" },
             new[] { "游戏方块来源", "《我的世界》。" },
             new[] { "游戏场地", "默认为（x = 10，y = 20，z = 1），可以在 设置 → 场地尺寸 里自行调节。" },
-            new[] { "方向选择", "支持沿 x、y、z 轴任意旋转 90°，键位可以在 设置 → 按键设置 里自定义。" },
+            // 第三段是这一条在手机上的说法：手机上既没有键盘，也没有「按键设置」那一页
+            new[] { "方向选择", "支持沿 x、y、z 轴任意旋转 90°，键位可以在 设置 → 按键设置 里自定义。",
+                    "支持沿 x、y、z 轴任意旋转 90°，用右侧的旋转按键操作。" },
             new[] { "特殊方块", "一些方块拥有特殊机制，详见本页的「特殊方块」栏。" },
             new[] { "创意工坊", "玩家可以自定义下落方块的样式。" },
         };
+
+        /// <summary>取第 i 段正文：手机上优先用第三段（同一件事的触屏说法）。</summary>
+        static string PlayRuleDesc(int i)
+        {
+            string[] row = PlayRules[i];
+            if (MobileMode.Enabled && row.Length > 2)
+                return row[2];
+            return row.Length > 1 ? row[1] : "";
+        }
 
         // ---------- 特殊方块说明 ----------
 
@@ -1211,6 +1236,8 @@ namespace MinecraftTetris
             ShowSettings = true;
             _page = SettingsPage.Guide;
             _guideTab = Mathf.Clamp(tab, 0, GuideTabCount - 1);
+            if (!GuideTabVisible(_guideTab))
+                _guideTab = GuideTabPlay;   // 手机上传进来的是隐藏栏，落回玩法
             _blockScroll = 0f;      // 每次进来都从头看
         }
 
@@ -1219,6 +1246,9 @@ namespace MinecraftTetris
             EnsureGuideItems();
 
             if (_guideTab < 0 || _guideTab >= GuideTabCount)
+                _guideTab = GuideTabPlay;
+            // 手机上不显示「按键」栏，翻页翻到那儿就落回玩法
+            if (MobileMode.Enabled && _guideTab == GuideTabKeys)
                 _guideTab = GuideTabPlay;
 
             // 这一页内容最多（设计 1000 宽），横向基本铺满；屏幕不够宽就自动折减倍数
@@ -1238,18 +1268,29 @@ namespace MinecraftTetris
 
             GUI.Label(new Rect(panel.x, panel.y + Pg(12f), w, Pg(46f)), "游戏规则", _panelTitleBig);
 
+            // 手机上键盘映射没意义，这一栏整栏不显示：页签只画「玩法」和「特殊方块」，
+            // 两个页签在面板里居中排（按可见数量算宽度，别沿用三栏的居中公式）
             float tw = Pg(compact ? 132f : 200f);
             float th = Pg(40f);
             float tgap = Pg(compact ? 8f : 16f);
-            float tx = panel.x + (w - (tw * GuideTabCount + tgap * (GuideTabCount - 1))) * 0.5f;
+            int tabCount = 0;
+            for (int i = 0; i < GuideTabCount; i++)
+                if (GuideTabVisible(i))
+                    tabCount++;
+            float tx = panel.x + (w - (tw * tabCount + tgap * (tabCount - 1))) * 0.5f;
             float ty = panel.y + Pg(56f);
+            int slot = 0;
             for (int i = 0; i < GuideTabCount; i++)
             {
+                if (!GuideTabVisible(i))
+                    continue;
+
                 Color prev = GUI.color;
                 GUI.color = _guideTab == i ? Color.white : new Color(0.7f, 0.7f, 0.7f, 1f);
-                if (GUI.Button(new Rect(tx + i * (tw + tgap), ty, tw, th), GuideTabNames[i], _btnBig))
+                if (GUI.Button(new Rect(tx + slot * (tw + tgap), ty, tw, th), GuideTabNames[i], _btnBig))
                     _guideTab = i;
                 GUI.color = prev;
+                slot++;
             }
 
             string tabNote = GuideTabNotes[_guideTab];
@@ -1284,7 +1325,7 @@ namespace MinecraftTetris
                 {
                     float y = narrowTop + i * narrowRow;
                     GUI.Label(new Rect(panel.x + Pg(40f), y, narrowW, Pg(28f)), PlayRules[i][0], _guideNameBig);
-                    GUI.Label(new Rect(panel.x + Pg(40f), y + Pg(28f), narrowW, Pg(56f)), PlayRules[i][1], _guideDescBig);
+                    GUI.Label(new Rect(panel.x + Pg(40f), y + Pg(28f), narrowW, Pg(56f)), PlayRuleDesc(i), _guideDescBig);
                 }
                 return;
             }
@@ -1301,7 +1342,7 @@ namespace MinecraftTetris
                 float x = panel.x + Pg(40f) + (i / perCol) * (colW + colGap);
                 float y = top + (i % perCol) * rowH;
                 GUI.Label(new Rect(x, y, colW, Pg(30f)), PlayRules[i][0], _guideNameBig);
-                GUI.Label(new Rect(x, y + Pg(30f), colW, Pg(58f)), PlayRules[i][1], _guideDescBig);
+                GUI.Label(new Rect(x, y + Pg(30f), colW, Pg(58f)), PlayRuleDesc(i), _guideDescBig);
             }
         }
 
