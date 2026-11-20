@@ -314,7 +314,10 @@ namespace MinecraftTetris
                 Vector2 d = e.mousePosition - _rbStart;
                 _rbStart = e.mousePosition;
                 _rbMoved += d.magnitude;
-                _yaw += d.x * OrbitDegPerPixel;
+                // 横向是「抓着盒子转」而不是「转相机」：鼠标往右拖，盒子就该往右转。
+                // 相机的 yaw 增大是往左绕，所以这里取负号；取正号的话手往右、
+                // 盒子往左，用起来像是拖反了（用户实测反馈）。
+                _yaw -= d.x * OrbitDegPerPixel;
                 _pitch = Mathf.Clamp(_pitch - d.y * OrbitDegPerPixel, -80f, 80f);
                 return;
             }
