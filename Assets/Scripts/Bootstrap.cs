@@ -573,6 +573,7 @@ namespace MinecraftTetris
             // （MobileControls 会在操作条上压一层暗色）。
             _mobile.Visible = inGame;
             _mobile.Paused = _paused;
+            _mobile.Depth = SizeZ;      // z = 1 时只留面内旋转那两个键
 
             // 上下各让一条：下面是操作条，上面是分数横条。让出来的部分由界面自己铺底色，
             // 3D 只画中间那块，方块从顶上下来的位置和落点都不会被压住。

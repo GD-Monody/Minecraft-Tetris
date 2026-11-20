@@ -55,12 +55,28 @@ namespace MinecraftTetris
         /// <summary>当前是不是暂停着。只影响那颗键上的字（暂停 / 继续）。</summary>
         public bool Paused;
 
+        /// <summary>
+        /// 场上实际深度（Bootstrap 每帧给）。0 = 还不知道，退回读设置值。
+        /// 不能直接用 GameSettings.SizeZ：命令行 -size 会把运行时场地改掉，而设置值不变，
+        /// 结果 z = 1 的局里还挂着俯视/前后翻那四个按不动的键。
+        /// </summary>
+        public int Depth;
+
         /// <summary>点了右上角的暂停键。</summary>
         public System.Action OnPause;
 
         readonly Rect[] _btn = new Rect[BtnCount];
         readonly int[] _btnFinger = new int[BtnCount];
         readonly float[] _btnNext = new float[BtnCount];
+
+        /// <summary>
+        /// 这一局实际画出来的按键（索引指向上面那几个常量）。
+        /// 场地只有一层（z = 1）时俯视旋转和前后翻都没有意义 —— 那两个方向转不过去，
+        /// 按了也是白按，干脆只留面内左右加软降硬降四个，按钮还能做大一点。
+        /// </summary>
+        readonly int[] _vis = new int[BtnCount];
+        int _visCount;
+        int _lastSizeZ = -1;
         Rect _pad;
         Rect _pauseRect;
         float _stripH;
@@ -89,7 +105,7 @@ namespace MinecraftTetris
 
         void Update()
         {
-            if (Screen.width != _lastW || Screen.height != _lastH)
+            if (Screen.width != _lastW || Screen.height != _lastH || CurrentDepth != _lastSizeZ)
                 Layout();
 
             _out = default(InputState);
@@ -151,13 +167,16 @@ namespace MinecraftTetris
 
             float gap = pad * 0.8f;
             float bw = (btnW - gap) * 0.5f;
-            float bh = (_pad.height - gap * 3f) * 0.25f;
 
-            for (int i = 0; i < BtnCount; i++)
+            PickVisibleButtons(CurrentDepth);
+            int rows = Mathf.Max(1, (_visCount + 1) / 2);
+            float bh = (_pad.height - gap * (rows - 1)) / rows;
+
+            for (int k = 0; k < _visCount; k++)
             {
-                int row = i / 2;
-                int col = i % 2;
-                _btn[i] = new Rect(btnLeft + col * (bw + gap), _pad.y + row * (bh + gap), bw, bh);
+                int row = k / 2;
+                int col = k % 2;
+                _btn[_vis[k]] = new Rect(btnLeft + col * (bw + gap), _pad.y + row * (bh + gap), bw, bh);
             }
 
             // 暂停键贴右上角，和顶部横条同高同尺寸（Hud.MobilePauseSize 是唯一的尺寸来源，
@@ -166,6 +185,48 @@ namespace MinecraftTetris
             float m = UiSkin.P(10f);
             float topInset = Screen.height - (safe.y + safe.height);
             _pauseRect = new Rect(w - safeRight - m - ps, topInset + m, ps, ps);
+        }
+
+        /// <summary>场地深度：优先用 Bootstrap 传来的真实值，拿不到再看设置。</summary>
+        int CurrentDepth
+        {
+            get { return Depth > 0 ? Depth : GameSettings.SizeZ; }
+        }
+
+        /// <summary>
+        /// 按场地深度挑这一局要显示的按键。
+        /// z = 1 时只有面内旋转有意义（俯视旋转绕竖直轴、前后翻绕水平轴，没有深度就转不过去）。
+        /// </summary>
+        void PickVisibleButtons(int sizeZ)
+        {
+            _lastSizeZ = sizeZ;
+            _visCount = 0;
+            _vis[_visCount++] = RotL;
+            _vis[_visCount++] = RotR;
+            if (sizeZ > 1)
+            {
+                _vis[_visCount++] = YawL;
+                _vis[_visCount++] = YawR;
+                _vis[_visCount++] = PitchUp;
+                _vis[_visCount++] = PitchDown;
+            }
+            _vis[_visCount++] = SoftDropBtn;
+            _vis[_visCount++] = HardDropBtn;
+
+            // 藏起来的按键要松开，不然它记着上一次的手指，结算时还在发指令
+            for (int i = 0; i < BtnCount; i++)
+            {
+                if (!IsVisible(i))
+                    _btnFinger[i] = -1;
+            }
+        }
+
+        bool IsVisible(int i)
+        {
+            for (int k = 0; k < _visCount; k++)
+                if (_vis[k] == i)
+                    return true;
+            return false;
         }
 
         // ── 触摸 ──────────────────────────────────────────────────────────
@@ -236,8 +297,9 @@ namespace MinecraftTetris
             if (Paused)
                 return;   // 暂停中：按键照旧画着（画面不重排），但不接输入，只有右上角那颗有效
 
-            for (int i = 0; i < BtnCount; i++)
+            for (int k = 0; k < _visCount; k++)
             {
+                int i = _vis[k];
                 if (_btnFinger[i] >= 0 || !_btn[i].Contains(p))
                     continue;
                 _btnFinger[i] = finger;
@@ -372,8 +434,8 @@ namespace MinecraftTetris
             Fill(new Rect(0f, strip.y, Screen.width, 1f), new Color(0.35f, 0.72f, 1f, 0.45f));
 
             DrawPad();
-            for (int i = 0; i < BtnCount; i++)
-                DrawButton(i);
+            for (int k = 0; k < _visCount; k++)
+                DrawButton(_vis[k]);
 
             if (Paused)
                 Fill(strip, new Color(0f, 0f, 0f, 0.55f));
@@ -424,7 +486,11 @@ namespace MinecraftTetris
 
         void EnsureStyles()
         {
-            int size = Mathf.RoundToInt(Mathf.Clamp(_btn[0].height * 0.34f, 14f, 40f));
+            // 字号同时受行高和按钮宽度约束：只按行高算的话，z = 1 时按钮变高、
+            // 字号跟着涨，「面内 左」会被挤成两行（实测过）。
+            float byHeight = _btn[0].height * 0.34f;
+            float byWidth = _btn[0].width * 0.19f;
+            int size = Mathf.RoundToInt(Mathf.Clamp(Mathf.Min(byHeight, byWidth), 14f, 40f));
             if (_labelStyle != null && size == _styleSize)
                 return;
 

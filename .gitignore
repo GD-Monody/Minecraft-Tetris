@@ -68,3 +68,6 @@ ProjectSettings/PackageManagerSettings.asset
 
 # 发布用的整理目录（由 BuildWebGL 拷出来、Build 改名 game），不进货仓
 WebDeploy/
+
+# 已发布应用的标记文件（本地记录用，不进仓库）
+.wbapp_*.genie
