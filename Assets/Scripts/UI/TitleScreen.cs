@@ -116,6 +116,10 @@ namespace MinecraftTetris
 
         /// <summary>特殊方块机制页的滚动位置。列表改成滚轮滚动后，切进页面时归零。</summary>
         Vector2 _mechScroll;
+
+        /// <summary>规则页「特殊方块」栏的滚动位置：手机上一屏放不下十一个条目，靠它上下滑。</summary>
+        float _blockScroll;
+        bool _blockDragging;
         const int SliderMusic = 1;
         const int SliderSizeX = 2;
         const int SliderSizeY = 3;
@@ -172,6 +176,7 @@ namespace MinecraftTetris
             ShowSettings = true;
             _page = (SettingsPage)Mathf.Clamp(page, 0, (int)SettingsPage.Mech);
             _mechScroll = Vector2.zero;
+            _blockScroll = 0f;
             _tmpSpeed = GameSettings.FallSpeed;
             _tmpMusic = GameSettings.MusicVolume;
             _capturingAction = -1;
@@ -1125,6 +1130,7 @@ namespace MinecraftTetris
             ShowSettings = true;
             _page = SettingsPage.Guide;
             _guideTab = Mathf.Clamp(tab, 0, GuideTabCount - 1);
+            _blockScroll = 0f;      // 每次进来都从头看
         }
 
         void DrawGuide()
@@ -1139,21 +1145,12 @@ namespace MinecraftTetris
             //
             // 手机上换成单列（460 宽）：按 1000 宽去缩，竖屏只有 0.35 倍，字小到看不清。
             // 单列以后每栏都往下排，高度跟着内容长，字体才保得住。
+            // 三栏统一用一个高度：特殊方块栏内容最长，早先给它单独加高，结果三栏面板
+            // 换一下就是三个不同的宽高比，看着像三张不同的图。内容超出去靠滚动，
+            // 面板本身不再跟着内容长。
             bool compact = MobileMode.Enabled;
             float designW = compact ? 460f : 1000f;
-            float designH;
-            if (compact)
-            {
-                designH = _guideTab == GuideTabBlocks ? 1180f
-                    : _guideTab == GuideTabKeys ? 790f
-                    : 790f;
-            }
-            else
-            {
-                designH = _guideTab == GuideTabBlocks ? 596f
-                    : _guideTab == GuideTabKeys ? 576f
-                    : 520f;
-            }
+            float designH = compact ? 790f : 596f;
             Rect panel = BeginPage(designW, designH);
             float w = panel.width;
             DrawPanel(panel);
@@ -1290,26 +1287,98 @@ namespace MinecraftTetris
         {
             if (MobileMode.Enabled)
             {
-                // 手机单列：十一项竖着排，图标和说明并排（DrawGuideRow 本来就是这么画的）
+                // 手机单列十一项，一屏放不下 —— 裁一块可视区，内容在里面滚。
+                // 滚轮和手指拖动都认：手机上只有拖，电脑上两个都顺手。
                 float narrowW = panel.width - Pg(80f);
-                float narrowRow = Pg(78f);
-                float narrowTop = panel.y + Pg(126f);
+                float rowH = Pg(78f);
+                float top = panel.y + Pg(126f);
+                float viewH = Mathf.Max(rowH, panel.yMax - Pg(96f) - top);   // 底下给「返回」留位
+                float contentH = _guideItems.Length * rowH;
+                float maxScroll = Mathf.Max(0f, contentH - viewH);
+                // 右边留一列给滚动条：不留的话条子直接压在说明文字最后几个字上
+                float rowW = narrowW - Pg(20f);
+                var clip = new Rect(panel.x + Pg(40f), top, rowW, viewH);
+
+                ScrollList(clip, maxScroll, ref _blockScroll);
+
+                GUI.BeginGroup(clip);
                 for (int i = 0; i < _guideItems.Length; i++)
-                    DrawGuideRow(panel.x + Pg(40f), narrowTop + i * narrowRow, narrowW, _guideItems[i]);
+                {
+                    float y = i * rowH - _blockScroll;
+                    if (y + rowH < 0f || y > viewH)
+                        continue;   // 看不见的不画
+                    DrawGuideRow(0f, y, rowW, _guideItems[i]);
+                }
+                GUI.EndGroup();
+
+                DrawScrollBar(clip, viewH, contentH, maxScroll, _blockScroll);
                 return;
             }
 
             const int perCol = 4;
             float colW = Pg(293f);
             // 标题、切换栏、提示各占一段之后只剩这么多，行高再大就压到「返回」上了
-            float rowH = Pg(96f);
-            float top = panel.y + Pg(128f);
+            float rowH2 = Pg(96f);
+            float top2 = panel.y + Pg(128f);
 
             for (int i = 0; i < _guideItems.Length; i++)
             {
                 float x = panel.x + Pg(40f) + (i / perCol) * (colW + Pg(20f));
-                DrawGuideRow(x, top + (i % perCol) * rowH, colW, _guideItems[i]);
+                DrawGuideRow(x, top2 + (i % perCol) * rowH2, colW, _guideItems[i]);
             }
+        }
+
+        /// <summary>
+        /// 列表滚动：滚轮 + 按住拖动。
+        /// 拖动必须自己接 MouseDrag —— IMGUI 在触屏上只把第一根手指当鼠标，拖拽事件照常来，
+        /// 但列表里没有可点的控件，不接的话手指划过去什么都不会发生。
+        /// </summary>
+        void ScrollList(Rect clip, float maxScroll, ref float scroll)
+        {
+            if (maxScroll <= 0f)
+            {
+                scroll = 0f;
+                _blockDragging = false;
+                return;
+            }
+
+            Event e = Event.current;
+            if (e == null)
+                return;
+
+            if (e.type == EventType.ScrollWheel && clip.Contains(e.mousePosition))
+            {
+                scroll = Mathf.Clamp(scroll + e.delta.y * Pg(48f), 0f, maxScroll);
+                e.Use();
+            }
+            else if (e.type == EventType.MouseDown && clip.Contains(e.mousePosition))
+            {
+                _blockDragging = true;
+            }
+            else if (e.type == EventType.MouseDrag && _blockDragging)
+            {
+                // 往下拖 delta.y 是正，内容跟着手指往下走 = 滚动量减少
+                scroll = Mathf.Clamp(scroll - e.delta.y, 0f, maxScroll);
+                e.Use();
+            }
+            else if (e.type == EventType.MouseUp)
+            {
+                _blockDragging = false;
+            }
+        }
+
+        /// <summary>自绘滚动指示条：内容放得下时不画。</summary>
+        void DrawScrollBar(Rect clip, float viewH, float contentH, float maxScroll, float scroll)
+        {
+            if (maxScroll <= 0f)
+                return;
+
+            float barX = clip.xMax + Pg(8f);
+            float barW = Pg(6f);
+            float barH = Mathf.Max(Pg(36f), viewH * viewH / contentH);
+            float barY = clip.y + (viewH - barH) * (scroll / maxScroll);
+            DrawRect(new Rect(barX, clip.y, barW, viewH), new Color(1f, 1f, 1f, 0.08f));
+            DrawRect(new Rect(barX, barY, barW, barH), new Color(0.35f, 0.37f, 0.44f, 0.95f));
         }
 
         void DrawGuideRow(float x, float y, float w, GuideItem item)
