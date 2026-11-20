@@ -368,7 +368,7 @@ namespace MinecraftTetris
                 return;
 
             SyncMobileUi();
-            SyncDesktopInsets();
+            SyncUiInsets();
             HideSystemCursor();
 
             if (_loop == null)
@@ -582,19 +582,33 @@ namespace MinecraftTetris
         }
 
         /// <summary>
-        /// 桌面版的左右两侧面板是浮在 3D 画面上的。窗口够宽时它们待在场地两边的空档里，
+        /// 两侧面板和 3D 场地的分界。
+        ///
+        /// 桌面：左右两列面板是浮在画面上的，窗口够宽时它们待在场地两边的空档里，
         /// 一窄就压到方块上（最右一列直接看不见）。这时候把相机的可视区收进中间那条空档：
         /// 场地整体小一点，但一格都不会藏在面板底下。让出去的两条由 _bgCam 清底色。
+        ///
+        /// 手机：相机已经让出上下两条了，左右没有可让的，只能反过来收面板 ——
+        /// 俯视图按「场地右边缘到屏幕右边还剩多少」定宽度，不然竖屏时它正好压在
+        /// 方块出生的位置上，方块刚出来右边就看不着。
         /// </summary>
-        void SyncDesktopInsets()
+        void SyncUiInsets()
         {
-            if (MobileMode.Enabled || _layerMap == null || _mainCam == null || _rig == null || _loop == null)
+            if (_layerMap == null || _mainCam == null || _rig == null || _loop == null)
                 return;
 
             if (_layerMap.Hidden)
             {
                 _layerMap.MaxWidth = 0f;
-                ApplyCameraRect(new Rect(0f, 0f, 1f, 1f));
+                if (!MobileMode.Enabled)
+                    ApplyCameraRect(new Rect(0f, 0f, 1f, 1f));
+                return;
+            }
+
+            if (MobileMode.Enabled)
+            {
+                _layerMap.MaxWidth = Mathf.Max(UiSkin.P(120f),
+                    Screen.width - FieldRightEdge() - UiSkin.P(14f));
                 return;
             }
 
@@ -627,6 +641,31 @@ namespace MinecraftTetris
                 _layerMap.MaxWidth = 0f;
                 ApplyCameraRect(new Rect(0f, 0f, 1f, 1f));
             }
+        }
+
+        /// <summary>
+        /// 场地边框右边缘在屏幕上的 x（像素）。四个角各投一次取最靠右的 ——
+        /// 相机被玩家转过之后只看一个点会量偏。
+        /// 范围用 GridFrame.Build 里那组数，不能用 _fieldHalfW（那是取景留白，比边框宽两格）。
+        /// </summary>
+        float FieldRightEdge()
+        {
+            float xRight = SizeX - 0.44f;
+            float yBottom = -0.56f;
+            float yTop = SizeY - 0.44f;
+            float zFront = -0.56f;
+            float zBack = SizeZ - 0.44f;
+
+            float maxX = float.MinValue;
+            for (int i = 0; i < 4; i++)
+            {
+                float y = (i & 1) == 0 ? yBottom : yTop;
+                float z = (i & 2) == 0 ? zFront : zBack;
+                Vector3 sp = _mainCam.WorldToScreenPoint(new Vector3(xRight, y, z));
+                if (sp.z > 0f && sp.x > maxX)
+                    maxX = sp.x;
+            }
+            return maxX == float.MinValue ? Screen.width : maxX;
         }
 
         /// <summary>按整窗取景时，场地边框在屏幕上占多宽（像素）。</summary>
@@ -2432,7 +2471,7 @@ namespace MinecraftTetris
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(0.08f, 0.09f, 0.12f);
 
-            // 相机 rect 收窄之后（窗口窄了要让两侧面板，见 SyncDesktopInsets），让出去的两条
+            // 相机 rect 收窄之后（窗口窄了要让两侧面板，见 SyncUiInsets），让出去的两条
             // 没人渲染，会留着上一帧甚至上一局的旧像素。这儿另起一台只负责清屏的相机垫在最后面：
             // 主相机照旧只画自己那块，其余部分由它清成同一个底色，接缝看不出来。
             if (_bgCam == null)

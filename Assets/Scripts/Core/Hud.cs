@@ -263,13 +263,19 @@ namespace MinecraftTetris
         /// 相机渲染区要按它往下让一块，否则刚生成的那几行会被面板压住 ——
         /// 方块正好从被挡住的地方下来，玩家看不见自己要接的是什么。
         /// </summary>
+        /// <summary>
+        /// 手机顶部横条是不是收起来了（点一下横条切换）。默认收起：竖屏里上下每一条
+        /// 横条都是从场地身上切下来的，先给场地，想看得分点一下就展开。
+        /// </summary>
+        public static bool ScoreCollapsed = true;
+
         public static float MobileBarHeight
         {
             get
             {
                 Rect safe = Screen.safeArea;
                 float topInset = Screen.height - (safe.y + safe.height);
-                return topInset + UiSkin.P(10f) + UiSkin.P(104f) + UiSkin.P(10f);
+                return topInset + UiSkin.P(10f) + UiSkin.P(ScoreCollapsed ? 54f : 104f) + UiSkin.P(10f);
             }
         }
 
@@ -300,11 +306,26 @@ namespace MinecraftTetris
             if (w < UiSkin.P(240f))
                 w = Screen.width - m * 2f;   // 极窄的屏：宁可和暂停键挤一挤，也别把分数挤没
 
-            var bar = new Rect(safe.x + m, topInset + m, w, UiSkin.P(104f));
+            bool collapsed = ScoreCollapsed;
+            var bar = new Rect(safe.x + m, topInset + m, w, UiSkin.P(collapsed ? 54f : 104f));
             DrawPanel(bar);
 
-            float previewSize = bar.height - UiSkin.P(12f);
-            var preview = new Rect(bar.xMax - previewSize - UiSkin.P(8f),
+            // 整条横条都能点：手机上这块本来不接别的操作，拿它当折叠开关最省地方
+            // （不额外加按钮，竖屏那点宽度经不起再切一块）
+            if (GUI.Button(bar, GUIContent.none, GUIStyle.none))
+            {
+                ScoreCollapsed = !collapsed;
+                collapsed = ScoreCollapsed;
+            }
+
+            // 折叠指示画在右端：几条横线拼的小三角，不依赖字体里有没有 ▲▼
+            float chev = UiSkin.P(20f);
+            DrawChevron(new Rect(bar.xMax - chev - UiSkin.P(8f), bar.y + (bar.height - chev) * 0.5f,
+                chev, chev), collapsed);
+
+            // 收起时整条只有一行高，预览图按「几乎占满条高」画，不然挤成一小块看不出形状
+            float previewSize = bar.height - UiSkin.P(collapsed ? 6f : 12f);
+            var preview = new Rect(bar.xMax - chev - UiSkin.P(12f) - previewSize,
                 bar.y + UiSkin.P(6f), previewSize, previewSize);
             if (Preview != null && Preview.Texture != null)
                 GUI.DrawTexture(preview, Preview.Texture, ScaleMode.ScaleToFit, true);
@@ -312,6 +333,20 @@ namespace MinecraftTetris
             float x = bar.x + UiSkin.P(14f);
             // 分数那一列最多画到预览图左边为止；再往右就压到方块上了
             float leftW = Mathf.Max(UiSkin.P(90f), preview.x - x - UiSkin.P(10f));
+            string unit = GameSettings.ElimMode == GameSettings.ElimLayer ? " 层" : " 行";
+
+            if (collapsed)
+            {
+                // 收起只剩一行：分数 + 下一个预览。最高和消行都是「看一眼就够」的数字，
+                // 硬塞进来会把分数挤成两行（实测 420 宽时「最高 5700」直接折行），
+                // 想看点一下展开。
+                float midY = bar.y + (bar.height - UiSkin.P(40f)) * 0.5f;
+                GUI.Label(new Rect(x, midY + UiSkin.P(8f), UiSkin.P(56f), UiSkin.P(26f)), "分数", _label);
+                GUI.Label(new Rect(x + UiSkin.P(54f), midY,
+                        Mathf.Max(1f, preview.x - UiSkin.P(8f) - (x + UiSkin.P(54f))), UiSkin.P(40f)),
+                    Loop.Score.ToString(), _value);
+                return;
+            }
 
             GUI.Label(new Rect(x, bar.y + UiSkin.P(12f), UiSkin.P(60f), UiSkin.P(26f)), "分数", _label);
             GUI.Label(new Rect(x + UiSkin.P(58f), bar.y + UiSkin.P(4f), Mathf.Max(1f, leftW - UiSkin.P(58f)), UiSkin.P(50f)),
@@ -319,12 +354,31 @@ namespace MinecraftTetris
 
             // 第二行拆成两段：一段写消除，一段写最高。
             // 拼成一整条的话，窄屏上「最高」后面那个数字正好被右边界切掉（实测 400px 宽的窗口就是这样）
-            string unit = GameSettings.ElimMode == GameSettings.ElimLayer ? " 层" : " 行";
             float half = leftW * 0.5f;
             GUI.Label(new Rect(x, bar.y + UiSkin.P(62f), half, UiSkin.P(28f)),
                 "消除 " + Loop.LinesCleared + unit, _mobileSub);
             GUI.Label(new Rect(x + half, bar.y + UiSkin.P(62f), half, UiSkin.P(28f)),
                 "最高 " + _best, _mobileSub);
+        }
+
+        /// <summary>用几条横线拼一个小三角当折叠指示，往上 = 已收起（点一下展开）。</summary>
+        static void DrawChevron(Rect r, bool collapsed)
+        {
+            const int lines = 5;
+            float lineH = Mathf.Max(1f, r.height / (lines * 2f));
+            float step = r.width / (lines * 2f);
+
+            GUI.color = new Color(0.62f, 0.78f, 0.92f, 0.9f);
+            for (int i = 0; i < lines; i++)
+            {
+                float inset = i * step;
+                float y = collapsed
+                    ? r.y + i * lineH               // 朝下：点开
+                    : r.yMax - (i + 1) * lineH;     // 朝上：收起
+                GUI.DrawTexture(new Rect(r.x + inset, y, r.width - inset * 2f, lineH),
+                    Texture2D.whiteTexture);
+            }
+            GUI.color = Color.white;
         }
 
         void DrawScorePanel()

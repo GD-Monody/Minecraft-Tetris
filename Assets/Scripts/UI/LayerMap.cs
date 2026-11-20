@@ -26,6 +26,13 @@ namespace MinecraftTetris
         public float MaxWidth;
 
         /// <summary>
+        /// 手机上是否展开。默认收起：竖屏里场地只占中间一条，面板一展开就压掉小半个屏，
+        /// 而它只是「查缺口」用的辅助面板，需要的时候点开看一眼就够。
+        /// 收起状态下只留右上角一个写着缺口数的小按钮。桌面不受这个影响，一直展开。
+        /// </summary>
+        public bool Open;
+
+        /// <summary>
         /// 当前看着第几层（0 = 最底层）。**只由玩家调**：滑条拖到哪儿就是哪儿，
         /// 方块往下掉不带动它 —— 早先会自动跟着当前方块跳层，结果玩家刚翻到某一层
         /// 看缺口，画面自己就跳走了，反而更难找。
@@ -46,6 +53,7 @@ namespace MinecraftTetris
         GUIStyle _headFullStyle;
         GUIStyle _headMissStyle;
         GUIStyle _sliderShadow;
+        GUIStyle _pillStyle;
         static Texture2D _atlas;
         static bool _atlasTried;
 
@@ -122,7 +130,40 @@ namespace MinecraftTetris
             // 只做范围收拢：改场地尺寸（16 → 更高）时别让层号跑到界外，
             // 剩下的全交给玩家拖滑条。
             _y = Mathf.Clamp(_y, 0, grid.SizeY - 1);
+
+            // 手机上默认收着：那个小按钮点开才画面板
+            if (MobileMode.Enabled && !DrawPill(grid))
+                return;
+
             Draw(grid);
+        }
+
+        /// <summary>
+        /// 手机上的折叠开关。收起时它就是右上角一个小按钮，上面直接写着这一层还差几格；
+        /// 点一下展开，再点一下收起。
+        /// </summary>
+        bool DrawPill(Grid grid)
+        {
+            float w = UiSkin.P(122f);
+            float h = UiSkin.P(34f);
+            var r = new Rect(Screen.width - w - UiSkin.P(14f),
+                Hud.MobileBarHeight + UiSkin.P(6f), w, h);
+
+            bool open = Open;
+            Fill(r, open ? new Color(0.14f, 0.22f, 0.30f, 0.94f) : new Color(0.10f, 0.13f, 0.18f, 0.90f));
+            DrawBorder(r, new Color(0.42f, 0.86f, 1f, open ? 0.70f : 0.35f));
+
+            int missing = MissingInLayer(grid, _y);
+            GUI.Label(r, open ? "收起俯视图" : (missing == 0 ? "俯视 已满" : "俯视 差" + missing),
+                _pillStyle);
+
+            // 按钮是透明的，只负责接点击，画好的那层不会被它盖掉
+            if (GUI.Button(r, GUIContent.none, GUIStyle.none))
+            {
+                Open = !open;
+                return Open;
+            }
+            return open;
         }
 
         void EnsureStyles()
@@ -138,6 +179,7 @@ namespace MinecraftTetris
             _headMissStyle = Make(17, WarnYellow, TextAnchor.MiddleRight);
             // 滑条上那行字的影子：样式只建一次，别每帧 new（IMGUI 每帧都走一遍这里）
             _sliderShadow = Make(17, new Color(0f, 0f, 0f, 0.85f), TextAnchor.MiddleLeft);
+            _pillStyle = Make(16, new Color(0.86f, 0.93f, 1f, 1f), TextAnchor.MiddleCenter);
         }
 
         static GUIStyle Make(int size, Color color, TextAnchor anchor)
@@ -158,14 +200,16 @@ namespace MinecraftTetris
             bool compact = MobileMode.Enabled;
 
             float pad = UiSkin.P(12f);
-            float labelW = UiSkin.P(compact ? 34f : 48f);
-            float avail = Mathf.Min(Screen.width * (compact ? 0.42f : 0.34f), UiSkin.P(360f));
+            // 手机上不画每排的「差 N」那列：42dp 的竖屏里那一列光放字就要 30 多像素，
+            // 挤到面板只剩 8px 一格，字还显示不全。这一列让给格子，缺口总数脚注里还有。
+            float labelW = compact ? 0f : UiSkin.P(48f);
+            float avail = Mathf.Min(Screen.width * (compact ? 0.40f : 0.34f), UiSkin.P(360f));
             // 场地右边只剩这么宽了，按它收（MaxWidth 是整块面板的宽度，含内边距）
             if (MaxWidth > 0f)
                 avail = Mathf.Min(avail, MaxWidth);
             // 窄屏上单元格会被最小宽度顶住，整块面板反而比 avail 宽 —— 手机上下限放低一点
             float cell = Mathf.Clamp((avail - pad * 2f - labelW) / grid.SizeX,
-                UiSkin.P(compact ? 8f : 12f), UiSkin.P(26f));
+                UiSkin.P(compact ? 7f : 12f), UiSkin.P(26f));
 
             float mapW = cell * grid.SizeX + labelW;
             float mapH = cell * grid.SizeZ;
@@ -179,8 +223,11 @@ namespace MinecraftTetris
             float h = pad * 2f + headH + UiSkin.P(6f) + sliderH + UiSkin.P(8f) + mapH
                       + UiSkin.P(6f) + footH;
 
-            // 手机上顶部有一条分数横条，俯视图得让开，不然两块面板会叠在一起
-            float topY = compact ? Hud.MobileBarHeight + UiSkin.P(8f) : UiSkin.P(14f);
+            // 手机上顶部有一条分数横条，俯视图得让开，不然两块面板会叠在一起；
+            // 展开时还要再让开那个折叠按钮
+            float topY = compact
+                ? Hud.MobileBarHeight + UiSkin.P(6f) + UiSkin.P(34f) + UiSkin.P(6f)
+                : UiSkin.P(14f);
             var panel = new Rect(Screen.width - w - UiSkin.P(14f), topY, w, h);
             Hud.DrawPanel(panel);
 
@@ -219,10 +266,11 @@ namespace MinecraftTetris
                     DrawCell(new Rect(mapX + xi * cell, ry, cell, cell), grid, xi, _y, z);
 
                 int rowMiss = MissingInRow(grid, _y, z);
-                GUI.Label(new Rect(mapX + grid.SizeX * cell + UiSkin.P(5f), ry,
-                        labelW - UiSkin.P(5f), cell),
-                    rowMiss == 0 ? "满" : "差" + rowMiss,
-                    rowMiss == 0 ? _rowFullStyle : _rowMissStyle);
+                if (labelW > 0f)
+                    GUI.Label(new Rect(mapX + grid.SizeX * cell + UiSkin.P(5f), ry,
+                            labelW - UiSkin.P(5f), cell),
+                        rowMiss == 0 ? "满" : "差" + rowMiss,
+                        rowMiss == 0 ? _rowFullStyle : _rowMissStyle);
             }
 
             DrawPieceMark(grid, mapX, mapY, cell);
