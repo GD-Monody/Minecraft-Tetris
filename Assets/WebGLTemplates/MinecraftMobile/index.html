@@ -78,7 +78,10 @@
       // 手机浏览器上自动把 mobile=1 补进网址：Unity 里判断「要不要挂触屏操作层」
       // 会读 Application.absoluteURL，靠这个参数兜底，省得用户手打。
       // 用 replaceState 改地址不会刷新页面，Unity 拿到的就是新地址。
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+      // mobile=0 是明确的「要桌面版式」，这时候不要再往地址里补 mobile=1
+      var wantDesktop = location.search.indexOf('mobile=0') >= 0;
+      if (!wantDesktop
+          && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
           && location.search.indexOf('mobile=1') < 0) {
         try {
           history.replaceState(null, '', location.pathname + '?mobile=1' + (location.hash || ''));
