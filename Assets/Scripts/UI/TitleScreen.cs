@@ -120,6 +120,9 @@ namespace MinecraftTetris
         /// <summary>规则页「特殊方块」栏的滚动位置：手机上一屏放不下十一个条目，靠它上下滑。</summary>
         float _blockScroll;
         bool _blockDragging;
+
+        /// <summary>手机按键设置页的滚动位置（一列十二行，同样一屏放不下）。</summary>
+        float _keyScroll;
         const int SliderMusic = 1;
         const int SliderSizeX = 2;
         const int SliderSizeY = 3;
@@ -177,6 +180,7 @@ namespace MinecraftTetris
             _page = (SettingsPage)Mathf.Clamp(page, 0, (int)SettingsPage.Mech);
             _mechScroll = Vector2.zero;
             _blockScroll = 0f;
+            _keyScroll = 0f;
             _tmpSpeed = GameSettings.FallSpeed;
             _tmpMusic = GameSettings.MusicVolume;
             _capturingAction = -1;
@@ -518,6 +522,7 @@ namespace MinecraftTetris
             {
                 _page = SettingsPage.Keys;
                 _capturingAction = -1;
+                _keyScroll = 0f;    // 每次进来都从第一项看起
             }
             y += step;
 
@@ -619,6 +624,14 @@ namespace MinecraftTetris
 
         void DrawSettingsKeys()
         {
+            // 手机上单列 + 上下滑：12 组键排两列的话，竖屏下整页要缩到 0.35 倍，
+            // 键名只剩几个像素。单列以后行高能保住，装不下的往下滚。
+            if (MobileMode.Enabled)
+            {
+                DrawSettingsKeysMobile();
+                return;
+            }
+
             // 12 组键排成两列（每列 6 行）。原来是一条竖列 12 行，整页放大一倍之后
             // 行数 × 行高会直接顶出屏幕，只能改成两列。
             const int perCol = 6;
@@ -670,6 +683,74 @@ namespace MinecraftTetris
                     OnKeysChanged();
             }
             if (GUI.Button(new Rect(bx + bw + gap, bottomY, bw, Pg(44f)), "返回", _btnBig))
+            {
+                _capturingAction = -1;
+                _page = SettingsPage.Main;
+            }
+        }
+
+        /// <summary>
+        /// 手机上的按键设置：一列十二行，上下滑。
+        /// 行高按 52 设计像素给，面板尺寸和规则页统一（460×790），页与页之间不跳。
+        /// </summary>
+        void DrawSettingsKeysMobile()
+        {
+            Rect panel = BeginPage(460f, 790f);
+            float w = panel.width;
+            float h = panel.height;
+            DrawPanel(panel);
+
+            GUI.Label(new Rect(panel.x, panel.y + Pg(12f), w, Pg(44f)), "按键设置", _panelTitleBig);
+
+            float rowH = Pg(52f);
+            float gap = Pg(8f);
+            float top = panel.y + Pg(66f);
+            // 底下固定不滚的：提示行 + 「恢复默认 / 返回」两个按钮
+            float bottomReserve = Pg(140f);
+            float viewH = Mathf.Max(rowH, panel.yMax - bottomReserve - top);
+            float contentH = AllActions.Length * (rowH + gap) - gap;
+            float maxScroll = Mathf.Max(0f, contentH - viewH);
+
+            // 右边单独留一列给滚动条，不然条子直接压住键名按钮
+            float rowW = w - Pg(80f) - Pg(16f);
+            var clip = new Rect(panel.x + Pg(40f), top, rowW, viewH);
+
+            ScrollList(clip, maxScroll, ref _keyScroll);
+
+            float keyW = Pg(140f);
+            GUI.BeginGroup(clip);
+            for (int i = 0; i < AllActions.Length; i++)
+            {
+                float y = i * (rowH + gap) - _keyScroll;
+                if (y + rowH < 0f || y > viewH)
+                    continue;   // 看不见的不画
+
+                GameAction action = AllActions[i];
+                GUI.Label(new Rect(0f, y, rowW - keyW - Pg(10f), rowH), ActionLabel(action), _rowLabelBig);
+
+                string keyName = _capturingAction == (int)action
+                    ? "按任意键…"
+                    : KeyName(KeyboardInput.GetPrimaryKey(action));
+
+                if (GUI.Button(new Rect(rowW - keyW, y, keyW, rowH), keyName, _btnBig))
+                    _capturingAction = (int)action;
+            }
+            GUI.EndGroup();
+
+            DrawScrollBar(clip, viewH, contentH, maxScroll, _keyScroll);
+
+            if (_capturingAction >= 0)
+                GUI.Label(new Rect(panel.x, panel.y + h - Pg(132f), w, Pg(28f)), "按 Esc 取消", _rowLabelBig);
+
+            float bw = (w - Pg(120f)) * 0.5f;
+            float bottomY = panel.y + h - Pg(66f);
+            if (GUI.Button(new Rect(panel.x + Pg(40f), bottomY, bw, Pg(44f)), "恢复默认", _btnBig))
+            {
+                ResetKeys();
+                if (OnKeysChanged != null)
+                    OnKeysChanged();
+            }
+            if (GUI.Button(new Rect(panel.xMax - Pg(40f) - bw, bottomY, bw, Pg(44f)), "返回", _btnBig))
             {
                 _capturingAction = -1;
                 _page = SettingsPage.Main;
