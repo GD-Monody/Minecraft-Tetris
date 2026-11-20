@@ -28,6 +28,10 @@ namespace MinecraftTetris
         float _autoShotTimer = 6f;
         float _forceGameOverAt = -1f;
         bool _autoShotDone;
+        // 自动截图跑完自己退出（-shotat 或 -exit 时打开），不然每次跑验证都会在桌面上
+        // 留一个游戏窗口等人手动关
+        bool _autoExit;
+        float _quitAt = -1f;
         bool _demoMode;
         bool _demoBurst;
         bool _titleMode;
@@ -44,6 +48,7 @@ namespace MinecraftTetris
         CameraRig _rig;
         float _fieldHalfW;
         float _fieldHalfH;
+        Camera _bgCam;          // 只清屏、不画东西的垫底相机
         bool _camLogged;
         int _normalCullMask;
 
@@ -317,6 +322,10 @@ namespace MinecraftTetris
             if (shotArg >= 0 && shotArg + 1 < argv.Length && float.TryParse(argv[shotArg + 1], out float shotAt))
                 _autoShotTimer = shotAt;
 
+            // 截完图就把进程收掉：验证脚本是批量跑的，窗口留在桌面上会一层层堆着，
+            // 每次都得人手动点叉。-exit 也能单独开这个开关。
+            _autoExit = shotArg >= 0 || System.Array.IndexOf(argv, "-exit") >= 0;
+
             _loop.PieceLocked += OnPieceLocked;
             _loop.LinesClearedEvent += OnLinesCleared;
             _loop.RowsCleared += OnRowsCleared;
@@ -359,6 +368,7 @@ namespace MinecraftTetris
                 return;
 
             SyncMobileUi();
+            SyncDesktopInsets();
             HideSystemCursor();
 
             if (_loop == null)
@@ -408,7 +418,16 @@ namespace MinecraftTetris
                 {
                     _autoShotDone = true;
                     CaptureShot("auto_shot.png");
+                    // 截图是这一帧渲染完才写盘的，往后拖半秒再退，别把文件掐掉
+                    if (_autoExit)
+                        _quitAt = Time.unscaledTime + 0.8f;
                 }
+            }
+
+            if (_quitAt > 0f && Time.unscaledTime >= _quitAt)
+            {
+                Application.Quit();
+                _quitAt = -1f;
             }
 
             if (_workbench != null && _title != null)
@@ -560,6 +579,76 @@ namespace MinecraftTetris
             _mainCam.rect = want;
             if (_rig != null)
                 _rig.FitToField(_fieldHalfW, _fieldHalfH, 1.06f);   // 长宽比变了，重新取景
+        }
+
+        /// <summary>
+        /// 桌面版的左右两侧面板是浮在 3D 画面上的。窗口够宽时它们待在场地两边的空档里，
+        /// 一窄就压到方块上（最右一列直接看不见）。这时候把相机的可视区收进中间那条空档：
+        /// 场地整体小一点，但一格都不会藏在面板底下。让出去的两条由 _bgCam 清底色。
+        /// </summary>
+        void SyncDesktopInsets()
+        {
+            if (MobileMode.Enabled || _layerMap == null || _mainCam == null || _rig == null || _loop == null)
+                return;
+
+            if (_layerMap.Hidden)
+            {
+                _layerMap.MaxWidth = 0f;
+                ApplyCameraRect(new Rect(0f, 0f, 1f, 1f));
+                return;
+            }
+
+            float w = Mathf.Max(1f, Screen.width);
+            float h = Mathf.Max(1f, Screen.height);
+
+            // 左侧一列是分数 + 下一个，右侧是俯视图
+            float insetL = UiSkin.P(14f) + UiSkin.P(246f) + UiSkin.P(12f);
+            float mapW = Mathf.Min(w * 0.34f, UiSkin.P(360f));
+            float insetR = mapW + UiSkin.P(26f);
+            float bandW = w - insetL - insetR;
+
+            // 判断用「整窗取景时场地有多宽」，不能看当前 rect 里的实际宽度 ——
+            // 那样收了 rect 场地变窄、又判定不用收，来回收缩会闪。
+            float fieldW = EstimateFieldScreenWidth(w, h);
+
+            if (bandW < fieldW + UiSkin.P(8f) && bandW > w * 0.25f)
+            {
+                // 窄窗口上俯视图再收一档：它只是看缺口的辅助面板，场地才是主角，
+                // 省下来的宽度都还给场地（左列宽度不动，那边是分数，缩了字就挤）
+                float mapTight = Mathf.Max(UiSkin.P(190f), Mathf.Min(mapW, w * 0.24f));
+                float insetR2 = Mathf.Min(insetR, mapTight + UiSkin.P(26f));
+                float bandW2 = w - insetL - insetR2;
+
+                _layerMap.MaxWidth = insetR2 - UiSkin.P(14f);
+                ApplyCameraRect(new Rect(insetL / w, 0f, bandW2 / w, 1f));
+            }
+            else
+            {
+                _layerMap.MaxWidth = 0f;
+                ApplyCameraRect(new Rect(0f, 0f, 1f, 1f));
+            }
+        }
+
+        /// <summary>按整窗取景时，场地边框在屏幕上占多宽（像素）。</summary>
+        float EstimateFieldScreenWidth(float w, float h)
+        {
+            float vHalf = _mainCam.fieldOfView * 0.5f * Mathf.Deg2Rad;
+            float aspect = w / h;
+            float halfW = (SizeX - 0.44f + 0.56f) * 0.5f;
+            float halfH = (SizeY - 0.44f + 0.56f) * 0.5f;
+            float dist = Mathf.Max(halfH / Mathf.Tan(vHalf),
+                halfW / (Mathf.Tan(vHalf) * aspect)) * 1.06f;
+            return w * halfW / Mathf.Max(0.0001f, dist * Mathf.Tan(vHalf) * aspect);
+        }
+
+        void ApplyCameraRect(Rect want)
+        {
+            if (_mainCam.rect == want)
+                return;
+
+            _mainCam.rect = want;
+            if (_rig != null)
+                _rig.FitToField(_fieldHalfW, _fieldHalfH, 1.06f);   // 可视区变了，重新取景
         }
 
         void SaveNow()
@@ -2342,6 +2431,23 @@ namespace MinecraftTetris
 
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(0.08f, 0.09f, 0.12f);
+
+            // 相机 rect 收窄之后（窗口窄了要让两侧面板，见 SyncDesktopInsets），让出去的两条
+            // 没人渲染，会留着上一帧甚至上一局的旧像素。这儿另起一台只负责清屏的相机垫在最后面：
+            // 主相机照旧只画自己那块，其余部分由它清成同一个底色，接缝看不出来。
+            if (_bgCam == null)
+            {
+                var bgGo = new GameObject("Background Camera");
+                _bgCam = bgGo.AddComponent<Camera>();
+                _bgCam.clearFlags = CameraClearFlags.SolidColor;
+                _bgCam.backgroundColor = cam.backgroundColor;
+                _bgCam.cullingMask = 0;
+                _bgCam.orthographic = true;
+                _bgCam.depth = cam.depth - 1f;
+                _bgCam.useOcclusionCulling = false;
+                _bgCam.allowHDR = false;
+                _bgCam.allowMSAA = false;
+            }
             // 预览层只给「下一个」相机渲染，主相机不画；建造台同理，它有自己的相机
             cam.cullingMask &= ~(1 << NextPreview.PreviewLayer);
             cam.cullingMask &= ~(1 << MoldWorkbench.WorkLayer);

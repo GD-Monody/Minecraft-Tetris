@@ -398,11 +398,18 @@ namespace MinecraftTetris
             GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
             GUI.color = Color.white;
 
-            // 目标放大 PauseScale 倍；窗口高度装不下就折减倍数。字号、面板、按钮
+            // 目标放大 PauseScale 倍；窗口装不下就折减倍数。字号、面板、按钮
             // 全部跟同一个 scale 走，任何分辨率下面板都完整、比例都一致。
             // 上一版踩的坑：面板高按 ×1 的设计值传了 Ps(262)，×2 的内容塞进一半高的
             // 面板，按钮整排跑出去；根因是布局值和容器尺寸用了两套基准，现在统一。
-            float scale = Mathf.Min(PauseScale, (Screen.height - UiSkin.P(40f)) / UiSkin.P(262f));
+            //
+            // 宽度也得算进去：下面 w 的取值区间下限是 Ps(300)，窗口一窄这个下限本身
+            // 就比半屏还宽（870 宽的窗口算出 615），面板会被撑到 86% 宽。
+            // 所以先按「面板最多占屏宽 55%」反推一个倍数上限，再取三者最小的。
+            float scale = Mathf.Min(PauseScale,
+                (Screen.height - UiSkin.P(40f)) / UiSkin.P(262f),
+                Screen.width * 0.55f / UiSkin.P(300f));
+            scale = Mathf.Max(scale, 0.6f);
             float Ps(float design) => UiSkin.P(design * scale);
 
             _pauseTitleBig.fontSize = UiSkin.Size(Mathf.RoundToInt(34f * scale));

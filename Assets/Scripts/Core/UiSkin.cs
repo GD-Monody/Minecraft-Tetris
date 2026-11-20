@@ -12,8 +12,26 @@ namespace MinecraftTetris
     /// </summary>
     public static class UiSkin
     {
-        /// <summary>桌面版的放大倍数。1 = 原始尺寸（15~40px 那套）。</summary>
+        /// <summary>
+        /// 桌面版的放大倍数（窗口基准尺寸下）。1 = 原始尺寸（15~40px 那套）。
+        /// </summary>
         public const float DesktopScale = 1.25f;
+
+        /// <summary>
+        /// 界面按多大窗口调出来的。窗口比它小就等比缩界面，比它大就维持 DesktopScale。
+        ///
+        /// 为什么要缩：面板尺寸是绝对像素（分数面板宽 246×1.25 ≈ 307），窗口从 1600 缩到 870
+        /// 时它一点没变，占屏比却从 19% 涨到 35% —— 左右两块一夹，场地只剩中间一条，
+        /// 看上去就是「UI 把屏幕糊满了」。按窗口比例缩放之后，占屏比和在大窗口里一致。
+        /// </summary>
+        const float DesignW = 1600f;
+        const float DesignH = 900f;
+
+        /// <summary>
+        /// 缩到多小为止。第一版放到 0.58，870 宽的窗口中文字只有 10px，看着太吃力；
+        /// 现在压到 0.82 —— 再窄的窗口靠相机把场地让进中间那条，不再靠缩字解决问题。
+        /// </summary>
+        const float MinWindowFactor = 0.82f;
 
         /// <summary>
         /// 主菜单按钮相对当前尺寸的目标放大倍数（2 = 放大一倍）。
@@ -34,8 +52,10 @@ namespace MinecraftTetris
         /// <summary>
         /// 字号 / 间距的整体放大倍数。
         ///
-        /// 桌面固定 1.25；手机上按屏幕密度算（见 ComputeMobileScale），因为同一个 19px 的字
-        /// 在 96dpi 的显示器上约 4 毫米高，在 400dpi 的手机上只有 1 毫米 —— 直接照搬会小到看不清。
+        /// 手机上按屏幕密度算（见 ComputeMobileScale），因为同一个 19px 的字在 96dpi 的显示器上
+        /// 约 4 毫米高，在 400dpi 的手机上只有 1 毫米 —— 直接照搬会小到看不清。
+        /// 桌面上按窗口尺寸算（见 ComputeDesktopScale），窗口拉小的时候面板跟着缩，
+        /// 不然绝对像素的面板会相对越来越大，把场地整个盖住。
         ///
         /// 注意这是**缓存**值：屏幕尺寸变了才重算。布局代码一帧要问它几十次，
         /// 每次去读 Screen.dpi 是白烧。
@@ -48,9 +68,21 @@ namespace MinecraftTetris
                     return _scale;
                 _w = Screen.width;
                 _h = Screen.height;
-                _scale = MobileMode.Enabled ? ComputeMobileScale() : DesktopScale;
+                _scale = MobileMode.Enabled ? ComputeMobileScale() : ComputeDesktopScale(_w, _h);
                 return _scale;
             }
+        }
+
+        /// <summary>
+        /// 桌面版的倍数：窗口相对 1600×900 缩了多少，界面就跟着缩多少。
+        ///
+        /// 只缩不放 —— 大窗口上维持原来的 1.25，老玩家看到的界面一点不变；
+        /// 小窗口才折减。宽高各算一次取小的那个，窗口拉成细长条时也不会有一边被撑爆。
+        /// </summary>
+        static float ComputeDesktopScale(float w, float h)
+        {
+            float factor = Mathf.Min(w / DesignW, h / DesignH);
+            return DesktopScale * Mathf.Clamp(factor, MinWindowFactor, 1f);
         }
 
         /// <summary>

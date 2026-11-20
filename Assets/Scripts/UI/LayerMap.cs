@@ -17,6 +17,15 @@ namespace MinecraftTetris
         public bool Hidden;
 
         /// <summary>
+        /// 面板宽度上限（像素），0 = 不限。
+        ///
+        /// 桌面上面板是浮在 3D 画面上的，窗口一窄，按屏宽 34% 算出来的宽度就会伸进场地里，
+        /// 把最右边那一列挡掉。Bootstrap 每帧把「场地右边缘到屏幕右边还剩多少」量出来填这儿，
+        /// 面板按它收窄 —— 场地不用缩，面板自己让。
+        /// </summary>
+        public float MaxWidth;
+
+        /// <summary>
         /// 当前看着第几层（0 = 最底层）。**只由玩家调**：滑条拖到哪儿就是哪儿，
         /// 方块往下掉不带动它 —— 早先会自动跟着当前方块跳层，结果玩家刚翻到某一层
         /// 看缺口，画面自己就跳走了，反而更难找。
@@ -151,15 +160,21 @@ namespace MinecraftTetris
             float pad = UiSkin.P(12f);
             float labelW = UiSkin.P(compact ? 34f : 48f);
             float avail = Mathf.Min(Screen.width * (compact ? 0.42f : 0.34f), UiSkin.P(360f));
+            // 场地右边只剩这么宽了，按它收（MaxWidth 是整块面板的宽度，含内边距）
+            if (MaxWidth > 0f)
+                avail = Mathf.Min(avail, MaxWidth);
             // 窄屏上单元格会被最小宽度顶住，整块面板反而比 avail 宽 —— 手机上下限放低一点
             float cell = Mathf.Clamp((avail - pad * 2f - labelW) / grid.SizeX,
-                UiSkin.P(compact ? 8f : 14f), UiSkin.P(26f));
+                UiSkin.P(compact ? 8f : 12f), UiSkin.P(26f));
 
             float mapW = cell * grid.SizeX + labelW;
             float mapH = cell * grid.SizeZ;
             float headH = UiSkin.P(30f);
             float sliderH = UiSkin.P(32f);
-            float footH = UiSkin.P(compact ? 26f : 44f);
+            // 挤到放不下「俯视图 y=0」+「还差 40」两段时，走和手机一样的单行版式，
+            // 不然两段字会叠在一起
+            bool tight = compact || mapW < UiSkin.P(210f);
+            float footH = UiSkin.P(tight ? 26f : 44f);
             float w = mapW + pad * 2f;
             float h = pad * 2f + headH + UiSkin.P(6f) + sliderH + UiSkin.P(8f) + mapH
                       + UiSkin.P(6f) + footH;
@@ -173,7 +188,7 @@ namespace MinecraftTetris
             float y = panel.y + pad;
 
             int missing = MissingInLayer(grid, _y);
-            if (compact)
+            if (tight)
             {
                 // 窄屏放不下「俯视图 y = 12」加「还差 40」两段，缺口数字挪到底下那行
                 GUI.Label(new Rect(x, y, mapW, headH), "俯视图 y=" + _y, _titleStyle);
@@ -213,7 +228,7 @@ namespace MinecraftTetris
             DrawPieceMark(grid, mapX, mapY, cell);
 
             float fy = mapY + mapH + UiSkin.P(6f);
-            if (compact)
+            if (tight)
             {
                 GUI.Label(new Rect(x, fy, mapW, UiSkin.P(22f)),
                     missing == 0 ? "本层已满" : "还差 " + missing + " 格", _smallStyle);
