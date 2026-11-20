@@ -565,19 +565,20 @@ namespace MinecraftTetris
 
             bool inGame = _loop != null && _title != null
                           && !_title.Visible && !_loop.GameOver;
-            bool playing = inGame && !_paused;
 
-            // 暂停时整个操作层不能一起收：收起来暂停键也没了，玩家再也没法点「继续」。
-            // Visible 管「这一层还在不在」（暂停时在，只留右上角那颗键），
-            // PanelVisible 管「拖动区和八个按键画不画」。
+            // 暂停时整层的布局原样保留，只多盖一层暂停面板 —— 画面不能重排。
+            // 早先暂停时把操作层整层关掉、相机 rect 也放回全屏，结果一点暂停：
+            // 场地突然变大、按钮整条消失，看着像换了个界面；而且暂停键跟着没了，
+            // 再也没法点「继续」。现在整层一直留着，暂停只把按键变成不可点
+            // （MobileControls 会在操作条上压一层暗色）。
             _mobile.Visible = inGame;
-            _mobile.PanelVisible = playing;
             _mobile.Paused = _paused;
 
             // 上下各让一条：下面是操作条，上面是分数横条。让出来的部分由界面自己铺底色，
             // 3D 只画中间那块，方块从顶上下来的位置和落点都不会被压住。
-            float bottom = playing ? _mobile.StripHeight / Mathf.Max(1f, Screen.height) : 0f;
-            float top = playing ? Hud.MobileBarHeight / Mathf.Max(1f, Screen.height) : 0f;
+            // 这两条按 inGame 算而不是按 playing：暂停时取景保持不变。
+            float bottom = inGame ? _mobile.StripHeight / Mathf.Max(1f, Screen.height) : 0f;
+            float top = inGame ? Hud.MobileBarHeight / Mathf.Max(1f, Screen.height) : 0f;
             float height = Mathf.Max(0.25f, 1f - bottom - top);
             Rect want = new Rect(0f, bottom, 1f, height);
             if (_mainCam.rect == want)

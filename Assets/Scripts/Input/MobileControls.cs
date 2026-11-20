@@ -52,12 +52,6 @@ namespace MinecraftTetris
 
         public bool Visible = true;
 
-        /// <summary>
-        /// 拖动区和八个按键画不画、接不接。暂停时是 false —— 但暂停键本身照旧留着，
-        /// 不然一暂停就再也点不回去了（只能杀进程）。
-        /// </summary>
-        public bool PanelVisible = true;
-
         /// <summary>当前是不是暂停着。只影响那颗键上的字（暂停 / 继续）。</summary>
         public bool Paused;
 
@@ -106,14 +100,11 @@ namespace MinecraftTetris
                 return;
             }
 
-            // 暂停中：拖动区和按键都收起来，只留右上角那颗暂停键（点了就继续）
-            if (!PanelVisible)
-                ReleaseAll();
-
             TickTouches();
 
-            // 软降按住连发：按键本身只在按下那一帧发一次，之后靠这里续
-            if (!PanelVisible)
+            // 软降按住连发：按键本身只在按下那一帧发一次，之后靠这里续。
+            // 暂停时按键照旧画着，但不续发。
+            if (Paused)
                 return;
 
             for (int i = 0; i < BtnCount; i++)
@@ -242,8 +233,8 @@ namespace MinecraftTetris
                 return;
             }
 
-            if (!PanelVisible)
-                return;   // 暂停中：只认上面那颗暂停键，滑到这儿不算数
+            if (Paused)
+                return;   // 暂停中：按键照旧画着（画面不重排），但不接输入，只有右上角那颗有效
 
             for (int i = 0; i < BtnCount; i++)
             {
@@ -374,19 +365,18 @@ namespace MinecraftTetris
             UiSkin.Apply();
             EnsureStyles();
 
-            // 暂停中只留暂停键：控制条和八个按键一起收起来，画在暂停面板底下反而碍事
-            if (PanelVisible)
-            {
-                // 控制条底色：把 3D 画面让出来的那块填实，不然相机 rect 缩小后
-                // 下面会留一片没清过的旧像素
-                Rect strip = new Rect(0f, Screen.height - _stripH, Screen.width, _stripH);
-                Fill(strip, new Color(0.05f, 0.06f, 0.08f, 0.97f));
-                Fill(new Rect(0f, strip.y, Screen.width, 1f), new Color(0.35f, 0.72f, 1f, 0.45f));
+            // 操作条照旧画出来 —— 暂停时画面不该重排，只是压一层暗色表示这会儿按不动。
+            // （暂停面板由 Hud 画在中间，这层暗色只盖住底部这一条。）
+            Rect strip = new Rect(0f, Screen.height - _stripH, Screen.width, _stripH);
+            Fill(strip, new Color(0.05f, 0.06f, 0.08f, 0.97f));
+            Fill(new Rect(0f, strip.y, Screen.width, 1f), new Color(0.35f, 0.72f, 1f, 0.45f));
 
-                DrawPad();
-                for (int i = 0; i < BtnCount; i++)
-                    DrawButton(i);
-            }
+            DrawPad();
+            for (int i = 0; i < BtnCount; i++)
+                DrawButton(i);
+
+            if (Paused)
+                Fill(strip, new Color(0f, 0f, 0f, 0.55f));
 
             DrawPause();
         }
