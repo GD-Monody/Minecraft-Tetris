@@ -650,11 +650,12 @@ namespace MinecraftTetris
         /// </summary>
         float FieldRightEdge()
         {
-            float xRight = SizeX - 0.44f;
-            float yBottom = -0.56f;
-            float yTop = SizeY - 0.44f;
-            float zFront = -0.56f;
-            float zBack = SizeZ - 0.44f;
+            // 量的是场地格子的右边界：地台现在只铺能放方块的列，和场地同宽
+            float xRight = SizeX - 0.5f;
+            float yBottom = -1.5f;
+            float yTop = SizeY;
+            float zFront = -0.64f;
+            float zBack = zFront + Mathf.Max(1, SizeZ);   // 边框进深跟场地一致
 
             float maxX = float.MinValue;
             for (int i = 0; i < 4; i++)
@@ -2454,9 +2455,7 @@ namespace MinecraftTetris
             GameObject frameGo = new GameObject("GridFrame");
             frameGo.transform.SetParent(transform, false);
             GridFrame frame = frameGo.AddComponent<GridFrame>();
-            frame.Build(SizeX, SizeY, SizeZ,
-                new Color(0.42f, 0.86f, 1f),                 // 核心线：海天蓝
-                new Color(0.10f, 0.55f, 1f, 0.34f));         // 光晕：更深的蓝、半透明
+            frame.Build(SizeX, SizeY, SizeZ);
 
             Vector3 center = new Vector3((SizeX - 1) / 2f, (SizeY - 1) / 2f, (SizeZ - 1) / 2f);
 
@@ -2499,7 +2498,7 @@ namespace MinecraftTetris
             // 场地变深以后，相机要退得够远才看得全
             rig.Distance = Mathf.Max(SizeY * 1.05f, SizeZ * 1.8f);
 
-            // 外面留一格半：边框有厚度，转视角的时候四个角也不会被切掉
+            // 外面留一格半：地台比场地宽一块、下面还多一层，转视角的时候四个角也不会被切掉
             _fieldHalfW = Mathf.Max(SizeX, SizeZ) * 0.5f + 1.5f;
             _fieldHalfH = SizeY * 0.5f + 1.5f;
             rig.FitToField(_fieldHalfW, _fieldHalfH, 1.06f);
