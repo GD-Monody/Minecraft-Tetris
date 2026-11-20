@@ -563,9 +563,16 @@ namespace MinecraftTetris
             if (_mobile == null || _mainCam == null)
                 return;
 
-            bool playing = _loop != null && _title != null
-                           && !_title.Visible && !_paused && !_loop.GameOver;
-            _mobile.Visible = playing;
+            bool inGame = _loop != null && _title != null
+                          && !_title.Visible && !_loop.GameOver;
+            bool playing = inGame && !_paused;
+
+            // 暂停时整个操作层不能一起收：收起来暂停键也没了，玩家再也没法点「继续」。
+            // Visible 管「这一层还在不在」（暂停时在，只留右上角那颗键），
+            // PanelVisible 管「拖动区和八个按键画不画」。
+            _mobile.Visible = inGame;
+            _mobile.PanelVisible = playing;
+            _mobile.Paused = _paused;
 
             // 上下各让一条：下面是操作条，上面是分数横条。让出来的部分由界面自己铺底色，
             // 3D 只画中间那块，方块从顶上下来的位置和落点都不会被压住。

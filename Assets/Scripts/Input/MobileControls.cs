@@ -52,6 +52,15 @@ namespace MinecraftTetris
 
         public bool Visible = true;
 
+        /// <summary>
+        /// 拖动区和八个按键画不画、接不接。暂停时是 false —— 但暂停键本身照旧留着，
+        /// 不然一暂停就再也点不回去了（只能杀进程）。
+        /// </summary>
+        public bool PanelVisible = true;
+
+        /// <summary>当前是不是暂停着。只影响那颗键上的字（暂停 / 继续）。</summary>
+        public bool Paused;
+
         /// <summary>点了右上角的暂停键。</summary>
         public System.Action OnPause;
 
@@ -97,9 +106,16 @@ namespace MinecraftTetris
                 return;
             }
 
+            // 暂停中：拖动区和按键都收起来，只留右上角那颗暂停键（点了就继续）
+            if (!PanelVisible)
+                ReleaseAll();
+
             TickTouches();
 
             // 软降按住连发：按键本身只在按下那一帧发一次，之后靠这里续
+            if (!PanelVisible)
+                return;
+
             for (int i = 0; i < BtnCount; i++)
             {
                 if (_btnFinger[i] < 0 || i != SoftDropBtn)
@@ -153,9 +169,12 @@ namespace MinecraftTetris
                 _btn[i] = new Rect(btnLeft + col * (bw + gap), _pad.y + row * (bh + gap), bw, bh);
             }
 
-            // 暂停键放右上角，避开左上角那块分数面板（分数面板在 HUD 里画）
-            float ps = Mathf.Clamp(w * 0.11f, 44f, 96f);
-            _pauseRect = new Rect(w - safeRight - ps - pad * 0.5f, UiSkin.P(14f) + pad * 0.5f, ps, ps);
+            // 暂停键贴右上角，和顶部横条同高同尺寸（Hud.MobilePauseSize 是唯一的尺寸来源，
+            // 两边各算一套的话窗口一变就错位）
+            float ps = Hud.MobilePauseSize;
+            float m = UiSkin.P(10f);
+            float topInset = Screen.height - (safe.y + safe.height);
+            _pauseRect = new Rect(w - safeRight - m - ps, topInset + m, ps, ps);
         }
 
         // ── 触摸 ──────────────────────────────────────────────────────────
@@ -222,6 +241,9 @@ namespace MinecraftTetris
                     OnPause();
                 return;
             }
+
+            if (!PanelVisible)
+                return;   // 暂停中：只认上面那颗暂停键，滑到这儿不算数
 
             for (int i = 0; i < BtnCount; i++)
             {
@@ -352,15 +374,20 @@ namespace MinecraftTetris
             UiSkin.Apply();
             EnsureStyles();
 
-            // 控制条底色：把 3D 画面让出来的那块填实，不然相机 rect 缩小后
-            // 下面会留一片没清过的旧像素
-            Rect strip = new Rect(0f, Screen.height - _stripH, Screen.width, _stripH);
-            Fill(strip, new Color(0.05f, 0.06f, 0.08f, 0.97f));
-            Fill(new Rect(0f, strip.y, Screen.width, 1f), new Color(0.35f, 0.72f, 1f, 0.45f));
+            // 暂停中只留暂停键：控制条和八个按键一起收起来，画在暂停面板底下反而碍事
+            if (PanelVisible)
+            {
+                // 控制条底色：把 3D 画面让出来的那块填实，不然相机 rect 缩小后
+                // 下面会留一片没清过的旧像素
+                Rect strip = new Rect(0f, Screen.height - _stripH, Screen.width, _stripH);
+                Fill(strip, new Color(0.05f, 0.06f, 0.08f, 0.97f));
+                Fill(new Rect(0f, strip.y, Screen.width, 1f), new Color(0.35f, 0.72f, 1f, 0.45f));
 
-            DrawPad();
-            for (int i = 0; i < BtnCount; i++)
-                DrawButton(i);
+                DrawPad();
+                for (int i = 0; i < BtnCount; i++)
+                    DrawButton(i);
+            }
+
             DrawPause();
         }
 
@@ -398,9 +425,11 @@ namespace MinecraftTetris
 
         void DrawPause()
         {
-            Fill(_pauseRect, new Color(0.11f, 0.13f, 0.18f, 0.8f));
-            Border(_pauseRect, new Color(0.42f, 0.86f, 1f, 0.3f));
-            GUI.Label(_pauseRect, "暂停", _hintStyle);
+            Fill(_pauseRect, Paused ? new Color(0.16f, 0.26f, 0.34f, 0.92f)
+                                    : new Color(0.11f, 0.13f, 0.18f, 0.8f));
+            Border(_pauseRect, new Color(0.42f, 0.86f, 1f, Paused ? 0.7f : 0.3f));
+            // 暂停中这颗键就是「继续」——字不换的话，玩家会以为它点不动
+            GUI.Label(_pauseRect, Paused ? "继续" : "暂停", _hintStyle);
         }
 
         void EnsureStyles()
