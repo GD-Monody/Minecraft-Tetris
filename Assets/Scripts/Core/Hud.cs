@@ -262,21 +262,27 @@ namespace MinecraftTetris
         ///
         /// 相机渲染区要按它往下让一块，否则刚生成的那几行会被面板压住 ——
         /// 方块正好从被挡住的地方下来，玩家看不见自己要接的是什么。
+        ///
+        /// 固定一条 54 高，不做折叠：折叠那套（点整条横条切换 + 右端小三角）在窄屏上
+        /// 反而更像一堆控件，而且收起时「消除 / 最高」得藏起来，信息也丢了。
         /// </summary>
-        /// <summary>
-        /// 手机顶部横条是不是收起来了（点一下横条切换）。默认收起：竖屏里上下每一条
-        /// 横条都是从场地身上切下来的，先给场地，想看得分点一下就展开。
-        /// </summary>
-        public static bool ScoreCollapsed = true;
-
         public static float MobileBarHeight
         {
             get
             {
                 Rect safe = Screen.safeArea;
                 float topInset = Screen.height - (safe.y + safe.height);
-                return topInset + UiSkin.P(10f) + UiSkin.P(ScoreCollapsed ? 54f : 104f) + UiSkin.P(10f);
+                return topInset + UiSkin.P(10f) + MobilePauseSize + UiSkin.P(10f);
             }
+        }
+
+        /// <summary>
+        /// 右上角暂停键的边长。Hud 算横条让位、MobileControls 摆位置都用它 ——
+        /// 两边各算一套的话，窗口一变就会错位（之前暂停键比横条高出一截就是这么来的）。
+        /// </summary>
+        public static float MobilePauseSize
+        {
+            get { return UiSkin.P(54f); }
         }
 
         /// <summary>
@@ -284,7 +290,7 @@ namespace MinecraftTetris
         ///
         /// 桌面版左上那两块 246 宽的面板，按手机倍数放大后要吃掉近半屏宽；
         /// 场地本身是竖的、只占中间一条，面板会直接压上去。所以手机上改成横条：
-        /// 分数一行、消除和最高并到第二行，「下一个」缩成右侧一个小方块。
+        /// 左边分数，中间消除 / 最高两行小字，右边「下一个」小方块。
         /// </summary>
         void DrawMobileBar()
         {
@@ -300,85 +306,37 @@ namespace MinecraftTetris
             float rightInset = Screen.width - (safe.x + safe.width);
             float m = UiSkin.P(10f);
 
-            // 右上角留给暂停键（MobileControls 负责画和判定），这里让开它的宽度
-            float pause = Mathf.Clamp(Screen.width * 0.11f, 44f, 96f);
+            // 右上角留给暂停键（MobileControls 负责画和判定），这里按同一个尺寸让开
+            float pause = MobilePauseSize;
             float w = Screen.width - safe.x - rightInset - m * 3f - pause;
-            if (w < UiSkin.P(240f))
-                w = Screen.width - m * 2f;   // 极窄的屏：宁可和暂停键挤一挤，也别把分数挤没
+            if (w < UiSkin.P(200f))
+                w = Screen.width - m * 2f - pause;   // 极窄的屏：宁可挤一点，也别把暂停键盖住
 
-            bool collapsed = ScoreCollapsed;
-            var bar = new Rect(safe.x + m, topInset + m, w, UiSkin.P(collapsed ? 54f : 104f));
+            var bar = new Rect(safe.x + m, topInset + m, w, MobilePauseSize);
             DrawPanel(bar);
 
-            // 整条横条都能点：手机上这块本来不接别的操作，拿它当折叠开关最省地方
-            // （不额外加按钮，竖屏那点宽度经不起再切一块）
-            if (GUI.Button(bar, GUIContent.none, GUIStyle.none))
-            {
-                ScoreCollapsed = !collapsed;
-                collapsed = ScoreCollapsed;
-            }
-
-            // 折叠指示画在右端：几条横线拼的小三角，不依赖字体里有没有 ▲▼
-            float chev = UiSkin.P(20f);
-            DrawChevron(new Rect(bar.xMax - chev - UiSkin.P(8f), bar.y + (bar.height - chev) * 0.5f,
-                chev, chev), collapsed);
-
-            // 收起时整条只有一行高，预览图按「几乎占满条高」画，不然挤成一小块看不出形状
-            float previewSize = bar.height - UiSkin.P(collapsed ? 6f : 12f);
-            var preview = new Rect(bar.xMax - chev - UiSkin.P(12f) - previewSize,
-                bar.y + UiSkin.P(6f), previewSize, previewSize);
+            float previewSize = bar.height - UiSkin.P(10f);
+            var preview = new Rect(bar.xMax - previewSize - UiSkin.P(8f),
+                bar.y + UiSkin.P(5f), previewSize, previewSize);
             if (Preview != null && Preview.Texture != null)
                 GUI.DrawTexture(preview, Preview.Texture, ScaleMode.ScaleToFit, true);
 
             float x = bar.x + UiSkin.P(14f);
-            // 分数那一列最多画到预览图左边为止；再往右就压到方块上了
-            float leftW = Mathf.Max(UiSkin.P(90f), preview.x - x - UiSkin.P(10f));
-            string unit = GameSettings.ElimMode == GameSettings.ElimLayer ? " 层" : " 行";
+            float midY = bar.y + (bar.height - UiSkin.P(36f)) * 0.5f;
 
-            if (collapsed)
-            {
-                // 收起只剩一行：分数 + 下一个预览。最高和消行都是「看一眼就够」的数字，
-                // 硬塞进来会把分数挤成两行（实测 420 宽时「最高 5700」直接折行），
-                // 想看点一下展开。
-                float midY = bar.y + (bar.height - UiSkin.P(40f)) * 0.5f;
-                GUI.Label(new Rect(x, midY + UiSkin.P(8f), UiSkin.P(56f), UiSkin.P(26f)), "分数", _label);
-                GUI.Label(new Rect(x + UiSkin.P(54f), midY,
-                        Mathf.Max(1f, preview.x - UiSkin.P(8f) - (x + UiSkin.P(54f))), UiSkin.P(40f)),
-                    Loop.Score.ToString(), _value);
-                return;
-            }
-
-            GUI.Label(new Rect(x, bar.y + UiSkin.P(12f), UiSkin.P(60f), UiSkin.P(26f)), "分数", _label);
-            GUI.Label(new Rect(x + UiSkin.P(58f), bar.y + UiSkin.P(4f), Mathf.Max(1f, leftW - UiSkin.P(58f)), UiSkin.P(50f)),
+            GUI.Label(new Rect(x, midY + UiSkin.P(4f), UiSkin.P(42f), UiSkin.P(26f)), "分数", _label);
+            GUI.Label(new Rect(x + UiSkin.P(42f), midY - UiSkin.P(3f), UiSkin.P(64f), UiSkin.P(38f)),
                 Loop.Score.ToString(), _value);
 
-            // 第二行拆成两段：一段写消除，一段写最高。
-            // 拼成一整条的话，窄屏上「最高」后面那个数字正好被右边界切掉（实测 400px 宽的窗口就是这样）
-            float half = leftW * 0.5f;
-            GUI.Label(new Rect(x, bar.y + UiSkin.P(62f), half, UiSkin.P(28f)),
+            // 消除 / 最高：横条中段剩多少给多少，两行小字竖着排 ——
+            // 挤成一行的话 420 宽的屏上「最高 5700」会直接折行
+            float subX = x + UiSkin.P(110f);
+            float subW = Mathf.Max(UiSkin.P(40f), preview.x - UiSkin.P(8f) - subX);
+            string unit = GameSettings.ElimMode == GameSettings.ElimLayer ? " 层" : " 行";
+            GUI.Label(new Rect(subX, bar.y + UiSkin.P(7f), subW, UiSkin.P(20f)),
                 "消除 " + Loop.LinesCleared + unit, _mobileSub);
-            GUI.Label(new Rect(x + half, bar.y + UiSkin.P(62f), half, UiSkin.P(28f)),
+            GUI.Label(new Rect(subX, bar.y + UiSkin.P(26f), subW, UiSkin.P(20f)),
                 "最高 " + _best, _mobileSub);
-        }
-
-        /// <summary>用几条横线拼一个小三角当折叠指示，往上 = 已收起（点一下展开）。</summary>
-        static void DrawChevron(Rect r, bool collapsed)
-        {
-            const int lines = 5;
-            float lineH = Mathf.Max(1f, r.height / (lines * 2f));
-            float step = r.width / (lines * 2f);
-
-            GUI.color = new Color(0.62f, 0.78f, 0.92f, 0.9f);
-            for (int i = 0; i < lines; i++)
-            {
-                float inset = i * step;
-                float y = collapsed
-                    ? r.y + i * lineH               // 朝下：点开
-                    : r.yMax - (i + 1) * lineH;     // 朝上：收起
-                GUI.DrawTexture(new Rect(r.x + inset, y, r.width - inset * 2f, lineH),
-                    Texture2D.whiteTexture);
-            }
-            GUI.color = Color.white;
         }
 
         void DrawScorePanel()
