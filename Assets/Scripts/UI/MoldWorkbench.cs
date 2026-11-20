@@ -34,6 +34,14 @@ namespace MinecraftTetris
         const float ZoomDefault = 5.2f;
         const float OrbitDegPerPixel = 0.6f;
 
+        /// <summary>
+        /// 俯仰角上下限。下限卡在 3 度：再往下相机就钻到地板下面了，从下往上看盒子，
+        /// 画面会像是「透视反了、本来该被挡住的那几个面全露出来」——
+        /// 编辑器只在地板以上看，用不着仰视。
+        /// </summary>
+        const float MinPitch = 3f;
+        const float MaxPitch = 80f;
+
         /// <summary>编辑器里模具长什么样（游戏里它跟普通方块一样随机取材质）。</summary>
         const string EditorBlock = "diamond_block";
 
@@ -314,11 +322,14 @@ namespace MinecraftTetris
                 Vector2 d = e.mousePosition - _rbStart;
                 _rbStart = e.mousePosition;
                 _rbMoved += d.magnitude;
-                // 横向是「抓着盒子转」而不是「转相机」：鼠标往右拖，盒子就该往右转。
-                // 相机的 yaw 增大是往左绕，所以这里取负号；取正号的话手往右、
-                // 盒子往左，用起来像是拖反了（用户实测反馈）。
-                _yaw -= d.x * OrbitDegPerPixel;
-                _pitch = Mathf.Clamp(_pitch - d.y * OrbitDegPerPixel, -80f, 80f);
+                // 和主视角（CameraRig 的右键拖动）保持同一套手感：拖的是相机，不是盒子。
+                // 之前一度改成反号想做成「抓着盒子转」，结果两边方向相反，用起来更别扭 ——
+                // 一致比「哪种更直觉」重要，玩家在两处用的是同一只手。
+                _yaw += d.x * OrbitDegPerPixel;
+
+                // 纵向锁在地板以上：拖到负角度就钻到盒子底下去往上看，画面会像是
+                // 「透视反了、看到本来被挡住的三个面」。编辑器不需要从下面看。
+                _pitch = Mathf.Clamp(_pitch - d.y * OrbitDegPerPixel, MinPitch, MaxPitch);
                 return;
             }
 
