@@ -4,23 +4,31 @@ using UnityEngine;
 namespace MinecraftTetris
 {
     /// <summary>
-    /// 场地边框：铺在场地底下的一排 MC 石砖，只当地台，两侧不竖墙。
+    /// 场地外观：底下一层 MC 石砖地台，四周一圈玻璃围挡。
+    ///
+    /// 地台：只铺「能放方块」的那几列，边缘就是场地边界；进深跟场地 z 一致，
+    /// 并且沿 z 按「一格一块」切开（整条拉通会把贴图拉成长条，砖缝全糊）。
+    ///
+    /// 玻璃：方块表里原版 glass 那格贴图就是「中间全透明 + 边缘一圈浅线」，
+    /// 正好是 MC 里那种看不见玻璃只有框线的效果。四面各画一层薄片（不是实心方块），
+    /// 免得四层玻璃叠在一起把后面糊成毛玻璃。
     ///
     /// 上一版是蓝色发光线框（两面网格墙 + 加色光晕），读起来像科幻界面，和满场的方块
-    /// 不在一个世界里。换成方块表里的石砖之后，左右两堵墙在透视里会被摊成两条斜边
-    /// （相机是俯视的），看着像个漏斗 —— 干脆只留地台：方块就像摆在一层砖上，
-    /// 场地边界由「能摆到第几格」自己说明，不用墙去画。
-    ///
-    /// 地台进深跟场地深度一致，而且沿 z 按「一格一块」切开：整条拉通的话贴图会被
-    /// 拉成一条长条，砖缝全糊了。
+    /// 不在一个世界里，所以整体换成了方块表里的真方块。
     /// </summary>
     public class GridFrame : MonoBehaviour
     {
-        /// <summary>围场地用哪种方块。想换材质改这一行就行（方块表里的英文名）。</summary>
+        /// <summary>地台用哪种方块。想换材质改这一行就行（方块表里的英文名）。</summary>
         const string FrameBlockName = "stone_bricks";
+
+        /// <summary>四周那圈围挡用哪种方块。必须是方块表里标了透明的（玻璃 / 冰之类）。</summary>
+        const string GlassBlockName = "glass";
 
         /// <summary>前脸比场地前沿再出来一点，别和场上最前排方块的贴面共面打架。</summary>
         const float FrontLip = 0.14f;
+
+        /// <summary>玻璃往外让一点，别和贴着边界那一列方块的贴面 z-fighting。</summary>
+        const float GlassLip = 0.03f;
 
 
         public void Build(int sizeX, int sizeY, int sizeZ)
@@ -55,7 +63,117 @@ namespace MinecraftTetris
             for (int x = 0; x < sizeX; x++)
                 AddRow(verts, uvs, tris, x, -1, zFront, depth, side, top);
 
-            CreateMeshObject(verts, uvs, tris, BlockMesh.AtlasMaterial);
+            CreateMeshObject(verts, uvs, tris, BlockMesh.AtlasMaterial, "FrameFloor");
+
+            BuildGlassWalls(sizeX, sizeY, sizeZ);
+        }
+
+        /// <summary>
+        /// 四周的玻璃围挡：左、右、后、顶各一层极淡的透明面，前脸敞着。
+        ///
+        /// 第一版照方块表里 glass 那格贴图、按格拼了一圈，结果每一格都自带一圈白边，
+        /// 四面叠起来就是一张白网，比原来的发光线框还闹。这版换成「无痕」的画法：
+        /// 不用贴图的格子图案，只用一层 alpha 很低的纯色，另外沿四个竖角描一条细边
+        /// 提示边界。远看就是一块干净的玻璃罩子，近看才有一点点反光。
+        /// </summary>
+        void BuildGlassWalls(int sizeX, int sizeY, int sizeZ)
+        {
+            float xL = -0.5f - GlassLip, xR = sizeX - 0.5f + GlassLip;
+            float yB = -0.5f, yT = sizeY - 0.5f;
+            float zF = -0.5f, zB = sizeZ - 0.5f + GlassLip;
+
+            // 面板本身：几乎看不见的一层色
+            Material paneMat = MakeGlassMaterial(new Color(0.74f, 0.90f, 1f, 0.045f));
+            if (paneMat != null)
+            {
+                var v = new List<Vector3>();
+                var uv = new List<Vector2>();
+                var t = new List<int>();
+
+                AddPane(v, uv, t, new Vector3(xL, yB, zF), new Vector3(xL, yB, zB),
+                    new Vector3(xL, yT, zB), new Vector3(xL, yT, zF));      // 左
+                AddPane(v, uv, t, new Vector3(xR, yB, zB), new Vector3(xR, yB, zF),
+                    new Vector3(xR, yT, zF), new Vector3(xR, yT, zB));      // 右
+                AddPane(v, uv, t, new Vector3(xL, yB, zB), new Vector3(xR, yB, zB),
+                    new Vector3(xR, yT, zB), new Vector3(xL, yT, zB));      // 后
+                AddPane(v, uv, t, new Vector3(xL, yT, zF), new Vector3(xR, yT, zF),
+                    new Vector3(xR, yT, zB), new Vector3(xL, yT, zB));      // 顶
+
+                CreateMeshObject(v, uv, t, paneMat, "FrameGlass");
+            }
+
+            // 四个竖角：一条很细的亮边，交代出「这里有个玻璃罩子」
+            Material edgeMat = MakeGlassMaterial(new Color(0.78f, 0.92f, 1f, 0.30f));
+            if (edgeMat != null)
+            {
+                var v = new List<Vector3>();
+                var uv = new List<Vector2>();
+                var t = new List<int>();
+                float w = 0.022f;
+
+                AddEdge(v, uv, t, xL, zF, yB, yT, w);
+                AddEdge(v, uv, t, xR, zF, yB, yT, w);
+                AddEdge(v, uv, t, xL, zB, yB, yT, w);
+                AddEdge(v, uv, t, xR, zB, yB, yT, w);
+
+                CreateMeshObject(v, uv, t, edgeMat, "FrameGlassEdge");
+            }
+        }
+
+        /// <summary>
+        /// 一块透明面。UV 全给同一个点：贴图是一张 1×1 的纯色，取哪儿都一样，
+        /// 这样就不会出现方块贴图那种一格一格的边框。
+        /// </summary>
+        static void AddPane(List<Vector3> v, List<Vector2> uv, List<int> t,
+            Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3)
+        {
+            int i = v.Count;
+            v.Add(p0);
+            v.Add(p1);
+            v.Add(p2);
+            v.Add(p3);
+            uv.Add(Vector2.zero);
+            uv.Add(Vector2.zero);
+            uv.Add(Vector2.zero);
+            uv.Add(Vector2.zero);
+            t.Add(i); t.Add(i + 1); t.Add(i + 2);
+            t.Add(i); t.Add(i + 2); t.Add(i + 3);
+        }
+
+        /// <summary>竖向的细边：一条朝前、一条朝侧，凑出有厚度的棱。</summary>
+        static void AddEdge(List<Vector3> v, List<Vector2> uv, List<int> t,
+            float x, float z, float y0, float y1, float w)
+        {
+            AddPane(v, uv, t,
+                new Vector3(x - w, y0, z - w), new Vector3(x + w, y0, z - w),
+                new Vector3(x + w, y1, z - w), new Vector3(x - w, y1, z - w));
+            AddPane(v, uv, t,
+                new Vector3(x - w, y0, z + w), new Vector3(x, y0, z + w),
+                new Vector3(x, y1, z + w), new Vector3(x - w, y1, z + w));
+        }
+
+        /// <summary>
+        /// 造一块纯色透明材质：克隆现有的透明方块材质（shader 不透明会盖住场景），
+        /// 把贴图换成 1×1 纯色。颜色里的 alpha 就是这层玻璃的浓度。
+        /// </summary>
+        static Material MakeGlassMaterial(Color color)
+        {
+            int gid = BlockCatalog.IdOf(GlassBlockName);
+            if (gid <= 0)
+                return null;
+
+            Material src = BlockMesh.GetMaterial(BlockCatalog.Of(gid));
+            if (src == null)
+                return null;
+
+            var tex = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+            tex.SetPixel(0, 0, color);
+            tex.Apply();
+            tex.wrapMode = TextureWrapMode.Clamp;
+
+            var mat = new Material(src);
+            mat.mainTexture = tex;
+            return mat;
         }
 
         /// <summary>沿 z 方向摆一串方块（一个边框格子 = depth 块）。</summary>
@@ -142,19 +260,20 @@ namespace MinecraftTetris
             v0 = 1f - (yTop + BlockCatalog.TilePixels) / h;
         }
 
-        void CreateMeshObject(List<Vector3> verts, List<Vector2> uvs, List<int> tris, Material mat)
+        void CreateMeshObject(List<Vector3> verts, List<Vector2> uvs, List<int> tris,
+            Material mat, string name)
         {
             if (verts.Count == 0 || mat == null)
                 return;
 
             var mesh = new Mesh();
-            mesh.name = "GridFrame_Blocks";
+            mesh.name = "GridFrame_" + name;
             mesh.SetVertices(verts);
             mesh.SetUVs(0, uvs);
             mesh.SetTriangles(tris, 0);
             mesh.RecalculateBounds();
 
-            var go = new GameObject("FrameBlocks");
+            var go = new GameObject(name);
             go.transform.SetParent(transform, false);
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
 
