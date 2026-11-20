@@ -7,20 +7,24 @@
     <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#14171f">
+    <meta name="theme-color" content="#0a0c10">
     <title>Minecraft 俄罗斯方块</title>
     <style>
       html, body {
         margin: 0; padding: 0; width: 100%; height: 100%;
-        background: #14171f; overflow: hidden;
+        /* 底色比游戏画面再深一点：万一画布边缘留了缝，缝里也是暗的，不会显出一条白边 */
+        background: #0a0c10; overflow: hidden;
         -webkit-user-select: none; user-select: none;
         -webkit-tap-highlight-color: transparent;
         overscroll-behavior: none;
       }
-      #unity-container { position: fixed; inset: 0; }
+      /* 往外扩 2px，把画布和视口之间那 1px 的缝盖住。
+         画布的内部尺寸是按 DPI 折算后取整的，和 CSS 尺寸差个零点几像素时，
+         边缘就会露出下层颜色（浅色主题下看着就是一圈白边）。 */
+      #unity-container { position: fixed; top: -2px; right: -2px; bottom: -2px; left: -2px; }
       #unity-canvas {
         display: block; width: 100%; height: 100%;
-        background: #14171f;
+        background: #0a0c10; border: 0; outline: 0;
         /* 不让浏览器把拖动当成滚动/缩放，否则拖方块会连带页面动 */
         touch-action: none;
       }
