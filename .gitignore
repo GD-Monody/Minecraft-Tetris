@@ -65,3 +65,6 @@ BuildWebGL/
 
 # 编辑器本机的包管理器注册表配置（含镜像地址，因人而异）
 ProjectSettings/PackageManagerSettings.asset
+
+# 发布用的整理目录（由 BuildWebGL 拷出来、Build 改名 game），不进货仓
+WebDeploy/
