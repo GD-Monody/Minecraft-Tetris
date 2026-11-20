@@ -126,11 +126,10 @@
           progressBarFull.style.width = 100 * progress + "%";
         }).then(function (unityInstance) {
           loadingBar.style.display = "none";
-          // 手机上点一下画面就全屏，把地址栏收掉，多出可用的高度
-          canvas.addEventListener('pointerdown', function once() {
-            canvas.removeEventListener('pointerdown', once);
-            if (unityInstance.SetFullscreen) unityInstance.SetFullscreen(1);
-          });
+          // 这里原来挂了一个「第一次点画面就自动全屏」，目的是把手机浏览器的地址栏
+          // 收掉、多挤出一点高度。实际用下来很烦：每进一次网页，第一下不管是想点
+          // 「开始」还是想拖方块，都先被切成全屏，画面还会重排一次。
+          // 现在不自动抢全屏了，要全屏让玩家自己用浏览器的功能。
         }).catch(function (message) {
           alert(message);
         });
