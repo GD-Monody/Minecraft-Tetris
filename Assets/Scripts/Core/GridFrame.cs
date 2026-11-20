@@ -83,7 +83,7 @@ namespace MinecraftTetris
             float zF = -0.5f, zB = sizeZ - 0.5f + GlassLip;
 
             // 面板本身：几乎看不见的一层色
-            Material paneMat = MakeGlassMaterial(new Color(0.74f, 0.90f, 1f, 0.045f));
+            Material paneMat = MakeGlassMaterial(new Color(0.74f, 0.90f, 1f, 0.030f));
             if (paneMat != null)
             {
                 var v = new List<Vector3>();
@@ -102,22 +102,13 @@ namespace MinecraftTetris
                 CreateMeshObject(v, uv, t, paneMat, "FrameGlass");
             }
 
-            // 四个竖角：一条很细的亮边，交代出「这里有个玻璃罩子」
-            Material edgeMat = MakeGlassMaterial(new Color(0.78f, 0.92f, 1f, 0.30f));
-            if (edgeMat != null)
-            {
-                var v = new List<Vector3>();
-                var uv = new List<Vector2>();
-                var t = new List<int>();
-                float w = 0.022f;
-
-                AddEdge(v, uv, t, xL, zF, yB, yT, w);
-                AddEdge(v, uv, t, xR, zF, yB, yT, w);
-                AddEdge(v, uv, t, xL, zB, yB, yT, w);
-                AddEdge(v, uv, t, xR, zB, yB, yT, w);
-
-                CreateMeshObject(v, uv, t, edgeMat, "FrameGlassEdge");
-            }
+            // 原来这里还沿四个竖角描了一圈细边（alpha 0.30、宽 0.022 格），
+            // 想交代出「这里有个罩子」。实际效果是场地四周浮着一个白色大方框，
+            // 网页版上尤其明显（canvas 分辨率低，不到一像素的边被抗锯齿摊成均匀亮线），
+            // 看着像页面边框而不像玻璃。无痕玻璃本来就不该有框线，整段删掉：
+            // 现在只剩一层 alpha 0.03 的面，远处完全看不出来，近处才有一点反光。
+            //
+            // AddEdge 暂时留着不用，以后想加回装饰边可以直接调。
         }
 
         /// <summary>
