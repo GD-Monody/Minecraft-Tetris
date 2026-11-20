@@ -20,20 +20,22 @@ namespace MinecraftTetris
     public class MobileControls : MonoBehaviour
     {
         // 按键顺序就是画出来的顺序：上面三行是旋转，最后一行是软降 / 硬降。
-        const int RotCW = 0;      // 面内顺时针
-        const int RotCCW = 1;     // 面内逆时针
-        const int YawCW = 2;      // 俯视顺时针
-        const int YawCCW = 3;
-        const int PitchCW = 4;    // 往背面翻
-        const int PitchCCW = 5;
+        // 左右按「左在左、右在右」摆：两组旋转都是左边逆、右边顺。
+        // （第一版是「右 / 左」，按的人第一眼会愣一下，拇指也总先摸到左边那个。）
+        const int RotL = 0;       // 面内逆时针
+        const int RotR = 1;       // 面内顺时针
+        const int YawL = 2;       // 俯视逆时针
+        const int YawR = 3;       // 俯视顺时针
+        const int PitchUp = 4;    // 往背面翻
+        const int PitchDown = 5;  // 往正面翻
         const int SoftDropBtn = 6;
         const int HardDropBtn = 7;
         const int BtnCount = 8;
 
         static readonly string[] Labels =
         {
-            "面内 右", "面内 左",
-            "俯视 右", "俯视 左",
+            "面内 左", "面内 右",
+            "俯视 左", "俯视 右",
             "上翻", "下翻",
             "软降", "硬降",
         };
@@ -246,10 +248,13 @@ namespace MinecraftTetris
                 return;
 
             float dx = p.x - _padLast.x;
-            float dy = p.y - _padLast.y;   // GUI 坐标：往上是负
+            float dy = p.y - _padLast.y;   // GUI 坐标：往下是正，往上划 dy 为负
             _padLast = p;
             _accX += dx;
-            _accY -= dy;                   // 往上划 = 往远处（z 变小）
+            // 取反之后「往上划 = 正数」。往上划是把方块往远处推：相机在 z 负半轴，
+            // 远离镜头是 z 变大，对应的是 Down 那条指令（Up / Down 是按 z 减 / z 增定义的）。
+            // 第一版按注释想当然写成「往上划 → Up」，结果推上去方块反而钻到镜头跟前。
+            _accY -= dy;
 
             float stepX = Screen.width * StepX;
             float stepZ = Screen.width * StepZ;
@@ -266,12 +271,12 @@ namespace MinecraftTetris
             }
             while (_accY >= stepZ)
             {
-                _out.Up = true;
+                _out.Down = true;          // 上划 → 远离镜头（z 变大）
                 _accY -= stepZ;
             }
             while (_accY <= -stepZ)
             {
-                _out.Down = true;
+                _out.Up = true;            // 下划 → 靠近镜头（z 变小）
                 _accY += stepZ;
             }
         }
@@ -302,12 +307,12 @@ namespace MinecraftTetris
         {
             switch (i)
             {
-                case RotCW: _out.RotateCW = true; break;
-                case RotCCW: _out.RotateCCW = true; break;
-                case YawCW: _out.RotateYawCW = true; break;
-                case YawCCW: _out.RotateYawCCW = true; break;
-                case PitchCW: _out.RotatePitchCW = true; break;
-                case PitchCCW: _out.RotatePitchCCW = true; break;
+                case RotL: _out.RotateCCW = true; break;
+                case RotR: _out.RotateCW = true; break;
+                case YawL: _out.RotateYawCCW = true; break;
+                case YawR: _out.RotateYawCW = true; break;
+                case PitchUp: _out.RotatePitchCW = true; break;
+                case PitchDown: _out.RotatePitchCCW = true; break;
                 case SoftDropBtn: _out.SoftDrop = true; break;
                 case HardDropBtn: _out.HardDrop = true; break;
             }
