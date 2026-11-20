@@ -76,6 +76,25 @@ namespace MinecraftTetris
         float _yaw = -38f;
         float _pitch = 22f;
         float _zoom = ZoomDefault;
+
+        /// <summary>
+        /// 手机上的「擦除」模式。桌面是右键擦除，手机上没右键，所以做成一个开关：
+        /// 关 = 点一下放方块，开 = 点一下擦掉。按钮在工坊页面的工具栏里。
+        /// </summary>
+        public bool EraseMode;
+
+        // 触摸状态：一根手指转视角、两根手指捏合缩放、点一下放/擦
+        int _touchFinger = -1;
+        Vector2 _touchStart, _touchLast;
+        float _touchTime, _touchMoved;
+        int _pinchSeen = -1;
+        float _pinchDist;
+
+        /// <summary>判定「点一下」的容差：手指移动超过这么多像素就算拖动，不放方块。</summary>
+        const float TapSlop = 14f;
+        const float TapSeconds = 0.45f;
+
+        Rect _viewRect;
         int _layer;
         bool _dimOthers = true;
 
@@ -102,8 +121,11 @@ namespace MinecraftTetris
         /// <summary>建造台开着没有。关着的时候相机不渲染，省一次 RT 绘制。</summary>
         public bool Active
         {
-            set { if (_cam != null) _cam.enabled = value; }
+            get { return _active; }
+            set { _active = value; if (_cam != null) _cam.enabled = value; }
         }
+
+        bool _active;
 
         /// <summary>当前层（z）。只影响显示：开「只亮当前层」时别的层画成半透明。</summary>
         public int Layer
@@ -263,6 +285,9 @@ namespace MinecraftTetris
             if (_cam == null || _root == null)
                 return;
 
+            if (MobileMode.Enabled && Active)
+                HandleTouch();
+
             // 轨道相机：位置从目标反推，朝向就是「从相机指向目标」，不用再 LookAt
             Vector3 pivot = _root.position + new Vector3(Size, Size, Size) * 0.5f;
             Quaternion rot = Quaternion.Euler(_pitch, _yaw, 0f);
@@ -272,13 +297,115 @@ namespace MinecraftTetris
         }
 
         /// <summary>
+        /// 手机上的触摸操作：一根手指拖动转视角，两根手指捏合缩放，轻点一下放（或擦）。
+        ///
+        /// 放在 Update 里而不是 OnGUI：OnGUI 一帧会跑 Layout / Repaint 好几趟，
+        /// 触摸增量算几遍就会转得飞快。矩形用上一帧 OnGUI 记下来的那块。
+        /// </summary>
+        void HandleTouch()
+        {
+            Rect rect = _viewRect;
+            if (rect.width <= 0f)
+                return;
+
+            int n = Input.touchCount;
+
+            // 双指捏合：手指间距变大 = 放大
+            if (n >= 2)
+            {
+                float dist = Vector2.Distance(Input.GetTouch(0).position, Input.GetTouch(1).position);
+                if (_pinchSeen < 0)
+                {
+                    _pinchSeen = 1;
+                    _pinchDist = dist;
+                    _touchMoved += 999f;   // 这次不算「点一下」
+                }
+                else
+                {
+                    _zoom = Mathf.Clamp(_zoom - (dist - _pinchDist) * 0.004f, ZoomMin, ZoomMax);
+                    _pinchDist = dist;
+                }
+            }
+            else
+            {
+                _pinchSeen = -1;
+            }
+
+            for (int i = 0; i < n; i++)
+            {
+                Touch t = Input.GetTouch(i);
+                // 屏幕坐标原点在左下，GUI 坐标原点在左上
+                Vector2 p = new Vector2(t.position.x, Screen.height - t.position.y);
+
+                if (t.phase == TouchPhase.Began)
+                {
+                    if (_touchFinger < 0 && rect.Contains(p))
+                    {
+                        _touchFinger = t.fingerId;
+                        _touchStart = p;
+                        _touchLast = p;
+                        _touchTime = Time.unscaledTime;
+                        _touchMoved = 0f;
+                    }
+                }
+                else if (t.fingerId == _touchFinger)
+                {
+                    if (t.phase == TouchPhase.Moved || t.phase == TouchPhase.Stationary)
+                    {
+                        Vector2 d = p - _touchLast;
+                        _touchLast = p;
+                        _touchMoved += d.magnitude;
+
+                        // 单指拖动才转视角；双指时留给缩放
+                        if (Input.touchCount < 2 && _touchMoved > TapSlop)
+                        {
+                            _yaw += d.x * OrbitDegPerPixel;
+                            _pitch = Mathf.Clamp(_pitch - d.y * OrbitDegPerPixel, MinPitch, MaxPitch);
+                        }
+                    }
+                    else if (t.phase == TouchPhase.Ended || t.phase == TouchPhase.Canceled)
+                    {
+                        bool tap = t.phase == TouchPhase.Ended
+                                   && _touchMoved <= TapSlop
+                                   && Time.unscaledTime - _touchTime <= TapSeconds
+                                   && rect.Contains(p);
+                        _touchFinger = -1;
+
+                        if (tap)
+                        {
+                            UpdatePick(rect, _touchStart, true);
+                            if (EraseMode)
+                                EraseAt();
+                            else
+                                PlaceAt();
+                        }
+                    }
+                }
+            }
+
+            // 按住/拖动的时候也让幽灵框跟着走，能看出会落在哪一格
+            if (_touchFinger >= 0)
+                UpdatePick(rect, _touchLast, true);
+        }
+
+        /// <summary>
         /// 把建造盒画进面板上的这块矩形，并处理这个矩形里的鼠标操作。
         /// 必须在 OnGUI 里调用（要用 Event.current）。
         /// </summary>
         public void Draw(Rect rect)
         {
+            _viewRect = rect;
+
             if (_rt != null)
                 GUI.DrawTexture(rect, _rt, ScaleMode.StretchToFill, true);
+
+            // 手机上完全走 Input.touches（见 Update 里的 HandleTouch）：
+            // IMGUI 在 WebGL 里既没有右键也没有滚轮事件，触摸拖动也转不成 MouseDrag
+            if (MobileMode.Enabled)
+            {
+                UpdateMarkers();
+                return;
+            }
 
             Event e = Event.current;
             if (e == null)
@@ -293,7 +420,7 @@ namespace MinecraftTetris
             }
 
             HandleOrbit(e, inside);
-            UpdatePick(rect, inside);
+            UpdatePick(rect, e.mousePosition, inside);
             UpdateMarkers();
 
             if (inside && e.type == EventType.MouseDown && e.button == 0)
@@ -344,7 +471,7 @@ namespace MinecraftTetris
         }
 
         /// <summary>把鼠标位置变成一条射线，解出「点在哪一格、撞的是哪个面」。</summary>
-        void UpdatePick(Rect rect, bool inside)
+        void UpdatePick(Rect rect, Vector2 mousePosition, bool inside)
         {
             _hasHit = false;
             _hasTarget = false;
@@ -352,7 +479,7 @@ namespace MinecraftTetris
             if (!inside || _cam == null || _root == null)
                 return;
 
-            Vector2 local = Event.current.mousePosition - rect.position;
+            Vector2 local = mousePosition - rect.position;
             float u = Mathf.Clamp01(local.x / rect.width);
             float v = Mathf.Clamp01(local.y / rect.height);
 

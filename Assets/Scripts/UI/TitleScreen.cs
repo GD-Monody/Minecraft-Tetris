@@ -591,6 +591,9 @@ namespace MinecraftTetris
                 _mechScroll.y = Mathf.Clamp(_mechScroll.y + Event.current.delta.y * Pg(48f), 0f, maxScroll);
                 Event.current.Use();
             }
+            // 手机上 WebGL 不把触摸转成 MouseDrag，只能自己读 touches
+            if (MobileMode.Enabled)
+                _mechScroll.y = TouchScroll(clip, _mechScroll.y, maxScroll);
 
             GUI.BeginGroup(clip);
             for (int i = 0; i < GameSettings.MechCount; i++)
@@ -1455,6 +1458,50 @@ namespace MinecraftTetris
         /// 拖动必须自己接 MouseDrag —— IMGUI 在触屏上只把第一根手指当鼠标，拖拽事件照常来，
         /// 但列表里没有可点的控件，不接的话手指划过去什么都不会发生。
         /// </summary>
+        static int _scrollFinger = -1;
+        static Vector2 _scrollLast;
+
+        /// <summary>
+        /// 手指上下滑动滚列表。
+        ///
+        /// 为什么不用 IMGUI 的 MouseDrag：WebGL 里触摸不会转成 MouseDrag 事件
+        /// （电脑上滚轮能用，手机上就完全滚不动），只能自己读 Input.touches。
+        /// 认领一根手指后一直归它，直到抬起，和操作层那套多点逻辑是同一个思路。
+        /// </summary>
+        static float TouchScroll(Rect clip, float scroll, float maxScroll)
+        {
+            for (int i = 0; i < Input.touchCount; i++)
+            {
+                Touch t = Input.GetTouch(i);
+                // 屏幕坐标原点在左下，GUI 坐标原点在左上
+                Vector2 p = new Vector2(t.position.x, Screen.height - t.position.y);
+
+                if (t.phase == TouchPhase.Began)
+                {
+                    if (_scrollFinger < 0 && clip.Contains(p))
+                    {
+                        _scrollFinger = t.fingerId;
+                        _scrollLast = p;
+                    }
+                }
+                else if (t.fingerId == _scrollFinger)
+                {
+                    if (t.phase == TouchPhase.Moved || t.phase == TouchPhase.Stationary)
+                    {
+                        float dy = p.y - _scrollLast.y;
+                        _scrollLast = p;
+                        // 手指往下拖 = 内容跟着往下走 = 滚动量减少
+                        scroll = Mathf.Clamp(scroll - dy, 0f, maxScroll);
+                    }
+                    else
+                    {
+                        _scrollFinger = -1;
+                    }
+                }
+            }
+            return scroll;
+        }
+
         void ScrollList(Rect clip, float maxScroll, ref float scroll)
         {
             if (maxScroll <= 0f)
@@ -1463,6 +1510,9 @@ namespace MinecraftTetris
                 _blockDragging = false;
                 return;
             }
+
+            if (MobileMode.Enabled)
+                scroll = TouchScroll(clip, scroll, maxScroll);
 
             Event e = Event.current;
             if (e == null)
@@ -1743,6 +1793,12 @@ namespace MinecraftTetris
 
         void DrawWorkshop()
         {
+            if (MobileMode.Enabled)
+            {
+                DrawWorkshopMobile();
+                return;
+            }
+
             // 这一页的设计值本来就是按 1 倍写的，目标倍数传 1：
             // 屏幕够大时和原来一模一样，装不下才跟着折减。
             Rect panel = BeginPage(680f, 690f);
@@ -1891,6 +1947,165 @@ namespace MinecraftTetris
 
             GUI.Label(new Rect(bx, by + bh2 + Pg(10f), Pg(560f), Pg(26f)),
                 "启用的模具会和 7 种默认方块一起随机出现", _rowLabelStyle);
+        }
+
+        /// <summary>
+        /// 手机上的创意工坊：竖屏单列 —— 上面选模具、中间建造盒、下面两排工具。
+        /// 桌面那套是「左边列表 + 右边盒子」的横向布局，竖屏照搬会把两样都挤成一条。
+        ///
+        /// 交互也换了：右键擦除在手机上不存在，改成工具栏里的「擦除」开关，
+        /// 点一下是放还是擦由它决定（手势在 MoldWorkbench.HandleTouch 里）。
+        /// </summary>
+        void DrawWorkshopMobile()
+        {
+            Rect panel = BeginPage(460f, 790f);
+            float w = panel.width;
+            DrawPanel(panel);
+
+            GUI.Label(new Rect(panel.x, panel.y + Pg(12f), w, Pg(44f)), "创意工坊", _panelTitleStyle);
+
+            if (GUI.Button(new Rect(panel.x + w - Pg(94f), panel.y + Pg(18f), Pg(70f), Pg(32f)),
+                    "返回", _btnStyle))
+            {
+                _renaming = false;
+                ShowSettings = false;
+            }
+
+            // 模具选择：窄屏放不下左边那列列表，改成「← 名字 ✓ →」一行翻
+            float selY = panel.y + Pg(64f);
+            float selH = Pg(40f);
+            int count = MoldData.Items.Count;
+
+            if (GUI.Button(new Rect(panel.x + Pg(30f), selY, Pg(44f), selH), "←", _btnStyle)
+                && count > 0)
+            {
+                _moldSel = (_moldSel - 1 + count) % count;
+                _renaming = false;
+                LoadMoldEdit();
+            }
+
+            string label = count == 0
+                ? "点「新建模具」开始"
+                : MoldData.Items[_moldSel].name
+                  + (MoldData.Items[_moldSel].enabled != 0 ? "  ✓" : "  ○")
+                  + "   " + (_moldSel + 1) + "/" + count;
+            GUI.Label(new Rect(panel.x + Pg(80f), selY, w - Pg(160f), selH), label, _listStyle);
+
+            if (GUI.Button(new Rect(panel.x + w - Pg(74f), selY, Pg(44f), selH), "→", _btnStyle)
+                && count > 0)
+            {
+                _moldSel = (_moldSel + 1) % count;
+                _renaming = false;
+                LoadMoldEdit();
+            }
+
+            // 建造盒：正中间一块方的，宽度顶满（留 30 的边距）
+            float viewSize = w - Pg(60f);
+            var viewRect = new Rect(panel.x + Pg(30f), selY + selH + Pg(10f), viewSize, viewSize);
+            if (Workbench != null)
+                Workbench.Draw(viewRect);
+            else
+                DrawRect(viewRect, new Color(0f, 0f, 0f, 0.45f));
+            DrawViewBorder(viewRect);
+
+            float bh = Pg(40f);
+            float rowY = viewRect.yMax + Pg(12f);
+            float x0 = panel.x + Pg(30f);
+
+            GUI.Label(new Rect(x0, rowY + Pg(5f), Pg(28f), Pg(30f)), "层", _rowLabelStyle);
+            if (GUI.Button(new Rect(x0 + Pg(30f), rowY, Pg(44f), bh), "←", _btnStyle) && Workbench != null)
+                Workbench.Layer = Workbench.Layer - 1;
+            GUI.Label(new Rect(x0 + Pg(80f), rowY, Pg(60f), bh),
+                Workbench != null ? (Workbench.Layer + 1) + " / " + MoldData.Size : "-", _rowLabelStyle);
+            if (GUI.Button(new Rect(x0 + Pg(146f), rowY, Pg(44f), bh), "→", _btnStyle) && Workbench != null)
+                Workbench.Layer = Workbench.Layer + 1;
+            if (GUI.Button(new Rect(x0 + Pg(196f), rowY, Pg(190f), bh),
+                    Workbench != null && Workbench.DimOthers ? "只亮当前层：开" : "只亮当前层：关", _btnStyle)
+                && Workbench != null)
+                Workbench.DimOthers = !Workbench.DimOthers;
+
+            // 第二排工具：五个等宽按钮。最后一个「擦除」是手机专用的开关
+            float row2 = rowY + bh + Pg(8f);
+            float bw5 = (viewSize - Pg(24f)) / 5f;
+            string[] names = { "镜像", "居中", "清空", "复位" };
+            for (int i = 0; i < 4; i++)
+            {
+                if (!GUI.Button(new Rect(x0 + i * (bw5 + Pg(6f)), row2, bw5, bh), names[i], _btnStyle))
+                    continue;
+                if (Workbench == null)
+                    continue;
+                if (i == 0) Workbench.Mirror();
+                else if (i == 1) Workbench.Recenter();
+                else if (i == 2) Workbench.Clear();
+                else Workbench.ResetView();
+            }
+
+            bool erasing = Workbench != null && Workbench.EraseMode;
+            if (GUI.Button(new Rect(x0 + 4 * (bw5 + Pg(6f)), row2, bw5, bh),
+                    erasing ? "擦除中" : "擦除", _btnStyle) && Workbench != null)
+                Workbench.EraseMode = !erasing;
+
+            // 提示行：手机上把手势也写清楚，不然玩家不知道点一下是放还是擦
+            float hintY = row2 + bh + Pg(12f);
+            string hint = Workbench != null ? Workbench.Hint : null;
+            GUI.Label(new Rect(x0, hintY, viewSize, Pg(24f)),
+                hint ?? (erasing
+                    ? "点一下擦掉 · 单指拖动转视角 · 双指捏合缩放"
+                    : "点一下放方块 · 单指拖动转视角 · 双指捏合缩放"),
+                _rowLabelStyle);
+            GUI.Label(new Rect(x0, hintY + Pg(26f), viewSize, Pg(24f)), MoldStatus(), _rowLabelStyle);
+
+            // 底部四个按钮
+            float by = panel.yMax - Pg(110f);
+            float bw4 = (viewSize - Pg(18f)) / 4f;
+
+            if (GUI.Button(new Rect(x0, by, bw4, bh), "新建", _btnStyle))
+            {
+                MoldData.Add();
+                _moldSel = MoldData.Items.Count - 1;
+                _renaming = false;
+                LoadMoldEdit();
+            }
+            if (GUI.Button(new Rect(x0 + bw4 + Pg(6f), by, bw4, bh), "删除", _btnStyle))
+            {
+                MoldData.Remove(_moldSel);
+                if (_moldSel >= MoldData.Items.Count)
+                    _moldSel = MoldData.Items.Count - 1;
+                LoadMoldEdit();
+            }
+            if (GUI.Button(new Rect(x0 + (bw4 + Pg(6f)) * 2f, by, bw4, bh), "改名", _btnStyle))
+            {
+                if (_moldSel >= 0 && _moldSel < MoldData.Items.Count)
+                {
+                    _renaming = true;
+                    _renameText = MoldData.Items[_moldSel].name;
+                }
+            }
+
+            bool on = _moldSel >= 0 && _moldSel < MoldData.Items.Count
+                      && MoldData.Items[_moldSel].enabled != 0;
+            if (GUI.Button(new Rect(x0 + (bw4 + Pg(6f)) * 3f, by, bw4, bh),
+                    on ? "启用中" : "未启用", _btnStyle))
+            {
+                if (_moldSel >= 0 && _moldSel < MoldData.Items.Count)
+                    MoldData.SetEnabled(_moldSel, !on);
+            }
+
+            // 改名输入框压在底部那一行上：手机键盘弹出时它就在眼前，不用再滚
+            if (_renaming)
+            {
+                var box = new Rect(x0, by - Pg(48f), viewSize, Pg(40f));
+                DrawRect(box, new Color(0f, 0f, 0f, 0.6f));
+                _renameText = GUI.TextField(new Rect(box.x + Pg(6f), box.y + Pg(4f), box.width - Pg(120f), Pg(32f)),
+                    _renameText, 16, _btnStyle);
+                if (GUI.Button(new Rect(box.xMax - Pg(110f), box.y + Pg(4f), Pg(50f), Pg(32f)), "确定", _btnStyle))
+                {
+                    MoldData.Rename(_moldSel, _renameText);
+                    _renaming = false;
+                }
+                if (GUI.Button(new Rect(box.xMax - Pg(56f), box.y + Pg(4f), Pg(50f), Pg(32f)), "取消", _btnStyle))
+                    _renaming = false;
+            }
         }
 
         /// <summary>建造盒那块矩形的框线，把「窗口」和面板背景分开。</summary>
