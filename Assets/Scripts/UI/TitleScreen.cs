@@ -119,7 +119,6 @@ namespace MinecraftTetris
 
         /// <summary>规则页「特殊方块」栏的滚动位置：手机上一屏放不下十一个条目，靠它上下滑。</summary>
         float _blockScroll;
-        bool _blockDragging;
 
         /// <summary>手机按键设置页的滚动位置（一列十二行，同样一屏放不下）。</summary>
         float _keyScroll;
@@ -593,7 +592,7 @@ namespace MinecraftTetris
             }
             // 手机上 WebGL 不把触摸转成 MouseDrag，只能自己读 touches
             if (MobileMode.Enabled)
-                _mechScroll.y = TouchScroll(clip, _mechScroll.y, maxScroll);
+                DragScroll(clip, ref _mechScroll.y, maxScroll);
 
             GUI.BeginGroup(clip);
             for (int i = 0; i < GameSettings.MechCount; i++)
@@ -715,32 +714,40 @@ namespace MinecraftTetris
             float top = panel.y + Pg(66f);
             // 底下固定不滚的：提示行 + 「恢复默认 / 返回」两个按钮
             float bottomReserve = Pg(140f);
-            float viewH = Mathf.Max(rowH, panel.yMax - bottomReserve - top);
-            float contentH = AllActions.Length * (rowH + gap) - gap;
+            float gap2 = gap;
+            float avail = Mathf.Max(rowH + gap2, panel.yMax - bottomReserve - top);
+            // 同上：行数取整、余量摊到每行，底边不空、也不露半行
+            int rows = Mathf.Max(1, Mathf.FloorToInt(avail / (rowH + gap2)));
+            float viewH = avail;
+            float step = avail / rows;
+            float contentH = AllActions.Length * step - gap2;
             float maxScroll = Mathf.Max(0f, contentH - viewH);
 
             // 右边单独留一列给滚动条，不然条子直接压住键名按钮
             float rowW = w - Pg(80f) - Pg(16f);
             var clip = new Rect(panel.x + Pg(40f), top, rowW, viewH);
 
-            ScrollList(clip, maxScroll, ref _keyScroll);
+            ScrollList(clip, maxScroll, ref _keyScroll, step);
 
             float keyW = Pg(140f);
+            // 行的实际高度：step 是均分后的步进，扣掉间距就是控件高度。
+            // 绘制必须和 ScrollList 的吸附步进一致，否则滚完会错位半行。
+            float lineH = step - gap2;
             GUI.BeginGroup(clip);
             for (int i = 0; i < AllActions.Length; i++)
             {
-                float y = i * (rowH + gap) - _keyScroll;
-                if (y + rowH < 0f || y > viewH)
+                float y = i * step - _keyScroll;
+                if (y + lineH < 0f || y > viewH)
                     continue;   // 看不见的不画
 
                 GameAction action = AllActions[i];
-                GUI.Label(new Rect(0f, y, rowW - keyW - Pg(10f), rowH), ActionLabel(action), _rowLabelBig);
+                GUI.Label(new Rect(0f, y, rowW - keyW - Pg(10f), lineH), ActionLabel(action), _rowLabelBig);
 
                 string keyName = _capturingAction == (int)action
                     ? "按任意键…"
                     : KeyName(KeyboardInput.GetPrimaryKey(action));
 
-                if (GUI.Button(new Rect(rowW - keyW, y, keyW, rowH), keyName, _btnBig))
+                if (GUI.Button(new Rect(rowW - keyW, y, keyW, lineH), keyName, _btnBig))
                     _capturingAction = (int)action;
             }
             GUI.EndGroup();
@@ -1415,22 +1422,35 @@ namespace MinecraftTetris
                 // 手机单列十一项，一屏放不下 —— 裁一块可视区，内容在里面滚。
                 // 滚轮和手指拖动都认：手机上只有拖，电脑上两个都顺手。
                 float narrowW = panel.width - Pg(80f);
-                float rowH = Pg(78f);
+                // 行高 78 只够标题 + 两行说明；「傀儡」那条要三行，
+                // 第三行整个被裁掉（真机截图里末尾的字就是丢的）。
+                float rowH = Pg(98f);
                 float top = panel.y + Pg(126f);
-                float viewH = Mathf.Max(rowH, panel.yMax - Pg(96f) - top);   // 底下给「返回」留位
-                float contentH = _guideItems.Length * rowH;
+                // 返回按钮的顶边在 yMax - 76，这里再多留一点：贴着按钮裁的话，
+                // 最后一行字会被切一半、看着像被按钮压住。
+                float avail = Mathf.Max(rowH, panel.yMax - Pg(104f) - top);
+
+                // 先把可用高度切成整数行，再把余量平均还给每一行。
+                //
+                // 只「向下取整」的话，列表底边会空出不满一行的一大条（实测 56px），
+                // 看着像内容没加载完；不取整直接铺满，底边又永远露半行字。
+                // 平均分配两头都不占：行数取整、行高略放大，边和底都是齐的。
+                int rows = Mathf.Max(1, Mathf.FloorToInt(avail / rowH));
+                float viewH = avail;
+                float step = avail / rows;
+                float contentH = _guideItems.Length * step;
                 float maxScroll = Mathf.Max(0f, contentH - viewH);
                 // 右边留一列给滚动条：不留的话条子直接压在说明文字最后几个字上
                 float rowW = narrowW - Pg(20f);
                 var clip = new Rect(panel.x + Pg(40f), top, rowW, viewH);
 
-                ScrollList(clip, maxScroll, ref _blockScroll);
+                ScrollList(clip, maxScroll, ref _blockScroll, step);
 
                 GUI.BeginGroup(clip);
                 for (int i = 0; i < _guideItems.Length; i++)
                 {
-                    float y = i * rowH - _blockScroll;
-                    if (y + rowH < 0f || y > viewH)
+                    float y = i * step - _blockScroll;
+                    if (y + step < 0f || y > viewH)
                         continue;   // 看不见的不画
                     DrawGuideRow(0f, y, rowW, _guideItems[i]);
                 }
@@ -1453,66 +1473,78 @@ namespace MinecraftTetris
             }
         }
 
-        /// <summary>
-        /// 列表滚动：滚轮 + 按住拖动。
-        /// 拖动必须自己接 MouseDrag —— IMGUI 在触屏上只把第一根手指当鼠标，拖拽事件照常来，
-        /// 但列表里没有可点的控件，不接的话手指划过去什么都不会发生。
-        /// </summary>
-        static int _scrollFinger = -1;
-        static Vector2 _scrollLast;
+        // 拖动滚动：一帧只处理一次。OnGUI 一帧会跑 Layout / Repaint 好几趟，
+        // 每趟都读一次位移的话，同一个像素会被算好几遍。
+        static bool _dragOn;
+        static Vector2 _dragLast;
+        static int _dragFrame = -1;
 
         /// <summary>
-        /// 手指上下滑动滚列表。
+        /// 按住拖动滚列表（手指或鼠标）。
         ///
-        /// 为什么不用 IMGUI 的 MouseDrag：WebGL 里触摸不会转成 MouseDrag 事件
-        /// （电脑上滚轮能用，手机上就完全滚不动），只能自己读 Input.touches。
-        /// 认领一根手指后一直归它，直到抬起，和操作层那套多点逻辑是同一个思路。
+        /// 上一版只读 Input.touches，真机上完全划不动 —— Unity WebGL 在移动浏览器里
+        /// 常常既不给 MouseDrag 事件、Input.touchCount 又是 0（浏览器用 Pointer Events
+        /// 上报时 Unity 拿不到 touch）。但按钮点得动，说明「触摸被模拟成鼠标」这条路
+        /// 一定是通的。所以两条路都读，一帧只认一条，谁也不重复累加：
+        /// 有 touch 用 touch，没有就退回鼠标位置。
         /// </summary>
-        static float TouchScroll(Rect clip, float scroll, float maxScroll)
+        bool DragScroll(Rect clip, ref float scroll, float maxScroll)
         {
-            for (int i = 0; i < Input.touchCount; i++)
-            {
-                Touch t = Input.GetTouch(i);
-                // 屏幕坐标原点在左下，GUI 坐标原点在左上
-                Vector2 p = new Vector2(t.position.x, Screen.height - t.position.y);
+            if (Time.frameCount == _dragFrame)
+                return _dragOn;             // 同一帧后面的趟次：直接用上一趟的结论
+            _dragFrame = Time.frameCount;
 
-                if (t.phase == TouchPhase.Began)
-                {
-                    if (_scrollFinger < 0 && clip.Contains(p))
-                    {
-                        _scrollFinger = t.fingerId;
-                        _scrollLast = p;
-                    }
-                }
-                else if (t.fingerId == _scrollFinger)
-                {
-                    if (t.phase == TouchPhase.Moved || t.phase == TouchPhase.Stationary)
-                    {
-                        float dy = p.y - _scrollLast.y;
-                        _scrollLast = p;
-                        // 手指往下拖 = 内容跟着往下走 = 滚动量减少
-                        scroll = Mathf.Clamp(scroll - dy, 0f, maxScroll);
-                    }
-                    else
-                    {
-                        _scrollFinger = -1;
-                    }
-                }
+            Vector2 p;
+            bool began, held, ended;
+
+            if (Input.touchCount > 0)
+            {
+                Touch t = Input.GetTouch(0);
+                // 屏幕坐标原点在左下，GUI 坐标原点在左上
+                p = new Vector2(t.position.x, Screen.height - t.position.y);
+                began = t.phase == TouchPhase.Began;
+                held = t.phase == TouchPhase.Moved || t.phase == TouchPhase.Stationary;
+                ended = t.phase == TouchPhase.Ended || t.phase == TouchPhase.Canceled;
             }
-            return scroll;
+            else
+            {
+                p = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
+                began = Input.GetMouseButtonDown(0);
+                held = Input.GetMouseButton(0);
+                ended = Input.GetMouseButtonUp(0);
+            }
+
+            if (began)
+            {
+                // 手指落在列表里才算开始拖；落在外面（比如返回按钮上）不抢
+                _dragOn = clip.Contains(p);
+                _dragLast = p;
+            }
+            else if (ended)
+            {
+                _dragOn = false;
+            }
+            else if (held && _dragOn)
+            {
+                float dy = p.y - _dragLast.y;
+                _dragLast = p;
+                // 手指往下拖 = 内容跟着往下走 = 滚动量减少
+                if (Mathf.Abs(dy) > 0.01f)
+                    scroll = Mathf.Clamp(scroll - dy, 0f, maxScroll);
+            }
+
+            return _dragOn;
         }
 
-        void ScrollList(Rect clip, float maxScroll, ref float scroll)
+        void ScrollList(Rect clip, float maxScroll, ref float scroll, float snap = 0f)
         {
             if (maxScroll <= 0f)
             {
                 scroll = 0f;
-                _blockDragging = false;
                 return;
             }
 
-            if (MobileMode.Enabled)
-                scroll = TouchScroll(clip, scroll, maxScroll);
+            bool dragging = DragScroll(clip, ref scroll, maxScroll);
 
             Event e = Event.current;
             if (e == null)
@@ -1523,20 +1555,19 @@ namespace MinecraftTetris
                 scroll = Mathf.Clamp(scroll + e.delta.y * Pg(48f), 0f, maxScroll);
                 e.Use();
             }
-            else if (e.type == EventType.MouseDown && clip.Contains(e.mousePosition))
+            else if (!dragging && e.type == EventType.MouseDrag && clip.Contains(e.mousePosition))
             {
-                _blockDragging = true;
-            }
-            else if (e.type == EventType.MouseDrag && _blockDragging)
-            {
-                // 往下拖 delta.y 是正，内容跟着手指往下走 = 滚动量减少
+                // 兜底：Input 那条路一点位移都拿不到时，至少还有 IMGUI 自己的 MouseDrag。
+                // 拖动已经由 DragScroll 处理过的帧不进这里，否则一次拖动会滚两倍。
                 scroll = Mathf.Clamp(scroll - e.delta.y, 0f, maxScroll);
                 e.Use();
             }
-            else if (e.type == EventType.MouseUp)
-            {
-                _blockDragging = false;
-            }
+
+            // 松手之后把位置吸附到整行。不吸附的话停下来的位置是随机的，
+            // 列表上下两条边各露出半行字，看着像被裁坏了（真机截图里就是这样）。
+            // 拖动过程中不吸附，否则手指还在动的时候画面会一跳一跳地跟手。
+            if (!dragging && snap > 0f)
+                scroll = Mathf.Clamp(Mathf.Round(scroll / snap) * snap, 0f, maxScroll);
         }
 
         /// <summary>自绘滚动指示条：内容放得下时不画。</summary>
@@ -1545,12 +1576,23 @@ namespace MinecraftTetris
             if (maxScroll <= 0f)
                 return;
 
-            float barX = clip.xMax + Pg(8f);
+            // 轨道比内容区上下各内缩一点：贴着裁剪区边画的话，
+            // 条子的头和第一行字、尾和最后一行字在视觉上是挤在一起的。
+            float inset = Pg(6f);
+            float trackY = clip.y + inset;
+            float trackH = Mathf.Max(Pg(20f), viewH - inset * 2f);
+
             float barW = Pg(6f);
-            float barH = Mathf.Max(Pg(36f), viewH * viewH / contentH);
-            float barY = clip.y + (viewH - barH) * (scroll / maxScroll);
-            DrawRect(new Rect(barX, clip.y, barW, viewH), new Color(1f, 1f, 1f, 0.08f));
-            DrawRect(new Rect(barX, barY, barW, barH), new Color(0.35f, 0.37f, 0.44f, 0.95f));
+            float barX = clip.xMax + Pg(8f);
+
+            // 滑块长度按「能看见多少内容」算，最短给 36，太短就抓不住了；
+            // 同时不能超过轨道自身长度（内容只比可视区多一点时会出现这种情况）。
+            float barH = Mathf.Clamp(viewH * viewH / Mathf.Max(1f, contentH), Pg(36f), trackH);
+            float barY = trackY + (trackH - barH) * Mathf.Clamp01(scroll / maxScroll);
+
+            // 中性灰白，不用强调色：滚动条是背景设施，蓝色在那一片文字旁边太跳
+            DrawRect(new Rect(barX, trackY, barW, trackH), new Color(1f, 1f, 1f, 0.07f));
+            DrawRect(new Rect(barX, barY, barW, barH), new Color(0.78f, 0.82f, 0.9f, 0.55f));
         }
 
         void DrawGuideRow(float x, float y, float w, GuideItem item)
@@ -1577,7 +1619,10 @@ namespace MinecraftTetris
             // 一格就顶到 130 高，四行直接压到「返回」上；并排之后一格正好 26 + 52 = 78。
             float pad = iconsW > 0f ? iconsW + Pg(10f) : 0f;
             GUI.Label(new Rect(x + pad, y, w - pad, Pg(28f)), item.Title, _guideNameBig);
-            GUI.Label(new Rect(x + pad, y + Pg(30f), w - pad, Pg(58f)), item.Desc, _guideDescBig);
+            // 手机上单列的行虽然更宽，但图标最多三枚、文字区反而窄，
+            // 十四号字要排到三行；只给 58 高的话第三行会被裁掉。
+            float descH = Pg(MobileMode.Enabled ? 68f : 58f);
+            GUI.Label(new Rect(x + pad, y + Pg(30f), w - pad, descH), item.Desc, _guideDescBig);
         }
 
         /// <summary>从方块图集里切一格顶面出来画成图标；方块表里查不到就画个灰块。</summary>
@@ -2000,7 +2045,9 @@ namespace MinecraftTetris
             }
 
             // 建造盒：正中间一块方的，宽度顶满（留 30 的边距）
-            float viewSize = w - Pg(60f);
+            // 高度也给个上限：面板 790 高，扣掉选模具行、两排工具、两行提示和底部四个按钮，
+            // 建造盒最多只能占 366。照 400 铺满的话提示行会顶到按钮上。
+            float viewSize = Mathf.Min(w - Pg(60f), Pg(366f));
             var viewRect = new Rect(panel.x + Pg(30f), selY + selH + Pg(10f), viewSize, viewSize);
             if (Workbench != null)
                 Workbench.Draw(viewRect);
@@ -2045,15 +2092,19 @@ namespace MinecraftTetris
                     erasing ? "擦除中" : "擦除", _btnStyle) && Workbench != null)
                 Workbench.EraseMode = !erasing;
 
-            // 提示行：手机上把手势也写清楚，不然玩家不知道点一下是放还是擦
-            float hintY = row2 + bh + Pg(12f);
+            // 提示两行：手势说明 + 模具状态。
+            //
+            // 上一版每行只给 24 高、两行只隔 26，而 _rowLabelStyle 是 18 号字 ——
+            // 一行字本身就占 24 往上，文案又长到折行，结果两行字糊成一团（真机截图可见）。
+            // 现在文案压到一行放得下，行高按字号给足 28，两行之间也不重叠。
+            float hintY = row2 + bh + Pg(10f);
             string hint = Workbench != null ? Workbench.Hint : null;
-            GUI.Label(new Rect(x0, hintY, viewSize, Pg(24f)),
+            GUI.Label(new Rect(x0, hintY, viewSize, Pg(28f)),
                 hint ?? (erasing
-                    ? "点一下擦掉 · 单指拖动转视角 · 双指捏合缩放"
-                    : "点一下放方块 · 单指拖动转视角 · 双指捏合缩放"),
+                    ? "点按擦除 · 拖动转视角 · 双指缩放"
+                    : "点按放置 · 拖动转视角 · 双指缩放"),
                 _rowLabelStyle);
-            GUI.Label(new Rect(x0, hintY + Pg(26f), viewSize, Pg(24f)), MoldStatus(), _rowLabelStyle);
+            GUI.Label(new Rect(x0, hintY + Pg(28f), viewSize, Pg(28f)), MoldStatus(), _rowLabelStyle);
 
             // 底部四个按钮
             float by = panel.yMax - Pg(110f);
