@@ -563,16 +563,15 @@ namespace MinecraftTetris
             if (_mobile == null || _mainCam == null)
                 return;
 
-            bool inGame = _loop != null && _title != null
-                          && !_title.Visible && !_loop.GameOver;
+            // 结算界面（GameOver）也算「在游戏里」：此前把它排除了，于是死亡瞬间
+            // 操作层整层消失、相机 rect 放回全屏，场地突然变大 —— 和暂停那次是同一个坑。
+            // 现在结束态和暂停一样：布局原样保留，只把按键变成不可点。
+            bool inGame = _loop != null && _title != null && !_title.Visible;
+            bool over = _loop != null && _loop.GameOver;
 
-            // 暂停时整层的布局原样保留，只多盖一层暂停面板 —— 画面不能重排。
-            // 早先暂停时把操作层整层关掉、相机 rect 也放回全屏，结果一点暂停：
-            // 场地突然变大、按钮整条消失，看着像换了个界面；而且暂停键跟着没了，
-            // 再也没法点「继续」。现在整层一直留着，暂停只把按键变成不可点
-            // （MobileControls 会在操作条上压一层暗色）。
             _mobile.Visible = inGame;
             _mobile.Paused = _paused;
+            _mobile.Over = over;
             _mobile.Depth = SizeZ;      // z = 1 时只留面内旋转那两个键
 
             // 上下各让一条：下面是操作条，上面是分数横条。让出来的部分由界面自己铺底色，

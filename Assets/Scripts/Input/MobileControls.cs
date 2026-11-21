@@ -56,6 +56,15 @@ namespace MinecraftTetris
         public bool Paused;
 
         /// <summary>
+        /// 这一局已经结束。按键照旧画出来（画面不重排），但一个都不接，
+        /// 连右上角那颗也不响应 —— 结束面板上本来就有「再来一局」。
+        /// </summary>
+        public bool Over;
+
+        /// <summary>暂停或结束：按键画着但不接输入。</summary>
+        bool Locked { get { return Paused || Over; } }
+
+        /// <summary>
         /// 场上实际深度（Bootstrap 每帧给）。0 = 还不知道，退回读设置值。
         /// 不能直接用 GameSettings.SizeZ：命令行 -size 会把运行时场地改掉，而设置值不变，
         /// 结果 z = 1 的局里还挂着俯视/前后翻那四个按不动的键。
@@ -119,8 +128,8 @@ namespace MinecraftTetris
             TickTouches();
 
             // 软降按住连发：按键本身只在按下那一帧发一次，之后靠这里续。
-            // 暂停时按键照旧画着，但不续发。
-            if (Paused)
+            // 暂停 / 已结束时按键照旧画着，但不续发。
+            if (Locked)
                 return;
 
             for (int i = 0; i < BtnCount; i++)
@@ -288,14 +297,15 @@ namespace MinecraftTetris
         {
             if (_pauseRect.Contains(p))
             {
-                // 暂停键按下即响应：等抬手指再响应的话，手指划出去就点不动了
-                if (OnPause != null)
+                // 暂停键按下即响应：等抬手指再响应的话，手指划出去就点不动了。
+                // 结算界面上这颗键不响应 —— 再去暂停一局已经结束的游戏没有意义。
+                if (!Over && OnPause != null)
                     OnPause();
                 return;
             }
 
-            if (Paused)
-                return;   // 暂停中：按键照旧画着（画面不重排），但不接输入，只有右上角那颗有效
+            if (Locked)
+                return;   // 暂停 / 已结束：按键照旧画着（画面不重排），但不接输入
 
             for (int k = 0; k < _visCount; k++)
             {
@@ -437,7 +447,7 @@ namespace MinecraftTetris
             for (int k = 0; k < _visCount; k++)
                 DrawButton(_vis[k]);
 
-            if (Paused)
+            if (Locked)
                 Fill(strip, new Color(0f, 0f, 0f, 0.55f));
 
             DrawPause();
