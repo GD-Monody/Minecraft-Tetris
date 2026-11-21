@@ -1008,6 +1008,8 @@ namespace MinecraftTetris
         }
 
         Material _ghostMaterial;
+        Texture2D _ghostTex;
+        int _ghostTheme = -1;
 
         /// <summary>
         /// 落点框用的青色发光材质。克隆 GridGlowMat（它引用了 GlowAdditive 这个加色 shader），
@@ -1017,21 +1019,49 @@ namespace MinecraftTetris
         {
             get
             {
-                if (_ghostMaterial != null)
+                if (_ghostMaterial != null && _ghostTheme == (int)UiSkin.Current)
                     return _ghostMaterial;
-
-                Material baseMat = Resources.Load<Material>("GridGlowMat");
-                if (baseMat != null)
-                    _ghostMaterial = new Material(baseMat);
-                else
+                if (_ghostMaterial != null)
                 {
-                    Shader sh = Shader.Find("MinecraftTetris/GlowAdditive");
-                    if (sh != null)
-                        _ghostMaterial = new Material(sh);
+                    Destroy(_ghostMaterial);
+                    _ghostMaterial = null;
                 }
 
-                if (_ghostMaterial != null)
-                    _ghostMaterial.color = new Color(0.35f, 0.92f, 1f, 0.55f);
+                _ghostTheme = (int)UiSkin.Current;
+                bool light = UiSkin.Current == UiSkin.Theme.Light;
+
+                if (!light)
+                {
+                    // 暗色主题：加色发光的青框，压在黑底上正合适
+                    Material baseMat = Resources.Load<Material>("GridGlowMat");
+                    if (baseMat != null)
+                        _ghostMaterial = new Material(baseMat);
+                    else
+                    {
+                        Shader glow = Shader.Find("MinecraftTetris/GlowAdditive");
+                        if (glow != null)
+                            _ghostMaterial = new Material(glow);
+                    }
+                    if (_ghostMaterial != null)
+                        _ghostMaterial.color = new Color(0.35f, 0.92f, 1f, 0.55f);
+                    return _ghostMaterial;
+                }
+
+                // 亮色主题：加色混合在浅底上只会更白，框直接消失，必须换成普通 alpha 混合。
+                // AtlasTransparent 只认 _MainTex、没有 _Color，所以给它一张 1×1 的纯色贴图 ——
+                // 直接给材质里那张图集贴图的话，画出来是一格随机方块（第一版就是这样，
+                // 落点框变成了一排土黄色的方块）。
+                Shader sh = Shader.Find("MinecraftTetris/AtlasTransparent");
+                if (sh != null)
+                {
+                    if (_ghostTex != null)
+                        Destroy(_ghostTex);
+                    _ghostTex = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+                    _ghostTex.SetPixel(0, 0, new Color(0.05f, 0.38f, 0.82f, 0.9f));
+                    _ghostTex.Apply();
+                    _ghostMaterial = new Material(sh);
+                    _ghostMaterial.SetTexture("_MainTex", _ghostTex);
+                }
                 return _ghostMaterial;
             }
         }

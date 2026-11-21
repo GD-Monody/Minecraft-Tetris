@@ -129,6 +129,121 @@ namespace MinecraftTetris
                 new[] { "STKaiti", "华文楷体", "KaiTi", "楷体", "Microsoft YaHei", "SimHei", "Arial" }, 40);
         }
 
+        // ── 配色 ────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 界面配色。暗色是原来那套；亮色给手机在户外/强光下用 ——
+        /// 黑底在小屏上又闷又费眼，而且手机屏幕反光时几乎看不见东西。
+        /// </summary>
+        public enum Theme { Dark = 0, Light = 1 }
+
+        const string ThemeKey = "ui.theme";
+        static int _themeCache = -1;
+
+        /// <summary>当前主题。存在 PlayerPrefs 里，默认亮色。</summary>
+        public static Theme Current
+        {
+            get
+            {
+                if (_themeCache < 0)
+                    _themeCache = Mathf.Clamp(PlayerPrefs.GetInt(ThemeKey, (int)Theme.Light), 0, 1);
+                return (Theme)_themeCache;
+            }
+            set
+            {
+                _themeCache = (int)value;
+                PlayerPrefs.SetInt(ThemeKey, _themeCache);
+                PlayerPrefs.Save();
+            }
+        }
+
+        /// <summary>
+        /// 调试用：只改这一次运行的主题，不写 PlayerPrefs。
+        /// 截图核对亮/暗配色时用（-theme light / -theme dark），不会把玩家自己的选择覆盖掉。
+        /// </summary>
+        public static void ForceForSession(Theme t)
+        {
+            _themeCache = (int)t;
+        }
+
+        /// <summary>切主题后通知各界面重建缓存的样式（字体颜色的副本在 GUIStyle 里）。</summary>
+        public static event System.Action Changed;
+        public static void NotifyChanged()
+        {
+            if (Changed != null)
+                Changed();
+        }
+
+        static bool Light { get { return Current == Theme.Light; } }
+
+        /// <summary>3D 场景的背景色。整屏的底色就是它。</summary>
+        public static Color SceneBg
+        {
+            get { return Light ? new Color(0.87f, 0.91f, 0.96f) : new Color(0.08f, 0.09f, 0.12f); }
+        }
+
+        /// <summary>面板底：亮色下是半透明白，能透出一点场景。</summary>
+        public static Color PanelFill
+        {
+            get { return Light ? new Color(1f, 1f, 1f, 0.86f) : new Color(0.13f, 0.15f, 0.19f, 0.96f); }
+        }
+
+        /// <summary>更实一点的面板底（大页面、弹层用，不希望透出背景）。</summary>
+        public static Color PanelSolid
+        {
+            get { return Light ? new Color(0.98f, 0.99f, 1f, 0.97f) : new Color(0.10f, 0.12f, 0.16f, 0.97f); }
+        }
+
+        /// <summary>面板描边。</summary>
+        public static Color PanelBorder
+        {
+            get { return Light ? new Color(0.10f, 0.47f, 0.85f, 0.35f) : new Color(0.42f, 0.86f, 1f, 0.30f); }
+        }
+
+        public static Color TextPrimary
+        {
+            get { return Light ? new Color(0.11f, 0.13f, 0.17f) : Color.white; }
+        }
+
+        public static Color TextSecondary
+        {
+            get { return Light ? new Color(0.34f, 0.38f, 0.45f) : new Color(0.72f, 0.76f, 0.82f); }
+        }
+
+        public static Color TextDim
+        {
+            get { return Light ? new Color(0.50f, 0.55f, 0.62f) : new Color(0.55f, 0.58f, 0.64f); }
+        }
+
+        /// <summary>强调色（分隔线、选中态、焦点框）。</summary>
+        public static Color Accent
+        {
+            get { return Light ? new Color(0.09f, 0.45f, 0.83f) : new Color(0.42f, 0.86f, 1f); }
+        }
+
+        public static Color AccentSoft
+        {
+            get { return Light ? new Color(0.09f, 0.45f, 0.83f, 0.45f) : new Color(0.35f, 0.72f, 1f, 0.45f); }
+        }
+
+        /// <summary>顶部/底部那两条通栏的底色。</summary>
+        public static Color StripFill
+        {
+            get { return Light ? new Color(1f, 1f, 1f, 0.94f) : new Color(0.05f, 0.06f, 0.08f, 0.97f); }
+        }
+
+        /// <summary>按钮/按键的底色。</summary>
+        public static Color ButtonFill
+        {
+            get { return Light ? new Color(1f, 1f, 1f, 0.80f) : new Color(0.16f, 0.19f, 0.24f, 0.90f); }
+        }
+
+        /// <summary>暂停 / 结算时压在操作区上的遮罩：暗色主题压黑，亮色主题压白。</summary>
+        public static Color FreezeOverlay
+        {
+            get { return Light ? new Color(0.87f, 0.91f, 0.96f, 0.60f) : new Color(0f, 0f, 0f, 0.55f); }
+        }
+
         /// <summary>设计像素 → 实际像素。布局尺寸都用它包一层。</summary>
         public static float P(float design)
         {

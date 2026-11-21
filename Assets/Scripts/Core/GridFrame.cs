@@ -82,8 +82,16 @@ namespace MinecraftTetris
             float yB = -0.5f, yT = sizeY - 0.5f;
             float zF = -0.5f, zB = sizeZ - 0.5f + GlassLip;
 
-            // 面板本身：几乎看不见的一层色
-            Material paneMat = MakeGlassMaterial(new Color(0.74f, 0.90f, 1f, 0.030f));
+            // 面板本身：一层很淡的中性灰。
+            //
+            // 两套主题用的是同一个思路 —— 深底上稍微提亮、浅底上稍微压暗，
+            // 都能看出「这里罩着一层东西」，但都不挡方块。
+            // 之前亮色主题上面板是几乎透明的浅蓝，压在浅背景上就彻底消失了，
+            // 场地变成一块孤零零的石砖；靠描一条深色线去补又太生硬（线细了成虚线、
+            // 粗了像画框），所以直接把这层膜调成能看见的灰。
+            Material paneMat = MakeGlassMaterial(UiSkin.Current == UiSkin.Theme.Light
+                ? new Color(0.30f, 0.36f, 0.46f, 0.075f)
+                : new Color(0.82f, 0.88f, 0.96f, 0.055f));
             if (paneMat != null)
             {
                 var v = new List<Vector3>();
@@ -109,6 +117,74 @@ namespace MinecraftTetris
             // 现在只剩一层 alpha 0.03 的面，远处完全看不出来，近处才有一点反光。
             //
             // AddEdge 暂时留着不用，以后想加回装饰边可以直接调。
+        }
+
+        Material _edgeMat;
+        Texture2D _edgeTex;
+
+        /// <summary>
+        /// 场地四角的一圈细实线。<b>目前不调用</b> —— 亮色主题下改成用一层灰色蒙版
+        /// （见 BuildGlassWalls 里面板的颜色）来交代边界，比描线自然；这段留着备用。
+        ///
+        ///
+        /// 玻璃围挡在暗色主题下靠「几乎看不见的一层膜 + 边缘一点反光」还能交代边界，
+        /// 换成亮色背景之后那层膜彻底消失了 —— 场地变成一块孤零零的石砖，
+        /// 看不出能摆到哪儿。所以单独描一圈不透明的细线：颜色跟主题走，
+        /// 线宽只有 0.012 格，近看是一条边、远看只是一道轮廓，不会回到之前那种白框。
+        /// </summary>
+        void BuildEdges(int sizeX, int sizeY, int sizeZ)
+        {
+            float xL = -0.5f - GlassLip, xR = sizeX - 0.5f + GlassLip;
+            float zF = -0.5f - GlassLip, zB = sizeZ - 0.5f + GlassLip;
+            float yB = -0.5f, yT = sizeY - 0.5f;
+
+            Shader sh = Shader.Find("MinecraftTetris/AtlasTransparent");
+            if (sh == null)
+                return;
+
+            if (_edgeTex == null)
+            {
+                _edgeTex = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+                _edgeTex.wrapMode = TextureWrapMode.Clamp;
+            }
+            _edgeTex.SetPixel(0, 0, EdgeColor);
+            _edgeTex.Apply();
+
+            if (_edgeMat == null)
+                _edgeMat = new Material(sh);
+            _edgeMat.SetTexture("_MainTex", _edgeTex);
+
+            var v = new List<Vector3>();
+            var uv = new List<Vector2>();
+            var t = new List<int>();
+            // 0.012 在屏幕上不到一个像素，被抗锯齿打成断续的虚线；0.03 才是连续的细线
+            const float w = 0.03f;
+
+            AddEdge(v, uv, t, xL, zF, yB, yT, w);
+            AddEdge(v, uv, t, xR, zF, yB, yT, w);
+            AddEdge(v, uv, t, xL, zB, yB, yT, w);
+            AddEdge(v, uv, t, xR, zB, yB, yT, w);
+
+            CreateMeshObject(v, uv, t, _edgeMat, "FrameEdge");
+        }
+
+        static Color EdgeColor
+        {
+            get
+            {
+                return UiSkin.Current == UiSkin.Theme.Light
+                    ? new Color(0.24f, 0.31f, 0.40f, 1f)      // 浅底上的深蓝灰
+                    : new Color(0.50f, 0.60f, 0.72f, 0.85f);  // 暗底上的浅蓝灰
+            }
+        }
+
+        /// <summary>切主题时换边框颜色（网格不用重建，换贴图就够）。</summary>
+        public void ApplyTheme()
+        {
+            if (_edgeTex == null)
+                return;
+            _edgeTex.SetPixel(0, 0, EdgeColor);
+            _edgeTex.Apply();
         }
 
         /// <summary>
