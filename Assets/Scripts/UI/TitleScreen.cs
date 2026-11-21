@@ -89,6 +89,7 @@ namespace MinecraftTetris
         // ---------- 设置各页的大号样式（尺寸统统 × 当前页倍数，见 BeginPage） ----------
         GUIStyle _btnBig;
         GUIStyle _panelTitleBig;
+        GUIStyle _panelHeadingBig;
         GUIStyle _rowLabelBig;
         GUIStyle _hintBig;
         GUIStyle _valueBig;
@@ -129,6 +130,20 @@ namespace MinecraftTetris
 
         // 时间轴（秒）
         const float MadeEnd = 0.8f;
+        /// <summary>横屏手机：设置页改成「左标题 / 右内容」，和标题页的版式统一。</summary>
+        static bool WidePage
+        {
+            get { return MobileMode.Enabled && Screen.width > Screen.height; }
+        }
+
+        /// <summary>页面切换动画的时长（秒）。</summary>
+        const float PageMotionTime = 0.20f;
+
+        /// <summary>当前页面的进入动画计时，切页 / 开合设置面板时归零。</summary>
+        float _pageT = 99f;
+        SettingsPage _pageSeen = SettingsPage.Main;
+        bool _settingsSeen;
+
         const float TitleStart = 0.85f;
         const float CharDelay = 0.055f;
         const float CharFall = 0.5f;
@@ -221,6 +236,19 @@ namespace MinecraftTetris
         {
             if (Visible)
                 _t += Time.deltaTime;
+
+            // 切页 / 开关设置面板时把动画计时归零（见 DrawSettingsPanel 里的滑入）
+            bool on = ShowSettings;
+            if (_page != _pageSeen || on != _settingsSeen)
+            {
+                _pageSeen = _page;
+                _settingsSeen = on;
+                _pageT = 0f;
+            }
+            else if (_pageT < PageMotionTime)
+            {
+                _pageT += Time.unscaledDeltaTime;
+            }
         }
 
         void OnGUI()
@@ -495,6 +523,16 @@ namespace MinecraftTetris
                     ? new Color(0.90f, 0.94f, 0.99f, 0.72f)
                     : new Color(0f, 0f, 0f, 0.72f));
 
+            // 页面切换：从右侧轻轻滑进来一小段（26 设计像素，0.16 秒）。
+            // 只挪 GUI.matrix 不动布局 —— 控件的点击判定跟着矩阵走，滑完照样点得动。
+            // 没做淡入：各页里到处 DrawRect（自己会把 GUI.color 复位成白色），
+            // 全局淡入半路就断了，滑入这一下已经够「切换感」。
+            float k = Mathf.Clamp01(_pageT / PageMotionTime);
+            float ease = Mathf.SmoothStep(0f, 1f, k);
+            Matrix4x4 matBack = GUI.matrix;
+            if (ease < 1f)
+                GUI.matrix = matBack * Matrix4x4.Translate(new Vector3((1f - ease) * Pg(34f), 0f, 0f));
+
             switch (_page)
             {
                 case SettingsPage.Main:
@@ -522,6 +560,8 @@ namespace MinecraftTetris
                     DrawSettingsMech();
                     break;
             }
+
+            GUI.matrix = matBack;
         }
 
         void DrawSettingsMain()
@@ -532,7 +572,7 @@ namespace MinecraftTetris
             float w = panel.width;
             DrawPanel(panel);
 
-            GUI.Label(new Rect(panel.x, panel.y + Pg(16f), w, Pg(44f)), "设置", _panelTitleBig);
+            PageTitle(panel, "设置", 16f);
 
             float bw = Pg(300f);
             float bh = Pg(42f);
@@ -661,7 +701,7 @@ namespace MinecraftTetris
             float rowGap = Pg(10f);
             float colW = Pg(400f);
 
-            GUI.Label(new Rect(panel.x, panel.y + Pg(12f), w, Pg(44f)), "特殊方块机制", _panelTitleBig);
+            PageTitle(panel, "特殊方块机制", 12f);
 
             float top = panel.y + Pg(66f);
             // 底下固定不滚的：说明行 + 一键开关 + 返回。
@@ -754,7 +794,7 @@ namespace MinecraftTetris
             float colW = Pg(400f);
             float colGap = Pg(60f);
 
-            GUI.Label(new Rect(panel.x, panel.y + Pg(12f), w, Pg(44f)), "按键设置", _panelTitleBig);
+            PageTitle(panel, "按键设置", 12f);
 
             float top = panel.y + Pg(66f);
             for (int i = 0; i < AllActions.Length; i++)
@@ -805,7 +845,7 @@ namespace MinecraftTetris
             float h = panel.height;
             DrawPanel(panel);
 
-            GUI.Label(new Rect(panel.x, panel.y + Pg(12f), w, Pg(44f)), "按键设置", _panelTitleBig);
+            PageTitle(panel, "按键设置", 12f);
 
             float rowH = Pg(52f);
             float gap = Pg(8f);
@@ -876,7 +916,7 @@ namespace MinecraftTetris
             float w = panel.width;
             DrawPanel(panel);
 
-            GUI.Label(new Rect(panel.x, panel.y + Pg(14f), w, Pg(44f)), "场地尺寸", _panelTitleBig);
+            PageTitle(panel, "场地尺寸", 14f);
 
             // 三个轴都是拖拽滑条，和下落速度、音乐音量一个样式。
             // 这里只在内存里改 _tmpX/Y/Z，真正落盘要等下面「应用并重启」——尺寸一变就得清存档重建场地。
@@ -930,7 +970,7 @@ namespace MinecraftTetris
             float h = panel.height;
             DrawPanel(panel);
 
-            GUI.Label(new Rect(panel.x, panel.y + Pg(14f), w, Pg(44f)), "下落速度", _panelTitleBig);
+            PageTitle(panel, "下落速度", 14f);
 
             float rowW = Pg(400f);
             float bx = panel.x + (w - rowW) * 0.5f;
@@ -989,7 +1029,7 @@ namespace MinecraftTetris
             float h = panel.height;
             DrawPanel(panel);
 
-            GUI.Label(new Rect(panel.x, panel.y + Pg(14f), w, Pg(44f)), "音乐音量", _panelTitleBig);
+            PageTitle(panel, "音乐音量", 14f);
 
             float rowW = Pg(400f);
             float bx = panel.x + (w - rowW) * 0.5f;
@@ -1821,14 +1861,46 @@ namespace MinecraftTetris
         Rect BeginPage(float designW, float designH, float target = PageTarget)
         {
             float margin = UiSkin.P(PageMargin);
-            _pageScale = UiSkin.FitScale(designW, designH, target,
-                Mathf.Max(1f, Screen.width - margin * 2f),
-                Mathf.Max(1f, Screen.height - margin * 2f),
-                PageMin);
+            float bandW = Mathf.Max(1f, Screen.width - margin * 2f);
+            float availH = Mathf.Max(1f, Screen.height - margin * 2f);
 
+            if (WidePage)
+            {
+                // 横屏手机：内容只占右半屏，左边留给标题（见 PageTitle）。
+                // 倍数要按这条窄带算，不然 940 宽那几页会横着顶出屏幕。
+                bandW *= 0.52f;
+                _pageScale = UiSkin.FitScale(designW, designH, target, bandW, availH, PageMin);
+                SyncPageFonts();
+
+                float w = Pg(designW);
+                float h = Pg(designH);
+                float bandLeft = Screen.width - margin - bandW;
+                return new Rect(bandLeft + (bandW - w) * 0.5f,
+                    (Screen.height - h) * 0.5f, w, h);
+            }
+
+            _pageScale = UiSkin.FitScale(designW, designH, target, bandW, availH, PageMin);
             SyncPageFonts();
 
             return CenterPanel(Pg(designW), Pg(designH));
+        }
+
+        /// <summary>
+        /// 页面标题。竖屏 / 桌面画在面板顶部；横屏手机画在**左半屏居中**，
+        /// 和标题页「左标题 / 右按钮」的版式对齐。
+        /// </summary>
+        void PageTitle(Rect panel, string text, float topOffset)
+        {
+            if (!WidePage)
+            {
+                GUI.Label(new Rect(panel.x, panel.y + Pg(topOffset), panel.width, Pg(44f)),
+                    text, _panelTitleBig);
+                return;
+            }
+
+            float hh = Pg(76f);
+            GUI.Label(new Rect(0f, (Screen.height - hh) * 0.5f, Screen.width * 0.5f, hh),
+                text, _panelHeadingBig);
         }
 
         /// <summary>
@@ -1864,6 +1936,7 @@ namespace MinecraftTetris
         void SyncPageFonts()
         {
             _panelTitleBig.fontSize = Fg(32);
+            _panelHeadingBig.fontSize = Fg(40);
             _rowLabelBig.fontSize = Fg(18);
             _hintBig.fontSize = Fg(18);
             _valueBig.fontSize = Fg(22);
@@ -2361,6 +2434,8 @@ namespace MinecraftTetris
             _menuBtnStyle.fontSize = UiSkin.Size(18);
             // 设置各页的大号版本：颜色、对齐、换行设置和上面一一对应，字号每帧由 SyncPageFonts 改写
             _panelTitleBig = MakeStylePx(Fg(32), UiSkin.TextPrimary, TextAnchor.MiddleCenter, FontStyle.Bold);
+            // 横屏时标题挪到左半屏，独立成一块，字号可以比面板里那档大一些
+            _panelHeadingBig = MakeStylePx(Fg(40), UiSkin.TextPrimary, TextAnchor.MiddleCenter, FontStyle.Bold);
             _rowLabelBig = MakeStylePx(Fg(18), UiSkin.TextSecondary, TextAnchor.MiddleLeft, FontStyle.Normal);
             _hintBig = MakeStylePx(Fg(18), UiSkin.TextSecondary, TextAnchor.MiddleLeft, FontStyle.Normal);
             _hintBig.wordWrap = false;
