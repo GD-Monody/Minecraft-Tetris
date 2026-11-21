@@ -1193,7 +1193,7 @@ namespace MinecraftTetris
                         FindBlock("reinforced_deepslate"), FindBlock("command_block"),
                     },
                     Title = "防爆方块",
-                    Desc = "远古残骸、下界合金块、强化深板岩、命令方块，和原版一样炸不掉。",
+                    Desc = "远古残骸、下界合金块、强化深板岩、命令方块都炸不掉。",
                 },
                 new GuideItem
                 {
@@ -1223,7 +1223,7 @@ namespace MinecraftTetris
                 {
                     Ids = new[] { BlockCatalog.CarvedPumpkinId, BlockCatalog.SnowId },
                     Title = "傀儡",
-                    Desc = "先落雪 / 铁 / 铜块，南瓜头紧跟其后压上去，就召出傀儡。",
+                    Desc = "先落雪 / 铁 / 铜块，南瓜头压上去就召出傀儡。",
                 },
                 new GuideItem
                 {
@@ -1608,7 +1608,9 @@ namespace MinecraftTetris
                 if (item.Ids[i] > 0)
                     n++;
 
-            float icon = n <= 2 ? Pg(36f) : Pg(26f);
+            // 图标越多越要收着画：四个图标的条目（防爆方块）按 26 给的话，
+            // 文字区只剩一百来像素，二十八字的说明要排四行、第三行之外就被裁掉。
+            float icon = n <= 2 ? Pg(36f) : (n == 3 ? Pg(26f) : Pg(21f));
             float gap = Pg(4f);
             float iconsW = n > 0 ? n * icon + (n - 1) * gap : 0f;
 
