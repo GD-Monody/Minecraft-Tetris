@@ -245,7 +245,11 @@ namespace MinecraftTetris
                 return;
             }
 
-            DrawRect(new Rect(0f, 0f, Screen.width, Screen.height), new Color(0f, 0f, 0f, 0.55f));
+            // 亮色主题不能压黑（整屏会变成一团深灰），改成压一层浅色雾化
+            DrawRect(new Rect(0f, 0f, Screen.width, Screen.height),
+                UiSkin.Current == UiSkin.Theme.Light
+                    ? new Color(0.93f, 0.96f, 1f, 0.55f)
+                    : new Color(0f, 0f, 0f, 0.55f));
 
             DrawPortalMotes();
 
@@ -264,12 +268,25 @@ namespace MinecraftTetris
         /// <summary>logo 原图的宽度，加载后写入 —— 竖屏窄的时候要靠它把倍数压下来。</summary>
         static int _titleTexW = 140;
 
+        /// <summary>
+        /// 手机横屏时的标题页版式：左边标题、右边一列放大的菜单。
+        /// 竖屏和桌面仍然是「标题在上、按钮在下」那一套。
+        /// </summary>
+        static bool WideTitle
+        {
+            get { return MobileMode.Enabled && Screen.width > Screen.height; }
+        }
+
         static int TitlePixelScale()
         {
-            int byHeight = Mathf.Max(2, Mathf.RoundToInt(Screen.height * 0.105f / 16f));
+            // 横屏时标题只占左半屏，可用宽度和高度都得按那半边算
+            float availW = WideTitle ? Screen.width * 0.5f * 0.88f : Screen.width * 0.94f;
+            float hRatio = WideTitle ? 0.17f : 0.105f;
+
+            int byHeight = Mathf.Max(2, Mathf.RoundToInt(Screen.height * hRatio / 16f));
             // 只按屏高算的话，竖屏（宽高比 0.47）上 logo 会宽出屏幕一大截，
             // 两边都被切掉 —— 按可用宽度再卡一道，取小的那个
-            int byWidth = Mathf.Max(2, Mathf.FloorToInt(Screen.width * 0.94f / Mathf.Max(1, _titleTexW)));
+            int byWidth = Mathf.Max(2, Mathf.FloorToInt(availW / Mathf.Max(1, _titleTexW)));
             return Mathf.Min(byHeight, byWidth);
         }
 
@@ -309,8 +326,13 @@ namespace MinecraftTetris
             int texW = _titleTex.width;
             float titleW = texW * scale;
             float titleH = TitleHeight();
-            float left = (Screen.width - titleW) * 0.5f;
-            float targetY = TitleTopY();
+            // 横屏：在左半屏里居中、竖直方向也居中
+            float left = WideTitle
+                ? (Screen.width * 0.5f - titleW) * 0.5f
+                : (Screen.width - titleW) * 0.5f;
+            float targetY = WideTitle
+                ? (Screen.height - titleH) * 0.42f
+                : TitleTopY();
 
             for (int i = 0; i < _chars.Length; i++)
             {
@@ -323,17 +345,22 @@ namespace MinecraftTetris
                 if (p <= 0f)
                     continue;
 
-                float ease = EaseOutBounce(p);
-                float y = Mathf.Lerp(-titleH, targetY, ease);
-                float alpha = Mathf.Clamp01(p * 4f);
+                // 淡入而不是落下：以前是 EaseOutBounce 从屏幕上方弹下来，
+                // 横屏时标题在左半边，从上往下掉会擦过顶栏，观感很乱。
+                // 现在每个字母原地从透明浮出来（位置固定，只给一点点上浮）
+                float y = targetY + (1f - p) * UiSkin.P(10f);
+                float alpha = Mathf.Clamp01(p);
 
                 var dst = new Rect(left + ch.x * scale, y, ch.w * scale, titleH);
                 var uv = new Rect((float)ch.x / texW, 0f, (float)ch.w / texW, 1f);
 
-                GUI.color = new Color(0f, 0f, 0f, alpha * 0.75f);
+                // logo 是白色像素图，压在浅底上会糊掉：亮色主题把它整体压成深灰，
+                // 投影也跟着反过来用浅色，字才浮得起来。
+                bool light = UiSkin.Current == UiSkin.Theme.Light;
+                GUI.color = light ? new Color(1f, 1f, 1f, alpha * 0.85f) : new Color(0f, 0f, 0f, alpha * 0.75f);
                 GUI.DrawTextureWithTexCoords(new Rect(dst.x + scale * 0.25f, dst.y + scale * 0.25f, dst.width, dst.height), _titleTex, uv);
 
-                GUI.color = new Color(1f, 1f, 1f, alpha);
+                GUI.color = light ? new Color(0.16f, 0.20f, 0.27f, alpha) : new Color(1f, 1f, 1f, alpha);
                 GUI.DrawTextureWithTexCoords(dst, _titleTex, uv);
             }
 
@@ -346,11 +373,14 @@ namespace MinecraftTetris
             if (p <= 0f)
                 return;
 
-            _subStyle.normal.textColor = new Color(1f, 1f, 1f, p);
+            _subStyle.normal.textColor = UiSkin.Current == UiSkin.Theme.Light
+                ? new Color(0.32f, 0.37f, 0.45f, p)
+                : new Color(1f, 1f, 1f, p);
 
             // 紧贴标题下方：原来固定在 0.42H，按钮放大后会和第一颗按钮打架
-            GUI.Label(new Rect(0f, TitleTopY() + TitleHeight() + UiSkin.P(2f), Screen.width, UiSkin.P(44f)),
-                "Made by Monody", _subStyle);
+            float subW = WideTitle ? Screen.width * 0.5f : Screen.width;
+            float subY = WideTitle ? (Screen.height - TitleHeight()) * 0.42f + TitleHeight() : TitleTopY() + TitleHeight();
+            GUI.Label(new Rect(0f, subY + UiSkin.P(2f), subW, UiSkin.P(44f)), "Made by Monody", _subStyle);
         }
 
         void DrawButtons()
@@ -370,19 +400,36 @@ namespace MinecraftTetris
 
             int n = items.Count;
 
-            // 可用竖直带：副标题下方 → 底部署名上方
-            float bandTop = TitleTopY() + TitleHeight() + UiSkin.P(2f) + UiSkin.P(44f) + UiSkin.P(20f);
-            float bandBottom = Screen.height - UiSkin.P(62f) - UiSkin.P(10f);
+            // 横屏：右半屏竖排一列，上下留边；竖屏：标题下方一条竖直带
+            float bandTop;
+            float bandBottom;
+            float maxW;
+            if (WideTitle)
+            {
+                bandTop = UiSkin.P(46f);
+                bandBottom = Screen.height - UiSkin.P(46f);
+                maxW = Screen.width * 0.5f * 0.80f;
+            }
+            else
+            {
+                bandTop = TitleTopY() + TitleHeight() + UiSkin.P(2f) + UiSkin.P(44f) + UiSkin.P(20f);
+                bandBottom = Screen.height - UiSkin.P(62f) - UiSkin.P(10f);
+                maxW = Screen.width * 0.86f;
+            }
 
             MenuLayout lay = MenuLayout.Compute(
                 n,
-                UiSkin.P(280f), UiSkin.P(44f), UiSkin.P(10f),
+                WideTitle ? UiSkin.P(320f) : UiSkin.P(280f),
+                WideTitle ? UiSkin.P(52f) : UiSkin.P(44f),
+                UiSkin.P(10f),
                 bandTop, bandBottom,
-                Screen.width * 0.86f,
+                maxW,
                 UiSkin.MenuScale);
 
             // 字号跟着按钮一起放大，否则按钮长大字没长，反而更空
-            _menuBtnStyle.fontSize = Mathf.Max(12, Mathf.RoundToInt(UiSkin.Size(18) * lay.scale));
+            // 横屏的按钮又高又宽，按 18 号配上去字显得很小，单独放大一档
+            int baseSize = WideTitle ? 21 : 18;
+            _menuBtnStyle.fontSize = Mathf.Max(12, Mathf.RoundToInt(UiSkin.Size(baseSize) * lay.scale));
 
             for (int i = 0; i < n; i++)
             {
@@ -391,8 +438,21 @@ namespace MinecraftTetris
                 if (p <= 0f)
                     continue;
 
-                float y = lay.startY + i * (lay.height + lay.gap) + (1f - p) * UiSkin.P(18f);
-                var rect = new Rect((Screen.width - lay.width) * 0.5f, y, lay.width, lay.height);
+                float y = lay.startY + i * (lay.height + lay.gap);
+                float x;
+                if (WideTitle)
+                {
+                    // 横屏：贴在右半屏居中，并从右侧屏幕外滑进来（一个接一个）
+                    x = Screen.width * 0.5f + (Screen.width * 0.5f - lay.width) * 0.5f;
+                    x += (1f - p) * Screen.width * 0.45f;
+                }
+                else
+                {
+                    // 竖屏：从下方轻轻浮起
+                    x = (Screen.width - lay.width) * 0.5f;
+                    y += (1f - p) * UiSkin.P(18f);
+                }
+                var rect = new Rect(x, y, lay.width, lay.height);
 
                 Color prev = GUI.color;
                 GUI.color = new Color(1f, 1f, 1f, p);
@@ -408,15 +468,23 @@ namespace MinecraftTetris
             if (p <= 0f)
                 return;
 
-            _creditStyle.normal.textColor = new Color(1f, 1f, 1f, p * 0.85f);
-            GUI.Label(new Rect(0f, Screen.height - UiSkin.P(62f), Screen.width, UiSkin.P(28f)), "AGENTS辅助完成", _creditStyle);
+            // 这行是淡色署名：亮色主题下白字在浅底上看不见，换成深灰
+            _creditStyle.normal.textColor = UiSkin.Current == UiSkin.Theme.Light
+                ? new Color(0.42f, 0.47f, 0.55f, p * 0.9f)
+                : new Color(1f, 1f, 1f, p * 0.85f);
+            float creditW = WideTitle ? Screen.width * 0.5f : Screen.width;
+            GUI.Label(new Rect(0f, Screen.height - UiSkin.P(62f), creditW, UiSkin.P(28f)),
+                "AGENTS辅助完成", _creditStyle);
         }
 
         // ---------- 设置面板 ----------
 
         void DrawSettingsPanel()
         {
-            DrawRect(new Rect(0f, 0f, Screen.width, Screen.height), new Color(0f, 0f, 0f, 0.72f));
+            DrawRect(new Rect(0f, 0f, Screen.width, Screen.height),
+                UiSkin.Current == UiSkin.Theme.Light
+                    ? new Color(0.90f, 0.94f, 0.99f, 0.72f)
+                    : new Color(0f, 0f, 0f, 0.72f));
 
             switch (_page)
             {
@@ -450,7 +518,8 @@ namespace MinecraftTetris
         void DrawSettingsMain()
         {
             // 按钮数 × 54 + 上下留白；加一项就跟着涨，不然会压到「返回」上
-            Rect panel = BeginPage(420f, 594f);
+            // （加「背景配色」时从 594 抬到 648）
+            Rect panel = BeginPage(420f, 648f);
             float w = panel.width;
             DrawPanel(panel);
 
@@ -469,6 +538,17 @@ namespace MinecraftTetris
                 PlayerPrefs.Save();
                 if (OnSfxChanged != null)
                     OnSfxChanged(next);
+            }
+            y += step;
+
+            // 背景配色：手机在户外/强光下黑底几乎看不见东西，亮色底能救回来。
+            // 切换立即生效 —— 各处颜色都是现取 UiSkin 的，样式靠主题号判断自动重建。
+            if (GUI.Button(new Rect(bx, y, bw, bh),
+                    UiSkin.Current == UiSkin.Theme.Light ? "背景：亮色" : "背景：暗色", _btnBig))
+            {
+                UiSkin.Current = UiSkin.Current == UiSkin.Theme.Light
+                    ? UiSkin.Theme.Dark
+                    : UiSkin.Theme.Light;
             }
             y += step;
 
@@ -1785,8 +1865,8 @@ namespace MinecraftTetris
 
         void DrawPanel(Rect r)
         {
-            DrawRect(r, new Color(0.09f, 0.10f, 0.14f, 0.97f));
-            Color border = new Color(0.35f, 0.37f, 0.44f, 0.95f);
+            DrawRect(r, UiSkin.PanelSolid);
+            Color border = UiSkin.PanelBorder;
             DrawRect(new Rect(r.x, r.y, r.width, 1f), border);
             DrawRect(new Rect(r.x, r.yMax - 1f, r.width, 1f), border);
             DrawRect(new Rect(r.x, r.y, 1f, r.height), border);
@@ -2199,33 +2279,41 @@ namespace MinecraftTetris
 
         void EnsureStyles()
         {
-            if (_stylesReady)
+            // 主题变了要重建：颜色是拷进 GUIStyle 里的副本，光改 UiSkin 不会自己变
+            if (_stylesReady && _stylesTheme == (int)UiSkin.Current)
                 return;
+            if (_stylesReady)
+                ReleaseStyles();
             _stylesReady = true;
+            _stylesTheme = (int)UiSkin.Current;
 
-            _btnNormal = SolidTexture(new Color(0.13f, 0.15f, 0.19f, 0.96f));
-            _btnHover = SolidTexture(new Color(0.20f, 0.24f, 0.30f, 0.98f));
-            _btnActive = SolidTexture(new Color(0.10f, 0.12f, 0.15f, 0.98f));
+            _btnNormal = SolidTexture(UiSkin.ButtonFill);
+            _btnHover = SolidTexture(UiSkin.Current == UiSkin.Theme.Light
+                ? new Color(0.86f, 0.92f, 1f, 0.95f)
+                : new Color(0.20f, 0.24f, 0.30f, 0.98f));
+            _btnActive = SolidTexture(UiSkin.Current == UiSkin.Theme.Light
+                ? new Color(0.74f, 0.84f, 0.96f, 0.98f)
+                : new Color(0.10f, 0.12f, 0.15f, 0.98f));
 
-            _madeStyle = MakeStyle(22, Color.white, TextAnchor.MiddleCenter, FontStyle.Normal);
-            _subStyle = MakeStyle(30, Color.white, TextAnchor.MiddleCenter, FontStyle.Normal);
-            _creditStyle = MakeStyle(17, Color.white, TextAnchor.MiddleCenter, FontStyle.Normal);
-            _panelTitleStyle = MakeStyle(32, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
-            _rowLabelStyle = MakeStyle(18, new Color(0.72f, 0.76f, 0.82f, 1f), TextAnchor.MiddleLeft, FontStyle.Normal);
-            _hintStyle = MakeStyle(18, new Color(0.72f, 0.76f, 0.82f, 1f), TextAnchor.MiddleLeft, FontStyle.Normal);
+            _madeStyle = MakeStyle(22, UiSkin.TextPrimary, TextAnchor.MiddleCenter, FontStyle.Normal);
+            _subStyle = MakeStyle(30, UiSkin.TextPrimary, TextAnchor.MiddleCenter, FontStyle.Normal);
+            _creditStyle = MakeStyle(17, UiSkin.TextPrimary, TextAnchor.MiddleCenter, FontStyle.Normal);
+            _panelTitleStyle = MakeStyle(32, UiSkin.TextPrimary, TextAnchor.MiddleCenter, FontStyle.Bold);
+            _rowLabelStyle = MakeStyle(18, UiSkin.TextSecondary, TextAnchor.MiddleLeft, FontStyle.Normal);
+            _hintStyle = MakeStyle(18, UiSkin.TextSecondary, TextAnchor.MiddleLeft, FontStyle.Normal);
             _hintStyle.wordWrap = false;
-            _valueStyle = MakeStyle(22, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
+            _valueStyle = MakeStyle(22, UiSkin.TextPrimary, TextAnchor.MiddleCenter, FontStyle.Bold);
             // 滑条上的字会被圆头从中间穿过去，垫一层深色影子才读得清
-            _sliderShadowStyle = MakeStyle(22, new Color(0f, 0f, 0f, 0.75f), TextAnchor.MiddleCenter, FontStyle.Bold);
+            _sliderShadowStyle = MakeStyle(22, UiSkin.Current == UiSkin.Theme.Light ? new Color(0f, 0f, 0f, 0f) : new Color(0f, 0f, 0f, 0.75f), TextAnchor.MiddleCenter, FontStyle.Bold);
 
-            _guideNameStyle = MakeStyle(19, Color.white, TextAnchor.MiddleLeft, FontStyle.Bold);
+            _guideNameStyle = MakeStyle(19, UiSkin.TextPrimary, TextAnchor.MiddleLeft, FontStyle.Bold);
             _guideNameStyle.wordWrap = false;
-            _guideDescStyle = MakeStyle(14, new Color(0.78f, 0.82f, 0.88f, 1f), TextAnchor.UpperLeft, FontStyle.Normal);
+            _guideDescStyle = MakeStyle(14, UiSkin.TextSecondary, TextAnchor.UpperLeft, FontStyle.Normal);
             _guideDescStyle.wordWrap = true;
-            _guideNoteStyle = MakeStyle(17, new Color(0.68f, 0.72f, 0.80f, 1f), TextAnchor.MiddleCenter, FontStyle.Normal);
+            _guideNoteStyle = MakeStyle(17, UiSkin.TextDim, TextAnchor.MiddleCenter, FontStyle.Normal);
             _guideNoteStyle.wordWrap = false;
             // 按键栏里键名用的，放在淡色方块中间
-            _guideKeyStyle = MakeStyle(19, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
+            _guideKeyStyle = MakeStyle(19, UiSkin.TextPrimary, TextAnchor.MiddleCenter, FontStyle.Bold);
             _guideKeyStyle.wordWrap = false;
 
 
@@ -2235,9 +2323,9 @@ namespace MinecraftTetris
             _btnStyle.normal.background = _btnNormal;
             _btnStyle.hover.background = _btnHover;
             _btnStyle.active.background = _btnActive;
-            _btnStyle.normal.textColor = Color.white;
-            _btnStyle.hover.textColor = Color.white;
-            _btnStyle.active.textColor = new Color(0.8f, 0.85f, 0.9f, 1f);
+            _btnStyle.normal.textColor = UiSkin.TextPrimary;
+            _btnStyle.hover.textColor = UiSkin.TextPrimary;
+            _btnStyle.active.textColor = UiSkin.TextSecondary;
             _btnStyle.border = new RectOffset(0, 0, 0, 0);
             _listStyle = new GUIStyle(_btnStyle);
             _listStyle.fontSize = UiSkin.Size(17);
@@ -2249,23 +2337,36 @@ namespace MinecraftTetris
             _menuBtnStyle.alignment = TextAnchor.MiddleCenter;
             _menuBtnStyle.fontSize = UiSkin.Size(18);
             // 设置各页的大号版本：颜色、对齐、换行设置和上面一一对应，字号每帧由 SyncPageFonts 改写
-            _panelTitleBig = MakeStylePx(Fg(32), Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
-            _rowLabelBig = MakeStylePx(Fg(18), new Color(0.72f, 0.76f, 0.82f, 1f), TextAnchor.MiddleLeft, FontStyle.Normal);
-            _hintBig = MakeStylePx(Fg(18), new Color(0.72f, 0.76f, 0.82f, 1f), TextAnchor.MiddleLeft, FontStyle.Normal);
+            _panelTitleBig = MakeStylePx(Fg(32), UiSkin.TextPrimary, TextAnchor.MiddleCenter, FontStyle.Bold);
+            _rowLabelBig = MakeStylePx(Fg(18), UiSkin.TextSecondary, TextAnchor.MiddleLeft, FontStyle.Normal);
+            _hintBig = MakeStylePx(Fg(18), UiSkin.TextSecondary, TextAnchor.MiddleLeft, FontStyle.Normal);
             _hintBig.wordWrap = false;
-            _valueBig = MakeStylePx(Fg(22), Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
-            _sliderShadowBig = MakeStylePx(Fg(22), new Color(0f, 0f, 0f, 0.75f), TextAnchor.MiddleCenter, FontStyle.Bold);
-            _guideNameBig = MakeStylePx(Fg(19), Color.white, TextAnchor.MiddleLeft, FontStyle.Bold);
+            _valueBig = MakeStylePx(Fg(22), UiSkin.TextPrimary, TextAnchor.MiddleCenter, FontStyle.Bold);
+            _sliderShadowBig = MakeStylePx(Fg(22), UiSkin.Current == UiSkin.Theme.Light ? new Color(0f, 0f, 0f, 0f) : new Color(0f, 0f, 0f, 0.75f), TextAnchor.MiddleCenter, FontStyle.Bold);
+            _guideNameBig = MakeStylePx(Fg(19), UiSkin.TextPrimary, TextAnchor.MiddleLeft, FontStyle.Bold);
             _guideNameBig.wordWrap = false;
-            _guideDescBig = MakeStylePx(Fg(14), new Color(0.78f, 0.82f, 0.88f, 1f), TextAnchor.UpperLeft, FontStyle.Normal);
+            _guideDescBig = MakeStylePx(Fg(14), UiSkin.TextSecondary, TextAnchor.UpperLeft, FontStyle.Normal);
             _guideDescBig.wordWrap = true;
-            _guideNoteBig = MakeStylePx(Fg(17), new Color(0.68f, 0.72f, 0.80f, 1f), TextAnchor.MiddleCenter, FontStyle.Normal);
+            _guideNoteBig = MakeStylePx(Fg(17), UiSkin.TextDim, TextAnchor.MiddleCenter, FontStyle.Normal);
             _guideNoteBig.wordWrap = false;
-            _guideKeyBig = MakeStylePx(Fg(19), Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
+            _guideKeyBig = MakeStylePx(Fg(19), UiSkin.TextPrimary, TextAnchor.MiddleCenter, FontStyle.Bold);
             _guideKeyBig.wordWrap = false;
             _btnBig = new GUIStyle(_btnStyle);
             _btnBig.fontSize = Fg(18);
 
+        }
+
+        int _stylesTheme = -1;
+
+        /// <summary>切主题时把上一套样式里的纯色贴图销毁掉，不然每切一次泄漏三张。</summary>
+        void ReleaseStyles()
+        {
+            if (_btnNormal != null) Destroy(_btnNormal);
+            if (_btnHover != null) Destroy(_btnHover);
+            if (_btnActive != null) Destroy(_btnActive);
+            _btnNormal = null;
+            _btnHover = null;
+            _btnActive = null;
         }
 
         static GUIStyle MakeStyle(int size, Color color, TextAnchor anchor, FontStyle style)
