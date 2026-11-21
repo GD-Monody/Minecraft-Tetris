@@ -136,6 +136,15 @@ namespace MinecraftTetris
             get { return MobileMode.Enabled && Screen.width > Screen.height; }
         }
 
+        /// <summary>
+        /// 横屏设置页统一用的设计画布。所有设置页都按这个尺寸排版 ——
+        /// 之前每页各有各的（420×648 / 480×900 / 460×500 / 500×360…），
+        /// 横屏时受高度限制，页面越高缩放越小，切页就一大一小、字也跟着变。
+        /// 统一成一块 480×480 之后，每页的倍数、面板大小、字号完全一致。
+        /// </summary>
+        const float WidePageW = 480f;
+        const float WidePageH = 480f;
+
         /// <summary>页面切换动画的时长（秒）。</summary>
         const float PageMotionTime = 0.20f;
 
@@ -574,11 +583,13 @@ namespace MinecraftTetris
 
             PageTitle(panel, "设置", 16f);
 
-            float bw = Pg(300f);
-            float bh = Pg(42f);
-            float step = Pg(54f);
+            // 横屏统一画布只有 480 高，九项挤不下：行高压到 36、行距 44
+            bool wide = WidePage;
+            float bw = Pg(wide ? 340f : 300f);
+            float bh = Pg(wide ? 36f : 42f);
+            float step = Pg(wide ? 44f : 54f);
             float bx = panel.x + (w - bw) * 0.5f;
-            float y = panel.y + Pg(80f);
+            float y = panel.y + Pg(wide ? 42f : 80f);
 
             if (GUI.Button(new Rect(bx, y, bw, bh), SfxEnabled ? "音效：开" : "音效：关", _btnBig))
             {
@@ -675,7 +686,7 @@ namespace MinecraftTetris
                 _mechScroll = Vector2.zero;        // 每次进来都从头看
                 _page = SettingsPage.Mech;
             }
-            y += Pg(62f);
+            y += Pg(wide ? 46f : 62f);     // 最后这一格比别的宽一点，把「返回」和上面隔开
 
             if (GUI.Button(new Rect(bx, y, bw, bh), "返回", _btnBig))
                 ShowSettings = false;
@@ -697,17 +708,23 @@ namespace MinecraftTetris
             float h = panel.height;
             DrawPanel(panel);
 
-            float rowH = Pg(46f);
-            float rowGap = Pg(10f);
+            // 横屏画布只有 480 高：行高压到 32、间距 5，十四项能露出八行
+            bool wide = WidePage;
+            float rowH = Pg(wide ? 32f : 46f);
+            float rowGap = Pg(wide ? 5f : 10f);
             float colW = Pg(400f);
 
             PageTitle(panel, "特殊方块机制", 12f);
 
-            float top = panel.y + Pg(66f);
+            float top = panel.y + Pg(wide ? 44f : 66f);
             // 底下固定不滚的：说明行 + 一键开关 + 返回。
             // 比说明行本身多留 10，不然列表底边正好压在说明字上（截图里挤在一起）
-            float bottomReserve = Pg(182f);
-            float viewH = Mathf.Max(rowH, panel.yMax - bottomReserve - top);
+            float bottomReserve = Pg(wide ? 130f : 182f);
+            // 可视区取整行：不取整的话裁剪区底边会露出半行字（列表最后一行被切成两半，
+            // 底下的说明文字压在上面，看着像排版坏了）
+            float availH = Mathf.Max(rowH, panel.yMax - bottomReserve - top);
+            int rowsFit = Mathf.Max(1, Mathf.FloorToInt((availH + rowGap) / (rowH + rowGap)));
+            float viewH = rowsFit * (rowH + rowGap) - rowGap;
             float contentH = GameSettings.MechCount * (rowH + rowGap) - rowGap;
             float maxScroll = Mathf.Max(0f, contentH - viewH);
 
@@ -752,18 +769,20 @@ namespace MinecraftTetris
                 DrawRect(new Rect(barX, barY, barW, barH), new Color(0.35f, 0.37f, 0.44f, 0.95f));
             }
 
-            GUI.Label(new Rect(panel.x, panel.y + h - Pg(172f), w, Pg(26f)),
+            GUI.Label(new Rect(panel.x, panel.y + h - Pg(wide ? 122f : 172f), w, Pg(26f)),
                 "关掉只是这种方块不再按特殊规则动，方块照常出现", _guideNoteBig);
 
             // 一键开关：全开时这颗键是「一键关闭」，否则是「一键开启」——
             // 十四项一个一个点太烦，想快速对比「全关 vs 全开」时用得上。
-            float bw = Pg(260f);
+            float bw = Pg(wide ? 300f : 260f);
             bool allOn = GameSettings.AllMechOn();
-            if (GUI.Button(new Rect(panel.x + (w - bw) * 0.5f, panel.y + h - Pg(132f), bw, Pg(42f)),
+            if (GUI.Button(new Rect(panel.x + (w - bw) * 0.5f, panel.y + h - Pg(wide ? 94f : 132f),
+                        bw, Pg(wide ? 34f : 42f)),
                     allOn ? "一键关闭" : "一键开启", _btnBig))
                 GameSettings.SetAllMech(!allOn);
 
-            if (GUI.Button(new Rect(panel.x + (w - bw) * 0.5f, panel.y + h - Pg(74f), bw, Pg(44f)), "返回", _btnBig))
+            if (GUI.Button(new Rect(panel.x + (w - bw) * 0.5f, panel.y + h - Pg(wide ? 50f : 74f),
+                        bw, Pg(wide ? 36f : 44f)), "返回", _btnBig))
                 _page = SettingsPage.Main;
         }
 
@@ -847,11 +866,12 @@ namespace MinecraftTetris
 
             PageTitle(panel, "按键设置", 12f);
 
-            float rowH = Pg(52f);
-            float gap = Pg(8f);
-            float top = panel.y + Pg(66f);
+            bool wide = WidePage;
+            float rowH = Pg(wide ? 34f : 52f);
+            float gap = Pg(wide ? 6f : 8f);
+            float top = panel.y + Pg(wide ? 44f : 66f);
             // 底下固定不滚的：提示行 + 「恢复默认 / 返回」两个按钮
-            float bottomReserve = Pg(140f);
+            float bottomReserve = Pg(wide ? 104f : 140f);
             float gap2 = gap;
             float avail = Mathf.Max(rowH + gap2, panel.yMax - bottomReserve - top);
             // 同上：行数取整、余量摊到每行，底边不空、也不露半行
@@ -893,10 +913,11 @@ namespace MinecraftTetris
             DrawScrollBar(clip, viewH, contentH, maxScroll, _keyScroll);
 
             if (_capturingAction >= 0)
-                GUI.Label(new Rect(panel.x, panel.y + h - Pg(132f), w, Pg(28f)), "按 Esc 取消", _rowLabelBig);
+                GUI.Label(new Rect(panel.x, panel.y + h - Pg(wide ? 100f : 132f), w, Pg(28f)),
+                    "按 Esc 取消", _rowLabelBig);
 
             float bw = (w - Pg(120f)) * 0.5f;
-            float bottomY = panel.y + h - Pg(66f);
+            float bottomY = panel.y + h - Pg(wide ? 52f : 66f);
             if (GUI.Button(new Rect(panel.x + Pg(40f), bottomY, bw, Pg(44f)), "恢复默认", _btnBig))
             {
                 ResetKeys();
@@ -920,33 +941,36 @@ namespace MinecraftTetris
 
             // 三个轴都是拖拽滑条，和下落速度、音乐音量一个样式。
             // 这里只在内存里改 _tmpX/Y/Z，真正落盘要等下面「应用并重启」——尺寸一变就得清存档重建场地。
-            float rowW = Pg(360f);
+            bool wide = WidePage;
+            float rowW = Pg(wide ? 400f : 360f);
             float bx = panel.x + (w - rowW) * 0.5f;
-            float y = panel.y + Pg(76f);
+            float y = panel.y + Pg(wide ? 52f : 76f);
 
             DrawSizeSlider(SliderSizeX, bx, y, rowW, "宽度 X", GameSettings.MinSizeX, GameSettings.MaxSizeX, ref _tmpX);
-            y += Pg(58f);
+            y += Pg(wide ? 50f : 58f);
             DrawSizeSlider(SliderSizeY, bx, y, rowW, "高度 Y", GameSettings.MinSizeY, GameSettings.MaxSizeY, ref _tmpY);
-            y += Pg(58f);
+            y += Pg(wide ? 50f : 58f);
             DrawSizeSlider(SliderSizeZ, bx, y, rowW, "深度 Z", GameSettings.MinSizeZ, GameSettings.MaxSizeZ, ref _tmpZ);
-            y += Pg(58f);
+            y += Pg(wide ? 50f : 58f);
 
             GUI.Label(new Rect(bx, y, rowW, Pg(28f)), "拖动滑条调大小，改完点「应用」", _hintBig);
-            y += Pg(28f);
+            y += Pg(wide ? 26f : 28f);
             GUI.Label(new Rect(bx, y, rowW, Pg(28f)), "深度大于 1 才有前后移动和层消", _hintBig);
-            y += Pg(34f);
+
+            // 横屏统一画布只有 480 高，两颗按钮贴底摆（和下落速度 / 音乐页一致）
+            y = wide ? panel.y + panel.height - Pg(96f) : y + Pg(34f);
 
             // 文案从「应用并重启」改成「应用」：它确实会重载场景（尺寸变了只能重建场地），
             // 但重载后直接回到标题页、不再播开场动画，玩家感觉不到「重启」这一步。
-            if (GUI.Button(new Rect(bx, y, rowW, Pg(44f)), "应用", _btnBig))
+            if (GUI.Button(new Rect(bx, y, rowW, Pg(wide ? 38f : 44f)), "应用", _btnBig))
             {
                 GameSettings.SetSize(_tmpX, _tmpY, _tmpZ);
                 if (OnSizeApplied != null)
                     OnSizeApplied();
             }
-            y += Pg(54f);
+            y += Pg(wide ? 46f : 54f);
 
-            if (GUI.Button(new Rect(bx, y, rowW, Pg(42f)), "返回", _btnBig))
+            if (GUI.Button(new Rect(bx, y, rowW, Pg(wide ? 34f : 42f)), "返回", _btnBig))
                 _page = SettingsPage.Main;
         }
 
@@ -1867,13 +1891,17 @@ namespace MinecraftTetris
             if (WidePage)
             {
                 // 横屏手机：内容只占右半屏，左边留给标题（见 PageTitle）。
-                // 倍数要按这条窄带算，不然 940 宽那几页会横着顶出屏幕。
-                bandW *= 0.52f;
-                _pageScale = UiSkin.FitScale(designW, designH, target, bandW, availH, PageMin);
+                // 画布统一成 WidePageW × WidePageH，各页传进来的尺寸在这条分支里作废 ——
+                // 否则页面越高缩放越小，切页时字号会跳。
+                // 宽度和缩放倍数都用统一画布算 —— 各页字号、面板宽度因此完全一致。
+                // 高度还是各页自己的（但不超过统一画布高）：内容少的页（下落速度、
+                // 音乐音量）面板就矮一些，不会像固定 480 高那样下半截空一大片。
+                bandW *= 0.52f;      // 右半屏那条带子的宽度
+                _pageScale = UiSkin.FitScale(WidePageW, WidePageH, target, bandW, availH, PageMin);
                 SyncPageFonts();
 
-                float w = Pg(designW);
-                float h = Pg(designH);
+                float w = Pg(WidePageW);
+                float h = Pg(Mathf.Min(designH, WidePageH));
                 float bandLeft = Screen.width - margin - bandW;
                 return new Rect(bandLeft + (bandW - w) * 0.5f,
                     (Screen.height - h) * 0.5f, w, h);
