@@ -655,7 +655,9 @@ namespace MinecraftTetris
             GUI.Label(new Rect(panel.x, panel.y + Pg(12f), w, Pg(44f)), "特殊方块机制", _panelTitleBig);
 
             float top = panel.y + Pg(66f);
-            float bottomReserve = Pg(120f);            // 底下固定不滚的：说明行 + 返回按钮
+            // 底下固定不滚的：说明行 + 一键开关 + 返回。
+            // 比说明行本身多留 10，不然列表底边正好压在说明字上（截图里挤在一起）
+            float bottomReserve = Pg(182f);
             float viewH = Mathf.Max(rowH, panel.yMax - bottomReserve - top);
             float contentH = GameSettings.MechCount * (rowH + rowGap) - rowGap;
             float maxScroll = Mathf.Max(0f, contentH - viewH);
@@ -701,11 +703,18 @@ namespace MinecraftTetris
                 DrawRect(new Rect(barX, barY, barW, barH), new Color(0.35f, 0.37f, 0.44f, 0.95f));
             }
 
-            GUI.Label(new Rect(panel.x, panel.y + h - Pg(120f), w, Pg(30f)),
+            GUI.Label(new Rect(panel.x, panel.y + h - Pg(172f), w, Pg(26f)),
                 "关掉只是这种方块不再按特殊规则动，方块照常出现", _guideNoteBig);
 
+            // 一键开关：全开时这颗键是「一键关闭」，否则是「一键开启」——
+            // 十四项一个一个点太烦，想快速对比「全关 vs 全开」时用得上。
             float bw = Pg(260f);
-            if (GUI.Button(new Rect(panel.x + (w - bw) * 0.5f, panel.y + h - Pg(70f), bw, Pg(44f)), "返回", _btnBig))
+            bool allOn = GameSettings.AllMechOn();
+            if (GUI.Button(new Rect(panel.x + (w - bw) * 0.5f, panel.y + h - Pg(132f), bw, Pg(42f)),
+                    allOn ? "一键关闭" : "一键开启", _btnBig))
+                GameSettings.SetAllMech(!allOn);
+
+            if (GUI.Button(new Rect(panel.x + (w - bw) * 0.5f, panel.y + h - Pg(74f), bw, Pg(44f)), "返回", _btnBig))
                 _page = SettingsPage.Main;
         }
 
@@ -873,12 +882,14 @@ namespace MinecraftTetris
             DrawSizeSlider(SliderSizeZ, bx, y, rowW, "深度 Z", GameSettings.MinSizeZ, GameSettings.MaxSizeZ, ref _tmpZ);
             y += Pg(58f);
 
-            GUI.Label(new Rect(bx, y, rowW, Pg(28f)), "拖动滑条调大小，改完点「应用并重启」", _hintBig);
+            GUI.Label(new Rect(bx, y, rowW, Pg(28f)), "拖动滑条调大小，改完点「应用」", _hintBig);
             y += Pg(28f);
             GUI.Label(new Rect(bx, y, rowW, Pg(28f)), "深度大于 1 才有前后移动和层消", _hintBig);
             y += Pg(34f);
 
-            if (GUI.Button(new Rect(bx, y, rowW, Pg(44f)), "应用并重启", _btnBig))
+            // 文案从「应用并重启」改成「应用」：它确实会重载场景（尺寸变了只能重建场地），
+            // 但重载后直接回到标题页、不再播开场动画，玩家感觉不到「重启」这一步。
+            if (GUI.Button(new Rect(bx, y, rowW, Pg(44f)), "应用", _btnBig))
             {
                 GameSettings.SetSize(_tmpX, _tmpY, _tmpZ);
                 if (OnSizeApplied != null)
@@ -1060,14 +1071,16 @@ namespace MinecraftTetris
             }
 
             bool lit = e != null && (r.Contains(e.mousePosition) || _dragSlider == id);
+            // 配色跟主题走：亮色主题下轨道要浅、描边要淡，否则整条黑槽压在浅色页面上
+            bool light = UiSkin.Current == UiSkin.Theme.Light;
             Color border = lit
-                ? new Color(0.62f, 0.66f, 0.74f, 0.95f)
-                : new Color(0.35f, 0.37f, 0.44f, 0.95f);
+                ? (light ? new Color(0.55f, 0.60f, 0.68f, 0.95f) : new Color(0.62f, 0.66f, 0.74f, 0.95f))
+                : (light ? new Color(0.78f, 0.82f, 0.88f, 0.95f) : new Color(0.35f, 0.37f, 0.44f, 0.95f));
 
-            DrawRect(r, new Color(0.13f, 0.15f, 0.19f, 0.96f));
+            DrawRect(r, light ? new Color(0.87f, 0.91f, 0.96f, 0.96f) : new Color(0.13f, 0.15f, 0.19f, 0.96f));
             // 已拖过的部分淡淡的填一层，一眼能看出现在到哪儿了
             DrawRect(new Rect(r.x + 1f, r.y + 1f, (r.width - 2f) * t, r.height - 2f),
-                new Color(0.42f, 0.86f, 1f, 0.16f));
+                new Color(UiSkin.Accent.r, UiSkin.Accent.g, UiSkin.Accent.b, 0.16f));
             DrawRect(new Rect(r.x, r.y, r.width, 1f), border);
             DrawRect(new Rect(r.x, r.yMax - 1f, r.width, 1f), border);
             DrawRect(new Rect(r.x, r.y, 1f, r.height), border);
@@ -1075,9 +1088,10 @@ namespace MinecraftTetris
 
             // 把手：浅灰一块，右边压一道深色，看着像凸起来的塑料件
             var knob = new Rect(r.x + travel * t, r.y + 1f, handle, r.height - 2f);
-            // 圆头用中灰而不是浅灰：白字要从它上面压过去，浅灰上白字会糊成一片
-            DrawRect(knob, new Color(0.46f, 0.49f, 0.56f, 1f));
-            DrawRect(new Rect(knob.xMax - 1f, knob.y, 1f, knob.height), new Color(0.26f, 0.28f, 0.33f, 1f));
+            // 圆头用中灰而不是浅灰：字要从它上面压过去，浅灰上文字会糊成一片
+            DrawRect(knob, light ? new Color(0.55f, 0.62f, 0.72f, 1f) : new Color(0.46f, 0.49f, 0.56f, 1f));
+            DrawRect(new Rect(knob.xMax - 1f, knob.y, 1f, knob.height),
+                light ? new Color(0.40f, 0.46f, 0.55f, 1f) : new Color(0.26f, 0.28f, 0.33f, 1f));
 
             // 字在圆头上再盖一遍：先落一层深影子（往右下偏 1px），再写白字。
             // 圆头滑到中间时正好从字中间穿过，没有这层影子那块会糊成一片。

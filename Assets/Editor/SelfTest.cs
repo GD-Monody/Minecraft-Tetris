@@ -800,6 +800,25 @@ namespace MinecraftTetris.EditorTools
             GameSettings.SetMech(GameSettings.MechKind.WaterFlow, flowWaterWas);
             GameSettings.SetMech(GameSettings.MechKind.LavaFlow, flowLavaWas);
 
+            // 一键全开 / 全关：设置页那颗按钮靠 AllMechOn 判断该显示哪个文案
+            {
+                var was = new bool[GameSettings.MechCount];
+                for (int i = 0; i < GameSettings.MechCount; i++)
+                    was[i] = GameSettings.Mech((GameSettings.MechKind)i);
+
+                GameSettings.SetAllMech(false);
+                Check("一键全关之后全都不开", !GameSettings.AllMechOn());
+                GameSettings.SetAllMech(true);
+                Check("一键全开之后全部打开", GameSettings.AllMechOn());
+                Check("一键全开后单项也跟着开",
+                      GameSettings.Mech(GameSettings.MechKind.TntExplode) &&
+                      GameSettings.Mech(GameSettings.MechKind.WaterFlow));
+
+                // 还原成跑测试之前的样子，别把玩家自己的开关改掉
+                for (int i = 0; i < GameSettings.MechCount; i++)
+                    GameSettings.SetMech((GameSettings.MechKind)i, was[i]);
+            }
+
             // 水竖向合并：三格各 1 份（1/8），上下叠着要先并下去，再按「摊成一片」的规则铺开
             var gMerge = new Grid(3, 6, 2);
             Fluids.Tick(gMerge, 0f);   // 只为触发 Ensure 建表

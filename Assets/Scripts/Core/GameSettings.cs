@@ -224,6 +224,26 @@ namespace MinecraftTetris
             return PlayerPrefs.GetInt(MechKeys[i], 1) != 0;
         }
 
+        /// <summary>十四项是不是全开着（一键开关按钮靠它决定显示「一键开启」还是「一键关闭」）。</summary>
+        public static bool AllMechOn()
+        {
+            for (int i = 0; i < MechCount; i++)
+                if (!Mech((MechKind)i))
+                    return false;
+            return true;
+        }
+
+        /// <summary>
+        /// 一键全开 / 全关。
+        /// 不循环调 SetMech：那个每调一次就 PlayerPrefs.Save() 一次，十四次就是十四次落盘。
+        /// </summary>
+        public static void SetAllMech(bool on)
+        {
+            for (int i = 0; i < MechKeys.Length; i++)
+                PlayerPrefs.SetInt(MechKeys[i], on ? 1 : 0);
+            PlayerPrefs.Save();
+        }
+
         public static void SetMech(MechKind kind, bool on)
         {
             int i = (int)kind;
