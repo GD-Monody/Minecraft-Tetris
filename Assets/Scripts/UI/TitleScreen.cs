@@ -345,11 +345,20 @@ namespace MinecraftTetris
                 if (p <= 0f)
                     continue;
 
-                // 淡入而不是落下：以前是 EaseOutBounce 从屏幕上方弹下来，
-                // 横屏时标题在左半边，从上往下掉会擦过顶栏，观感很乱。
-                // 现在每个字母原地从透明浮出来（位置固定，只给一点点上浮）
-                float y = targetY + (1f - p) * UiSkin.P(10f);
-                float alpha = Mathf.Clamp01(p);
+                // 横屏：原地淡入。标题在左半边，从上往下掉会擦过顶栏，观感很乱。
+                // 桌面与竖屏：保留原来那套「从屏幕上方掉下来、落地弹一下」——
+                // 用户明确说别动这两个方向的开场。
+                float y, alpha;
+                if (WideTitle)
+                {
+                    y = targetY + (1f - p) * UiSkin.P(10f);
+                    alpha = Mathf.Clamp01(p);
+                }
+                else
+                {
+                    y = Mathf.Lerp(-titleH, targetY, EaseOutBounce(p));
+                    alpha = Mathf.Clamp01(p * 4f);
+                }
 
                 var dst = new Rect(left + ch.x * scale, y, ch.w * scale, titleH);
                 var uv = new Rect((float)ch.x / texW, 0f, (float)ch.w / texW, 1f);
@@ -2463,9 +2472,14 @@ namespace MinecraftTetris
 
                 float breathe = 0.5f + 0.5f * Mathf.Sin(_moteT * m.speed + m.phase);
                 float a = 0.16f + 0.62f * breathe;
+                // 暗色主题用浅色粒子（压在黑底上才亮）；亮色主题必须换成饱和的深色 ——
+                // 原来那套淡青压在浅蓝背景上几乎看不见（真机截图里只有左边一颗紫点）。
+                bool light = UiSkin.Current == UiSkin.Theme.Light;
                 Color c = (i % 9 == 0)
-                    ? new Color(0.58f, 0.40f, 0.95f, a * 0.85f)
-                    : new Color(0.76f, 0.93f, 1f, a);
+                    ? (light ? new Color(0.62f, 0.20f, 0.86f, a * 0.95f)
+                             : new Color(0.58f, 0.40f, 0.95f, a * 0.85f))
+                    : (light ? new Color(0.10f, 0.34f, 0.82f, a * 0.9f)
+                             : new Color(0.76f, 0.93f, 1f, a));
 
                 float sz = m.size * scale * (0.85f + 0.35f * breathe);
                 GUI.color = c;
