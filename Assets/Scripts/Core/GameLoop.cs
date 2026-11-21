@@ -279,6 +279,16 @@ namespace MinecraftTetris
                 // 水漫到海绵旁边也会被吸掉。吸水不改网格里的固体，只动流体层，
                 // 所以这里只需要刷流体、不用落重力
                 SoakWater();
+
+                // 关掉流动开关后流体被固化成方块（Fluids.SolidifyStatic）。
+                // 它可能本来就是悬空的（水浮在半空流着），变成方块之后要像普通方块一样塌一次，
+                // 否则会停在半空等人来撞一下。
+                if (Fluids.LastSolidified)
+                {
+                    LastGravityMoves.Clear();
+                    if (Gravity.Settle(Grid, LastGravityMoves))
+                        GravitySettled?.Invoke();
+                }
             }
 
             // 雪块 / 冰挨着岩浆就化水。不挂在上面那个 if 里：一桶岩浆封在石槽里、

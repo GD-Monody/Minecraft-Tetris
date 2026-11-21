@@ -756,6 +756,35 @@ namespace MinecraftTetris.EditorTools
             Fluids.ClearCell(1, 0, 0);
             Check("清掉一格水", hadWater && Fluids.AmountAt(1, 0, 0) == 0);
 
+            // 关掉流动开关后，场上的水要降级成普通方块。
+            // 流体平时只活在 Fluids 自己的数组里、不写网格，所以关掉流动之后它既没有碰撞
+            // 也参与不了消行，就僵在原地（真机反馈：消行时那滩水不下去也不消失）。
+            bool flowWaterWas = GameSettings.Mech(GameSettings.MechKind.WaterFlow);
+            bool flowLavaWas = GameSettings.Mech(GameSettings.MechKind.LavaFlow);
+            GameSettings.SetMech(GameSettings.MechKind.WaterFlow, false);
+            GameSettings.SetMech(GameSettings.MechKind.LavaFlow, false);
+
+            var gSolid = new Grid(4, 4, 1);
+            Fluids.Reset();
+            Fluids.Prepare(gSolid);
+            Fluids.SetAmount(1, 2, 0, 5, Fluids.WaterId);
+            Fluids.Tick(gSolid, 0.2f);
+            Check("关掉流动后水变成网格里的方块", gSolid.Get(1, 2, 0) == Fluids.WaterId);
+            Check("固化后流体层清空（不会画两遍）", Fluids.AmountAt(1, 2, 0) == 0);
+            Check("固化那一 tick 会通知重力重算", Fluids.LastSolidified);
+
+            // 固化之后它就是普通方块了：能凑满一行，也就能被消掉
+            var gSolidRow = new Grid(2, 2, 1);
+            Fluids.Reset();
+            Fluids.Prepare(gSolidRow);
+            gSolidRow.Set(0, 0, 0, 1);
+            Fluids.SetAmount(1, 0, 0, 3, Fluids.WaterId);
+            Fluids.Tick(gSolidRow, 0.2f);
+            Check("固化后的水能凑满一行（消行带得走它）", gSolidRow.IsRowFullPublic(0, 0));
+
+            GameSettings.SetMech(GameSettings.MechKind.WaterFlow, flowWaterWas);
+            GameSettings.SetMech(GameSettings.MechKind.LavaFlow, flowLavaWas);
+
             // 水竖向合并：三格各 1 份（1/8），上下叠着要先并下去，再按「摊成一片」的规则铺开
             var gMerge = new Grid(3, 6, 2);
             Fluids.Tick(gMerge, 0f);   // 只为触发 Ensure 建表
@@ -1611,10 +1640,17 @@ namespace MinecraftTetris.EditorTools
             Fluids.SetAmount(3, 3, 0, 8, Fluids.WaterId);
             GameSettings.SetMech(GameSettings.MechKind.WaterFlow, false);
             GameSettings.SetMech(GameSettings.MechKind.LavaFlow, false);
-            Check("关掉水/岩浆流动，流体不动", !Fluids.Tick(gMechFluid, 1f));
+            // 关掉之后这一 tick 会把那滩水固化成方块，所以第一次 tick 是「有变化」；
+            // 变成方块之后流体层就空了，再 tick 什么都不会动。
+            Fluids.Tick(gMechFluid, 1f);
+            Check("关掉流动后，那滩水固化成方块", gMechFluid.Get(3, 3, 0) == Fluids.WaterId);
+            Check("固化之后流体层不再动", !Fluids.Tick(gMechFluid, 1f));
+
+            // 开关拨回来：已经固化的不会变回流体质（单向降级），但新灌的水照常流
             GameSettings.SetMech(GameSettings.MechKind.WaterFlow, true);
             GameSettings.SetMech(GameSettings.MechKind.LavaFlow, true);
-            Check("开关拨回来水会流", Fluids.Tick(gMechFluid, 1f));
+            Fluids.SetAmount(1, 5, 0, 8, Fluids.WaterId);
+            Check("开关拨回来，新灌进去的水会流", Fluids.Tick(gMechFluid, 1f));
             Fluids.Reset();
 
             // 结构方块还原

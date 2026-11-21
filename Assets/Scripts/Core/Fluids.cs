@@ -38,6 +38,9 @@ namespace MinecraftTetris
         /// <summary>最近一个 tick 里发生的反应。视图层拿它刷格子、撒碎屑。</summary>
         public static readonly List<Reaction> LastReactions = new List<Reaction>();
 
+        /// <summary>上一 tick 有没有把流体固化成普通方块（GameLoop 据此补一次重力结算）。</summary>
+        public static bool LastSolidified;
+
         static int _waterId = -1;
         static int _lavaId = -1;
         static int _obsidianId = -1;
@@ -79,6 +82,7 @@ namespace MinecraftTetris
             _id = null;
             _timer = 0f;
             LastReactions.Clear();
+            LastSolidified = false;
         }
 
         /// <summary>按当前场地尺寸把流体数组准备好。Reset 之后、往格子里写流体之前要调一次，
@@ -185,12 +189,18 @@ namespace MinecraftTetris
             Ensure(grid);
             if (_amount == null) return false;
 
+            // 先把不准流动的流体固化成普通方块（见 SolidifyStatic）。
+            // 要放在下面那个 early return 前面：两种流体都关掉时它直接返回，
+            // 固化就永远没机会跑，水会一直僵在原地。
+            bool solidified = SolidifyStatic(grid);
+            LastSolidified = solidified;
+
             // 设置里两种流体都关掉了：连计时都不走，省的每隔一段时间白算一遍
             if (!GameSettings.WaterFlows && !GameSettings.LavaFlows)
-                return false;
+                return solidified;
 
             _timer += dt;
-            if (_timer < TickInterval) return false;
+            if (_timer < TickInterval) return solidified;
             _timer = 0f;
 
             LastReactions.Clear();
@@ -199,7 +209,47 @@ namespace MinecraftTetris
             bool changed = React(grid);
             if (Step(grid))
                 changed = true;
-            return changed;
+            return changed || solidified;
+        }
+
+        /// <summary>
+        /// 把「设置里已经不允许流动」的流体固化成同名普通方块。
+        ///
+        /// 流体平时只存在这个类自己的数组里、不写进网格（见 IdAt 的注释），
+        /// 所以场上的水没有碰撞体积，消行时也不会跟着下落 —— 它压根不在网格里。
+        /// 以前两种流体都关掉时 Tick 直接 return，灌进去的水就僵在原地：
+        /// 看着是一张卡住的贴图，方块能从它身上穿过去，消行也不带它走。
+        ///
+        /// 现在只要某种流体不再流动，就把它写进网格变成常规方块：
+        /// 会挡路、会随消行下落、能凑满行消除，和普通方块完全一样。
+        /// 单向降级 —— 重新打开开关不会把它变回流体质（那时它已经是方块了）。
+        /// </summary>
+        public static bool SolidifyStatic(Grid grid)
+        {
+            Ensure(grid);
+            if (_amount == null)
+                return false;
+
+            bool any = false;
+            for (int y = 0; y < _sy; y++)
+            {
+                for (int x = 0; x < _sx; x++)
+                {
+                    for (int z = 0; z < _sz; z++)
+                    {
+                        int id = _id[x, y, z];
+                        if (id <= 0 || _amount[x, y, z] <= 0)
+                            continue;
+                        if (CanFlow(id))
+                            continue;       // 还能流的留着，交给 Step
+
+                        grid.Set(x, y, z, id);
+                        ClearCell(x, y, z);
+                        any = true;
+                    }
+                }
+            }
+            return any;
         }
 
         /// <summary>这种流体现在允不允许流动（设置页的「水会流动」「岩浆会流动」）。</summary>
