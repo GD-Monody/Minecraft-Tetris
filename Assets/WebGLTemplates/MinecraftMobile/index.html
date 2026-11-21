@@ -28,9 +28,9 @@
         touch-action: none;
       }
       #unity-loading-bar {
-        position: absolute; left: 50%; top: 64%;
+        position: absolute; left: 50%; top: 50%;
         transform: translate(-50%, -50%);
-        display: none; width: 40%; max-width: 260px;
+        display: none; width: 60%; max-width: 420px;
       }
       #unity-progress-bar-empty {
         width: 100%; height: 8px; border-radius: 4px;
@@ -44,19 +44,6 @@
         position: absolute; left: 0; right: 0; top: 0;
         color: #fff; font: 14px/1.5 sans-serif; z-index: 10;
       }
-      /* 加载页中间闪一下的签名。Unity 起来之前只有这块画布，正好当开屏用。
-         手画的矢量路径（不是描位图），任何分辨率都清楚。 */
-      #mt-splash {
-        position: fixed; left: 50%; top: 44%;
-        transform: translate(-50%, -50%);
-        width: 30vmin; max-width: 210px;
-        color: #eef3fa;
-        opacity: 0; transition: opacity 0.35s ease;
-        pointer-events: none; z-index: 5;
-      }
-      #mt-splash.show { opacity: 1; }
-      #mt-splash.gone { opacity: 0; }
-      #mt-splash svg { display: block; width: 100%; height: auto; }
       #mt-debug {
         position: fixed; left: 4px; bottom: 4px; z-index: 99;
         color: #6bd0ff; font: 12px/1.4 monospace; white-space: pre;
@@ -74,14 +61,6 @@
       </div>
       <div id="unity-warning"> </div>
     </div>
-    <div id="mt-splash"><svg class="mt-sign" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 260">
-  <g fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M58 40 L58 218"/>
-    <path d="M58 132 L150 44"/>
-    <path d="M58 132 C 80 176, 104 200, 132 202 C 176 205, 208 184, 204 160 C 200 138, 163 138, 147 160 C 132 180, 145 208, 178 210 C 191 211, 201 205, 207 196"/>
-  </g>
-  <path fill="currentColor" d="M198.0 16.0 L204.7 32.7 L222.7 34.0 L208.9 45.5 L213.3 63.0 L198.0 53.4 L182.7 63.0 L187.1 45.5 L173.3 34.0 L191.3 32.7 Z"/>
-</svg></div>
     <div id="mt-debug"></div>
     <script>
       var container = document.querySelector("#unity-container");
@@ -90,19 +69,6 @@
       var progressBarFull = document.querySelector("#unity-progress-bar-full");
       var warningBanner = document.querySelector("#unity-warning");
       var debugBox = document.querySelector("#mt-debug");
-      var splashBox = document.querySelector("#mt-splash");
-
-      // 签名闪一下：页面一打开就淡入，Unity 起来后再淡出。
-      // 至少露 700ms，不然加载快的时候等于没看见。
-      var mtSplashAt = Date.now();
-      requestAnimationFrame(function () {
-        if (splashBox) splashBox.classList.add("show");
-      });
-      function mtHideSplash() {
-        if (!splashBox) return;
-        var wait = Math.max(0, 700 - (Date.now() - mtSplashAt));
-        setTimeout(function () { splashBox.classList.add("gone"); }, wait);
-      }
 
       // ── 画布尺寸同步 ────────────────────────────────────────────────
       // Unity 的 WebGL 运行时不会自己盯窗口尺寸：framework 里所有「屏幕多大」的
@@ -327,7 +293,6 @@
           progressBarFull.style.width = 100 * progress + "%";
         }).then(function (unityInstance) {
           loadingBar.style.display = "none";
-          mtHideSplash();
           window.__unity = unityInstance;
           // Unity 起来时可能已经改过画布尺寸，再量一遍保险
           mtSyncCanvas();
