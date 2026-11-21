@@ -18,10 +18,9 @@
         -webkit-tap-highlight-color: transparent;
         overscroll-behavior: none;
       }
-      /* 往外扩 2px，把画布和视口之间那 1px 的缝盖住。
-         画布的内部尺寸是按 DPI 折算后取整的，和 CSS 尺寸差个零点几像素时，
-         边缘就会露出下层颜色（浅色主题下看着就是一圈白边）。 */
-      #unity-container { position: fixed; top: -2px; right: -2px; bottom: -2px; left: -2px; }
+      #unity-container {
+        position: fixed; top: 0; right: 0; bottom: 0; left: 0;
+      }
       #unity-canvas {
         display: block; width: 100%; height: 100%;
         background: #0a0c10; border: 0; outline: 0;
@@ -45,6 +44,11 @@
         position: absolute; left: 0; right: 0; top: 0;
         color: #fff; font: 14px/1.5 sans-serif; z-index: 10;
       }
+      #mt-debug {
+        position: fixed; left: 4px; bottom: 4px; z-index: 99;
+        color: #6bd0ff; font: 12px/1.4 monospace; white-space: pre;
+        pointer-events: none; display: none;
+      }
     </style>
   </head>
   <body>
@@ -57,12 +61,175 @@
       </div>
       <div id="unity-warning"> </div>
     </div>
+    <div id="mt-debug"></div>
     <script>
       var container = document.querySelector("#unity-container");
       var canvas = document.querySelector("#unity-canvas");
       var loadingBar = document.querySelector("#unity-loading-bar");
       var progressBarFull = document.querySelector("#unity-progress-bar-full");
       var warningBanner = document.querySelector("#unity-warning");
+      var debugBox = document.querySelector("#mt-debug");
+
+      // ── 画布尺寸同步 ────────────────────────────────────────────────
+      // Unity 的 WebGL 运行时不会自己盯窗口尺寸：framework 里所有「屏幕多大」的
+      // 判断都来自 canvas 的 width/height 属性（emscripten_get_canvas_element_size
+      // 直接读它），而框架和 loader 都没有挂 resize 监听 —— 只改 CSS 尺寸、
+      // 或者派发一次 resize 事件，Unity 都察觉不到，版式不会跟着切。
+      // 所以窗口变化、屏幕旋转、进出全屏之后，必须由我们把这层 CSS 尺寸按 DPR
+      // 折算写回 canvas.width/height，Unity 才会认为屏幕尺寸变了。
+      // 注意：绝不能用 transform: rotate 去「视觉转屏」—— 触摸坐标是按
+      // getBoundingClientRect 算的，旋转之后每根手指的落点都会错位。
+      var MT_DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+      // 调试用：?size=900x420 把容器钉成指定尺寸，方便在电脑上直接看横屏/竖屏版式。
+      var MT_TEST = null;
+      (function () {
+        var m = /[?&]size=(\d+)x(\d+)/.exec(location.search);
+        if (!m) return;
+        MT_TEST = [parseInt(m[1], 10), parseInt(m[2], 10)];
+        container.style.width = MT_TEST[0] + 'px';
+        container.style.height = MT_TEST[1] + 'px';
+        container.style.left = '50%';
+        container.style.top = '50%';
+        container.style.right = 'auto';
+        container.style.bottom = 'auto';
+        container.style.transform = 'translate(-50%, -50%)';
+      })();
+
+      var MT_DEBUG = /[?&]debug=1/.test(location.search);
+      if (MT_DEBUG) debugBox.style.display = 'block';
+
+      function mtSyncCanvas() {
+        var cssW = container.clientWidth;
+        var cssH = container.clientHeight;
+        var w = Math.max(1, Math.round(cssW * MT_DPR));
+        var h = Math.max(1, Math.round(cssH * MT_DPR));
+        if (canvas.width !== w) canvas.width = w;
+        if (canvas.height !== h) canvas.height = h;
+        if (MT_DEBUG) {
+          debugBox.textContent = 'css ' + cssW + 'x' + cssH
+            + '  buffer ' + canvas.width + 'x' + canvas.height
+            + '  dpr ' + MT_DPR;
+        }
+      }
+
+      // 自测用：?alt=900x420&at=8 —— 加载 8 秒后把容器换成这个尺寸，
+      // 模拟「转屏」这一步，用来验证 Unity 会不会跟着重排版式。
+      function mtResizeTo(w, h) {
+        container.style.width = w + 'px';
+        container.style.height = h + 'px';
+        container.style.left = '50%';
+        container.style.top = '50%';
+        container.style.right = 'auto';
+        container.style.bottom = 'auto';
+        container.style.transform = 'translate(-50%, -50%)';
+        mtSyncCanvas();
+      }
+      (function () {
+        var m = /[?&]alt=(\d+)x(\d+)/.exec(location.search);
+        if (!m) return;
+        var at = /[?&]at=([\d.]+)/.exec(location.search);
+        var delay = at ? parseFloat(at[1]) * 1000 : 8000;
+        // 等 Unity 真的起来之后再计时（?at 是从「可以玩了」开始算的秒数）
+        var wait = setInterval(function () {
+          if (!window.__unity) return;
+          clearInterval(wait);
+          setTimeout(function () {
+            mtResizeTo(parseInt(m[1], 10), parseInt(m[2], 10));
+            setTimeout(mtSyncCanvas, 200);
+          }, delay);
+        }, 100);
+      })();
+
+      // ── 屏幕方向 ────────────────────────────────────────────────────
+      // 存储放 localStorage（Unity 的 PlayerPrefs 在 WebGL 下走 IndexedDB，读不到这么早），
+      // 两边各存一份：Unity 启动后会把自己的值再推过来一次。
+      var MT_ORIENT_KEY = 'mt.orientation';
+
+      function mtGetOrientation() {
+        try { return localStorage.getItem(MT_ORIENT_KEY) || 'auto'; } catch (e) { return 'auto'; }
+      }
+
+      // 调试用：?orient=landscape|portrait|auto 直接指定，优先于存档
+      (function () {
+        var m = /[?&]orient=(landscape|portrait|auto)/.exec(location.search);
+        if (!m) return;
+        try { localStorage.setItem(MT_ORIENT_KEY, m[1]); } catch (e) {}
+      })();
+
+      function mtCanLock() {
+        if (!(screen.orientation && screen.orientation.lock && document.fullscreenEnabled))
+          return false;
+        // 桌面浏览器别去抢全屏：电脑上的窗口比例自己拉就行，而且桌面 Chrome
+        // 根本不给网页锁方向，进了全屏也只是白闪一下。
+        var touch = navigator.maxTouchPoints > 0 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        return touch;
+      }
+
+      // 真正把屏幕转过去：只能靠系统的方向锁，而且必须全屏、必须在用户手势里调。
+      // 安卓 Chrome / Edge 支持；iOS Safari（含 iOS 上的微信）没有这个 API，
+      // 微信 / QQ 内置 WebView 多数会吞掉调用 —— 这些环境只能靠玩家自己把手机横过来，
+      // 由 C# 那边弹「请横屏握持」提示。
+      function mtLockOrientation(mode) {
+        if (!mtCanLock()) return;
+        if (mode === 'auto') {
+          try { screen.orientation.unlock(); } catch (e) { /* 忽略 */ }
+          return;
+        }
+        var want = mode === 'landscape' ? 'landscape' : 'portrait';
+        var entered = false;
+
+        // lock 失败就退出全屏：桌面 Chrome 有 lock 这个方法但不认（reject），
+        // 进了全屏又转不动的话，画面无缘无故变全屏会很奇怪。
+        var backOut = function () {
+          if (entered && document.fullscreenElement && document.exitFullscreen)
+            try { document.exitFullscreen(); } catch (e) { /* 忽略 */ }
+        };
+
+        var lock = function () {
+          var p = null;
+          try { p = screen.orientation.lock(want); } catch (e) { backOut(); return; }
+          if (p && p.then) p.then(function () { }).catch(backOut);
+          else if (!p) backOut();
+        };
+
+        if (document.fullscreenElement) { lock(); return; }
+        var rp = document.documentElement.requestFullscreen
+          ? document.documentElement.requestFullscreen() : null;
+        if (rp && rp.then) {
+          entered = true;
+          rp.then(lock).catch(function () { entered = false; });
+        } else {
+          lock();
+        }
+      }
+
+      function mtSetOrientation(mode) {
+        try { localStorage.setItem(MT_ORIENT_KEY, mode); } catch (e) { /* 无痕模式下写不进去，忽略 */ }
+        mtLockOrientation(mode);
+        mtSyncCanvas();
+      }
+
+      window.mtSetOrientation = mtSetOrientation;
+      window.mtSyncCanvas = mtSyncCanvas;
+
+      // 窗口变了、屏幕转了、全屏进出了 —— 三种都重新量一次。
+      // orientationchange 之后 innerWidth/innerHeight 不一定立刻更新，补两个延时。
+      window.addEventListener('resize', mtSyncCanvas);
+      window.addEventListener('orientationchange', function () {
+        mtSyncCanvas();
+        setTimeout(mtSyncCanvas, 100);
+        setTimeout(mtSyncCanvas, 300);
+      });
+      document.addEventListener('fullscreenchange', function () {
+        setTimeout(mtSyncCanvas, 60);
+        setTimeout(mtSyncCanvas, 300);
+      });
+
+      // 低频心跳：Unity 启动 / 切场景时会按 canvas 标签上的默认尺寸再设一次画布，
+      // 那一下会把我们提前写好的尺寸盖掉（实测开局按 960×600 排版、右侧按钮被切掉）。
+      // 尺寸一致时这里什么也不做，代价只有一次比较。
+      setInterval(mtSyncCanvas, 1000);
 
       function unityShowBanner(msg, type) {
         var div = document.createElement('div');
@@ -93,37 +260,30 @@
       }
 
       var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/{{{ LOADER_FILENAME }}}";
+      var loaderUrl = buildUrl + "/BuildWebGL.loader.js";
       var config = {
-        dataUrl: buildUrl + "/{{{ DATA_FILENAME }}}",
-        frameworkUrl: buildUrl + "/{{{ FRAMEWORK_FILENAME }}}",
-#if USE_THREADS
-        workerUrl: buildUrl + "/{{{ WORKER_FILENAME }}}",
-#endif
-#if USE_WASM
-        codeUrl: buildUrl + "/{{{ CODE_FILENAME }}}",
-#endif
-#if MEMORY_FILENAME
-        memoryUrl: buildUrl + "/{{{ MEMORY_FILENAME }}}",
-#endif
-#if SYMBOLS_FILENAME
-        symbolsUrl: buildUrl + "/{{{ SYMBOLS_FILENAME }}}",
-#endif
+        dataUrl: buildUrl + "/BuildWebGL.data",
+        frameworkUrl: buildUrl + "/BuildWebGL.framework.js",
+        codeUrl: buildUrl + "/BuildWebGL.wasm",
         streamingAssetsUrl: "StreamingAssets",
-        companyName: {{{ JSON.stringify(COMPANY_NAME) }}},
-        productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
-        productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
+        companyName: "MinecraftTetris",
+        productName: "MinecraftTetris",
+        productVersion: "1.0",
         showBanner: unityShowBanner,
       };
 
       // 高分屏手机是 3 倍甚至 4 倍像素密度，照原样渲染等于让 GPU 干三倍的活。
       // 封在 2 倍：肉眼看不出区别，帧数能稳住。
-      var dpr = window.devicePixelRatio || 1;
-      if (dpr > 2) config.devicePixelRatio = 2;
+      // 这个值必须和 MT_DPR 完全一致：Unity 用「画布像素 ÷ 这个比例」换算 Screen，
+      // 两边差一个倍数的话，版式会按错误的宽度排（真机上表现为整体缩一半/超一截）。
+      config.devicePixelRatio = MT_DPR;
 
       // 存档（PlayerPrefs）落到 IndexedDB 时自动同步，刷新页面还接着上一局
       config.autoSyncPersistentDataPath = true;
 
+      // 建实例之前先把画布尺寸写对，Unity 初始化时量的就是最终尺寸，
+      // 免得开局先按模板里的初始尺寸排一遍版式再跳一下。
+      mtSyncCanvas();
       loadingBar.style.display = "block";
 
       var script = document.createElement("script");
@@ -133,6 +293,11 @@
           progressBarFull.style.width = 100 * progress + "%";
         }).then(function (unityInstance) {
           loadingBar.style.display = "none";
+          window.__unity = unityInstance;
+          // Unity 起来时可能已经改过画布尺寸，再量一遍保险
+          mtSyncCanvas();
+          setTimeout(mtSyncCanvas, 100);
+          setTimeout(mtSyncCanvas, 600);
           // 这里原来挂了一个「第一次点画面就自动全屏」，目的是把手机浏览器的地址栏
           // 收掉、多挤出一点高度。实际用下来很烦：每进一次网页，第一下不管是想点
           // 「开始」还是想拖方块，都先被切成全屏，画面还会重排一次。

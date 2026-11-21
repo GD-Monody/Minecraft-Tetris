@@ -36,6 +36,69 @@ namespace MinecraftTetris
             }
         }
 
+        /// <summary>玩家选的屏幕方向。Auto = 跟着设备实际方向走。</summary>
+        public enum ScreenMode { Auto = 0, Landscape = 1, Portrait = 2 }
+
+        const string ScreenKey = "ui.screen";
+        static int _screen = -1;
+
+        /// <summary>
+        /// 当前屏幕方向设置。网页版由模板里的 JS 转给浏览器：
+        /// 横屏 / 竖屏 会先进全屏、再调 <c>screen.orientation.lock()</c>，让系统真的转屏，
+        /// 转完之后窗口尺寸变化、模板把新尺寸写回画布，Unity 就按新方向排版。
+        /// 自动 = 解锁，跟着设备走。
+        ///
+        /// 注意 iOS Safari 和微信内置浏览器没有这个 API，那边选了横屏也不会转 ——
+        /// 只能用 <see cref="WantsLandscapeButPortrait"/> 判断出来、提示玩家自己横握。
+        /// </summary>
+        public static ScreenMode Orientation
+        {
+            get
+            {
+                if (_screen < 0)
+                    _screen = Mathf.Clamp(PlayerPrefs.GetInt(ScreenKey, 0), 0, 2);
+                return (ScreenMode)_screen;
+            }
+        }
+
+        public static void SetOrientation(ScreenMode mode)
+        {
+            _screen = (int)mode;
+            PlayerPrefs.SetInt(ScreenKey, _screen);
+            PlayerPrefs.Save();
+            ApplyOrientation();
+        }
+
+        /// <summary>把选择推给网页端。桌面 / 编辑器上没有这回事，直接跳过。</summary>
+        public static void ApplyOrientation()
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            MT_SetOrientation(Orientation == ScreenMode.Landscape ? "landscape"
+                : Orientation == ScreenMode.Portrait ? "portrait"
+                : "auto");
+#endif
+        }
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+        [System.Runtime.InteropServices.DllImport("__Internal")]
+        static extern void MT_SetOrientation(string mode);
+#endif
+
+        /// <summary>
+        /// 选了「横屏」但屏幕还是竖的。这说明这台设备的浏览器不让网页锁方向
+        /// （iOS Safari、微信 / QQ 内置 WebView 都锁不了），只能提示玩家自己横握。
+        /// </summary>
+        public static bool WantsLandscapeButPortrait
+        {
+            get
+            {
+                // 真触屏才提示：电脑上用 -mobile 调布局时，屏幕竖着是玩家自己的选择，
+                // 弹一句「请把手机横过来」只会莫名其妙。
+                return Enabled && Input.touchSupported
+                    && Orientation == ScreenMode.Landscape && Screen.width < Screen.height;
+            }
+        }
+
         /// <summary>竖屏。移动端默认竖屏：场地 10×20 本来就是竖长的。</summary>
         public static bool Portrait
         {
