@@ -62,8 +62,6 @@ namespace MinecraftTetris
         Texture2D _titleTex;
         /// <summary>方块图集，只给「特殊方块」页画图标用。</summary>
         Texture2D _atlasTex;
-        /// <summary>署名用的手写签名（白色笔画 + 透明底，靠 GUI.color 染成黑/白）。</summary>
-        Texture2D _signTex;
         CharMeta[] _chars;
         float _t;
         bool _stylesReady;
@@ -256,7 +254,6 @@ namespace MinecraftTetris
             if (_titleTex != null)
                 _titleTexW = _titleTex.width;
             _atlasTex = Resources.Load<Texture2D>("atlas");
-            _signTex = Resources.Load<Texture2D>("monody_sign");
             TextAsset meta = Resources.Load<TextAsset>("title_meta");
             if (meta != null)
             {
@@ -467,12 +464,14 @@ namespace MinecraftTetris
         }
 
         /// <summary>
-        /// 署名一行：签名 LOGO + 「Made by Monody」。
+        /// 署名一行「Made by Monody」。
         ///
-        /// 原来这里只有一行字，前面还有一段「Made with Unity」（白色，亮色主题下
-        /// 压在白底上几乎看不见）。现在统一成自己的署名：那段去掉，这一行换成
-        /// 主文字色（浅色近黑、深色纯白），左边挂上签名图。
-        /// 签名图是「白色笔画 + 透明底」，靠 GUI.color 染色，所以两个主题共用一张贴图。
+        /// 原来这里只有一行灰字，前面还有一段「Made with Unity」（白色，亮色主题下
+        /// 压在白底上几乎看不见）。那段去掉了，这一行改用主文字色：
+        /// 浅色近黑、深色纯白。
+        ///
+        /// 签名图不放这儿：贴在标题旁边怎么排都别扭，已经挪到网页的加载页（矢量 SVG，
+        /// 在 Unity 起来之前闪一下），见 WebGLTemplates 里的 #mt-splash。
         /// </summary>
         void DrawSub()
         {
@@ -484,34 +483,12 @@ namespace MinecraftTetris
             ink.a = p;
             _subStyle.normal.textColor = ink;
 
-            const string text = "Made by Monody";
-            Vector2 size = _subStyle.CalcSize(new GUIContent(text));
-
-            float lineH = UiSkin.P(44f);
-            float logoH = size.y * 1.15f;
-            float logoW = _signTex != null ? logoH * _signTex.width / Mathf.Max(1f, _signTex.height) : 0f;
-            float gap = logoW > 0f ? UiSkin.P(10f) : 0f;
-
             // 紧贴标题下方：原来固定在 0.42H，按钮放大后会和第一颗按钮打架
+            float subW = WideTitle ? Screen.width * 0.5f : Screen.width;
             float subY = WideTitle
                 ? (Screen.height - TitleHeight()) * 0.42f + TitleHeight()
                 : TitleTopY() + TitleHeight();
-
-            // 横屏：签名跟着标题在左半屏居中；竖屏：整屏居中
-            float centerX = WideTitle ? Screen.width * 0.25f : Screen.width * 0.5f;
-            float rowW = logoW + gap + size.x;
-            float x = centerX - rowW * 0.5f;
-
-            if (_signTex != null)
-            {
-                GUI.color = ink;
-                GUI.DrawTexture(
-                    new Rect(x, subY + (lineH - logoH) * 0.5f, logoW, logoH),
-                    _signTex, ScaleMode.ScaleToFit, true);
-                GUI.color = Color.white;
-            }
-
-            GUI.Label(new Rect(x + logoW + gap, subY, size.x + 2f, lineH), text, _subStyle);
+            GUI.Label(new Rect(0f, subY + UiSkin.P(2f), subW, UiSkin.P(44f)), "Made by Monody", _subStyle);
         }
 
         void DrawButtons()
