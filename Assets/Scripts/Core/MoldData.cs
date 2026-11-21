@@ -39,6 +39,13 @@ namespace MinecraftTetris
 
         const string Key = "molds_v1";
 
+        /// <summary>
+        /// 存档格式版本。2 = 模具默认不参与出块池：老存档升级时把启用位清一次，
+        /// 让所有人看到的初始状态一致（之后玩家自己开的开关不会再动）。
+        /// </summary>
+        const string VerKey = "molds_ver";
+        const int Ver = 2;
+
         static List<MoldEntry> _items;
 
         static readonly Vector3Int[] Neighbours =
@@ -79,6 +86,16 @@ namespace MinecraftTetris
             if (_items.Count == 0)
             {
                 _items = DefaultMolds();
+                PlayerPrefs.SetInt(VerKey, Ver);
+                Save();
+            }
+            else if (PlayerPrefs.GetInt(VerKey, 1) < Ver)
+            {
+                // 老存档里默认那几套模具是「启用」的。工坊改成「默认不启用」之后，
+                // 这里一次性把启用位清掉 —— 只迁移一次，玩家之后自己开的开关不会再被覆盖。
+                for (int i = 0; i < _items.Count; i++)
+                    _items[i].enabled = 0;
+                PlayerPrefs.SetInt(VerKey, Ver);
                 Save();
             }
         }
@@ -96,11 +113,11 @@ namespace MinecraftTetris
         {
             return new List<MoldEntry>
             {
-                new MoldEntry { name = "五连条", cells = Encode(new[] { new Vector3Int(0, 2, 0), new Vector3Int(1, 2, 0), new Vector3Int(2, 2, 0), new Vector3Int(3, 2, 0), new Vector3Int(4, 2, 0) }), enabled = 1 },
-                new MoldEntry { name = "T", cells = Encode(new[] { new Vector3Int(1, 3, 0), new Vector3Int(2, 3, 0), new Vector3Int(3, 3, 0), new Vector3Int(2, 2, 0), new Vector3Int(2, 1, 0) }), enabled = 1 },
-                new MoldEntry { name = "十字", cells = Encode(new[] { new Vector3Int(2, 1, 0), new Vector3Int(1, 2, 0), new Vector3Int(2, 2, 0), new Vector3Int(3, 2, 0), new Vector3Int(2, 3, 0) }), enabled = 1 },
+                new MoldEntry { name = "五连条", cells = Encode(new[] { new Vector3Int(0, 2, 0), new Vector3Int(1, 2, 0), new Vector3Int(2, 2, 0), new Vector3Int(3, 2, 0), new Vector3Int(4, 2, 0) }), enabled = 0 },
+                new MoldEntry { name = "T", cells = Encode(new[] { new Vector3Int(1, 3, 0), new Vector3Int(2, 3, 0), new Vector3Int(3, 3, 0), new Vector3Int(2, 2, 0), new Vector3Int(2, 1, 0) }), enabled = 0 },
+                new MoldEntry { name = "十字", cells = Encode(new[] { new Vector3Int(2, 1, 0), new Vector3Int(1, 2, 0), new Vector3Int(2, 2, 0), new Vector3Int(3, 2, 0), new Vector3Int(2, 3, 0) }), enabled = 0 },
                 // 带一层深度的示例：同一个形状往里再长一格，转起来才有「厚」的感觉
-                new MoldEntry { name = "L 台阶", cells = Encode(new[] { new Vector3Int(1, 1, 0), new Vector3Int(2, 1, 0), new Vector3Int(3, 1, 0), new Vector3Int(3, 2, 0), new Vector3Int(3, 2, 1) }), enabled = 1 },
+                new MoldEntry { name = "L 台阶", cells = Encode(new[] { new Vector3Int(1, 1, 0), new Vector3Int(2, 1, 0), new Vector3Int(3, 1, 0), new Vector3Int(3, 2, 0), new Vector3Int(3, 2, 1) }), enabled = 0 },
             };
         }
 
@@ -271,7 +288,7 @@ namespace MinecraftTetris
         public static void Add()
         {
             int n = Items.Count + 1;
-            _items.Add(new MoldEntry { name = "新模具 " + n, cells = string.Empty, enabled = 1 });
+            _items.Add(new MoldEntry { name = "新模具 " + n, cells = string.Empty, enabled = 0 });
             Save();
         }
 

@@ -113,7 +113,7 @@ namespace MinecraftTetris
 
         Rect _viewRect;
         int _layer;
-        bool _dimOthers = true;
+        bool _dimOthers = false;
 
         // 右键：按下时记位置，抬手时看总共挪了多少 —— 没怎么挪就是「擦除」，挪多了就是「转视角」
         bool _rbDown;
