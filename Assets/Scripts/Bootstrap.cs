@@ -36,6 +36,15 @@ namespace MinecraftTetris
         bool _demoBurst;
         bool _titleMode;
         int _titleShotIndex;
+
+        /// <summary>
+        /// 下一次场景加载完不要播标题页的开场动画。
+        ///
+        /// 改场地尺寸会整场景重载（OnSizeApplied），重载后标题页的 _t 从 0 重新走一遍，
+        /// 于是刚调完尺寸的人要再等一次像素标题拼出来的过程。用静态字段跨场景带一句话：
+        /// 只影响这一次，正常启动照旧。
+        /// </summary>
+        static bool _skipTitleIntroOnce;
         bool _structureDemo;
         // -resizetest：自动把窗口来回改大小，验证缩放冻结链路（日志里看 [resize] 冻住/恢复）
         bool _resizeTest;
@@ -64,6 +73,16 @@ namespace MinecraftTetris
 
             // 先认平台：后面建光标拖尾、挂操作层、相机取景都要问它
             MobileMode.Detect();
+
+            // -theme light|dark：临时指定配色，只影响本次运行（截图核对用，不写存档）
+            string[] themeArgv = System.Environment.GetCommandLineArgs();
+            int themeAt = System.Array.IndexOf(themeArgv, "-theme");
+            if (themeAt >= 0 && themeAt + 1 < themeArgv.Length)
+            {
+                UiSkin.ForceForSession(themeArgv[themeAt + 1] == "dark"
+                    ? UiSkin.Theme.Dark
+                    : UiSkin.Theme.Light);
+            }
 
             SizeX = GameSettings.SizeX;
             SizeY = GameSettings.SizeY;
@@ -121,13 +140,17 @@ namespace MinecraftTetris
             _workbench = gameObject.AddComponent<MoldWorkbench>();
             _workbench.Init();
 
-            // 场地三格以上才有必要挂俯视图：中间列和后排从正面看不见，
-            // 层消差在哪一格只能靠它。两格深不建，省得白占一块屏幕。
+            // 场地两格深以上就挂俯视图：两格之后后排已经会被前排挡掉一部分，
+            // 层消差在哪一格、哪格只是半格水，从正面都看不出来。
+            // 一格深（z = 1 的平面局）不建，省得白占一块屏幕。
             if (LayerMap.UsefulFor(SizeZ))
             {
                 _layerMap = gameObject.AddComponent<LayerMap>();
                 _layerMap.Loop = _loop;
                 _layerMap.Hidden = true;    // 开始界面盖着的时候不画
+                // -openmap：截图核对俯视图的版式用（手机上它默认是收起的）
+                if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-openmap") >= 0)
+                    _layerMap.Open = true;
             }
 
             _particles = gameObject.AddComponent<ParticleBurst>();
@@ -139,6 +162,14 @@ namespace MinecraftTetris
                 gameObject.AddComponent<CursorTrail>();
 
             _title = gameObject.AddComponent<TitleScreen>();
+            if (_skipTitleIntroOnce)
+            {
+                // 别播开场：动画时间直接推到底。
+                // 仍然停在标题页而不是直接开局 —— 尺寸刚调完的人可能还想再调一档，
+                // 设置入口在标题页上。
+                _skipTitleIntroOnce = false;
+                _title.SkipIntro();
+            }
             _title.HasContinue = GameSave.HasSave;
             _title.OnStartGame += StartNewGame;
             _title.OnContinue += ContinueGame;
@@ -356,6 +387,10 @@ namespace MinecraftTetris
 
         void Update()
         {
+            // 主题（暗/亮）变了：3D 背景色是相机上的值，得手动推一次
+            if (_themeApplied != (int)UiSkin.Current)
+                ApplyTheme();
+
             // 放在最前面：窗口一变尺寸就让各系统进入降载状态，这一帧它们才吃得上。
             ResizeGuard.Tick();
 
@@ -574,13 +609,20 @@ namespace MinecraftTetris
             _mobile.Over = over;
             _mobile.Depth = SizeZ;      // z = 1 时只留面内旋转那两个键
 
-            // 上下各让一条：下面是操作条，上面是分数横条。让出来的部分由界面自己铺底色，
-            // 3D 只画中间那块，方块从顶上下来的位置和落点都不会被压住。
+            // 上下各让一条：下面是操作条，上面是统计面板 / 暂停键。3D 只画中间那块，
+            // 方块从顶上下来的位置和落点都不会被压住。
             // 这两条按 inGame 算而不是按 playing：暂停时取景保持不变。
             float bottom = inGame ? _mobile.StripHeight / Mathf.Max(1f, Screen.height) : 0f;
             float top = inGame ? Hud.MobileBarHeight / Mathf.Max(1f, Screen.height) : 0f;
+
+            // 俯视图展开时右边再让一条：面板是竖着贴在屏幕右边的，不收的话正好盖住
+            // 场地右半边。收完场地整体左移、缩窄一点，镜头重新取景，互不遮挡。
+            float right = 0f;
+            if (inGame && MobileMode.Enabled && _layerMap != null && !_layerMap.Hidden && _layerMap.Open)
+                right = Mathf.Clamp(_layerMap.ReservedWidth / Mathf.Max(1f, Screen.width), 0f, 0.5f);
+
             float height = Mathf.Max(0.25f, 1f - bottom - top);
-            Rect want = new Rect(0f, bottom, 1f, height);
+            Rect want = new Rect(0f, bottom, Mathf.Max(0.3f, 1f - right), height);
             if (_mainCam.rect == want)
                 return;
 
@@ -617,6 +659,9 @@ namespace MinecraftTetris
             {
                 _layerMap.MaxWidth = Mathf.Max(UiSkin.P(120f),
                     Screen.width - FieldRightEdge() - UiSkin.P(14f));
+                // 面板底部不许越过操作层：横屏时右下角是按键，俯视图一直往下长会压住它们。
+                // 竖屏那边操作层是底部通栏，同样按它的上沿收。
+                _layerMap.BottomLimit = _mobile != null ? _mobile.ContentBottom : 0f;
                 return;
             }
 
@@ -697,6 +742,30 @@ namespace MinecraftTetris
             _mainCam.rect = want;
             if (_rig != null)
                 _rig.FitToField(_fieldHalfW, _fieldHalfH, 1.06f);   // 可视区变了，重新取景
+        }
+
+        int _themeApplied = -1;
+        GridFrame _frame;
+
+        /// <summary>
+        /// 把当前主题推到 3D 那侧。界面颜色各处都是现取 UiSkin 的，只有相机背景色
+        /// 是建好之后就一直留着的值，切主题必须显式再设一次。
+        /// </summary>
+        void ApplyTheme()
+        {
+            _themeApplied = (int)UiSkin.Current;
+            Color bg = UiSkin.SceneBg;
+            if (_mainCam != null)
+                _mainCam.backgroundColor = bg;
+            if (_bgCam != null)
+                _bgCam.backgroundColor = bg;
+            // 亮色背景下环境光提一档，否则方块背光面会糊成一片黑
+            RenderSettings.ambientLight = UiSkin.Current == UiSkin.Theme.Light
+                ? new Color(0.62f, 0.66f, 0.72f)
+                : new Color(0.42f, 0.44f, 0.48f);
+            if (_frame != null)
+                _frame.ApplyTheme();     // 场地边框的线色也跟着换
+            UiSkin.NotifyChanged();
         }
 
         void SaveNow()
@@ -896,6 +965,8 @@ namespace MinecraftTetris
         void OnSizeApplied()
         {
             GameSave.Clear();
+            // 别让玩家调完尺寸又看一遍开场动画
+            _skipTitleIntroOnce = true;
             UnityEngine.SceneManagement.SceneManager.LoadScene(
                 UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
         }
@@ -2464,6 +2535,7 @@ namespace MinecraftTetris
             frameGo.transform.SetParent(transform, false);
             GridFrame frame = frameGo.AddComponent<GridFrame>();
             frame.Build(SizeX, SizeY, SizeZ);
+            _frame = frame;   // 切主题时要通知它换边框颜色
 
             Vector3 center = new Vector3((SizeX - 1) / 2f, (SizeY - 1) / 2f, (SizeZ - 1) / 2f);
 
@@ -2476,7 +2548,7 @@ namespace MinecraftTetris
             }
 
             cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = new Color(0.08f, 0.09f, 0.12f);
+            cam.backgroundColor = UiSkin.SceneBg;
 
             // 相机 rect 收窄之后（窗口窄了要让两侧面板，见 SyncUiInsets），让出去的两条
             // 没人渲染，会留着上一帧甚至上一局的旧像素。这儿另起一台只负责清屏的相机垫在最后面：

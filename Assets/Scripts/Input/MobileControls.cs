@@ -41,7 +41,15 @@ namespace MinecraftTetris
         };
 
         /// <summary>控制条占屏高的比例。相机取景按这个让出下面一块，见 Bootstrap.SetCameraRect。</summary>
-        public const float StripRatio = 0.34f;
+        /// <summary>
+        /// 竖屏底部操作条占屏高的比例。
+        /// 0.34 → 0.18：原来四个按键铺满底部三分之一屏，手机上显得又大又笨，
+        /// 压到一半之后场地多出不少高度，拇指也够得着（按钮仍然在屏幕最下沿）。
+        /// </summary>
+        public const float StripRatio = 0.18f;
+
+        /// <summary>横屏时操作条占屏高的比例。横屏高度本来就少，再按 0.34 切会把场地压扁。</summary>
+        public const float WideStripRatio = 0.23f;
 
         /// <summary>拖动区攒够多远走一格（屏宽的倍数）。</summary>
         const float StepX = 0.070f;
@@ -51,6 +59,9 @@ namespace MinecraftTetris
         const float SoftRepeat = 0.055f;
 
         public bool Visible = true;
+
+        /// <summary>亮色主题。配色分支都走它，省得每处都写全名。</summary>
+        static bool Light { get { return UiSkin.Current == UiSkin.Theme.Light; } }
 
         /// <summary>当前是不是暂停着。只影响那颗键上的字（暂停 / 继续）。</summary>
         public bool Paused;
@@ -105,6 +116,12 @@ namespace MinecraftTetris
         /// <summary>控制条的高度（像素）。相机用它算可视区。</summary>
         public float StripHeight { get { return _stripH; } }
 
+        /// <summary>
+        /// 控制区的最上沿（像素 y）。上方的面板（俯视图）按它收尾，别压在按键上。
+        /// 竖屏是底部通栏的顶边，横屏是右下角那堆按键的顶边。
+        /// </summary>
+        public float ContentBottom { get; private set; }
+
         void Awake()
         {
             for (int i = 0; i < BtnCount; i++)
@@ -154,7 +171,7 @@ namespace MinecraftTetris
 
             float w = Screen.width;
             float h = Screen.height;
-            _stripH = Mathf.Clamp(h * StripRatio, 1f, h * 0.5f);
+            bool wide = w > h;
 
             // 安全区：刘海、挖孔、手势条都在这儿让开。竖屏只看上下，横屏再看左右。
             Rect safe = Screen.safeArea;
@@ -162,38 +179,81 @@ namespace MinecraftTetris
             float safeLeft = Mathf.Max(0f, safe.x);
             float safeRight = Mathf.Max(0f, w - (safe.x + safe.width));
 
-            float top = h - _stripH;
             float pad = Mathf.Max(6f, w * 0.016f);
 
-            // 左边拖动区占 42%，右边按钮区占剩下的
-            float padW = (w - safeLeft - safeRight) * 0.42f;
-            _pad = new Rect(safeLeft + pad, top + pad,
-                padW - pad * 1.5f, _stripH - pad * 2f - safeBottom);
-
-            float btnLeft = _pad.xMax + pad;
-            float btnRight = w - safeRight - pad;
-            float btnW = btnRight - btnLeft;
-
-            float gap = pad * 0.8f;
-            float bw = (btnW - gap) * 0.5f;
-
             PickVisibleButtons(CurrentDepth);
-            int rows = Mathf.Max(1, (_visCount + 1) / 2);
-            float bh = (_pad.height - gap * (rows - 1)) / rows;
+
+            // 暂停键贴右上角，和顶部横条同高同尺寸（Hud.MobilePauseSize 是唯一的尺寸来源，
+            // 两边各算一套的话窗口一变就错位）
+            float ps = Hud.MobilePauseSize;
+            float m = UiSkin.P(wide ? 6f : 8f);
+            float topInset = Screen.height - (safe.y + safe.height);
+            _pauseRect = new Rect(w - safeRight - m - ps, topInset + m, ps, ps);
+
+            if (wide)
+            {
+                // 横屏不要底部那条通栏了：横屏高度本来就紧张，一条通栏吃掉四分之一，
+                // 场地被压成一条缝。改成左右分边 —— 左边滑动手势，右边旋转 + 降落。
+                // 场地只有 10 格宽、按高度取景，两侧天然有空档，控件正好放进空档里。
+                _stripH = 0f;
+
+                float topY = Mathf.Max(topInset + ps + m, Hud.MobileBarHeight);
+                float availH = Mathf.Max(1f, h - topY - safeBottom - pad);
+
+                // 左：拖动区，占 28% 宽、可用高度的一半，贴在左下角。
+                // 铺满整条左侧太占地方（画面里一大块空白），实际拇指够得到的也就下半截。
+                float padW = w * 0.28f - pad;
+                float padH = availH * 0.5f;
+                _pad = new Rect(safeLeft + pad, topY + availH - padH, padW, padH);
+
+                // 右：按键只占右下角 —— 铺满整条右边太大了（实测占了近三分之一屏），
+                // 而且把右上角腾出来留给俯视图按钮和面板。
+                float btnW = w * 0.24f - pad;
+                float btnLeft = w - safeRight - pad - btnW;
+                float btnTop = topY + availH * 0.40f;
+                float btnAvailH = availH - availH * 0.40f;
+                float gap = pad * 0.5f;
+                const int cols = 2;
+                int rows = Mathf.Max(1, (_visCount + cols - 1) / cols);
+                float bw = (btnW - gap * (cols - 1)) / cols;
+                float bh = (btnAvailH - gap * (rows - 1)) / rows;
+
+                for (int k = 0; k < _visCount; k++)
+                {
+                    int row = k / cols;
+                    int col = k % cols;
+                    _btn[_vis[k]] = new Rect(btnLeft + col * (bw + gap), btnTop + row * (bh + gap), bw, bh);
+                }
+                ContentBottom = btnTop;
+                return;
+            }
+
+            // 竖屏：底部一条通栏，左边拖动、右边按钮两列
+            _stripH = Mathf.Clamp(h * StripRatio, 1f, h * 0.5f);
+            float top = h - _stripH;
+
+            float vPadW = (w - safeLeft - safeRight) * 0.42f;
+            _pad = new Rect(safeLeft + pad, top + pad,
+                vPadW - pad * 1.5f, _stripH - pad * 2f - safeBottom);
+
+            float vBtnLeft = _pad.xMax + pad;
+            float vBtnRight = w - safeRight - pad;
+            float vBtnW = vBtnRight - vBtnLeft;
+
+            float vGap = pad * 0.8f;
+            float vBw = (vBtnW - vGap) * 0.5f;
+
+            int vRows = Mathf.Max(1, (_visCount + 1) / 2);
+            float vBh = (_pad.height - vGap * (vRows - 1)) / vRows;
 
             for (int k = 0; k < _visCount; k++)
             {
                 int row = k / 2;
                 int col = k % 2;
-                _btn[_vis[k]] = new Rect(btnLeft + col * (bw + gap), _pad.y + row * (bh + gap), bw, bh);
+                _btn[_vis[k]] = new Rect(vBtnLeft + col * (vBw + vGap),
+                    _pad.y + row * (vBh + vGap), vBw, vBh);
             }
-
-            // 暂停键贴右上角，和顶部横条同高同尺寸（Hud.MobilePauseSize 是唯一的尺寸来源，
-            // 两边各算一套的话窗口一变就错位）
-            float ps = Hud.MobilePauseSize;
-            float m = UiSkin.P(10f);
-            float topInset = Screen.height - (safe.y + safe.height);
-            _pauseRect = new Rect(w - safeRight - m - ps, topInset + m, ps, ps);
+            ContentBottom = top;
         }
 
         /// <summary>场地深度：优先用 Bootstrap 传来的真实值，拿不到再看设置。</summary>
@@ -216,8 +276,11 @@ namespace MinecraftTetris
             {
                 _vis[_visCount++] = YawL;
                 _vis[_visCount++] = YawR;
-                _vis[_visCount++] = PitchUp;
+                // 「下翻」在左、「上翻」在右 —— 横竖屏统一成这个顺序，
+                // 免得转个屏两个键就换了位置、手指按错。
+                // 只是摆放顺序，两个键各自的动作没变（下标对应各自的输入位）。
                 _vis[_visCount++] = PitchDown;
+                _vis[_visCount++] = PitchUp;
             }
             _vis[_visCount++] = SoftDropBtn;
             _vis[_visCount++] = HardDropBtn;
@@ -440,15 +503,15 @@ namespace MinecraftTetris
             // 操作条照旧画出来 —— 暂停时画面不该重排，只是压一层暗色表示这会儿按不动。
             // （暂停面板由 Hud 画在中间，这层暗色只盖住底部这一条。）
             Rect strip = new Rect(0f, Screen.height - _stripH, Screen.width, _stripH);
-            Fill(strip, new Color(0.05f, 0.06f, 0.08f, 0.97f));
-            Fill(new Rect(0f, strip.y, Screen.width, 1f), new Color(0.35f, 0.72f, 1f, 0.45f));
+            Fill(strip, UiSkin.StripFill);
+            Fill(new Rect(0f, strip.y, Screen.width, 1f), UiSkin.AccentSoft);
 
             DrawPad();
             for (int k = 0; k < _visCount; k++)
                 DrawButton(_vis[k]);
 
             if (Locked)
-                Fill(strip, new Color(0f, 0f, 0f, 0.55f));
+                Fill(strip, UiSkin.FreezeOverlay);
 
             DrawPause();
         }
@@ -456,9 +519,17 @@ namespace MinecraftTetris
         void DrawPad()
         {
             bool active = _padFinger >= 0;
-            Fill(_pad, active ? new Color(0.12f, 0.17f, 0.24f, 0.55f) : new Color(0.09f, 0.11f, 0.15f, 0.5f));
-            Border(_pad, new Color(0.42f, 0.86f, 1f, active ? 0.65f : 0.22f));
+            Fill(_pad, Light
+                ? (active ? new Color(0.74f, 0.86f, 1f, 0.55f) : new Color(1f, 1f, 1f, 0.45f))
+                : (active ? new Color(0.12f, 0.17f, 0.24f, 0.55f) : new Color(0.09f, 0.11f, 0.15f, 0.5f)));
+            Border(_pad, new Color(UiSkin.Accent.r, UiSkin.Accent.g, UiSkin.Accent.b, active ? 0.65f : 0.22f));
 
+            // 横屏时这块又矮又窄，两行字会挤成一团，合成一行
+            if (Screen.width > Screen.height)
+            {
+                GUI.Label(new Rect(_pad.x, _pad.y, _pad.width, _pad.height), "拖动移动", _hintStyle);
+                return;
+            }
             GUI.Label(new Rect(_pad.x, _pad.y + _pad.height * 0.36f, _pad.width, _pad.height * 0.16f),
                 "拖动 移动方块", _hintStyle);
             GUI.Label(new Rect(_pad.x, _pad.y + _pad.height * 0.52f, _pad.width, _pad.height * 0.14f),
@@ -469,16 +540,17 @@ namespace MinecraftTetris
         {
             bool down = _btnFinger[i] >= 0;
             Color fill = down
-                ? new Color(0.20f, 0.48f, 0.68f, 0.92f)
-                : new Color(0.11f, 0.13f, 0.18f, 0.88f);
+                ? (Light ? new Color(0.70f, 0.84f, 1f, 0.95f) : new Color(0.20f, 0.48f, 0.68f, 0.92f))
+                : (Light ? new Color(1f, 1f, 1f, 0.86f) : new Color(0.11f, 0.13f, 0.18f, 0.88f));
 
             // 硬降是最高频的一下，给个暖色，一眼能找到
             if (i == HardDropBtn)
-                fill = down ? new Color(0.85f, 0.45f, 0.18f, 0.95f) : new Color(0.28f, 0.16f, 0.09f, 0.9f);
+                fill = down ? new Color(0.85f, 0.45f, 0.18f, 0.95f)
+                    : (Light ? new Color(1f, 0.92f, 0.86f, 0.95f) : new Color(0.28f, 0.16f, 0.09f, 0.9f));
 
             Color border = i == HardDropBtn
                 ? new Color(1f, 0.62f, 0.32f, down ? 0.95f : 0.5f)
-                : new Color(0.42f, 0.86f, 1f, down ? 0.9f : 0.28f);
+                : new Color(UiSkin.Accent.r, UiSkin.Accent.g, UiSkin.Accent.b, down ? 0.9f : 0.28f);
 
             Fill(_btn[i], fill);
             Border(_btn[i], border);
@@ -487,12 +559,17 @@ namespace MinecraftTetris
 
         void DrawPause()
         {
-            Fill(_pauseRect, Paused ? new Color(0.16f, 0.26f, 0.34f, 0.92f)
-                                    : new Color(0.11f, 0.13f, 0.18f, 0.8f));
-            Border(_pauseRect, new Color(0.42f, 0.86f, 1f, Paused ? 0.7f : 0.3f));
+            Fill(_pauseRect, Paused
+                ? (Light ? new Color(0.72f, 0.86f, 1f, 0.95f) : new Color(0.16f, 0.26f, 0.34f, 0.92f))
+                : (Light ? new Color(1f, 1f, 1f, 0.88f) : new Color(0.11f, 0.13f, 0.18f, 0.8f)));
+            Border(_pauseRect, new Color(UiSkin.Accent.r, UiSkin.Accent.g, UiSkin.Accent.b, Paused ? 0.7f : 0.3f));
             // 暂停中这颗键就是「继续」——字不换的话，玩家会以为它点不动
-            GUI.Label(_pauseRect, Paused ? "继续" : "暂停", _hintStyle);
+            GUI.Label(_pauseRect, Paused ? "继续" : "暂停", _pauseStyle);
         }
+
+        int _styleTheme = -1;
+        bool _styleWide;
+        GUIStyle _pauseStyle;
 
         void EnsureStyles()
         {
@@ -501,19 +578,32 @@ namespace MinecraftTetris
             float byHeight = _btn[0].height * 0.34f;
             float byWidth = _btn[0].width * 0.19f;
             int size = Mathf.RoundToInt(Mathf.Clamp(Mathf.Min(byHeight, byWidth), 14f, 40f));
-            if (_labelStyle != null && size == _styleSize)
+            bool wide = Screen.width > Screen.height;
+            if (_labelStyle != null && size == _styleSize && _styleTheme == (int)UiSkin.Current
+                && _styleWide == wide)
                 return;
 
             _styleSize = size;
+            _styleTheme = (int)UiSkin.Current;
+            _styleWide = wide;
             _labelStyle = new GUIStyle(GUI.skin.label);
             _labelStyle.font = UiSkin.Font;
             _labelStyle.fontSize = size;
             _labelStyle.alignment = TextAnchor.MiddleCenter;
-            _labelStyle.normal.textColor = new Color(0.88f, 0.94f, 1f, 0.95f);
+            _labelStyle.normal.textColor = Light
+                ? new Color(0.10f, 0.12f, 0.16f, 0.95f)
+                : new Color(0.88f, 0.94f, 1f, 0.95f);
+
+            // 暂停键上的「暂停 / 继续」单独一档：它是方键，字太大就折成两行
+            //（横屏 44 宽时「暂停」被竖着排成了两行，真机截图上很明显）
+            _pauseStyle = new GUIStyle(_labelStyle);
+            _pauseStyle.fontSize = Mathf.Max(10, Mathf.RoundToInt(Hud.MobilePauseSize * 0.34f));
 
             _hintStyle = new GUIStyle(_labelStyle);
             _hintStyle.fontSize = Mathf.RoundToInt(Mathf.Clamp(_pad.height * 0.075f, 12f, 28f));
-            _hintStyle.normal.textColor = new Color(0.55f, 0.72f, 0.86f, 0.75f);
+            _hintStyle.normal.textColor = Light
+                ? new Color(0.30f, 0.40f, 0.52f, 0.85f)
+                : new Color(0.55f, 0.72f, 0.86f, 0.75f);
         }
 
         static void Fill(Rect r, Color c)

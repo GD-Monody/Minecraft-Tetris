@@ -28,13 +28,33 @@ namespace MinecraftTetris
         /// <summary>最高分最多多久落盘一次（秒）。</summary>
         const float BestSaveInterval = 2f;
 
-        static readonly Color PanelFill = new Color(0.10f, 0.11f, 0.15f, 0.90f);
-        static readonly Color PanelBorder = new Color(0.35f, 0.37f, 0.44f, 0.95f);
-        static readonly Color Accent = new Color(0.52f, 0.78f, 0.30f, 1f);
-        static readonly Color LabelColor = new Color(0.66f, 0.70f, 0.76f, 1f);
-        static readonly Color ValueColor = new Color(1f, 1f, 1f, 1f);
-        static readonly Color FlashColor = new Color(0.55f, 0.95f, 0.35f, 1f);
-        static readonly Color ShadowColor = new Color(0f, 0f, 0f, 0.85f);
+        // 颜色都跟着 UiSkin.Theme 走，写属性而不是常量 —— 切主题时不用重启，
+        // 下一帧重新取色就是新的（样式本身要重建，见 EnsureStyles）。
+        static Color PanelFill { get { return UiSkin.PanelFill; } }
+        static Color PanelBorder { get { return UiSkin.PanelBorder; } }
+        // 绿色强调（分数跳动、消行提示）：亮色主题下换成更深的绿，浅底上才看得清
+        static Color Accent
+        {
+            get { return UiSkin.Current == UiSkin.Theme.Light
+                ? new Color(0.20f, 0.52f, 0.12f, 1f)
+                : new Color(0.52f, 0.78f, 0.30f, 1f); }
+        }
+        static Color LabelColor { get { return UiSkin.TextSecondary; } }
+        static Color ValueColor { get { return UiSkin.TextPrimary; } }
+        static Color FlashColor
+        {
+            get { return UiSkin.Current == UiSkin.Theme.Light
+                ? new Color(0.14f, 0.55f, 0.10f, 1f)
+                : new Color(0.55f, 0.95f, 0.35f, 1f); }
+        }
+        // 文字投影：暗色主题压黑色，亮色主题用全透明（浅底上的深字不需要投影，
+        // 硬压一层黑反而脏）
+        static Color ShadowColor
+        {
+            get { return UiSkin.Current == UiSkin.Theme.Light
+                ? new Color(0f, 0f, 0f, 0f)
+                : new Color(0f, 0f, 0f, 0.85f); }
+        }
 
         GUIStyle _label;
         GUIStyle _labelShadow;
@@ -51,7 +71,11 @@ namespace MinecraftTetris
         GUIStyle _gameOverTitleShadow;
         GUIStyle _labelCenter;
         GUIStyle _mobileSub;
+        GUIStyle _mobileLabel;
+        GUIStyle _mobileValue;
+        bool _styleWide;
         GUIStyle _btnStyle;
+        int _styleTheme = -1;
         Texture2D _btnNormal;
         Texture2D _btnHover;
         Texture2D _btnActive;
@@ -112,9 +136,15 @@ namespace MinecraftTetris
         void EnsureStyles()
         {
             // 手机横竖屏切换会换掉整体倍数，字号得跟着重建；桌面一直是 1.25，这里不会触发
-            if (_label != null && Mathf.Approximately(_styleScale, UiSkin.TextScale))
+            // 倍数或主题变了都要重建：字号和颜色都是拷进 GUIStyle 里的副本
+            // 横竖屏切换时手机上的字号档位也跟着变（见下面的 wide），一并算进重建条件
+            bool wide = Screen.width > Screen.height;
+            if (_label != null && Mathf.Approximately(_styleScale, UiSkin.TextScale)
+                && _styleTheme == (int)UiSkin.Current && _styleWide == wide)
                 return;
             _styleScale = UiSkin.TextScale;
+            _styleTheme = (int)UiSkin.Current;
+            _styleWide = wide;
 
             _label = MakeStyle(15, LabelColor);
             _labelShadow = MakeStyle(15, ShadowColor);
@@ -136,12 +166,19 @@ namespace MinecraftTetris
             _labelCenter = MakeStyle(16, LabelColor);
             _labelCenter.alignment = TextAnchor.MiddleCenter;
 
-            _mobileSub = MakeStyle(16, LabelColor);
+            // 左上角统计面板的三档字号：横屏面板矮（38dp），字也得跟着小一档
+            _mobileLabel = MakeStyle(wide ? 9 : 11, LabelColor);
+            _mobileValue = MakeStyle(wide ? 16 : 19, ValueColor);
+            _mobileSub = MakeStyle(wide ? 9 : 11, LabelColor);
             _mobileSub.alignment = TextAnchor.MiddleLeft;
 
-            _btnNormal = SolidTexture(new Color(0.13f, 0.15f, 0.19f, 0.96f));
-            _btnHover = SolidTexture(new Color(0.20f, 0.24f, 0.30f, 0.98f));
-            _btnActive = SolidTexture(new Color(0.10f, 0.12f, 0.15f, 0.98f));
+            _btnNormal = SolidTexture(UiSkin.ButtonFill);
+            _btnHover = SolidTexture(UiSkin.Current == UiSkin.Theme.Light
+                ? new Color(0.86f, 0.92f, 1f, 0.95f)
+                : new Color(0.20f, 0.24f, 0.30f, 0.98f));
+            _btnActive = SolidTexture(UiSkin.Current == UiSkin.Theme.Light
+                ? new Color(0.74f, 0.84f, 0.96f, 0.98f)
+                : new Color(0.10f, 0.12f, 0.15f, 0.98f));
 
             _btnStyle = new GUIStyle(GUI.skin.button);
             _btnStyle.fontSize = UiSkin.Size(18);
@@ -149,9 +186,9 @@ namespace MinecraftTetris
             _btnStyle.normal.background = _btnNormal;
             _btnStyle.hover.background = _btnHover;
             _btnStyle.active.background = _btnActive;
-            _btnStyle.normal.textColor = Color.white;
-            _btnStyle.hover.textColor = Color.white;
-            _btnStyle.active.textColor = new Color(0.8f, 0.85f, 0.9f, 1f);
+            _btnStyle.normal.textColor = UiSkin.TextPrimary;
+            _btnStyle.hover.textColor = UiSkin.TextPrimary;
+            _btnStyle.active.textColor = UiSkin.TextSecondary;
             _btnStyle.border = new RectOffset(0, 0, 0, 0);
             // 不显式清掉 padding / contentOffset 的话，文字会贴着按钮上半部（继承 GUI.skin.button 的默认值）
             _btnStyle.padding = new RectOffset(0, 0, 0, 0);
@@ -205,7 +242,7 @@ namespace MinecraftTetris
 
             if (MobileMode.Enabled)
             {
-                DrawMobileBar();
+                DrawMobileStats();
             }
             else
             {
@@ -225,7 +262,7 @@ namespace MinecraftTetris
 
         void DrawGameOverPanel()
         {
-            GUI.color = new Color(0f, 0f, 0f, 0.55f);
+            GUI.color = UiSkin.FreezeOverlay;
             GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
             GUI.color = Color.white;
 
@@ -258,13 +295,13 @@ namespace MinecraftTetris
         }
 
         /// <summary>
-        /// 手机横条 HUD 占掉的总高度（含顶部安全区）。
+        /// 手机顶部留出来的一条高度（含安全区）。
         ///
         /// 相机渲染区要按它往下让一块，否则刚生成的那几行会被面板压住 ——
         /// 方块正好从被挡住的地方下来，玩家看不见自己要接的是什么。
         ///
-        /// 固定一条 54 高，不做折叠：折叠那套（点整条横条切换 + 右端小三角）在窄屏上
-        /// 反而更像一堆控件，而且收起时「消除 / 最高」得藏起来，信息也丢了。
+        /// 以前这块是「整条通栏」：横贯整个屏宽、只放几个数字，手机上一眼就是屏幕顶端
+        /// 一大块黑板。现在只剩左上角一块统计面板 + 右上角的暂停键，留白按两者里高的那个算。
         /// </summary>
         public static float MobileBarHeight
         {
@@ -272,71 +309,79 @@ namespace MinecraftTetris
             {
                 Rect safe = Screen.safeArea;
                 float topInset = Screen.height - (safe.y + safe.height);
-                return topInset + UiSkin.P(10f) + MobilePauseSize + UiSkin.P(10f);
+                bool wide = MobileMode.Enabled && Screen.width > Screen.height;
+                float m = UiSkin.P(wide ? 6f : 8f);
+                return topInset + m + Mathf.Max(MobilePauseSize, MobileStatsHeight) + m;
             }
         }
 
         /// <summary>
-        /// 右上角暂停键的边长。Hud 算横条让位、MobileControls 摆位置都用它 ——
+        /// 左上角统计面板的高度：分数（大）+ 消除 / 最高（小）+ 右侧「下一个」预览。
+        /// </summary>
+        public static float MobileStatsHeight
+        {
+            get { return UiSkin.P(MobileMode.Enabled && Screen.width > Screen.height ? 38f : 46f); }
+        }
+
+        /// <summary>
+        /// 右上角暂停键的边长。Hud 算留白、MobileControls 摆位置都用它 ——
         /// 两边各算一套的话，窗口一变就会错位（之前暂停键比横条高出一截就是这么来的）。
         /// </summary>
         public static float MobilePauseSize
         {
-            get { return UiSkin.P(54f); }
+            // 横屏矮一档：48 在 420 高的横屏里要吃掉十分之一还多
+            get { return UiSkin.P(MobileMode.Enabled && Screen.width > Screen.height ? 40f : 48f); }
         }
 
         /// <summary>
-        /// 手机竖屏的一行式 HUD。
+        /// 手机左上角的统计面板。
         ///
-        /// 桌面版左上那两块 246 宽的面板，按手机倍数放大后要吃掉近半屏宽；
-        /// 场地本身是竖的、只占中间一条，面板会直接压上去。所以手机上改成横条：
-        /// 左边分数，中间消除 / 最高两行小字，右边「下一个」小方块。
+        /// 以前是横贯整屏的一条通栏（分数 / 消除 / 最高 / 下一个），在手机上一眼就是
+        /// 屏幕顶端一块大黑板 —— 占着整条宽度却只放四个数字。现在收成一块矩形：
+        /// 左上分数（大）+ 消除 / 最高（小），右侧「下一个」预览。
         /// </summary>
-        void DrawMobileBar()
+        void DrawMobileStats()
         {
-            // 先铺满整条底色：相机把上面这一条让出来了，不铺就是没清过的旧像素
-            GUI.color = new Color(0.05f, 0.06f, 0.08f, 1f);
-            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, MobileBarHeight), Texture2D.whiteTexture);
-            GUI.color = new Color(0.35f, 0.72f, 1f, 0.45f);
-            GUI.DrawTexture(new Rect(0f, MobileBarHeight - 1f, Screen.width, 1f), Texture2D.whiteTexture);
-            GUI.color = Color.white;
-
             Rect safe = Screen.safeArea;
             float topInset = Screen.height - (safe.y + safe.height);
             float rightInset = Screen.width - (safe.x + safe.width);
-            float m = UiSkin.P(10f);
+            bool wide = Screen.width > Screen.height;
+            float m = UiSkin.P(wide ? 6f : 8f);
 
-            // 右上角留给暂停键（MobileControls 负责画和判定），这里按同一个尺寸让开
-            float pause = MobilePauseSize;
-            float w = Screen.width - safe.x - rightInset - m * 3f - pause;
-            if (w < UiSkin.P(200f))
-                w = Screen.width - m * 2f - pause;   // 极窄的屏：宁可挤一点，也别把暂停键盖住
+            float h = MobileStatsHeight;
+            // 宽度给到 184，但不能压住右上角的暂停键（窄屏上就按剩余宽度铺满）
+            float w = Mathf.Min(UiSkin.P(184f),
+                Screen.width - safe.x - rightInset - m * 2f - MobilePauseSize);
+            var panel = new Rect(safe.x + m, topInset + m, w, h);
+            DrawPanel(panel);
+            // 不画那条绿色装饰线：桌面的大面板上它是点缀，这块小面板上正好压在
+            // 「消除 / 最高」那行字底下，看着像给字划了条下划线
 
-            var bar = new Rect(safe.x + m, topInset + m, w, MobilePauseSize);
-            DrawPanel(bar);
-
-            float previewSize = bar.height - UiSkin.P(10f);
-            var preview = new Rect(bar.xMax - previewSize - UiSkin.P(8f),
-                bar.y + UiSkin.P(5f), previewSize, previewSize);
+            // 右侧：下一个方块
+            float pv = h - UiSkin.P(8f);
+            var preview = new Rect(panel.xMax - pv - UiSkin.P(6f), panel.y + UiSkin.P(4f), pv, pv);
             if (Preview != null && Preview.Texture != null)
                 GUI.DrawTexture(preview, Preview.Texture, ScaleMode.ScaleToFit, true);
 
-            float x = bar.x + UiSkin.P(14f);
-            float midY = bar.y + (bar.height - UiSkin.P(36f)) * 0.5f;
+            float x = panel.x + UiSkin.P(10f);
+            float textW = Mathf.Max(UiSkin.P(40f), preview.x - UiSkin.P(6f) - x);
 
-            GUI.Label(new Rect(x, midY + UiSkin.P(4f), UiSkin.P(42f), UiSkin.P(26f)), "分数", _label);
-            GUI.Label(new Rect(x + UiSkin.P(42f), midY - UiSkin.P(3f), UiSkin.P(64f), UiSkin.P(38f)),
-                Loop.Score.ToString(), _value);
+            // 两行：上行分数（大字），下行消除 / 最高（小字，左右各一半，
+            // 挤成一行的话 420 宽的屏上「最高 5700」会直接折行 —— 上一版就是这毛病）
+            float line1 = h * 0.56f;
+            float line2 = h * 0.32f;
+            float y1 = panel.y + (h - line1 - line2) * 0.5f;
+            float y2 = y1 + line1;
 
-            // 消除 / 最高：横条中段剩多少给多少，两行小字竖着排 ——
-            // 挤成一行的话 420 宽的屏上「最高 5700」会直接折行
-            float subX = x + UiSkin.P(110f);
-            float subW = Mathf.Max(UiSkin.P(40f), preview.x - UiSkin.P(8f) - subX);
+            float labelW = UiSkin.P(wide ? 26f : 30f);
+            GUI.Label(new Rect(x, y1 + line1 * 0.10f, labelW, line1 * 0.9f), "分数", _mobileLabel);
+            GUI.Label(new Rect(x + labelW, y1 - line1 * 0.04f, textW - labelW, line1),
+                Loop.Score.ToString(), _mobileValue);
+
+            float half = textW * 0.5f;
             string unit = GameSettings.ElimMode == GameSettings.ElimLayer ? " 层" : " 行";
-            GUI.Label(new Rect(subX, bar.y + UiSkin.P(7f), subW, UiSkin.P(20f)),
-                "消除 " + Loop.LinesCleared + unit, _mobileSub);
-            GUI.Label(new Rect(subX, bar.y + UiSkin.P(26f), subW, UiSkin.P(20f)),
-                "最高 " + _best, _mobileSub);
+            GUI.Label(new Rect(x, y2, half, line2), "消除 " + Loop.LinesCleared + unit, _mobileSub);
+            GUI.Label(new Rect(x + half, y2, half, line2), "最高 " + _best, _mobileSub);
         }
 
         void DrawScorePanel()
@@ -406,7 +451,7 @@ namespace MinecraftTetris
 
         void DrawPausePanel()
         {
-            GUI.color = new Color(0f, 0f, 0f, 0.55f);
+            GUI.color = UiSkin.FreezeOverlay;
             GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
             GUI.color = Color.white;
 
@@ -418,17 +463,23 @@ namespace MinecraftTetris
             // 宽度也得算进去：下面 w 的取值区间下限是 Ps(300)，窗口一窄这个下限本身
             // 就比半屏还宽（870 宽的窗口算出 615），面板会被撑到 86% 宽。
             // 所以先按「面板最多占屏宽 55%」反推一个倍数上限，再取三者最小的。
+            // 只对「移动端 + 横屏」收紧：桌面客户端即使是宽窗口也保持原来那套。
+            bool wide = MobileMode.Enabled && Screen.width > Screen.height;
             float scale = Mathf.Min(PauseScale,
                 (Screen.height - UiSkin.P(40f)) / UiSkin.P(262f),
                 Screen.width * 0.55f / UiSkin.P(300f));
-            scale = Mathf.Max(scale, 0.6f);
+            // 横屏高度只有四百出头，按「刚好装下」算出来的倍数会让面板铺满 88% 的高度，
+            // 看着像整屏都是暂停页。再主动收一档，留出场景的底色。
+            if (wide)
+                scale *= 0.78f;
+            scale = Mathf.Max(scale, 0.55f);
             float Ps(float design) => UiSkin.P(design * scale);
 
             _pauseTitleBig.fontSize = UiSkin.Size(Mathf.RoundToInt(34f * scale));
             _pauseBtnBig.fontSize = UiSkin.Size(Mathf.RoundToInt(18f * scale));
             _pauseBtnBig.contentOffset = new Vector2(0f, UiSkin.P(3f * scale));
 
-            float w = Mathf.Clamp(Screen.width * 0.48f, Ps(300f), Ps(440f));
+            float w = Mathf.Clamp(Screen.width * (wide ? 0.40f : 0.48f), Ps(300f), Ps(440f));
             w = Mathf.Min(w, Screen.width - UiSkin.P(40f));    // 宽度同样保底，小窗不出屏
             float h = Ps(262f);
             var panel = new Rect((Screen.width - w) * 0.5f, (Screen.height - h) * 0.5f, w, h);
@@ -489,7 +540,9 @@ namespace MinecraftTetris
         public static void DrawPanel(Rect r)
         {
             // 面板下方稍微加一点深色投影，让面板浮在场景上面
-            GUI.color = new Color(0f, 0f, 0f, 0.35f);
+            GUI.color = UiSkin.Current == UiSkin.Theme.Light
+                ? new Color(0.20f, 0.30f, 0.45f, 0.10f)
+                : new Color(0f, 0f, 0f, 0.35f);
             GUI.DrawTexture(new Rect(r.x + 2f, r.y + 3f, r.width, r.height), Texture2D.whiteTexture);
 
             GUI.color = PanelFill;

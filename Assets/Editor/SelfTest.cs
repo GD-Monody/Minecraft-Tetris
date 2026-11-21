@@ -653,13 +653,28 @@ namespace MinecraftTetris.EditorTools
             Check("落点框是 12 根棱拼的（每根 8 顶点）",
                   frame.vertexCount == 96 && frame.triangles.Length == 12 * 36);
 
-            var ghostHost = new GameObject("GhostMatProbe");
-            GridView ghostView = ghostHost.AddComponent<GridView>();
-            Material ghostMat = ghostView.GhostMaterial;
-            Check("落点框材质是加色发光的（不吃光才亮）",
-                  ghostMat != null && ghostMat.shader != null &&
-                  ghostMat.shader.name == "MinecraftTetris/GlowAdditive");
-            UnityEngine.Object.DestroyImmediate(ghostHost);
+            // 落点框的材质按主题分两套：
+            //   暗色主题用加色发光（不吃光才亮，压在黑底上正好）
+            //   亮色主题必须换成普通 alpha 混合 —— 加色在浅底上只会更白，框会消失
+            UiSkin.Theme themeWas = UiSkin.Current;
+
+            UiSkin.Current = UiSkin.Theme.Dark;
+            var ghostHostDark = new GameObject("GhostMatProbeDark");
+            Material ghostMatDark = ghostHostDark.AddComponent<GridView>().GhostMaterial;
+            Check("暗色主题下落点框是加色发光的",
+                  ghostMatDark != null && ghostMatDark.shader != null &&
+                  ghostMatDark.shader.name == "MinecraftTetris/GlowAdditive");
+            UnityEngine.Object.DestroyImmediate(ghostHostDark);
+
+            UiSkin.Current = UiSkin.Theme.Light;
+            var ghostHostLight = new GameObject("GhostMatProbeLight");
+            Material ghostMatLight = ghostHostLight.AddComponent<GridView>().GhostMaterial;
+            Check("亮色主题下换成普通透明混合（加色在浅底上会消失）",
+                  ghostMatLight != null && ghostMatLight.shader != null &&
+                  ghostMatLight.shader.name == "MinecraftTetris/AtlasTransparent");
+            UnityEngine.Object.DestroyImmediate(ghostHostLight);
+
+            UiSkin.Current = themeWas;
 
             // 放置音效：按 MC 原版材质分组，数据由 tools/build_place_sfx.py 生成
             Check("音效分组数和方块表对齐",
@@ -1510,8 +1525,10 @@ namespace MinecraftTetris.EditorTools
 
             // 批处理跑在桌面上，必须认成非移动端 —— 认错了会把触屏层挂进桌面版
             Check("桌面环境不判定为移动端", !MobileMode.Enabled);
-            Check("控制条高度占屏比在 20%~50% 之间",
-                MobileControls.StripRatio > 0.2f && MobileControls.StripRatio < 0.5f);
+            // 0.34 → 0.18：四个按键原来铺满底部三分之一屏，手机上又大又笨，
+            // 压到一半之后场地多出一大截。下限放宽到 14% 兜住「别再压小了」。
+            Check("控制条高度占屏比在 14%~40% 之间",
+                MobileControls.StripRatio > 0.14f && MobileControls.StripRatio < 0.4f);
 
             // 主菜单按钮放大后的排布：目标 2 倍，装不下要自动降，且绝不能越过下边界
             float mw = UiSkin.P(280f), mh = UiSkin.P(44f), mg = UiSkin.P(10f);
@@ -2519,9 +2536,9 @@ namespace MinecraftTetris.EditorTools
             }
 
             // ---------- 层俯视图 ----------
-            // 只在三格以上出现：两格深的中间列其实紧贴着前后两层，从正面转一下就能看全
-            Check("俯视图只在 z > 2 时挂（z=2 不挂、z=3 挂）",
-                  !LayerMap.UsefulFor(2) && LayerMap.UsefulFor(3));
+            // 两格深开始就挂：后排这时候已经被前排挡掉一部分，哪一格是半格水也看不出来
+            Check("俯视图从两格深开始就挂（z=1 不挂、z=2 挂）",
+                  !LayerMap.UsefulFor(1) && LayerMap.UsefulFor(2) && LayerMap.UsefulFor(4));
 
             {
                 // 层号只由玩家拖滑条决定。早先它会自己跟着当前方块跳层，结果刚翻到
