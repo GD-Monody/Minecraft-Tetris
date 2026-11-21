@@ -89,9 +89,7 @@ namespace MinecraftTetris
             // 之前亮色主题上面板是几乎透明的浅蓝，压在浅背景上就彻底消失了，
             // 场地变成一块孤零零的石砖；靠描一条深色线去补又太生硬（线细了成虚线、
             // 粗了像画框），所以直接把这层膜调成能看见的灰。
-            Material paneMat = MakeGlassMaterial(UiSkin.Current == UiSkin.Theme.Light
-                ? new Color(0.30f, 0.36f, 0.46f, 0.075f)
-                : new Color(0.82f, 0.88f, 0.96f, 0.055f));
+            Material paneMat = MakeGlassMaterial(VeilColor);
             if (paneMat != null)
             {
                 var v = new List<Vector3>();
@@ -107,6 +105,8 @@ namespace MinecraftTetris
                 AddPane(v, uv, t, new Vector3(xL, yT, zF), new Vector3(xR, yT, zF),
                     new Vector3(xR, yT, zB), new Vector3(xL, yT, zB));      // 顶
 
+                _paneMat = paneMat;
+                _paneTex = paneMat.mainTexture as Texture2D;
                 CreateMeshObject(v, uv, t, paneMat, "FrameGlass");
             }
 
@@ -119,6 +119,8 @@ namespace MinecraftTetris
             // AddEdge 暂时留着不用，以后想加回装饰边可以直接调。
         }
 
+        Material _paneMat;
+        Texture2D _paneTex;
         Material _edgeMat;
         Texture2D _edgeTex;
 
@@ -179,12 +181,36 @@ namespace MinecraftTetris
         }
 
         /// <summary>切主题时换边框颜色（网格不用重建，换贴图就够）。</summary>
+        /// <summary>
+        /// 玻璃罩那层膜的颜色。亮色主题下压暗、暗色主题下提亮 —— 两套都是
+        /// 「隐约罩着一层东西」的同一观感，但都不挡方块。
+        /// </summary>
+        static Color VeilColor
+        {
+            get
+            {
+                return UiSkin.Current == UiSkin.Theme.Light
+                    ? new Color(0.30f, 0.36f, 0.46f, 0.11f)
+                    : new Color(0.82f, 0.88f, 0.96f, 0.06f);
+            }
+        }
+
         public void ApplyTheme()
         {
-            if (_edgeTex == null)
-                return;
-            _edgeTex.SetPixel(0, 0, EdgeColor);
-            _edgeTex.Apply();
+            // 这两层膜的颜色都是画在图里的 1×1 纯色贴图上，建模时就烘死了。
+            // 只在建场时算一次的话，玩家从暗色切到亮色之后，场地上那层罩子还是
+            // 暗色主题的「浅白」——压在浅背景上等于消失（真机反馈：亮色版没有结界）。
+            // 所以切主题时把贴图重新画一遍。
+            if (_paneTex != null)
+            {
+                _paneTex.SetPixel(0, 0, VeilColor);
+                _paneTex.Apply();
+            }
+            if (_edgeTex != null)
+            {
+                _edgeTex.SetPixel(0, 0, EdgeColor);
+                _edgeTex.Apply();
+            }
         }
 
         /// <summary>
