@@ -35,11 +35,15 @@ namespace MinecraftTetris
         const float OrbitDegPerPixel = 0.6f;
 
         /// <summary>
-        /// 俯仰角上下限。下限卡在 3 度：再往下相机就钻到地板下面了，从下往上看盒子，
-        /// 画面会像是「透视反了、本来该被挡住的那几个面全露出来」——
-        /// 编辑器只在地板以上看，用不着仰视。
+        /// 俯仰角上下限。下限卡在 14 度。
+        ///
+        /// 原来卡 3 度，看着像是「可以贴地平视」，实际是**退化视角**：视线几乎与顶面、
+        /// 底面网格共面，整块被压成一条线，跟视线平行的那些棱也会细到看不见 ——
+        /// 看上去就像「边框少了几条」。暗色主题因为线是加色发光的，糊成一条也还亮着；
+        /// 亮色主题是深灰细线，压在白底上直接糊没了，所以只有亮色那边露馅。
+        /// 抬高到 14 度之后，顶面和网格始终有可见的面积，两个主题都不会再塌。
         /// </summary>
-        const float MinPitch = 3f;
+        const float MinPitch = 14f;
         const float MaxPitch = 80f;
 
         /// <summary>编辑器里模具长什么样（游戏里它跟普通方块一样随机取材质）。</summary>
@@ -62,6 +66,13 @@ namespace MinecraftTetris
         readonly List<MeshRenderer> _cellRends = new List<MeshRenderer>();
         Transform _ghost;
         Transform _faceHi;
+        /// <summary>底面网格外那圈「发光」细线。亮色主题下要整块关掉（加色在白底上看不见）。</summary>
+        Transform _glowT;
+        /// <summary>框线里层那条细线。亮色主题只留外层粗线，细线关掉（两层叠会互相盖住）。</summary>
+        Transform _coreT;
+        /// <summary>亮色主题的兜底面：六个面铺一层极淡的色，顺着棱看时还有体积感。暗色不用。</summary>
+        Transform _fillT;
+        Material _fillMat;
 
         Mesh _cube;
         Mesh _wire;
@@ -70,8 +81,14 @@ namespace MinecraftTetris
         Material _dimMat;
         Material _coreMat;
         Material _glowMat;
-        Material _ghostMat;
-        Material _hiMat;
+        /// <summary>亮色主题下顶替 _glowMat 的那圈淡蓝柔光（alpha 混合）。</summary>
+        Material _glowLight;
+        /// <summary>落点线框：暗色用加色发光，亮色换成实色半透明（白底上加不出颜色）。</summary>
+        Material _ghostDark;
+        Material _ghostLight;
+        /// <summary>当前面高亮的四边形，同样两套。</summary>
+        Material _hiDark;
+        Material _hiLight;
 
         float _yaw = -38f;
         float _pitch = 22f;
@@ -102,6 +119,13 @@ namespace MinecraftTetris
         bool _rbDown;
         Vector2 _rbStart;
         float _rbMoved;
+
+        // 手机版式下用鼠标操作（电脑上调试 / 桌面浏览器开网页版）时的左键拖动状态。
+        // 手机版式里左键不擦除（擦除交给工具栏那个开关），所以左键整个交给「转视角」。
+        bool _lbDown;
+        Vector2 _lbStart;
+        Vector2 _lbOrigin;
+        float _lbMoved;
 
         bool _hasHit;
         VoxelHit _hit;
@@ -181,12 +205,24 @@ namespace MinecraftTetris
             _quad = BuildQuad();
 
             _dimMat = MakeGhostMaterial(new Color(0.62f, 0.80f, 1f, 0.30f));
-            _ghostMat = CloneGlow(new Color(0.35f, 0.92f, 1f, 0.55f));
-            _hiMat = CloneGlow(new Color(1f, 1f, 1f, 0.34f));
+            // 落点线框 / 面高亮各备两套：暗色主题靠加色发光，亮色主题的白底上加什么都是白的，
+            // 换成 GridCoreMat 那套「实色 + alpha 混合」，线是深蓝色，压在浅底上才看得见。
+            _ghostDark = CloneGlow(new Color(0.35f, 0.92f, 1f, 0.55f));
+            _ghostLight = CloneMat("GridCoreMat", new Color(0.18f, 0.42f, 0.75f, 1f));
+            _hiDark = CloneGlow(new Color(1f, 1f, 1f, 0.34f));
+            // 面高亮必须是半透明的：GridCoreMat 会把 alpha 忽略掉、铺成一整块深色，
+            // 所以这里走 MoldTint（标准 alpha 混合）
+            _hiLight = MakeTintMaterial(new Color(0.15f, 0.42f, 0.78f, 0.18f));
             // 工程里的 GridCoreMat / GridGlowMat 是共享资源，GridFrame 每次 Build 会改它们的
             // 颜色。这里克隆一份再上色，省得两个边框互相抢颜色。
             _coreMat = CloneMat("GridCoreMat", new Color(0.42f, 0.86f, 1f, 1f));
             _glowMat = CloneMat("GridGlowMat", new Color(0.10f, 0.55f, 1f, 0.30f));
+            // 亮色主题：外圈柔光换成预乘过 alpha 的浅灰（颜色由 ApplyTheme 改写）
+            _glowLight = CloneMat("GridCoreMat", new Color(0.34f, 0.36f, 0.40f, 0.55f));
+            // 兜底面：预乘 alpha，0.035 摊在两面上大约是一层 6~7% 的灰
+            _fillMat = MakeTintMaterial(new Color(0.30f, 0.32f, 0.36f, 0.05f));
+            if (_fillMat != null)
+                _fillMat.renderQueue = 2499;   // 压在透明线框前面，别把线糊灰
 
             _rt = new RenderTexture(512, 512, 16);
             _rt.antiAliasing = 4;
@@ -215,10 +251,80 @@ namespace MinecraftTetris
 
             BuildFrame();
 
-            _ghost = NewChild("Ghost", _wire, _ghostMat);
+            _ghost = NewChild("Ghost", _wire, _ghostDark);
             _ghost.gameObject.SetActive(false);
-            _faceHi = NewChild("FaceHi", _quad, _hiMat);
+            _faceHi = NewChild("FaceHi", _quad, _hiDark);
             _faceHi.gameObject.SetActive(false);
+
+            // 颜色全部由 ApplyTheme 决定（相机底色、框线、落点线），建完先按当前主题刷一遍
+            ApplyTheme();
+        }
+
+        /// <summary>
+        /// 跟界面主题走。两套配色用的是**同一套两层线框**（细实线 + 外圈粗柔光），
+        /// 只是颜色和混合方式不同：
+        /// 暗色 = 青色实线 + 加色发光；亮色 = 深灰实线 + 浅灰柔光。
+        ///
+        /// 亮色下那圈柔光必须把颜色**预乘 alpha**：GridCoreMat 用的是
+        /// Blend One OneMinusSrcAlpha，颜色不预乘的话结果会算成「色值 + 底色×(1-a)」，
+        /// 白底上直接溢出到 1 → 整条线变成纯白、看上去就像消失了
+        /// （真机反馈「线条有时候会不见」就是这么来的）。
+        ///
+        /// 另外把两层的 renderQueue 写死（柔光 3000、实线 3005），保证实线永远压在柔光上面 ——
+        /// 两层位置完全重合，靠排序碰运气的话会出现「某条棱被柔光盖掉」。
+        /// </summary>
+        public void ApplyTheme()
+        {
+            bool light = UiSkin.Current == UiSkin.Theme.Light;
+
+            if (_cam != null)
+                _cam.backgroundColor = light
+                    ? new Color(0.95f, 0.97f, 1f, 1f)
+                    : new Color(0.05f, 0.06f, 0.09f, 1f);
+
+            if (_coreT != null)
+                _coreT.gameObject.SetActive(true);
+
+            // 兜底那层淡面只在亮色下开：暗色靠发光线本身就很抗退化，加了反而发灰
+            if (_fillT != null)
+                _fillT.gameObject.SetActive(light);
+
+            if (_coreMat != null)
+            {
+                _coreMat.color = light ? new Color(0.20f, 0.22f, 0.26f, 1f) : new Color(0.42f, 0.86f, 1f, 1f);
+                _coreMat.renderQueue = light ? 3005 : 3000;
+            }
+
+            // 外圈那层柔光：暗色是加色发光，亮色换成预乘过 alpha 的浅灰
+            // （颜色已经乘进 alpha，白底上叠出来是 0.34 + 0.45 ≈ 0.79 的柔灰，不会溢出成白）
+            if (_glowT != null)
+            {
+                SetSharedMaterial(_glowT, light ? _glowLight : _glowMat);
+                if (light && _glowLight != null)
+                {
+                    _glowLight.color = new Color(0.34f, 0.36f, 0.40f, 0.55f);
+                    _glowLight.renderQueue = 3000;
+                }
+            }
+
+            SetSharedMaterial(_ghost, light ? _ghostLight : _ghostDark);
+            SetSharedMaterial(_faceHi, light ? _hiLight : _hiDark);
+            if (light && _ghostLight != null)
+                _ghostLight.color = new Color(0.18f, 0.42f, 0.75f, 1f);
+            // 非当前层的方块：白底上用淡一点的冷色往后压，免得整块糊成一片
+            if (_dimMat != null)
+                _dimMat.color = light
+                    ? new Color(0.45f, 0.62f, 0.88f, 0.30f)
+                    : new Color(0.62f, 0.80f, 1f, 0.30f);
+        }
+
+        static void SetSharedMaterial(Transform t, Material mat)
+        {
+            if (t == null || mat == null)
+                return;
+            var mr = t.GetComponent<MeshRenderer>();
+            if (mr != null)
+                mr.sharedMaterial = mat;
         }
 
         public void SetCells(IList<Vector3Int> cells)
@@ -400,9 +506,14 @@ namespace MinecraftTetris
                 GUI.DrawTexture(rect, _rt, ScaleMode.StretchToFill, true);
 
             // 手机上完全走 Input.touches（见 Update 里的 HandleTouch）：
-            // IMGUI 在 WebGL 里既没有右键也没有滚轮事件，触摸拖动也转不成 MouseDrag
+            // IMGUI 在 WebGL 里既没有右键也没有滚轮事件，触摸拖动也转不成 MouseDrag。
+            // 不过电脑上开手机版式（-mobile / 网页 ?mobile=1）时压根没有触摸事件，
+            // 那种情况下鼠标得能转视角，不然只能干看着 —— 补一条鼠标分支，
+            // 真有手指按下去的时候（touchCount > 0）走触摸那条路，两者不打架。
             if (MobileMode.Enabled)
             {
+                if (Input.touchCount == 0)
+                    HandleMouseInTouchLayout(rect);
                 UpdateMarkers();
                 return;
             }
@@ -428,6 +539,67 @@ namespace MinecraftTetris
                 PlaceAt();
                 e.Use();
             }
+        }
+
+        /// <summary>
+        /// 手机版式下的鼠标操作。手机版式里「左键放方块、右键擦除」那套不存在
+        /// （擦除是工具栏上的开关），所以左键整个拿来转视角，滚轮缩放，点一下放/擦。
+        /// </summary>
+        void HandleMouseInTouchLayout(Rect rect)
+        {
+            Event e = Event.current;
+            if (e == null)
+                return;
+
+            bool inside = rect.Contains(e.mousePosition);
+
+            if (inside && e.type == EventType.ScrollWheel)
+            {
+                _zoom = Mathf.Clamp(_zoom + e.delta.y * 0.5f, ZoomMin, ZoomMax);
+                e.Use();
+            }
+
+            if (e.type == EventType.MouseDown && e.button == 0 && inside)
+            {
+                _lbDown = true;
+                _lbStart = e.mousePosition;
+                _lbOrigin = e.mousePosition;
+                _lbMoved = 0f;
+                e.Use();
+                return;
+            }
+
+            // 和触摸那条路同一套手感：拖的是相机
+            if (_lbDown && e.type == EventType.MouseDrag)
+            {
+                Vector2 d = e.mousePosition - _lbStart;
+                _lbStart = e.mousePosition;
+                _lbMoved += d.magnitude;
+                _yaw += d.x * OrbitDegPerPixel;
+                _pitch = Mathf.Clamp(_pitch - d.y * OrbitDegPerPixel, MinPitch, MaxPitch);
+                return;
+            }
+
+            if (_lbDown && e.type == EventType.MouseUp && e.button == 0)
+            {
+                _lbDown = false;
+                // 起手点和落点一起量：只靠累加的 _lbMoved，浏览器里拖动偶尔会算成 0，
+                // 结果「转完视角顺手放了一格」。
+                bool tap = _lbMoved < 6f
+                           && Vector2.Distance(e.mousePosition, _lbOrigin) < 6f;
+                if (tap && inside)
+                {
+                    UpdatePick(rect, e.mousePosition, true);
+                    if (EraseMode)
+                        EraseAt();
+                    else
+                        PlaceAt();
+                }
+                e.Use();
+                return;
+            }
+
+            UpdatePick(rect, e.mousePosition, inside);
         }
 
         void HandleOrbit(Event e, bool inside)
@@ -776,20 +948,57 @@ namespace MinecraftTetris
                 AddTube(cv, ct, gv, gt, new Vector3(0f, 0f, i), new Vector3(Size, 0f, i), 0.012f, 0.04f);
             }
 
-            NewChildWithMesh("BoxCore", cv, ct, _coreMat);
-            NewChildWithMesh("BoxGlow", gv, gt, _glowMat);
+            _coreT = NewChildWithMesh("BoxCore", cv, ct, _coreMat);
+            _glowT = NewChildWithMesh("BoxGlow", gv, gt, _glowMat);
+
+            // 亮色主题用的「兜底体积」：六个面铺一层极淡的色块。
+            // 顺着某条棱看过去时，那条棱（和与它同向的网格线）在投影上会缩成一个点，
+            // 靠线是救不回来的；这时至少还能看出盒子的三个面，不会像「塌了」。
+            var fill = new Mesh { name = "MoldFrame_Fill" };
+            fill.SetVertices(BoxVerts());
+            fill.SetTriangles(BoxTris(), 0);
+            fill.RecalculateBounds();
+            _fillT = NewChild("BoxFill", fill, _fillMat);
         }
 
-        void NewChildWithMesh(string name, List<Vector3> verts, List<int> tris, Material mat)
+        /// <summary>盒子六个面的顶点（0..Size 那个立方体）。</summary>
+        static List<Vector3> BoxVerts()
+        {
+            var v = new List<Vector3>(8);
+            for (int i = 0; i < 8; i++)
+            {
+                v.Add(new Vector3(
+                    (i & 1) != 0 ? Size : 0f,
+                    (i & 2) != 0 ? Size : 0f,
+                    (i & 4) != 0 ? Size : 0f));
+            }
+            return v;
+        }
+
+        /// <summary>六个面 = 12 个三角形，顶点下标对应 BoxVerts 的位序（1=x,2=y,4=z）。</summary>
+        static List<int> BoxTris()
+        {
+            return new List<int>
+            {
+                0, 1, 5, 0, 5, 4,   // y = 0
+                2, 6, 7, 2, 7, 3,   // y = S
+                0, 2, 3, 0, 3, 1,   // z = 0
+                4, 5, 7, 4, 7, 6,   // z = S
+                0, 4, 6, 0, 6, 2,   // x = 0
+                1, 3, 7, 1, 7, 5,   // x = S
+            };
+        }
+
+        Transform NewChildWithMesh(string name, List<Vector3> verts, List<int> tris, Material mat)
         {
             if (verts.Count == 0 || mat == null)
-                return;
+                return null;
 
             var mesh = new Mesh { name = "MoldFrame_" + name };
             mesh.SetVertices(verts);
             mesh.SetTriangles(tris, 0);
             mesh.RecalculateBounds();
-            NewChild(name, mesh, mat);
+            return NewChild(name, mesh, mat);
         }
 
         /// <summary>
@@ -819,6 +1028,11 @@ namespace MinecraftTetris
 
             AddQuad(verts, tris, a, b, s1 * half);
             AddQuad(verts, tris, a, b, s2 * half);
+            // 第三片刀片压在两者中间（45°）。两片时最差的角度正好在 45°，
+            // 投影宽度只剩 0.71 倍，斜着看那条线就会发虚；补一片之后最差也有 0.92 倍。
+            // 注意这只能改善「斜着看」，顺着棱看过去仍然是退化成一个点 ——
+            // 那是投影的必然，靠加面数解决不了（亮色那边另外铺了一层很淡的面来兜底）。
+            AddQuad(verts, tris, a, b, (s1 + s2).normalized * half);
         }
 
         static void AddQuad(List<Vector3> verts, List<int> tris, Vector3 a, Vector3 b, Vector3 side)
@@ -885,9 +1099,20 @@ namespace MinecraftTetris
 
         // ---------- 材质 ----------
 
-        static Material CloneMat(string resourceName, Color color)
+        /// <summary>
+        /// 透明的纯色材质。GridCoreMat 那套是不透明的（alpha 会被忽略），
+        /// 半透明的面得用单独写的 MoldTint，那个才是标准 alpha 混合。
+        /// </summary>
+        static Material MakeTintMaterial(Color color)
         {
-            Material baseMat = Resources.Load<Material>(resourceName);
+            Shader shader = Shader.Find("MinecraftTetris/MoldTint");
+            if (shader == null)
+                return null;
+            return new Material(shader) { color = color };
+        }
+
+        static Material CloneMat(string resourceName, Color color)
+        {            Material baseMat = Resources.Load<Material>(resourceName);
             if (baseMat == null)
                 return null;
             var mat = new Material(baseMat) { color = color };
