@@ -2316,9 +2316,9 @@ namespace MinecraftTetris
             _rowLabelStyle = MakeStyle(18, UiSkin.TextSecondary, TextAnchor.MiddleLeft, FontStyle.Normal);
             _hintStyle = MakeStyle(18, UiSkin.TextSecondary, TextAnchor.MiddleLeft, FontStyle.Normal);
             _hintStyle.wordWrap = false;
-            _valueStyle = MakeStyle(22, UiSkin.TextPrimary, TextAnchor.MiddleCenter, FontStyle.Bold);
+            _valueStyle = MakeStyle(22, UiSkin.TextPrimary, TextAnchor.MiddleCenter, FontStyle.Normal);
             // 滑条上的字会被圆头从中间穿过去，垫一层深色影子才读得清
-            _sliderShadowStyle = MakeStyle(22, UiSkin.Current == UiSkin.Theme.Light ? new Color(0f, 0f, 0f, 0f) : new Color(0f, 0f, 0f, 0.75f), TextAnchor.MiddleCenter, FontStyle.Bold);
+            _sliderShadowStyle = MakeStyle(22, UiSkin.Current == UiSkin.Theme.Light ? new Color(0f, 0f, 0f, 0f) : new Color(0f, 0f, 0f, 0.75f), TextAnchor.MiddleCenter, FontStyle.Normal);
 
             _guideNameStyle = MakeStyle(19, UiSkin.TextPrimary, TextAnchor.MiddleLeft, FontStyle.Bold);
             _guideNameStyle.wordWrap = false;
@@ -2355,8 +2355,10 @@ namespace MinecraftTetris
             _rowLabelBig = MakeStylePx(Fg(18), UiSkin.TextSecondary, TextAnchor.MiddleLeft, FontStyle.Normal);
             _hintBig = MakeStylePx(Fg(18), UiSkin.TextSecondary, TextAnchor.MiddleLeft, FontStyle.Normal);
             _hintBig.wordWrap = false;
-            _valueBig = MakeStylePx(Fg(22), UiSkin.TextPrimary, TextAnchor.MiddleCenter, FontStyle.Bold);
-            _sliderShadowBig = MakeStylePx(Fg(22), UiSkin.Current == UiSkin.Theme.Light ? new Color(0f, 0f, 0f, 0f) : new Color(0f, 0f, 0f, 0.75f), TextAnchor.MiddleCenter, FontStyle.Bold);
+            // 滑条上的字不加粗：楷体加粗之后笔画糊成一片，「宽度 X 10」这种字母数字混排
+            // 更难认；影子也要用同样的字重，不然影子比字胖一圈、看着发虚。
+            _valueBig = MakeStylePx(Fg(22), UiSkin.TextPrimary, TextAnchor.MiddleCenter, FontStyle.Normal);
+            _sliderShadowBig = MakeStylePx(Fg(22), UiSkin.Current == UiSkin.Theme.Light ? new Color(0f, 0f, 0f, 0f) : new Color(0f, 0f, 0f, 0.75f), TextAnchor.MiddleCenter, FontStyle.Normal);
             _guideNameBig = MakeStylePx(Fg(19), UiSkin.TextPrimary, TextAnchor.MiddleLeft, FontStyle.Bold);
             _guideNameBig.wordWrap = false;
             _guideDescBig = MakeStylePx(Fg(14), UiSkin.TextSecondary, TextAnchor.UpperLeft, FontStyle.Normal);
