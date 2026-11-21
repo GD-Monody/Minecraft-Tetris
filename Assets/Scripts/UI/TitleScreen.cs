@@ -1233,6 +1233,12 @@ namespace MinecraftTetris
                 },
                 new GuideItem
                 {
+                    Ids = new[] { Sponge.SpongeId, Sponge.WetSpongeId },
+                    Title = "海绵",
+                    Desc = "干海绵吸走周围 7×7×7 里够得着的水（最多 65 格）并变成湿海绵；湿的吸不动。",
+                },
+                new GuideItem
+                {
                     Ids = new[] { FindBlock("oak_log") },
                     Title = "原木",
                     Desc = "落定后，周围空位会长出同种树叶。",
