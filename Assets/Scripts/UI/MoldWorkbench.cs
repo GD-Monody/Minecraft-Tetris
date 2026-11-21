@@ -462,11 +462,14 @@ namespace MinecraftTetris
                         _touchLast = p;
                         _touchMoved += d.magnitude;
 
-                        // 单指拖动才转视角；双指时留给缩放
+                        // 单指拖动才转视角；双指时留给缩放。
+                        // 建造台是「抓着盒子转」：手指往上拖，盒子跟着往上翻（俯仰变小）。
+                        // 和游戏里那套「拖的是相机」正好相反 —— 用户明确要求这样，
+                        // 编辑器里手抓的是盒子本身，跟着手走才顺。
                         if (Input.touchCount < 2 && _touchMoved > TapSlop)
                         {
                             _yaw += d.x * OrbitDegPerPixel;
-                            _pitch = Mathf.Clamp(_pitch - d.y * OrbitDegPerPixel, MinPitch, MaxPitch);
+                            _pitch = Mathf.Clamp(_pitch + d.y * OrbitDegPerPixel, MinPitch, MaxPitch);
                         }
                     }
                     else if (t.phase == TouchPhase.Ended || t.phase == TouchPhase.Canceled)
@@ -569,14 +572,14 @@ namespace MinecraftTetris
                 return;
             }
 
-            // 和触摸那条路同一套手感：拖的是相机
+            // 和触摸那条路同一套手感：抓着盒子转（往上拖，盒子跟着往上翻）
             if (_lbDown && e.type == EventType.MouseDrag)
             {
                 Vector2 d = e.mousePosition - _lbStart;
                 _lbStart = e.mousePosition;
                 _lbMoved += d.magnitude;
                 _yaw += d.x * OrbitDegPerPixel;
-                _pitch = Mathf.Clamp(_pitch - d.y * OrbitDegPerPixel, MinPitch, MaxPitch);
+                _pitch = Mathf.Clamp(_pitch + d.y * OrbitDegPerPixel, MinPitch, MaxPitch);
                 return;
             }
 
@@ -621,14 +624,14 @@ namespace MinecraftTetris
                 Vector2 d = e.mousePosition - _rbStart;
                 _rbStart = e.mousePosition;
                 _rbMoved += d.magnitude;
-                // 和主视角（CameraRig 的右键拖动）保持同一套手感：拖的是相机，不是盒子。
-                // 之前一度改成反号想做成「抓着盒子转」，结果两边方向相反，用起来更别扭 ——
-                // 一致比「哪种更直觉」重要，玩家在两处用的是同一只手。
+                // 建造台用的是「抓着盒子转」：往哪个方向拖，盒子就往哪个方向走。
+                // 游戏主视角那套是反过来的（拖的是相机），这里故意不跟它一致 ——
+                // 编辑器里手抓的就是那个盒子，跟着手走才顺（用户明确要求）。
                 _yaw += d.x * OrbitDegPerPixel;
 
                 // 纵向锁在地板以上：拖到负角度就钻到盒子底下去往上看，画面会像是
                 // 「透视反了、看到本来被挡住的三个面」。编辑器不需要从下面看。
-                _pitch = Mathf.Clamp(_pitch - d.y * OrbitDegPerPixel, MinPitch, MaxPitch);
+                _pitch = Mathf.Clamp(_pitch + d.y * OrbitDegPerPixel, MinPitch, MaxPitch);
                 return;
             }
 
