@@ -86,6 +86,9 @@ namespace MinecraftTetris
         /// <summary>「游戏规则」按键栏：键名居中。</summary>
         GUIStyle _guideKeyStyle;
 
+        /// <summary>「请把手机横过来」提示层用的正文样式（独立一份，别去改别处的对齐）。</summary>
+        GUIStyle _rotateHintStyle;
+
         // ---------- 设置各页的大号样式（尺寸统统 × 当前页倍数，见 BeginPage） ----------
         GUIStyle _btnBig;
         GUIStyle _panelTitleBig;
@@ -114,6 +117,9 @@ namespace MinecraftTetris
         /// <summary>下滑条正在被拖的是哪一个（-1 = 没在拖）。IMGUI 没有内置拖动条，自己记。</summary>
         int _dragSlider = -1;
         const int SliderSpeed = 0;
+
+        /// <summary>设置主页的滚动位置（加了「屏幕方向」之后一屏放不下）。</summary>
+        float _mainScroll;
 
         /// <summary>特殊方块机制页的滚动位置。列表改成滚轮滚动后，切进页面时归零。</summary>
         Vector2 _mechScroll;
@@ -150,6 +156,31 @@ namespace MinecraftTetris
 
         /// <summary>当前页面的进入动画计时，切页 / 开合设置面板时归零。</summary>
         float _pageT = 99f;
+
+        /// <summary>
+        /// 切页的滑动方向：+1 = 新页从右边滑进来（进子页），-1 = 从左边滑回来（点返回）。
+        /// 一律从右边进的话，返回时画面还是往左走，看着像"又往下钻了一层"。
+        /// </summary>
+        int _pageDir = 1;
+
+        /// <summary>关闭设置面板的动画计时（返回按钮不立刻收起，先滑出去再收）。</summary>
+        float _closeT = 99f;
+        bool _closing;
+
+        /// <summary>玩家点掉了「请把手机横过来」的提示。改一次方向设置就重新算。</summary>
+        bool _rotateHintClosed;
+
+        /// <summary>
+        /// 关设置面板。返回按钮都走这里 —— 直接置 ShowSettings = false 的话面板是「啪」一下消失，
+        /// 没有切换感（真机反馈「点返回没有动画」）。
+        /// </summary>
+        public void BeginCloseSettings()
+        {
+            if (!ShowSettings || _closing)
+                return;
+            _closing = true;
+            _closeT = 0f;
+        }
         SettingsPage _pageSeen = SettingsPage.Main;
         bool _settingsSeen;
 
@@ -250,6 +281,8 @@ namespace MinecraftTetris
             bool on = ShowSettings;
             if (_page != _pageSeen || on != _settingsSeen)
             {
+                // 设置主页是 0，子页都比它大：新页的下标变小就是「点返回回到上一层」
+                _pageDir = (on && _settingsSeen && (int)_page < (int)_pageSeen) ? -1 : 1;
                 _pageSeen = _page;
                 _settingsSeen = on;
                 _pageT = 0f;
@@ -257,6 +290,17 @@ namespace MinecraftTetris
             else if (_pageT < PageMotionTime)
             {
                 _pageT += Time.unscaledDeltaTime;
+            }
+
+            // 关闭动画跑完才真正收起面板
+            if (_closing)
+            {
+                _closeT += Time.unscaledDeltaTime;
+                if (_closeT >= PageMotionTime)
+                {
+                    _closing = false;
+                    ShowSettings = false;
+                }
             }
         }
 
@@ -273,15 +317,38 @@ namespace MinecraftTetris
             UiSkin.Apply();
             EnsureStyles();
 
-            if (ShowSettings)
+            if (ShowSettings || _closing)
             {
-                if (_page == SettingsPage.Keys)
+                // 关闭动画期间先把标题页画出来垫在下面，面板滑出去时露出的是它，
+                // 而不是一片空白
+                if (_closing)
+                    DrawTitleScreen();
+
+                if (_page == SettingsPage.Keys && !_closing)
                     HandleCapture();
                 DrawSettingsPanel();
                 CursorTrail.DrawLast();   // 拖尾压在设置面板之上
                 return;
             }
 
+            // 选了横屏但这台设备锁不了方向时，只画提示层。
+            // 这里不能先把标题页画出来再盖一层 —— IMGUI 的点击是「先画的控件先拿到
+            // 热键」，底下那排按钮会照样抢走鼠标（实测点「先用竖屏」直接进了创意工坊）。
+            if (MobileMode.WantsLandscapeButPortrait && !_rotateHintClosed)
+            {
+                DrawRotateHint();
+                CursorTrail.DrawLast();
+                return;
+            }
+
+            DrawTitleScreen();
+
+            CursorTrail.DrawLast();   // 永远最后画
+        }
+
+        /// <summary>标题页整屏（雾化层 + 光尘 + 标题 + 按钮 + 署名）。</summary>
+        void DrawTitleScreen()
+        {
             // 亮色主题不能压黑（整屏会变成一团深灰），改成压一层浅色雾化
             DrawRect(new Rect(0f, 0f, Screen.width, Screen.height),
                 UiSkin.Current == UiSkin.Theme.Light
@@ -295,8 +362,6 @@ namespace MinecraftTetris
             DrawSub();
             DrawButtons();
             DrawCredit();
-
-            CursorTrail.DrawLast();   // 永远最后画
         }
 
         // ---------- 动画各段 ----------
@@ -382,13 +447,14 @@ namespace MinecraftTetris
                 if (p <= 0f)
                     continue;
 
-                // 横屏：原地淡入。标题在左半边，从上往下掉会擦过顶栏，观感很乱。
-                // 桌面与竖屏：保留原来那套「从屏幕上方掉下来、落地弹一下」——
-                // 用户明确说别动这两个方向的开场。
+                // 横屏：逐字显现 —— 每个字在落点上原地淡入（带一点上浮），一个一个亮起来。
+                // 竖屏 / 桌面：保留原来那套「从屏幕上方掉下来、落地弹一下」。
+                // 两套要分开：横屏的标题在左半屏，从上往下掉会擦过顶部、也压不住左边那块空白；
+                // 而且用户明确要求横屏用逐字显现，别跟竖屏合并。
                 float y, alpha;
                 if (WideTitle)
                 {
-                    y = targetY + (1f - p) * UiSkin.P(10f);
+                    y = targetY + (1f - p) * UiSkin.P(12f);
                     alpha = Mathf.Clamp01(p);
                 }
                 else
@@ -527,20 +593,27 @@ namespace MinecraftTetris
 
         void DrawSettingsPanel()
         {
-            DrawRect(new Rect(0f, 0f, Screen.width, Screen.height),
-                UiSkin.Current == UiSkin.Theme.Light
-                    ? new Color(0.90f, 0.94f, 0.99f, 0.72f)
-                    : new Color(0f, 0f, 0f, 0.72f));
+            // 关闭时雾化层跟着淡出，露出来的就是下面那张标题页
+            float closeK = _closing ? Mathf.Clamp01(_closeT / PageMotionTime) : 1f;
+            float dim = _closing ? 1f - closeK : 1f;
+            Color dimColor = UiSkin.Current == UiSkin.Theme.Light
+                ? new Color(0.90f, 0.94f, 0.99f, 0.72f * dim)
+                : new Color(0f, 0f, 0f, 0.72f * dim);
+            DrawRect(new Rect(0f, 0f, Screen.width, Screen.height), dimColor);
 
-            // 页面切换：从右侧轻轻滑进来一小段（26 设计像素，0.16 秒）。
+            // 页面切换：从右侧轻轻滑进来一小段（34 设计像素，0.2 秒）；关闭时反向滑出去。
             // 只挪 GUI.matrix 不动布局 —— 控件的点击判定跟着矩阵走，滑完照样点得动。
             // 没做淡入：各页里到处 DrawRect（自己会把 GUI.color 复位成白色），
             // 全局淡入半路就断了，滑入这一下已经够「切换感」。
             float k = Mathf.Clamp01(_pageT / PageMotionTime);
             float ease = Mathf.SmoothStep(0f, 1f, k);
+            float offset = (1f - ease) * Pg(34f) * _pageDir;
+            if (_closing)
+                offset = Mathf.SmoothStep(0f, 1f, closeK) * Pg(34f);
+
             Matrix4x4 matBack = GUI.matrix;
-            if (ease < 1f)
-                GUI.matrix = matBack * Matrix4x4.Translate(new Vector3((1f - ease) * Pg(34f), 0f, 0f));
+            if (Mathf.Abs(offset) > 0.01f)
+                GUI.matrix = matBack * Matrix4x4.Translate(new Vector3(offset, 0f, 0f));
 
             switch (_page)
             {
@@ -573,123 +646,256 @@ namespace MinecraftTetris
             GUI.matrix = matBack;
         }
 
+        /// <summary>
+        /// 设置主页一共几行。手机上是十行（含「屏幕方向」），桌面上把「屏幕方向」
+        /// 换成「按键设置」—— 桌面的窗口比例由玩家自己拉，网页版也会跟着重排，
+        /// 摆一个改不了任何东西的按钮只会让人以为坏了。
+        /// </summary>
+        static int SettingRowCount()
+        {
+            return 10;
+        }
+
         void DrawSettingsMain()
         {
-            // 按钮数 × 54 + 上下留白；加一项就跟着涨，不然会压到「返回」上
-            // （加「背景配色」时从 594 抬到 648）
             Rect panel = BeginPage(420f, 648f);
             float w = panel.width;
             DrawPanel(panel);
 
             PageTitle(panel, "设置", 16f);
 
-            // 横屏统一画布只有 480 高，九项挤不下：行高压到 36、行距 44
             bool wide = WidePage;
             float bw = Pg(wide ? 340f : 300f);
             float bh = Pg(wide ? 36f : 42f);
             float step = Pg(wide ? 44f : 54f);
             float bx = panel.x + (w - bw) * 0.5f;
-            float y = panel.y + Pg(wide ? 42f : 80f);
 
-            if (GUI.Button(new Rect(bx, y, bw, bh), SfxEnabled ? "音效：开" : "音效：关", _btnBig))
+            // 列表可滚动：加进「屏幕方向」之后已经十项，横屏的画布放不下一屏。
+            // 和「特殊方块机制」页同一套做法（滚轮 + 手指拖动 + 整行吸附）。
+            int count = SettingRowCount();
+            float top = panel.y + Pg(wide ? 34f : 78f);
+            float viewH = Mathf.Max(bh, panel.yMax - Pg(wide ? 12f : 18f) - top);
+            float contentH = count * step - (step - bh);
+            float maxScroll = Mathf.Max(0f, contentH - viewH);
+
+            var clip = new Rect(bx, top, bw, viewH);
+            ScrollList(clip, maxScroll, ref _mainScroll, step);
+
+            GUI.BeginGroup(clip);
+            for (int i = 0; i < count; i++)
             {
-                bool next = !SfxEnabled;
-                PlayerPrefs.SetInt(SfxKey, next ? 1 : 0);
-                PlayerPrefs.Save();
-                if (OnSfxChanged != null)
-                    OnSfxChanged(next);
+                var r = new Rect(0f, i * step - _mainScroll, bw, bh);
+                if (r.y + bh < 0f || r.y > viewH)
+                    continue;   // 看不见的不画
+
+                DrawSettingRow(i, r);
             }
-            y += step;
+            GUI.EndGroup();
 
-            // 背景配色：手机在户外/强光下黑底几乎看不见东西，亮色底能救回来。
-            // 切换立即生效 —— 各处颜色都是现取 UiSkin 的，样式靠主题号判断自动重建。
-            if (GUI.Button(new Rect(bx, y, bw, bh),
-                    UiSkin.Current == UiSkin.Theme.Light ? "背景：亮色" : "背景：暗色", _btnBig))
+            if (maxScroll > 0f)
+                DrawScrollBar(clip, viewH, contentH, maxScroll, _mainScroll);
+        }
+
+        /// <summary>
+        /// 画设置主页的第 i 行。坐标是相对于滚动区左上角的（外面套了 BeginGroup），
+        /// 所以这里直接用 0 / r 里的坐标，不要再加 panel.x。
+        /// </summary>
+        void DrawSettingRow(int i, Rect r)
+        {
+            // 手机上不显示「按键设置」：只有触屏，键盘映射没有意义；
+            // 桌面上反过来，把「屏幕方向」那一格换成「按键设置」—— 桌面窗口比例
+            // 自己拉就行，网页版也会跟着重排，不需要这一项。
+            int idx = i;
+            if (!MobileMode.Enabled && i == 6)
             {
-                UiSkin.Current = UiSkin.Current == UiSkin.Theme.Light
-                    ? UiSkin.Theme.Dark
-                    : UiSkin.Theme.Light;
-            }
-            y += step;
-
-            // 深度 1 时一层就是一行，层消没有意义，按钮直接置灰
-            bool canLayer = GameSettings.CanUseLayerMode;
-            string elimName = !canLayer
-                ? "消除：行消（Z=1 固定）"
-                : (GameSettings.ElimMode == GameSettings.ElimLayer ? "消除：层消" : "消除：行消");
-            GUI.enabled = canLayer;
-            bool elimClicked = GUI.Button(new Rect(bx, y, bw, bh), elimName, _btnBig);
-            GUI.enabled = true;
-            // IMGUI 关掉 GUI.enabled 只是不吃点击，自定义贴图不会自己变灰，压一层半透明盖住
-            if (!canLayer)
-                DrawRect(new Rect(bx, y, bw, bh), new Color(0.05f, 0.06f, 0.08f, 0.45f));
-
-            if (elimClicked)
-            {
-                int next = GameSettings.ElimMode == GameSettings.ElimLayer
-                    ? GameSettings.ElimRows
-                    : GameSettings.ElimLayer;
-                GameSettings.SetElimMode(next);
-            }
-            y += step;
-
-            string speedName = "下落速度：" + GameSettings.FallSpeed.ToString("0.00") + "×";
-            if (GUI.Button(new Rect(bx, y, bw, bh), speedName, _btnBig))
-            {
-                _tmpSpeed = GameSettings.FallSpeed;
-                _page = SettingsPage.Speed;
-            }
-            y += step;
-
-            string musicName = GameSettings.MusicVolume <= 0.005f
-                ? "音乐：关"
-                : "音乐：" + Mathf.RoundToInt(GameSettings.MusicVolume * 100f) + "%";
-            if (GUI.Button(new Rect(bx, y, bw, bh), musicName, _btnBig))
-            {
-                _tmpMusic = GameSettings.MusicVolume;
-                _page = SettingsPage.Music;
-            }
-            y += step;
-
-            // 落点提示：下落时把方块会停在哪儿用高亮方框标出来（3D 场地里不标很难估）
-            if (GUI.Button(new Rect(bx, y, bw, bh),
-                    GameSettings.GhostPiece ? "落点提示：开" : "落点提示：关", _btnBig))
-                GameSettings.SetGhostPiece(!GameSettings.GhostPiece);
-            y += step;
-
-            // 手机上只有触屏，键盘映射这一页没有意义，整块跳过
-            // （连 y += step 也跳过，不然中间会空出一格）
-            if (!MobileMode.Enabled)
-            {
-                if (GUI.Button(new Rect(bx, y, bw, bh), "按键设置", _btnBig))
+                if (GUI.Button(r, "按键设置", _btnBig))
                 {
                     _page = SettingsPage.Keys;
                     _capturingAction = -1;
-                    _keyScroll = 0f;    // 每次进来都从第一项看起
+                    _keyScroll = 0f;
                 }
-                y += step;
+                return;
             }
 
-            if (GUI.Button(new Rect(bx, y, bw, bh), "场地尺寸", _btnBig))
+            switch (idx)
             {
-                _tmpX = GameSettings.SizeX;
-                _tmpY = GameSettings.SizeY;
-                _tmpZ = GameSettings.SizeZ;
-                _page = SettingsPage.Size;
-            }
-            y += step;
+                case 0:
+                    if (GUI.Button(r, SfxEnabled ? "音效：开" : "音效：关", _btnBig))
+                    {
+                        bool next = !SfxEnabled;
+                        PlayerPrefs.SetInt(SfxKey, next ? 1 : 0);
+                        PlayerPrefs.Save();
+                        if (OnSfxChanged != null)
+                            OnSfxChanged(next);
+                    }
+                    break;
 
-            // 特殊方块各机制的开关（TNT 炸不炸、沙子落不落…）都收在这一页里，
-            // 原来「基岩进池」「结构方块进池」两个开关已经去掉：方块常驻池，行为由机制开关决定
-            if (GUI.Button(new Rect(bx, y, bw, bh), "特殊方块开关", _btnBig))
+                case 1:
+                    // 背景配色：手机在户外/强光下黑底几乎看不见东西，亮色底能救回来。
+                    if (GUI.Button(r, UiSkin.Current == UiSkin.Theme.Light ? "背景：亮色" : "背景：暗色", _btnBig))
+                    {
+                        UiSkin.Current = UiSkin.Current == UiSkin.Theme.Light
+                            ? UiSkin.Theme.Dark
+                            : UiSkin.Theme.Light;
+                    }
+                    break;
+
+                case 2:
+                {
+                    // 深度 1 时一层就是一行，层消没有意义，按钮直接置灰
+                    bool canLayer = GameSettings.CanUseLayerMode;
+                    string elimName = !canLayer
+                        ? "消除：行消（Z=1 固定）"
+                        : (GameSettings.ElimMode == GameSettings.ElimLayer ? "消除：层消" : "消除：行消");
+                    GUI.enabled = canLayer;
+                    bool elimClicked = GUI.Button(r, elimName, _btnBig);
+                    GUI.enabled = true;
+                    // IMGUI 关掉 GUI.enabled 只是不吃点击，自定义贴图不会自己变灰，压一层半透明盖住
+                    if (!canLayer)
+                        DrawRect(r, new Color(0.05f, 0.06f, 0.08f, 0.45f));
+
+                    if (elimClicked)
+                    {
+                        int next = GameSettings.ElimMode == GameSettings.ElimLayer
+                            ? GameSettings.ElimRows
+                            : GameSettings.ElimLayer;
+                        GameSettings.SetElimMode(next);
+                    }
+                    break;
+                }
+
+                case 3:
+                    if (GUI.Button(r, "下落速度：" + GameSettings.FallSpeed.ToString("0.00") + "×", _btnBig))
+                    {
+                        _tmpSpeed = GameSettings.FallSpeed;
+                        _page = SettingsPage.Speed;
+                    }
+                    break;
+
+                case 4:
+                {
+                    string musicName = GameSettings.MusicVolume <= 0.005f
+                        ? "音乐：关"
+                        : "音乐：" + Mathf.RoundToInt(GameSettings.MusicVolume * 100f) + "%";
+                    if (GUI.Button(r, musicName, _btnBig))
+                    {
+                        _tmpMusic = GameSettings.MusicVolume;
+                        _page = SettingsPage.Music;
+                    }
+                    break;
+                }
+
+                case 5:
+                    // 落点提示：下落时把方块会停在哪儿用高亮方框标出来（3D 场地里不标很难估）
+                    if (GUI.Button(r, GameSettings.GhostPiece ? "落点提示：开" : "落点提示：关", _btnBig))
+                        GameSettings.SetGhostPiece(!GameSettings.GhostPiece);
+                    break;
+
+                case 6:
+                    DrawScreenOrientationRow(r);
+                    break;
+
+                case 7:
+                    if (GUI.Button(r, "场地尺寸", _btnBig))
+                    {
+                        _tmpX = GameSettings.SizeX;
+                        _tmpY = GameSettings.SizeY;
+                        _tmpZ = GameSettings.SizeZ;
+                        _page = SettingsPage.Size;
+                    }
+                    break;
+
+                case 8:
+                    // 特殊方块各机制的开关都收在这一页里
+                    if (GUI.Button(r, "特殊方块开关", _btnBig))
+                    {
+                        _mechScroll = Vector2.zero;
+                        _page = SettingsPage.Mech;
+                    }
+                    break;
+
+                case 9:
+                    if (GUI.Button(r, "返回", _btnBig))
+                        BeginCloseSettings();
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// 「屏幕方向」这一行：自动 / 横屏 / 竖屏 循环。
+        ///
+        /// 网页版把这个选择推给页面：横屏 / 竖屏 会让浏览器进全屏再调
+        /// <c>screen.orientation.lock()</c>，系统真的转屏之后窗口尺寸变化、
+        /// 模板把新尺寸写回画布，Unity 就按新方向排版（见 WebGLTemplates 里的模板）。
+        /// 桌面版没有这回事，窗口比例由玩家自己拉。
+        /// </summary>
+        void DrawScreenOrientationRow(Rect r)
+        {
+            string name;
+            switch (MobileMode.Orientation)
             {
-                _mechScroll = Vector2.zero;        // 每次进来都从头看
-                _page = SettingsPage.Mech;
+                case MobileMode.ScreenMode.Landscape: name = "屏幕：横屏"; break;
+                case MobileMode.ScreenMode.Portrait: name = "屏幕：竖屏"; break;
+                default: name = "屏幕：自动"; break;
             }
-            y += Pg(wide ? 46f : 62f);     // 最后这一格比别的宽一点，把「返回」和上面隔开
 
-            if (GUI.Button(new Rect(bx, y, bw, bh), "返回", _btnBig))
-                ShowSettings = false;
+            if (GUI.Button(r, name, _btnBig))
+            {
+                MobileMode.ScreenMode next;
+                switch (MobileMode.Orientation)
+                {
+                    case MobileMode.ScreenMode.Auto: next = MobileMode.ScreenMode.Landscape; break;
+                    case MobileMode.ScreenMode.Landscape: next = MobileMode.ScreenMode.Portrait; break;
+                    default: next = MobileMode.ScreenMode.Auto; break;
+                }
+                MobileMode.SetOrientation(next);
+                _rotateHintClosed = false;   // 换了一次设置，提示重新算
+            }
+        }
+
+        /// <summary>
+        /// 「选了横屏，但屏幕还是竖的」时压一层提示。
+        ///
+        /// 网页版锁方向只能靠 <c>screen.orientation.lock()</c>，iOS Safari 和微信 /
+        /// QQ 内置浏览器都没实现，安卓 Chrome 也要先进全屏才行。这些环境上点了横屏
+        /// 不会有任何反应 —— 与其让人以为按钮坏了，不如直接说清楚：把手机横过来就好，
+        /// 转过去之后模板会把新尺寸写回画布，版式自己就切了。
+        /// </summary>
+        void DrawRotateHint()
+        {
+            if (!MobileMode.WantsLandscapeButPortrait || _rotateHintClosed)
+                return;
+
+            DrawRect(new Rect(0f, 0f, Screen.width, Screen.height),
+                UiSkin.Current == UiSkin.Theme.Light
+                    ? new Color(0.93f, 0.96f, 1f, 0.88f)
+                    : new Color(0f, 0f, 0f, 0.88f));
+
+            float w = Mathf.Min(Screen.width * 0.86f, UiSkin.P(300f));
+            float h = UiSkin.P(200f);
+            Rect panel = CenterPanel(w, h);
+            DrawPanel(panel);
+
+            int titleSize = Mathf.Max(14, Mathf.RoundToInt(UiSkin.Size(24)));
+            _panelTitleStyle.fontSize = titleSize;
+            _panelTitleStyle.normal.textColor = UiSkin.TextPrimary;
+            GUI.Label(new Rect(panel.x, panel.y + UiSkin.P(26f), panel.width, UiSkin.P(38f)),
+                "请把手机横过来", _panelTitleStyle);
+
+            _rotateHintStyle.fontSize = Mathf.Max(11, Mathf.RoundToInt(UiSkin.Size(14)));
+            _rotateHintStyle.normal.textColor = UiSkin.TextSecondary;
+            GUI.Label(new Rect(panel.x + UiSkin.P(14f), panel.y + UiSkin.P(72f),
+                    panel.width - UiSkin.P(28f), UiSkin.P(24f)),
+                "这台设备的浏览器不支持网页锁定方向", _rotateHintStyle);
+            GUI.Label(new Rect(panel.x + UiSkin.P(14f), panel.y + UiSkin.P(100f),
+                    panel.width - UiSkin.P(28f), UiSkin.P(24f)),
+                "横握手机后版式会自动切过去", _rotateHintStyle);
+
+            Rect ok = new Rect(panel.x + (panel.width - UiSkin.P(160f)) * 0.5f,
+                panel.yMax - UiSkin.P(56f), UiSkin.P(160f), UiSkin.P(40f));
+            _menuBtnStyle.fontSize = Mathf.Max(12, Mathf.RoundToInt(UiSkin.Size(17)));
+            if (GUI.Button(ok, "先用竖屏", _menuBtnStyle))
+                _rotateHintClosed = true;
         }
 
         /// <summary>
@@ -1283,7 +1489,7 @@ namespace MinecraftTetris
         {
             new[] { "游戏玩法", "参照经典游戏《俄罗斯方块》。" },
             new[] { "游戏方块来源", "《我的世界》。" },
-            new[] { "游戏场地", "默认为（x = 10，y = 20，z = 1），可以在 设置 → 场地尺寸 里自行调节。" },
+            new[] { "游戏场地", "默认 10 × 20 × 1，可在「设置 → 场地尺寸」里调。" },
             // 第三段是这一条在手机上的说法：手机上既没有键盘，也没有「按键设置」那一页
             new[] { "方向选择", "支持沿 x、y、z 轴任意旋转 90°，键位可以在 设置 → 按键设置 里自定义。",
                     "支持沿 x、y、z 轴任意旋转 90°，用右侧的旋转按键操作。" },
@@ -1443,43 +1649,50 @@ namespace MinecraftTetris
             // 换一下就是三个不同的宽高比，看着像三张不同的图。内容超出去靠滚动，
             // 面板本身不再跟着内容长。
             bool compact = MobileMode.Enabled;
+            bool wide = WidePage;
             float designW = compact ? 460f : 1000f;
             float designH = compact ? 790f : 596f;
             Rect panel = BeginPage(designW, designH);
             float w = panel.width;
             DrawPanel(panel);
 
-            GUI.Label(new Rect(panel.x, panel.y + Pg(12f), w, Pg(46f)), "游戏规则", _panelTitleBig);
+            PageTitle(panel, "游戏规则", 12f);
 
             // 手机上键盘映射没意义，这一栏整栏不显示：页签只画「玩法」和「特殊方块」，
             // 两个页签在面板里居中排（按可见数量算宽度，别沿用三栏的居中公式）
-            float tw = Pg(compact ? 132f : 200f);
-            float th = Pg(40f);
+            float tw = Pg(wide ? 150f : (compact ? 132f : 200f));
+            float th = Pg(wide ? 28f : 40f);
             float tgap = Pg(compact ? 8f : 16f);
             int tabCount = 0;
             for (int i = 0; i < GuideTabCount; i++)
                 if (GuideTabVisible(i))
                     tabCount++;
             float tx = panel.x + (w - (tw * tabCount + tgap * (tabCount - 1))) * 0.5f;
-            float ty = panel.y + Pg(56f);
+            float ty = panel.y + Pg(wide ? 26f : 56f);
             int slot = 0;
             for (int i = 0; i < GuideTabCount; i++)
             {
                 if (!GuideTabVisible(i))
                     continue;
 
-                Color prev = GUI.color;
-                GUI.color = _guideTab == i ? Color.white : new Color(0.7f, 0.7f, 0.7f, 1f);
-                if (GUI.Button(new Rect(tx + slot * (tw + tgap), ty, tw, th), GuideTabNames[i], _btnBig))
+                // 选中态不再靠整体调暗/调亮：亮色主题下「调白」的按钮和白色面板糊在一起，
+                // 看着反倒是灰的那个像被选中（真机截图反馈「颜色反了」）。
+                // 现在两颗按钮同色，选中的那颗底下压一条强调色横线，两套主题都一眼能看出。
+                var tabRect = new Rect(tx + slot * (tw + tgap), ty, tw, th);
+                if (GUI.Button(tabRect, GuideTabNames[i], _btnBig))
                     _guideTab = i;
-                GUI.color = prev;
+                if (_guideTab == i)
+                {
+                    DrawRect(new Rect(tabRect.x + Pg(10f), tabRect.yMax - Pg(3f),
+                        tabRect.width - Pg(20f), Pg(3f)), UiSkin.Accent);
+                }
                 slot++;
             }
 
             string tabNote = GuideTabNotes[_guideTab];
             // 手机上 460 宽放不下那句长提示（特殊方块栏那句有四十多字，会横着溢出面板），
             // 干脆不画：下面每一项都写着自己的机制，开关在设置页
-            bool noteFits = !compact || string.IsNullOrEmpty(tabNote) || tabNote.Length <= 26;
+            bool noteFits = !wide && (!compact || string.IsNullOrEmpty(tabNote) || tabNote.Length <= 26);
             if (!string.IsNullOrEmpty(tabNote) && noteFits)
                 GUI.Label(new Rect(panel.x, panel.y + Pg(100f), w, Pg(28f)), tabNote, _guideNoteBig);
 
@@ -1490,9 +1703,11 @@ namespace MinecraftTetris
             else
                 DrawRulesBlocks(panel);
 
-            if (GUI.Button(new Rect(panel.x + w - Pg(230f), panel.yMax - Pg(76f),
-                Pg(180f), Pg(44f)), "返回", _btnBig))
-                ShowSettings = false;
+            Rect backRect = wide
+                ? new Rect(panel.x + (w - Pg(200f)) * 0.5f, panel.yMax - Pg(46f), Pg(200f), Pg(34f))
+                : new Rect(panel.x + w - Pg(230f), panel.yMax - Pg(76f), Pg(180f), Pg(44f));
+            if (GUI.Button(backRect, "返回", _btnBig))
+                BeginCloseSettings();
         }
 
         /// <summary>玩法栏：六段小标题 + 正文。放大之后一列放不下六段，改成两列每列三段。</summary>
@@ -1500,15 +1715,18 @@ namespace MinecraftTetris
         {
             if (MobileMode.Enabled)
             {
-                // 手机单列：六段竖着排。两列在 460 宽里每列只剩 200，正文会挤成一条
+                // 手机单列：六段竖着排。两列在 460 宽里每列只剩 200，正文会挤成一条。
+                // 横屏画布只有 480 高，行距压到 58，六段正好排完（116+6*88 会溢出面板）
+                bool wide = WidePage;
                 float narrowW = w - Pg(80f);
-                float narrowRow = Pg(88f);
-                float narrowTop = panel.y + Pg(116f);
+                float narrowRow = Pg(wide ? 60f : 88f);
+                float narrowTop = panel.y + Pg(wide ? 62f : 116f);
                 for (int i = 0; i < PlayRules.Length; i++)
                 {
                     float y = narrowTop + i * narrowRow;
                     GUI.Label(new Rect(panel.x + Pg(40f), y, narrowW, Pg(28f)), PlayRules[i][0], _guideNameBig);
-                    GUI.Label(new Rect(panel.x + Pg(40f), y + Pg(28f), narrowW, Pg(56f)), PlayRuleDesc(i), _guideDescBig);
+                    GUI.Label(new Rect(panel.x + Pg(40f), y + Pg(26f), narrowW, Pg(wide ? 32f : 56f)),
+                        PlayRuleDesc(i), _guideDescBig);
                 }
                 return;
             }
@@ -1594,14 +1812,16 @@ namespace MinecraftTetris
             {
                 // 手机单列十一项，一屏放不下 —— 裁一块可视区，内容在里面滚。
                 // 滚轮和手指拖动都认：手机上只有拖，电脑上两个都顺手。
+                bool wide = WidePage;
                 float narrowW = panel.width - Pg(80f);
                 // 行高 78 只够标题 + 两行说明；「傀儡」那条要三行，
                 // 第三行整个被裁掉（真机截图里末尾的字就是丢的）。
-                float rowH = Pg(98f);
-                float top = panel.y + Pg(126f);
+                float rowH = Pg(wide ? 66f : 98f);
+                float top = panel.y + Pg(wide ? 62f : 126f);
                 // 返回按钮的顶边在 yMax - 76，这里再多留一点：贴着按钮裁的话，
                 // 最后一行字会被切一半、看着像被按钮压住。
-                float avail = Mathf.Max(rowH, panel.yMax - Pg(104f) - top);
+                float bottomEdge = wide ? panel.yMax - Pg(54f) : panel.yMax - Pg(104f);
+                float avail = Mathf.Max(rowH, bottomEdge - top);
 
                 // 先把可用高度切成整数行，再把余量平均还给每一行。
                 //
@@ -1803,11 +2023,15 @@ namespace MinecraftTetris
         /// <summary>从方块图集里切一格顶面出来画成图标；方块表里查不到就画个灰块。</summary>
         void DrawBlockIcon(Rect r, int blockId)
         {
-            DrawRect(new Rect(r.x - 1f, r.y - 1f, r.width + 2f, r.height + 2f), new Color(0f, 0f, 0f, 0.55f));
+            // 边框画在 rect **里面**：先铺一层深色底、再把贴图缩进 1px 盖上。
+            // 原来画在 r 外面（r.x-1），而列表最左一列正好贴着滚动区的裁剪边，
+            // 外扩的那 1px 被裁掉，最左边那枚图标看着就少了一条边。
+            DrawRect(r, new Color(0f, 0f, 0f, 0.55f));
+            Rect inner = new Rect(r.x + 1f, r.y + 1f, r.width - 2f, r.height - 2f);
 
             if (_atlasTex == null || blockId <= 0 || blockId > BlockCatalog.Blocks.Length)
             {
-                DrawRect(r, new Color(0.25f, 0.28f, 0.33f, 1f));
+                DrawRect(inner, new Color(0.25f, 0.28f, 0.33f, 1f));
                 return;
             }
 
@@ -1825,7 +2049,7 @@ namespace MinecraftTetris
                 (float)BlockCatalog.TilePixels / aw,
                 (float)BlockCatalog.TilePixels / ah);
 
-            GUI.DrawTextureWithTexCoords(r, _atlasTex, uv);
+            GUI.DrawTextureWithTexCoords(inner, _atlasTex, uv);
         }
 
         // ---------- 工具 ----------
@@ -2068,7 +2292,7 @@ namespace MinecraftTetris
                     "返回", _btnStyle))
             {
                 _renaming = false;
-                ShowSettings = false;
+                BeginCloseSettings();
             }
 
             // 左边的模具列表
@@ -2207,15 +2431,20 @@ namespace MinecraftTetris
         }
 
         /// <summary>
-        /// 手机上的创意工坊：竖屏单列 —— 上面选模具、中间建造盒、下面两排工具。
-        /// 桌面那套是「左边列表 + 右边盒子」的横向布局，竖屏照搬会把两样都挤成一条。
+        /// 手机上的创意工坊。两种版式：
+        /// 竖屏一列到底 —— 上面选模具、中间建造盒、下面两排工具；
+        /// 横屏左右分栏 —— 左半屏整块留给建造盒，控件全在右半屏（见下面的 wide 分支）。
+        /// 桌面那套「左边列表 + 右边盒子」照搬到竖屏会把两样都挤成一条。
         ///
         /// 交互也换了：右键擦除在手机上不存在，改成工具栏里的「擦除」开关，
         /// 点一下是放还是擦由它决定（手势在 MoldWorkbench.HandleTouch 里）。
         /// </summary>
         void DrawWorkshopMobile()
         {
-            Rect panel = BeginPage(460f, 790f);
+            // 横屏：建造盒挪到左半屏之后，右侧这一列只需要 400 高；
+            // 竖屏还是原来那块 790 高的一整列。
+            bool wide = WidePage;
+            Rect panel = BeginPage(460f, wide ? 400f : 790f);
             float w = panel.width;
             DrawPanel(panel);
 
@@ -2225,15 +2454,20 @@ namespace MinecraftTetris
                     "返回", _btnStyle))
             {
                 _renaming = false;
-                ShowSettings = false;
+                BeginCloseSettings();
             }
+
+            // 内容区左右沿：横屏这一列更宽（整块右半屏），竖屏受建造盒宽度约束
+            float colX = panel.x + Pg(30f);
+            float viewSize = Mathf.Min(w - Pg(60f), Pg(366f));
+            float colW = wide ? Mathf.Max(Pg(200f), w - Pg(60f)) : viewSize;
 
             // 模具选择：窄屏放不下左边那列列表，改成「← 名字 ✓ →」一行翻
             float selY = panel.y + Pg(64f);
             float selH = Pg(40f);
             int count = MoldData.Items.Count;
 
-            if (GUI.Button(new Rect(panel.x + Pg(30f), selY, Pg(44f), selH), "←", _btnStyle)
+            if (GUI.Button(new Rect(colX, selY, Pg(44f), selH), "←", _btnStyle)
                 && count > 0)
             {
                 _moldSel = (_moldSel - 1 + count) % count;
@@ -2246,9 +2480,9 @@ namespace MinecraftTetris
                 : MoldData.Items[_moldSel].name
                   + (MoldData.Items[_moldSel].enabled != 0 ? "  ✓" : "  ○")
                   + "   " + (_moldSel + 1) + "/" + count;
-            GUI.Label(new Rect(panel.x + Pg(80f), selY, w - Pg(160f), selH), label, _listStyle);
+            GUI.Label(new Rect(colX + Pg(50f), selY, colW - Pg(110f), selH), label, _listStyle);
 
-            if (GUI.Button(new Rect(panel.x + w - Pg(74f), selY, Pg(44f), selH), "→", _btnStyle)
+            if (GUI.Button(new Rect(colX + colW - Pg(44f), selY, Pg(44f), selH), "→", _btnStyle)
                 && count > 0)
             {
                 _moldSel = (_moldSel + 1) % count;
@@ -2256,11 +2490,30 @@ namespace MinecraftTetris
                 LoadMoldEdit();
             }
 
-            // 建造盒：正中间一块方的，宽度顶满（留 30 的边距）
-            // 高度也给个上限：面板 790 高，扣掉选模具行、两排工具、两行提示和底部四个按钮，
-            // 建造盒最多只能占 366。照 400 铺满的话提示行会顶到按钮上。
-            float viewSize = Mathf.Min(w - Pg(60f), Pg(366f));
-            var viewRect = new Rect(panel.x + Pg(30f), selY + selH + Pg(10f), viewSize, viewSize);
+            // 建造盒。
+            // 横屏：整块左半屏，取半屏可用区里最大的正方形、竖直居中 ——
+            //   右边那一列控件不再压着它，建造盒能长到屏幕高度那么大。
+            // 竖屏：正中间一块方的，宽度顶满（留 30 的边距），高度上限 366
+            //   （面板 790 高，扣掉选模具行、两排工具、两行提示和底部四个按钮，
+            //    再高提示行就顶到按钮上了）。
+            Rect viewRect;
+            float rowY;
+            if (wide)
+            {
+                float margin = UiSkin.P(PageMargin);
+                float availW = Mathf.Max(1f, Screen.width * 0.5f - margin * 2f);
+                float availH = Mathf.Max(1f, Screen.height - margin * 2f);
+                float side = Mathf.Min(availW, availH);
+                viewRect = new Rect(margin + (availW - side) * 0.5f,
+                    (Screen.height - side) * 0.5f, side, side);
+                rowY = selY + selH + Pg(14f);
+            }
+            else
+            {
+                viewRect = new Rect(colX, selY + selH + Pg(10f), viewSize, viewSize);
+                rowY = viewRect.yMax + Pg(12f);
+            }
+
             if (Workbench != null)
                 Workbench.Draw(viewRect);
             else
@@ -2268,28 +2521,26 @@ namespace MinecraftTetris
             DrawViewBorder(viewRect);
 
             float bh = Pg(40f);
-            float rowY = viewRect.yMax + Pg(12f);
-            float x0 = panel.x + Pg(30f);
 
-            GUI.Label(new Rect(x0, rowY + Pg(5f), Pg(28f), Pg(30f)), "层", _rowLabelStyle);
-            if (GUI.Button(new Rect(x0 + Pg(30f), rowY, Pg(44f), bh), "←", _btnStyle) && Workbench != null)
+            GUI.Label(new Rect(colX, rowY + Pg(5f), Pg(28f), Pg(30f)), "层", _rowLabelStyle);
+            if (GUI.Button(new Rect(colX + Pg(30f), rowY, Pg(44f), bh), "←", _btnStyle) && Workbench != null)
                 Workbench.Layer = Workbench.Layer - 1;
-            GUI.Label(new Rect(x0 + Pg(80f), rowY, Pg(60f), bh),
+            GUI.Label(new Rect(colX + Pg(80f), rowY, Pg(60f), bh),
                 Workbench != null ? (Workbench.Layer + 1) + " / " + MoldData.Size : "-", _rowLabelStyle);
-            if (GUI.Button(new Rect(x0 + Pg(146f), rowY, Pg(44f), bh), "→", _btnStyle) && Workbench != null)
+            if (GUI.Button(new Rect(colX + Pg(146f), rowY, Pg(44f), bh), "→", _btnStyle) && Workbench != null)
                 Workbench.Layer = Workbench.Layer + 1;
-            if (GUI.Button(new Rect(x0 + Pg(196f), rowY, Pg(190f), bh),
+            if (GUI.Button(new Rect(colX + Pg(196f), rowY, Pg(190f), bh),
                     Workbench != null && Workbench.DimOthers ? "只亮当前层：开" : "只亮当前层：关", _btnStyle)
                 && Workbench != null)
                 Workbench.DimOthers = !Workbench.DimOthers;
 
             // 第二排工具：五个等宽按钮。最后一个「擦除」是手机专用的开关
             float row2 = rowY + bh + Pg(8f);
-            float bw5 = (viewSize - Pg(24f)) / 5f;
+            float bw5 = (colW - Pg(24f)) / 5f;
             string[] names = { "镜像", "居中", "清空", "复位" };
             for (int i = 0; i < 4; i++)
             {
-                if (!GUI.Button(new Rect(x0 + i * (bw5 + Pg(6f)), row2, bw5, bh), names[i], _btnStyle))
+                if (!GUI.Button(new Rect(colX + i * (bw5 + Pg(6f)), row2, bw5, bh), names[i], _btnStyle))
                     continue;
                 if (Workbench == null)
                     continue;
@@ -2300,7 +2551,7 @@ namespace MinecraftTetris
             }
 
             bool erasing = Workbench != null && Workbench.EraseMode;
-            if (GUI.Button(new Rect(x0 + 4 * (bw5 + Pg(6f)), row2, bw5, bh),
+            if (GUI.Button(new Rect(colX + 4 * (bw5 + Pg(6f)), row2, bw5, bh),
                     erasing ? "擦除中" : "擦除", _btnStyle) && Workbench != null)
                 Workbench.EraseMode = !erasing;
 
@@ -2311,32 +2562,38 @@ namespace MinecraftTetris
             // 现在文案压到一行放得下，行高按字号给足 28，两行之间也不重叠。
             float hintY = row2 + bh + Pg(10f);
             string hint = Workbench != null ? Workbench.Hint : null;
-            GUI.Label(new Rect(x0, hintY, viewSize, Pg(28f)),
+            GUI.Label(new Rect(colX, hintY, colW, Pg(28f)),
                 hint ?? (erasing
                     ? "点按擦除 · 拖动转视角 · 双指缩放"
                     : "点按放置 · 拖动转视角 · 双指缩放"),
                 _rowLabelStyle);
-            GUI.Label(new Rect(x0, hintY + Pg(28f), viewSize, Pg(28f)), MoldStatus(), _rowLabelStyle);
+            GUI.Label(new Rect(colX, hintY + Pg(28f), colW, Pg(28f)), MoldStatus(), _rowLabelStyle);
 
-            // 底部四个按钮
-            float by = panel.yMax - Pg(110f);
-            float bw4 = (viewSize - Pg(18f)) / 4f;
+            // 底部四个按钮。横屏这一列只有 400 高，按钮贴着面板底边收；
+            // 竖屏下面还有空，留 110 的余量（改名输入框就塞在这段里）。
+            float by = wide ? panel.yMax - Pg(70f) : panel.yMax - Pg(110f);
+            float bw4 = (colW - Pg(18f)) / 4f;
 
-            if (GUI.Button(new Rect(x0, by, bw4, bh), "新建", _btnStyle))
+            // 横屏提示行下面到按钮之间还有一段空，把这条说明摆进去
+            if (wide)
+                GUI.Label(new Rect(colX, by - Pg(26f), colW, Pg(24f)),
+                    "启用的模具会和 7 种默认方块一起随机出现", _rowLabelStyle);
+
+            if (GUI.Button(new Rect(colX, by, bw4, bh), "新建", _btnStyle))
             {
                 MoldData.Add();
                 _moldSel = MoldData.Items.Count - 1;
                 _renaming = false;
                 LoadMoldEdit();
             }
-            if (GUI.Button(new Rect(x0 + bw4 + Pg(6f), by, bw4, bh), "删除", _btnStyle))
+            if (GUI.Button(new Rect(colX + bw4 + Pg(6f), by, bw4, bh), "删除", _btnStyle))
             {
                 MoldData.Remove(_moldSel);
                 if (_moldSel >= MoldData.Items.Count)
                     _moldSel = MoldData.Items.Count - 1;
                 LoadMoldEdit();
             }
-            if (GUI.Button(new Rect(x0 + (bw4 + Pg(6f)) * 2f, by, bw4, bh), "改名", _btnStyle))
+            if (GUI.Button(new Rect(colX + (bw4 + Pg(6f)) * 2f, by, bw4, bh), "改名", _btnStyle))
             {
                 if (_moldSel >= 0 && _moldSel < MoldData.Items.Count)
                 {
@@ -2347,7 +2604,7 @@ namespace MinecraftTetris
 
             bool on = _moldSel >= 0 && _moldSel < MoldData.Items.Count
                       && MoldData.Items[_moldSel].enabled != 0;
-            if (GUI.Button(new Rect(x0 + (bw4 + Pg(6f)) * 3f, by, bw4, bh),
+            if (GUI.Button(new Rect(colX + (bw4 + Pg(6f)) * 3f, by, bw4, bh),
                     on ? "启用中" : "未启用", _btnStyle))
             {
                 if (_moldSel >= 0 && _moldSel < MoldData.Items.Count)
@@ -2357,7 +2614,7 @@ namespace MinecraftTetris
             // 改名输入框压在底部那一行上：手机键盘弹出时它就在眼前，不用再滚
             if (_renaming)
             {
-                var box = new Rect(x0, by - Pg(48f), viewSize, Pg(40f));
+                var box = new Rect(colX, by - Pg(48f), colW, Pg(40f));
                 DrawRect(box, new Color(0f, 0f, 0f, 0.6f));
                 _renameText = GUI.TextField(new Rect(box.x + Pg(6f), box.y + Pg(4f), box.width - Pg(120f), Pg(32f)),
                     _renameText, 16, _btnStyle);
@@ -2460,6 +2717,9 @@ namespace MinecraftTetris
             _menuBtnStyle = new GUIStyle(_btnStyle);
             _menuBtnStyle.alignment = TextAnchor.MiddleCenter;
             _menuBtnStyle.fontSize = UiSkin.Size(18);
+            // 「请把手机横过来」提示层的正文：居中、不折行（折了行固定 Rect 会顶破）
+            _rotateHintStyle = MakeStyle(15, UiSkin.TextSecondary, TextAnchor.MiddleCenter, FontStyle.Normal);
+            _rotateHintStyle.wordWrap = false;
             // 设置各页的大号版本：颜色、对齐、换行设置和上面一一对应，字号每帧由 SyncPageFonts 改写
             _panelTitleBig = MakeStylePx(Fg(32), UiSkin.TextPrimary, TextAnchor.MiddleCenter, FontStyle.Bold);
             // 横屏时标题挪到左半屏，独立成一块，字号可以比面板里那档大一些

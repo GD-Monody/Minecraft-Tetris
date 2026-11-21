@@ -74,6 +74,13 @@ namespace MinecraftTetris
             // 先认平台：后面建光标拖尾、挂操作层、相机取景都要问它
             MobileMode.Detect();
 
+            // 把「屏幕方向」的选择推给网页端（模板里的 JS 负责旋转画布）。
+            // 页面自己的 localStorage 和 Unity 的 PlayerPrefs 是两套存储，
+            // 两边都可能有一份，启动时以 PlayerPrefs 为准同步一次。
+            // 例外：网址上带 ?orient=... 时以网址为准，不然调试用的那个参数立刻就被盖掉。
+            if (Application.absoluteURL.IndexOf("orient=", System.StringComparison.Ordinal) < 0)
+                MobileMode.ApplyOrientation();
+
             // -theme light|dark：临时指定配色，只影响本次运行（截图核对用，不写存档）
             string[] themeArgv = System.Environment.GetCommandLineArgs();
             int themeAt = System.Array.IndexOf(themeArgv, "-theme");
@@ -765,6 +772,8 @@ namespace MinecraftTetris
                 : new Color(0.42f, 0.44f, 0.48f);
             if (_frame != null)
                 _frame.ApplyTheme();     // 场地边框的线色也跟着换
+            if (_workbench != null)
+                _workbench.ApplyTheme(); // 建造盒的白底 / 深底，还有线框那几层材质
             UiSkin.NotifyChanged();
         }
 
