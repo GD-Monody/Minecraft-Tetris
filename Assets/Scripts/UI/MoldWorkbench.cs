@@ -33,6 +33,11 @@ namespace MinecraftTetris
         const float ZoomMax = 8.5f;
         const float ZoomDefault = 5.2f;
         const float OrbitDegPerPixel = 0.6f;
+        /// <summary>
+        /// 纵向比横向慢一档。俯仰只有 70 度可用（12~82），照 0.6 算只要拖 20 多像素就顶死，
+        /// 手指一划就"卡住"，看着像划不动。0.4 下全程要走 170 像素左右，刚好够用。
+        /// </summary>
+        const float PitchDegPerPixel = 0.4f;
 
         /// <summary>
         /// 俯仰角上下限。下限卡在 14 度。
@@ -42,9 +47,18 @@ namespace MinecraftTetris
         /// 看上去就像「边框少了几条」。暗色主题因为线是加色发光的，糊成一条也还亮着；
         /// 亮色主题是深灰细线，压在白底上直接糊没了，所以只有亮色那边露馅。
         /// 抬高到 14 度之后，顶面和网格始终有可见的面积，两个主题都不会再塌。
+        /// 现在压到 12 度，给俯仰多留一点余量（不能更低了，再低又开始塌）。
         /// </summary>
-        const float MinPitch = 14f;
-        const float MaxPitch = 80f;
+        const float MinPitch = 12f;
+        const float MaxPitch = 82f;
+
+        /// <summary>
+        /// 默认视角。俯仰角从 22 提到 36：「往上拖 = 俯仰变小」之后，22 度离下限只剩 10 度，
+        /// 手指往上拖两下就顶死，看着像整个划不动（用户报过）。36 度上下都有三十来度的余量，
+        /// 而且这个角度本来就是编辑器最常用的 3/4 视角。
+        /// </summary>
+        const float DefaultYaw = -38f;
+        const float DefaultPitch = 40f;
 
         /// <summary>编辑器里模具长什么样（游戏里它跟普通方块一样随机取材质）。</summary>
         const string EditorBlock = "diamond_block";
@@ -90,8 +104,8 @@ namespace MinecraftTetris
         Material _hiDark;
         Material _hiLight;
 
-        float _yaw = -38f;
-        float _pitch = 22f;
+        float _yaw = DefaultYaw;
+        float _pitch = DefaultPitch;
         float _zoom = ZoomDefault;
 
         /// <summary>
@@ -379,8 +393,8 @@ namespace MinecraftTetris
         /// <summary>视角复位。</summary>
         public void ResetView()
         {
-            _yaw = -38f;
-            _pitch = 22f;
+            _yaw = DefaultYaw;
+            _pitch = DefaultPitch;
             _zoom = ZoomDefault;
         }
 
@@ -469,7 +483,7 @@ namespace MinecraftTetris
                         if (Input.touchCount < 2 && _touchMoved > TapSlop)
                         {
                             _yaw += d.x * OrbitDegPerPixel;
-                            _pitch = Mathf.Clamp(_pitch + d.y * OrbitDegPerPixel, MinPitch, MaxPitch);
+                            _pitch = Mathf.Clamp(_pitch + d.y * PitchDegPerPixel, MinPitch, MaxPitch);
                         }
                     }
                     else if (t.phase == TouchPhase.Ended || t.phase == TouchPhase.Canceled)
@@ -579,7 +593,7 @@ namespace MinecraftTetris
                 _lbStart = e.mousePosition;
                 _lbMoved += d.magnitude;
                 _yaw += d.x * OrbitDegPerPixel;
-                _pitch = Mathf.Clamp(_pitch + d.y * OrbitDegPerPixel, MinPitch, MaxPitch);
+                _pitch = Mathf.Clamp(_pitch + d.y * PitchDegPerPixel, MinPitch, MaxPitch);
                 return;
             }
 
@@ -631,7 +645,7 @@ namespace MinecraftTetris
 
                 // 纵向锁在地板以上：拖到负角度就钻到盒子底下去往上看，画面会像是
                 // 「透视反了、看到本来被挡住的三个面」。编辑器不需要从下面看。
-                _pitch = Mathf.Clamp(_pitch + d.y * OrbitDegPerPixel, MinPitch, MaxPitch);
+                _pitch = Mathf.Clamp(_pitch + d.y * PitchDegPerPixel, MinPitch, MaxPitch);
                 return;
             }
 
