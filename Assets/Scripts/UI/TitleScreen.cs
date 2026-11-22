@@ -181,6 +181,15 @@ namespace MinecraftTetris
         /// <summary>这次设置是从游戏暂停面板打开的：关掉之后要回到暂停面板，不是回标题页。</summary>
         bool _fromPause;
 
+        /// <summary>
+        /// 关闭动画刚结束的那一帧的帧号。
+        ///
+        /// Bootstrap.Update 比这里先跑：收面板那一帧它读到的还是「设置开着」，HUD 先藏了，
+        /// 而这边已经不再画暂停画面 —— 中间空出整整一帧，露出的是没压暗的场地，
+        /// 看着就是「返回时闪一下」。这一帧由标题页补画一次暂停画面，下一帧交给 HUD。
+        /// </summary>
+        int _pauseTailFrame = -1;
+
         /// <summary>切到某个设置页。back = true 表示这是返回上一层，动画从左边滑回来。</summary>
         void GoPage(SettingsPage page, bool back = false)
         {
@@ -346,13 +355,25 @@ namespace MinecraftTetris
                     _closing = false;
                     ShowSettings = false;
                     if (_fromPause)
-                        _fromPause = false;   // 退回暂停面板（它自己会重新画出来）
+                    {
+                        _fromPause = false;          // 退回暂停面板（它自己会重新画出来）
+                        _pauseTailFrame = Time.frameCount;   // 这一帧 HUD 还被藏着，补画一次
+                    }
                 }
             }
         }
 
         void OnGUI()
         {
+            // 收面板那一帧（只这一帧）：HUD 还藏着，暂停画面由这里顶一帧，
+            // 上一帧的暗底就不会断，不会闪出亮着的场地
+            if (_pauseTailFrame == Time.frameCount && PauseBackdrop != null)
+            {
+                UiSkin.Apply();
+                PauseBackdrop(true);
+                return;
+            }
+
             // 从暂停面板打开的设置：标题页本身不显示（Visible 为 false），
             // 但设置面板要压在暂停画面上画出来
             if (!Visible && !(ShowSettings && _fromPause))
