@@ -1029,10 +1029,11 @@ namespace MinecraftTetris
             float h = panel.height;
             DrawPanel(panel);
 
-            // 横屏画布只有 480 高：行高压到 32、间距 5，十四项能露出八行
+            // 横屏画布只有 480 高，原来行高 32 + 间距 5 排得太挤（用户反馈「彼此上下
+            // 间隔太小」）。间距放到 12 / 16，行数少一点无所谓，反正列表本来就能滚。
             bool wide = WidePage;
-            float rowH = Pg(wide ? 32f : 46f);
-            float rowGap = Pg(wide ? 5f : 10f);
+            float rowH = Pg(wide ? 34f : 48f);
+            float rowGap = Pg(wide ? 12f : 16f);
             // 列表宽度取「面板宽 - 两边留白」和 560 设计像素里窄的那个，再**居中**。
             // 原来固定 400 宽、从 panel.x + 40 起排，面板加宽到 940 之后整块挤在左边，
             // 右边空一大片（用户截图里就是这样）。
@@ -1664,7 +1665,7 @@ namespace MinecraftTetris
                 {
                     Ids = new[] { Tnt.TntId, Tnt.RedstoneId },
                     Title = "TNT / 红石块",
-                    Desc = "红石块贴着就点火（隔一格不算），2.4 秒后炸掉半径 2，TNT 会连锁。",
+                    Desc = "红石方块会激活TNT，在几秒钟后爆炸，同时引爆周围的TNT。",
                 },
                 new GuideItem
                 {
@@ -1694,15 +1695,17 @@ namespace MinecraftTetris
                 {
                     Ids = new[] { FindBlock("water") },
                     Title = "水",
-                    Desc = "往低处和两边流，一格最多 8 份，碰到源岩浆会变成黑曜石。"
-                        + "TNT 上方有水时，它爆炸不会破坏任何方块。",
+                    // 数字、英文两侧不留空格：IMGUI 只在这类空格处才断行，
+                    // 留着空格会出现「一格最多 8」/「份，…」这种断法（截图里就是这样）
+                    Desc = "往低处和两边流，一格最多8份，碰到源岩浆会变成黑曜石。"
+                        + "TNT上方有水时，它爆炸不会破坏任何方块。",
                 },
                 new GuideItem
                 {
                     Ids = new[] { FindBlock("lava") },
                     Title = "岩浆",
                     Desc = "流得比水慢；源岩浆碰到水变黑曜石，流动的岩浆变圆石。"
-                        + "TNT 挨着岩浆会被点着。",
+                        + "TNT挨着岩浆会被点着。",
                 },
                 new GuideItem
                 {
@@ -1938,41 +1941,51 @@ namespace MinecraftTetris
                 // 滚轮和手指拖动都认：手机上只有拖，电脑上两个都顺手。
                 bool wide = WidePage;
                 float narrowW = panel.width - Pg(80f);
-                // 行高 78 只够标题 + 两行说明；「傀儡」那条要三行，
-                // 第三行整个被裁掉（真机截图里末尾的字就是丢的）。
-                float rowH = Pg(wide ? 66f : 98f);
                 float top = panel.y + Pg(wide ? 62f : 126f);
                 // 返回按钮的顶边在 yMax - 76，这里再多留一点：贴着按钮裁的话，
                 // 最后一行字会被切一半、看着像被按钮压住。
                 float bottomEdge = wide ? panel.yMax - Pg(54f) : panel.yMax - Pg(104f);
-                float avail = Mathf.Max(rowH, bottomEdge - top);
-
-                // 先把可用高度切成整数行，再把余量平均还给每一行。
-                //
-                // 只「向下取整」的话，列表底边会空出不满一行的一大条（实测 56px），
-                // 看着像内容没加载完；不取整直接铺满，底边又永远露半行字。
-                // 平均分配两头都不占：行数取整、行高略放大，边和底都是齐的。
-                int rows = Mathf.Max(1, Mathf.FloorToInt(avail / rowH));
-                float viewH = avail;
-                float step = avail / rows;
-                float contentH = _guideItems.Length * step;
-                float maxScroll = Mathf.Max(0f, contentH - viewH);
+                float viewH = Mathf.Max(Pg(60f), bottomEdge - top);
                 // 右边留一列给滚动条：不留的话条子直接压在说明文字最后几个字上
                 float rowW = narrowW - Pg(20f);
+
+                // 行高**按内容量**：以前是固定高度（可用高度除以行数），
+                // 说明长的那几条（结构方块三行、防爆方块两行图标）会压到下一项上 ——
+                // 真机截图里就是图标和下一行的字叠在一起。现在逐项量高度再累加。
+                var itemH = new float[_guideItems.Length];
+                float contentH = 0f;
+                for (int i = 0; i < _guideItems.Length; i++)
+                {
+                    itemH[i] = MeasureGuideRow(_guideItems[i], rowW);
+                    contentH += itemH[i];
+                }
+                float maxScroll = Mathf.Max(0f, contentH - viewH);
+
+                // -blockscroll N：把列表直接滚到 N（截图核对底部条目用）
+                if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-blockscroll") >= 0)
+                {
+                    string[] dbg = System.Environment.GetCommandLineArgs();
+                    int at = System.Array.IndexOf(dbg, "-blockscroll");
+                    if (at + 1 < dbg.Length && float.TryParse(dbg[at + 1], out float want))
+                        _blockScroll = Mathf.Clamp(want, 0f, maxScroll);
+                }
+
                 var clip = new Rect(panel.x + Pg(40f), top, rowW, viewH);
 
-                // 这里**不做整行吸附**：这一页的 step 正好等于一整个介绍框，
-                // 一吸附就等于每滑一下就跳一屏，怎么调都还是"抽"的。
-                // 干脆完全跟手，上下各露半行也就露半行。
+                // 完全跟手、不做整行吸附：这一页行高不再整齐，吸附反而会跳
                 ScrollList(clip, maxScroll, ref _blockScroll);
 
                 GUI.BeginGroup(clip);
+                float rowY = 0f;
                 for (int i = 0; i < _guideItems.Length; i++)
                 {
-                    float y = i * step - _blockScroll;
-                    if (y + step < 0f || y > viewH)
-                        continue;   // 看不见的不画
-                    DrawGuideRow(0f, y, rowW, _guideItems[i]);
+                    // 判断可见要用**减掉滚动量之后**的坐标：rowY 是内容坐标（从第一项数起），
+                    // 直接拿它跟 viewH 比，滚下去以后后面的条目永远算「在屏幕外」，
+                    // 于是列表底部整段消失（用户报的「水下面全没了」就是这个）。
+                    float y = rowY - _blockScroll;
+                    if (y + itemH[i] >= 0f && y <= viewH)
+                        DrawGuideRow(0f, y, rowW, _guideItems[i]);
+                    rowY += itemH[i];
                 }
                 GUI.EndGroup();
 
@@ -2152,36 +2165,221 @@ namespace MinecraftTetris
             DrawRect(new Rect(barX, barY, barW, barH), new Color(0.78f, 0.82f, 0.9f, 0.55f));
         }
 
-        void DrawGuideRow(float x, float y, float w, GuideItem item)
+        /// <summary>行首禁则：这些字符排到一行的开头很难看，宁可让上一行多挤一个字。</summary>
+        const string NoLineStart = "，。、；：？！）】｝」』”’%°℃";
+
+        /// <summary>断行结果缓存：OnGUI 一帧要跑好几趟，别每次都逐字量一遍。</summary>
+        static readonly System.Collections.Generic.Dictionary<string, string> _wrapCache =
+            new System.Collections.Generic.Dictionary<string, string>();
+
+        static bool IsWordChar(char c)
         {
-            int n = 0;
+            return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+        }
+
+        /// <summary>
+        /// 按像素宽度给中文断行。
+        ///
+        /// IMGUI 自带的 wordWrap 只认半角空格，中文「哪里都能断」：会把「TNT」拆成
+        /// T / NT、把句号顶到下一行开头。这里自己量：优先别把英文和数字拆开，
+        /// 行首出现标点就把标点拉回上一行，剩下的按字断。已有的 \n 当硬换行保留。
+        /// </summary>
+        string WrapCjk(string text, GUIStyle style, float width)
+        {
+            if (string.IsNullOrEmpty(text) || width <= 0f)
+                return text;
+
+            string key = text + "|" + Mathf.RoundToInt(width) + "|" + style.fontSize;
+            string cached;
+            if (_wrapCache.TryGetValue(key, out cached))
+                return cached;
+
+            var sb = new System.Text.StringBuilder(text.Length + 16);
+            string[] paras = text.Split('\n');
+            for (int pi = 0; pi < paras.Length; pi++)
+            {
+                if (pi > 0)
+                    sb.Append('\n');
+
+                string para = paras[pi];
+                string best = WrapPara(para, style, width);
+
+                // 最后一行只剩一两个字（「块。」这种）很难看：允许行宽松 4% / 8%
+                // 再断一次，只要能把行数降下来就采用 —— 相当于给排版留一点弹性。
+                if (LineCount(best) > 1 && LineWidestWidth(LastLine(best), style) < width * 0.5f)
+                {
+                    for (int k = 1; k <= 3; k++)
+                    {
+                        string alt = WrapPara(para, style, width * (1f + 0.04f * k));
+                        if (LineCount(alt) < LineCount(best))
+                        {
+                            best = alt;
+                            break;
+                        }
+                    }
+                }
+                sb.Append(best);
+            }
+
+            string outText = sb.ToString();
+            _wrapCache[key] = outText;
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-logwrap") >= 0)
+                Debug.Log("[wrap] w=" + Mathf.RoundToInt(width) + " fs=" + style.fontSize
+                    + " => " + outText.Replace("\n", " / "));
+            return outText;
+        }
+
+        /// <summary>按给定宽度把一段（不含换行）断成若干行，返回以 \n 连接的结果。</summary>
+        string WrapPara(string para, GUIStyle style, float width)
+        {
+            var sb = new System.Text.StringBuilder(para.Length + 8);
+            float lineW = 0f;
+            int lineStart = 0;
+            for (int i = 0; i < para.Length; i++)
+            {
+                char c = para[i];
+                float cw = style.CalcSize(new GUIContent(c.ToString())).x;
+                if (lineW + cw <= width || i == lineStart)
+                {
+                    lineW += cw;
+                    continue;
+                }
+
+                // 行首是标点：把它一起塞回本行（最多超一个字的宽度，看不出来）
+                if (NoLineStart.IndexOf(c) >= 0)
+                {
+                    sb.Append(para, lineStart, i - lineStart + 1);
+                    sb.Append('\n');
+                    lineStart = i + 1;
+                    lineW = 0f;
+                    continue;
+                }
+
+                int cut = i;
+                // 正落在英文/数字中间：退到这个词的开头再断
+                if (IsWordChar(c))
+                {
+                    int j = i;
+                    while (j > lineStart && IsWordChar(para[j - 1]))
+                        j--;
+                    if (j > lineStart)
+                        cut = j;
+                }
+                // 行尾正好是一个英文词（…黑曜石。TNT / 上方…）：把它挪到下一行，
+                // 别让「TNT」孤零零挂在行尾
+                else if (cut > lineStart && IsWordChar(para[cut - 1]))
+                {
+                    int j = cut;
+                    while (j > lineStart && IsWordChar(para[j - 1]))
+                        j--;
+                    if (j > lineStart)
+                        cut = j;
+                }
+
+                sb.Append(para, lineStart, cut - lineStart);
+                sb.Append('\n');
+                lineStart = cut;
+                lineW = 0f;
+                for (int k = cut; k <= i; k++)
+                    lineW += style.CalcSize(new GUIContent(para[k].ToString())).x;
+            }
+            sb.Append(para, lineStart, para.Length - lineStart);
+            return sb.ToString();
+        }
+
+        static int LineCount(string s)
+        {
+            int n = 1;
+            for (int i = 0; i < s.Length; i++)
+                if (s[i] == '\n')
+                    n++;
+            return n;
+        }
+
+        static string LastLine(string s)
+        {
+            int i = s.LastIndexOf('\n');
+            return i < 0 ? s : s.Substring(i + 1);
+        }
+
+        static float LineWidestWidth(string line, GUIStyle style)
+        {
+            return line.Length == 0 ? 0f : style.CalcSize(new GUIContent(line)).x;
+        }
+
+        /// <summary>断好的文字实际多宽：Label 的矩形照它给，免得 IMGUI 再自己折一次行。</summary>
+        float WrappedWidth(string wrapped, GUIStyle style)
+        {
+            float max = 0f;
+            string[] lines = wrapped.Split('\n');
+            for (int i = 0; i < lines.Length; i++)
+                max = Mathf.Max(max, LineWidestWidth(lines[i], style));
+            return max + 2f;
+        }
+
+        /// <summary>一条规则里图标的尺寸与排布（一行最多 3 个，超过就排第二行）。</summary>
+        void GuideIcons(GuideItem item, out int count, out float icon,
+            out int cols, out int rows, out float blockW, out float blockH)
+        {
+            count = 0;
             for (int i = 0; i < item.Ids.Length; i++)
                 if (item.Ids[i] > 0)
-                    n++;
+                    count++;
 
-            // 图标越多越要收着画：四个图标的条目（防爆方块）按 26 给的话，
-            // 文字区只剩一百来像素，二十八字的说明要排四行、第三行之外就被裁掉。
-            float icon = n <= 2 ? Pg(36f) : (n == 3 ? Pg(26f) : Pg(21f));
+            // 图标：最多 3 个排一行；超过 3 个（防爆方块 6 个）改成 3×2 两行，
+            // 一行排 6 个的时候每个只有 21 像素，糊成一条（用户反馈「太小」）。
+            icon = count <= 2 ? Pg(36f) : Pg(26f);
+            cols = count <= 0 ? 0 : Mathf.Min(3, count);
+            rows = count <= 0 ? 0 : Mathf.CeilToInt(count / 3f);
             float gap = Pg(4f);
-            float iconsW = n > 0 ? n * icon + (n - 1) * gap : 0f;
+            blockW = cols > 0 ? cols * icon + (cols - 1) * gap : 0f;
+            blockH = rows > 0 ? rows * icon + (rows - 1) * gap : 0f;
+        }
 
+        /// <summary>
+        /// 一条规则占多高：图标块和「标题 + 说明折行后的实际高度」取大的，再加行距。
+        /// 列表按它累加，长的条目不会压到下一项上。
+        /// </summary>
+        float MeasureGuideRow(GuideItem item, float w)
+        {
+            int count; float icon, blockW, blockH; int cols, rows;
+            GuideIcons(item, out count, out icon, out cols, out rows, out blockW, out blockH);
+            float pad = blockW > 0f ? blockW + Pg(10f) : 0f;
+            string desc = WrapCjk(item.Desc, _guideDescBig, w - pad);
+            float descW = WrappedWidth(desc, _guideDescBig);
+            float descH = _guideDescBig.CalcHeight(new GUIContent(desc), descW);
+            return Mathf.Max(blockH + Pg(4f), Pg(32f) + descH) + Pg(18f);
+        }
+
+        void DrawGuideRow(float x, float y, float w, GuideItem item)
+        {
+            int count; float icon, blockW, blockH; int cols, rows;
+            GuideIcons(item, out count, out icon, out cols, out rows, out blockW, out blockH);
+
+            float gap = Pg(4f);
             int slot = 0;
             for (int i = 0; i < item.Ids.Length; i++)
             {
                 if (item.Ids[i] <= 0)
                     continue;
-                DrawBlockIcon(new Rect(x + slot * (icon + gap), y + Pg(2f), icon, icon), item.Ids[i]);
+                int col = slot % 3;
+                int row = slot / 3;
+                DrawBlockIcon(new Rect(x + col * (icon + gap), y + Pg(2f) + row * (icon + gap),
+                    icon, icon), item.Ids[i]);
                 slot++;
             }
 
             // 图标在左、文字在右。三列之后每格只剩 293 宽，图标要是单独占一行，
             // 一格就顶到 130 高，四行直接压到「返回」上；并排之后一格正好 26 + 52 = 78。
-            float pad = iconsW > 0f ? iconsW + Pg(10f) : 0f;
+            float pad = blockW > 0f ? blockW + Pg(10f) : 0f;
             GUI.Label(new Rect(x + pad, y, w - pad, Pg(28f)), item.Title, _guideNameBig);
-            // 手机上单列的行虽然更宽，但图标最多三枚、文字区反而窄，
-            // 十四号字要排到三行；只给 58 高的话第三行会被裁掉。
-            float descH = Pg(MobileMode.Enabled ? 68f : 58f);
-            GUI.Label(new Rect(x + pad, y + Pg(30f), w - pad, descH), item.Desc, _guideDescBig);
+            // 说明高度按实际折行量给：固定高度在手机上要么裁掉第三行，
+            // 要么压到下一项的图标上（用户截图里两种都出现了）
+            string desc = WrapCjk(item.Desc, _guideDescBig, w - pad);
+            float descW = WrappedWidth(desc, _guideDescBig);
+            float descH = _guideDescBig.CalcHeight(new GUIContent(desc), descW);
+            GUI.Label(new Rect(x + pad, y + Pg(30f), descW, descH + Pg(4f)),
+                desc, _guideDescBig);
         }
 
         /// <summary>从方块图集里切一格顶面出来画成图标；方块表里查不到就画个灰块。</summary>
@@ -2864,7 +3062,8 @@ namespace MinecraftTetris
             // 滑条上的字会被圆头从中间穿过去，垫一层深色影子才读得清
             _sliderShadowStyle = MakeStyle(22, UiSkin.Current == UiSkin.Theme.Light ? new Color(0f, 0f, 0f, 0f) : new Color(0f, 0f, 0f, 0.75f), TextAnchor.MiddleCenter, FontStyle.Normal);
 
-            _guideNameStyle = MakeStyle(19, UiSkin.TextPrimary, TextAnchor.MiddleLeft, FontStyle.Bold);
+            // 不加粗：用户反馈规则页的条目标题糊成一团（加粗 + 中式字体笔画太密）
+            _guideNameStyle = MakeStyle(19, UiSkin.TextPrimary, TextAnchor.MiddleLeft, FontStyle.Normal);
             _guideNameStyle.wordWrap = false;
             _guideDescStyle = MakeStyle(14, UiSkin.TextSecondary, TextAnchor.UpperLeft, FontStyle.Normal);
             _guideDescStyle.wordWrap = true;
@@ -2908,7 +3107,7 @@ namespace MinecraftTetris
             // 更难认；影子也要用同样的字重，不然影子比字胖一圈、看着发虚。
             _valueBig = MakeStylePx(Fg(22), UiSkin.TextPrimary, TextAnchor.MiddleCenter, FontStyle.Normal);
             _sliderShadowBig = MakeStylePx(Fg(22), UiSkin.Current == UiSkin.Theme.Light ? new Color(0f, 0f, 0f, 0f) : new Color(0f, 0f, 0f, 0.75f), TextAnchor.MiddleCenter, FontStyle.Normal);
-            _guideNameBig = MakeStylePx(Fg(19), UiSkin.TextPrimary, TextAnchor.MiddleLeft, FontStyle.Bold);
+            _guideNameBig = MakeStylePx(Fg(19), UiSkin.TextPrimary, TextAnchor.MiddleLeft, FontStyle.Normal);
             _guideNameBig.wordWrap = false;
             _guideDescBig = MakeStylePx(Fg(14), UiSkin.TextSecondary, TextAnchor.UpperLeft, FontStyle.Normal);
             _guideDescBig.wordWrap = true;
