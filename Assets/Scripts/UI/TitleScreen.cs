@@ -1068,9 +1068,11 @@ namespace MinecraftTetris
 
             PageTitle(panel, "按键设置", 12f);
 
+            // 行高整体放大一档：34/52 → 44/58，键名按钮也跟着变宽变高。
+            // 一行装不下就靠下面的滚动区消化，不再把行压扁硬塞。
             bool wide = WidePage;
-            float rowH = Pg(wide ? 34f : 52f);
-            float gap = Pg(wide ? 6f : 8f);
+            float rowH = Pg(wide ? 44f : 58f);
+            float gap = Pg(wide ? 8f : 10f);
             float top = panel.y + Pg(wide ? 44f : 66f);
             // 底下固定不滚的：提示行 + 「恢复默认 / 返回」两个按钮
             float bottomReserve = Pg(wide ? 104f : 140f);
@@ -1089,7 +1091,7 @@ namespace MinecraftTetris
 
             ScrollList(clip, maxScroll, ref _keyScroll, step);
 
-            float keyW = Pg(140f);
+            float keyW = Pg(172f);
             // 行的实际高度：step 是均分后的步进，扣掉间距就是控件高度。
             // 绘制必须和 ScrollList 的吸附步进一致，否则滚完会错位半行。
             float lineH = step - gap2;
@@ -1954,9 +1956,16 @@ namespace MinecraftTetris
 
             // 松手之后把位置吸附到整行。不吸附的话停下来的位置是随机的，
             // 列表上下两条边各露出半行字，看着像被裁坏了（真机截图里就是这样）。
-            // 拖动过程中不吸附，否则手指还在动的时候画面会一跳一跳地跟手。
+            //
+            // 但吸附不能"啪"一下跳过去 —— 特殊方块那页的 step 正好是一整个介绍框，
+            // 每滑一下都像被吸走一整屏，手感是一跳一跳的。改成用 MoveTowards 补过去，
+            // 松手后 0.15 秒左右滑到位，既对齐又不跳。
             if (!dragging && snap > 0f)
-                scroll = Mathf.Clamp(Mathf.Round(scroll / snap) * snap, 0f, maxScroll);
+            {
+                float target = Mathf.Clamp(Mathf.Round(scroll / snap) * snap, 0f, maxScroll);
+                float speed = Mathf.Max(600f, snap * 6f);
+                scroll = Mathf.MoveTowards(scroll, target, speed * Time.unscaledDeltaTime);
+            }
         }
 
         /// <summary>自绘滚动指示条：内容放得下时不画。</summary>
