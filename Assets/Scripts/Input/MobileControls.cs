@@ -29,6 +29,8 @@ namespace MinecraftTetris
             InL, InR,            // 面内旋转（绕屏幕法线）
             YawL, YawR,          // 俯视旋转（绕竖直轴）
             PitchUp, PitchDown,  // 往背面 / 往正面翻（绕水平轴）
+            MoveL, MoveR,        // 左右平移
+            MoveAway, MoveNear,  // 上下游：往远处 / 往近处
             Soft, Hard,
         }
 
@@ -37,6 +39,12 @@ namespace MinecraftTetris
 
         /// <summary>软降按住后的连发间隔（秒）。松手就停。</summary>
         const float SoftRepeat = 0.055f;
+
+        /// <summary>平移键按住后的连发间隔。比软降慢一点，不然一碰就滑出去好几格。</summary>
+        const float MoveRepeat = 0.10f;
+
+        /// <summary>平移键按下到第一次连发的等待（秒）。</summary>
+        const float MoveFirstDelay = 0.22f;
 
         /// <summary>竖屏底部操作条占屏高的比例。</summary>
         public const float StripRatio = 0.18f;
@@ -141,15 +149,29 @@ namespace MinecraftTetris
                 return;
 
             // 软降按住连发：按下那一帧已经发过一次，之后靠这里续
-            int soft = SlotOf(Act.Soft);
-            if (soft < 0 || _finger[soft] < 0)
-                return;
-
             float now = Time.unscaledTime;
-            while (now >= _next[soft])
+            for (int i = 0; i < Slots; i++)
             {
-                _out.SoftDrop = true;
-                _next[soft] += SoftRepeat;
+                if (!_enabled[i] || _finger[i] < 0)
+                    continue;
+
+                bool softKey = _act[i] == Act.Soft;
+                if (!softKey && !IsRepeatAct(_act[i]))
+                    continue;
+
+                while (now >= _next[i])
+                {
+                    if (softKey)
+                    {
+                        _out.SoftDrop = true;
+                        _next[i] += SoftRepeat;
+                    }
+                    else
+                    {
+                        Fire(i);
+                        _next[i] += MoveRepeat;
+                    }
+                }
             }
         }
 
@@ -186,18 +208,20 @@ namespace MinecraftTetris
                 return;
             }
 
-            // 高级：按行优先摆进 3x3，正中（下标 4）空着
+            // 高级：按行优先摆进 3x3，正中（下标 4）空着。
+            // 十字那四个位置是**平移**（1 左 / 2 上 / 3 右 / 8 下），
+            // 4 / 6 是面内旋转，7 / 9 是软降 / 硬降。
             _rows = 3;
             _cols = 3;
-            _act[0] = Act.YawL;       // 1
-            _act[1] = Act.PitchUp;    // 2
-            _act[2] = Act.YawR;       // 3
+            _act[0] = Act.MoveL;      // 1
+            _act[1] = Act.MoveAway;   // 2
+            _act[2] = Act.MoveR;      // 3
             _act[3] = Act.InL;        // 4
-            _act[4] = Act.None;       // 0（空）
-            _act[5] = Act.InR;        // 5
-            _act[6] = Act.Soft;       // 6
-            _act[7] = Act.PitchDown;  // 7
-            _act[8] = Act.Hard;       // 8
+            _act[4] = Act.None;       // 5（空）
+            _act[5] = Act.InR;        // 6
+            _act[6] = Act.Soft;       // 7
+            _act[7] = Act.MoveNear;   // 8
+            _act[8] = Act.Hard;       // 9
 
             for (int i = 0; i < Slots; i++)
             {
@@ -208,9 +232,17 @@ namespace MinecraftTetris
             }
         }
 
+        /// <summary>没有深度（z = 1）就做不了的动作：绕竖直轴转、前后翻、上下游。</summary>
         static bool IsDepthAct(Act a)
         {
-            return a == Act.YawL || a == Act.YawR || a == Act.PitchUp || a == Act.PitchDown;
+            return a == Act.YawL || a == Act.YawR || a == Act.PitchUp || a == Act.PitchDown
+                   || a == Act.MoveAway || a == Act.MoveNear;
+        }
+
+        /// <summary>按住会连发的动作：平移和软降。</summary>
+        static bool IsRepeatAct(Act a)
+        {
+            return a == Act.MoveL || a == Act.MoveR || a == Act.MoveAway || a == Act.MoveNear;
         }
 
         /// <summary>某个动作当前占的槽位，没有就 -1。</summary>
@@ -394,7 +426,8 @@ namespace MinecraftTetris
                     continue;
 
                 _finger[i] = finger;
-                _next[i] = Time.unscaledTime + SoftRepeat;
+                _next[i] = Time.unscaledTime
+                    + (IsRepeatAct(_act[i]) ? MoveFirstDelay : SoftRepeat);
                 Fire(i);
                 return;
             }
@@ -482,6 +515,11 @@ namespace MinecraftTetris
                 case Act.YawR: _out.RotateYawCW = true; break;
                 case Act.PitchUp: _out.RotatePitchCW = true; break;
                 case Act.PitchDown: _out.RotatePitchCCW = true; break;
+                case Act.MoveL: _out.Left = true; break;
+                case Act.MoveR: _out.Right = true; break;
+                // 屏幕上「上」是把方块往远处推：InputState 里那是 Down（z 增大）
+                case Act.MoveAway: _out.Down = true; break;
+                case Act.MoveNear: _out.Up = true; break;
                 case Act.Soft: _out.SoftDrop = true; break;
                 case Act.Hard: _out.HardDrop = true; break;
             }
@@ -605,8 +643,23 @@ namespace MinecraftTetris
         {
             switch (a)
             {
+                case Act.MoveL:
+                    DrawArrow(r, 2, c);
+                    break;
+                case Act.MoveR:
+                    DrawArrow(r, 3, c);
+                    break;
+                case Act.MoveAway:
+                    DrawArrow(r, 0, c);
+                    break;
+                case Act.MoveNear:
+                    DrawArrow(r, 1, c);
+                    break;
+
                 case Act.Soft:
-                    DrawDown(r, 1, c);
+                    // 空心三角：硬降是实心双箭、平移是实心单箭，
+                    // 软降再来一个实心单箭就分不清了（实测两个 ▼ 挨着摆没法认）
+                    DrawHollow(r, c);
                     break;
 
                 case Act.Hard:
@@ -638,6 +691,40 @@ namespace MinecraftTetris
                     DrawArc(r, false, 0.6f, 1.2f, c);
                     break;
             }
+        }
+
+        /// <summary>空心的向下三角（软降）。</summary>
+        void DrawHollow(Rect r, Color c)
+        {
+            float side = Mathf.Min(r.width, r.height) * 0.50f;
+            var box = new Rect(r.center.x - side * 0.5f, r.center.y - side * 0.5f, side, side);
+
+            Matrix4x4 old = GUI.matrix;
+            GUIUtility.RotateAroundPivot(180f, box.center);
+
+            Color oc = GUI.color;
+            GUI.color = c;
+            GUI.DrawTexture(box, HollowTriangle);
+            GUI.color = oc;
+            GUI.matrix = old;
+        }
+
+        /// <summary>单个三角箭头：dir 0 上 / 1 下 / 2 左 / 3 右。</summary>
+        void DrawArrow(Rect r, int dir, Color c)
+        {
+            float side = Mathf.Min(r.width, r.height) * 0.50f;
+            var box = new Rect(r.center.x - side * 0.5f, r.center.y - side * 0.5f, side, side);
+
+            Matrix4x4 old = GUI.matrix;
+            // GUI 坐标 y 朝下，正角度是顺时针：左边那颗要指左，得逆时针转 90
+            float deg = dir == 0 ? 0f : dir == 1 ? 180f : dir == 2 ? -90f : 90f;
+            GUIUtility.RotateAroundPivot(deg, box.center);
+
+            Color oc = GUI.color;
+            GUI.color = c;
+            GUI.DrawTexture(box, ArrowTexture);
+            GUI.color = oc;
+            GUI.matrix = old;
         }
 
         /// <summary>向下的箭头：n = 1 单个（软降），n = 2 两个叠着（硬降）。</summary>
@@ -777,6 +864,36 @@ namespace MinecraftTetris
                 });
                 return _arrowTex;
             }
+        }
+
+        static Texture2D _hollowTex;
+
+        /// <summary>空心的向上三角：外三角减去缩小的内三角，剩下一条边。</summary>
+        static Texture2D HollowTriangle
+        {
+            get
+            {
+                if (_hollowTex != null)
+                    return _hollowTex;
+
+                _hollowTex = BuildShape(delegate (float x, float y)
+                {
+                    return InTriUp(x, y, 1f) && !InTriUp(x, y, 0.66f);
+                });
+                return _hollowTex;
+            }
+        }
+
+        /// <summary>朝上三角的判定；shrink 越小，三角越往里缩（用来挖空心）。</summary>
+        static bool InTriUp(float x, float y, float shrink)
+        {
+            float u = (x / TexSize - 0.5f) / shrink;
+            float v = (y / TexSize - 0.5f) / shrink + 0.5f;
+            const float baseV = 0.12f, tipV = 0.90f;
+            if (v < baseV || v > tipV)
+                return false;
+            float t = (v - baseV) / (tipV - baseV);
+            return Mathf.Abs(u) <= 0.42f * (1f - t);
         }
 
         static Texture2D _arcCw, _arcCcw;
