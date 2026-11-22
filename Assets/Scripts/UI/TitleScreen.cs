@@ -1540,16 +1540,20 @@ namespace MinecraftTetris
             {
                 case GameAction.Left: return "左移";
                 case GameAction.Right: return "右移";
-                case GameAction.Forward: return "前进（z 减小）";
-                case GameAction.Back: return "后退（z 增大）";
+                // 注意：动作名和直觉是反的 —— Forward 走的是 z 减小（朝玩家），
+                // Back 才是 z 增大（往画面里推）。玩家按 W 期望「往前走」，
+                // 而 W 绑在 Back 上，所以这里显示的「前移/后移」要和按键对上：
+                // 前移 = W/↑ = z 增大。
+                case GameAction.Forward: return "后移";
+                case GameAction.Back: return "前移";
                 case GameAction.SoftDrop: return "软降";
                 case GameAction.HardDrop: return "硬降";
                 case GameAction.RotateCW: return "面内顺时针";
                 case GameAction.RotateCCW: return "面内逆时针";
                 case GameAction.RotateYawCW: return "俯视顺时针";
                 case GameAction.RotateYawCCW: return "俯视逆时针";
-                case GameAction.RotatePitchCW: return "往背面翻";
-                case GameAction.RotatePitchCCW: return "往正面翻";
+                case GameAction.RotatePitchCW: return "往上面翻";
+                case GameAction.RotatePitchCCW: return "往下面翻";
                 default: return a.ToString();
             }
         }

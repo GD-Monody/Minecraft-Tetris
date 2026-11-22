@@ -24,9 +24,10 @@ namespace MinecraftTetris
 
     /// <summary>
     /// 默认键位（可被 PlayerPrefs 里的 keybind.N 覆盖）：
-    /// A/← 左，D/→ 右，S/↓ 前（z 减小），W/↑ 后（z 增大），左Shift 软降，空格 硬降，
-    /// E / Q 面内顺时针 / 逆时针，C / Z 俯视顺时针 / 逆时针（绕竖直轴），
-    /// R / V 往背面翻 / 往正面翻（绕水平轴）。
+    /// A/← 左移，D/→ 右移，W/↑ 前移（z 增大，往画面里推），S/↓ 后移（z 减小），
+    /// 左Shift 软降，空格 硬降，
+    /// E / Q 面内顺时针 / 逆时针，Z / C 俯视顺时针 / 逆时针（绕竖直轴），
+    /// R / V 往上面翻 / 往下面翻（绕水平轴）。
     ///
     /// 三套旋转分别绕屏幕上的三根轴：
     /// - 面内（Q/E）：绕屏幕法线，方块始终正对玩家，跟经典俄罗斯方块一样；
@@ -45,8 +46,9 @@ namespace MinecraftTetris
             new[] { KeyCode.Space },
             new[] { KeyCode.E },
             new[] { KeyCode.Q },
-            new[] { KeyCode.C },
+            // 俯视顺时针 / 逆时针：顺时针是 Z、逆时针是 C（原来这两行写反了）
             new[] { KeyCode.Z },
+            new[] { KeyCode.C },
             new[] { KeyCode.R },
             new[] { KeyCode.V },
         };
