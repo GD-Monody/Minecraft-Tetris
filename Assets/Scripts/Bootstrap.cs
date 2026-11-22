@@ -174,6 +174,7 @@ namespace MinecraftTetris
             {
                 _layerMap = gameObject.AddComponent<LayerMap>();
                 _layerMap.Loop = _loop;
+                _layerMap.View = _view;     // 「只亮 z 面」要改视图层的可见性
                 _layerMap.Hidden = true;    // 开始界面盖着的时候不画
                 // -openmap：截图核对俯视图的版式用（手机上它默认是收起的）
                 if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-openmap") >= 0)

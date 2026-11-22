@@ -1038,6 +1038,30 @@ namespace MinecraftTetris.EditorTools
             Check("半径内的方块被炸掉", gTnt.Get(5, 5, 0) == 0 && gTnt.Get(4, 6, 0) == 0);
             Check("半径外的方块留着", gTnt.Get(7, 5, 0) == stoneId);
 
+            // 头顶有水：这一炸只冒烟，一块都不拆
+            var gShield = new Grid(10, 20, 1);
+            for (int dx = -2; dx <= 2; dx++)
+            {
+                for (int dy = -2; dy <= 2; dy++)
+                {
+                    if (dx == 0 && dy == 0)
+                        continue;
+                    gShield.Set(5 + dx, 6 + dy, 0, stoneId);
+                }
+            }
+            gShield.Set(5, 6, 0, Tnt.TntId);
+            Fluids.AddSource(gShield, 5, 7, 0, Fluids.WaterId);
+            Tnt.Reset();
+            Tnt.Prime(gShield, 5, 6, 0, Tnt.FuseSeconds);
+            Check("头顶有水：TNT 依然会炸", Tnt.Tick(gShield, Tnt.FuseSeconds + 0.01f));
+            Check("头顶有水：TNT 自己那格清掉", gShield.Get(5, 6, 0) == 0);
+            Check("头顶有水：周围的石头一块不少",
+                gShield.Get(5, 5, 0) == stoneId && gShield.Get(4, 6, 0) == stoneId
+                && gShield.Get(6, 6, 0) == stoneId);
+            Check("头顶有水：这次爆炸没有破坏记录",
+                Tnt.LastBlasts.Count == 1 && Tnt.LastBlasts[0].Cells.Count == 0);
+            Fluids.ClearCell(5, 7, 0);
+
             // —— 清格子必须连流体份数一起清（「凭空冒火」的根治）——
             // 方块格子里本不该有份数（落定时 OnSolidPlaced 会把流体挤走），
             // 但清格子的路径有十来处（爆炸 / 烧掉 / 玻璃碎 / 融化 / 傀儡退场 / 重力挪走），

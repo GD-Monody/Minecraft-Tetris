@@ -32,6 +32,55 @@ namespace MinecraftTetris
         /// <summary>正在下落的那个方块的父节点（调试用）。</summary>
         public Transform PieceRoot { get { return _pieceRoot; } }
 
+        /// <summary>
+        /// 「只亮 z 面」：>= 0 时只显示这一层 z 的方块，其余整块藏起来（-1 = 全显示）。
+        ///
+        /// 用 renderer.enabled 而不是 SetActive：格子的显示对象是按格位复用的，
+        /// SetActive(false) 会被 SetCell 当成「这格是空的」，下次填进来逻辑就打架。
+        /// </summary>
+        int _focusZ = -1;
+
+        public int FocusZ { get { return _focusZ; } }
+
+        public void SetFocusZ(int z)
+        {
+            if (z == _focusZ)
+                return;
+            _focusZ = z;
+            ApplyFocus();
+        }
+
+        /// <summary>按当前 _focusZ 刷一遍所有格子的可见性（只在切换时调，不是每帧）。</summary>
+        void ApplyFocus()
+        {
+            if (_cells == null)
+                return;
+
+            int sx = _cells.GetLength(0), sy = _cells.GetLength(1), sz = _cells.GetLength(2);
+            for (int x = 0; x < sx; x++)
+                for (int y = 0; y < sy; y++)
+                    for (int z = 0; z < sz; z++)
+                    {
+                        GameObject go = _cells[x, y, z];
+                        if (go == null)
+                            continue;
+                        var mr = go.GetComponent<MeshRenderer>();
+                        if (mr != null)
+                            mr.enabled = _focusZ < 0 || z == _focusZ;
+
+                        if (_fireCovers != null && _fireCovers[x, y, z] != null)
+                        {
+                            var fr = _fireCovers[x, y, z].GetComponent<MeshRenderer>();
+                            if (fr != null)
+                                fr.enabled = _focusZ < 0 || z == _focusZ;
+                        }
+                    }
+
+            // 落点提示在切片视图里只会让人误会（它可能落在别的层），一并收起
+            if (_ghostRoot != null)
+                _ghostRoot.gameObject.SetActive(_focusZ < 0);
+        }
+
         Mesh[] _meshes;
         Material[] _materials;
 
@@ -371,6 +420,11 @@ namespace MinecraftTetris
             }
 
             go.SetActive(true);
+            {
+                var mr = go.GetComponent<MeshRenderer>();
+                if (mr != null)
+                    mr.enabled = _focusZ < 0 || z == _focusZ;
+            }
             go.transform.position = _cellVisual[x, y, z];
             // 朝向每次都从网格里那一格读，不留在显示对象上：对象是按格位复用的，
             // 留着就等于「这一格的上一任」的朝向，方块一下落就换了脸
@@ -865,7 +919,9 @@ namespace MinecraftTetris
                     _pieceTarget[i] = piece.WorldCell(i);
                     go.SetActive(true);
                     go.GetComponent<MeshFilter>().sharedMesh = _meshes[idx];
-                    go.GetComponent<MeshRenderer>().sharedMaterial = _materials[idx];
+                    var mr = go.GetComponent<MeshRenderer>();
+                    mr.sharedMaterial = _materials[idx];
+                    mr.enabled = _focusZ < 0 || _pieceTarget[i].z == _focusZ;
                 }
                 else
                 {

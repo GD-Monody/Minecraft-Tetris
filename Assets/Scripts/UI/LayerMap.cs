@@ -181,10 +181,97 @@ namespace MinecraftTetris
                     Draw(grid);
                 else
                     DrawVertical(grid);
+                DrawFocusPill(grid);
                 return;
             }
 
             Draw(grid);
+            DrawFocusPill(grid);
+        }
+
+        /// <summary>
+        /// 「只亮 z 面」：切一层只看这一层，找深层的缺口用。
+        ///
+        /// 三段式一颗按钮：左边 −、中间点一下开关、右边 +。
+        /// 摆位跟着面板走 —— 手机挂在折叠键下面，桌面挂在面板上面。
+        /// </summary>
+        void DrawFocusPill(Grid grid)
+        {
+            if (View == null || grid == null)
+                return;
+
+            bool compact = MobileMode.Enabled;
+            float w = compact
+                ? Mathf.Clamp(Screen.width * 0.34f, UiSkin.P(110f), UiSkin.P(176f))
+                : UiSkin.P(176f);
+            float h = compact
+                ? Mathf.Clamp(Screen.height * 0.05f, UiSkin.P(22f), UiSkin.P(40f))
+                : UiSkin.P(32f);
+
+            float x, y;
+            if (compact)
+            {
+                // 竖屏的折叠键是屏幕最右边那一条竖键，按钮要从它左边往外长 ——
+                // 直接用 _tabRect.x 当左边界会顶出屏幕（第一版就被裁掉了一半）。
+                Rect safe = Screen.safeArea;
+                float safeRight = Mathf.Max(0f, Screen.width - (safe.x + safe.width));
+                if (Screen.width > Screen.height)
+                {
+                    // 横屏：面板在右上角，折叠键在左上角，挂在键下面不会撞
+                    x = _tabRect.x;
+                    y = _tabRect.yMax + UiSkin.P(6f);
+                }
+                else
+                {
+                    // 竖屏：面板从右上角一路往下长，贴在键下面会压在面板上（第一版就是），
+                    // 改成挂在面板底边下面、靠右对齐
+                    x = Screen.width - safeRight - w - UiSkin.P(4f);
+                    y = _panelRect.yMax + UiSkin.P(6f);
+                }
+            }
+            else
+            {
+                // 桌面的面板贴着屏幕顶（pad 只有十几像素），放它上面会被切掉半个按钮，
+                // 改挂在面板下面
+                x = _panelRect.x;
+                y = _panelRect.yMax + UiSkin.P(8f);
+            }
+            var r = new Rect(x, y, w, h);
+            _focusRect = r;
+
+            // 场地尺寸改小之后，焦点层可能已经越界：夹回来（不关掉，免得玩家又要重新开）
+            if (View.FocusZ >= grid.SizeZ)
+                View.SetFocusZ(grid.SizeZ - 1);
+
+            int fz = View.FocusZ;
+            bool on = fz >= 0;
+
+            Fill(r, Light
+                ? (on ? new Color(0.82f, 0.92f, 1f, 0.96f) : new Color(1f, 1f, 1f, 0.92f))
+                : (on ? new Color(0.15f, 0.24f, 0.32f, 0.95f) : new Color(0.10f, 0.13f, 0.18f, 0.9f)));
+            DrawBorder(r, new Color(UiSkin.Accent.r, UiSkin.Accent.g, UiSkin.Accent.b, on ? 0.72f : 0.32f));
+
+            float zone = w * 0.24f;
+            GUI.Label(new Rect(r.x, r.y, zone, h), "−", _pillStyle);
+            GUI.Label(new Rect(r.xMax - zone, r.y, zone, h), "+", _pillStyle);
+            GUI.Label(new Rect(r.x + zone, r.y, w - zone * 2f, h),
+                on ? "只亮 z=" + fz : "只亮 z 面", _pillStyle);
+
+            if (InputLocked)
+                return;
+
+            Event e = Event.current;
+            if (e != null && e.type == EventType.MouseDown && e.button == 0 && r.Contains(e.mousePosition))
+            {
+                float lx = e.mousePosition.x - r.x;
+                if (lx < zone)
+                    View.SetFocusZ(on ? Mathf.Max(0, fz - 1) : 0);
+                else if (lx > w - zone)
+                    View.SetFocusZ(on ? Mathf.Min(grid.SizeZ - 1, fz + 1) : 0);
+                else
+                    View.SetFocusZ(on ? -1 : 0);
+                e.Use();
+            }
         }
 
         /// <summary>
@@ -247,6 +334,15 @@ namespace MinecraftTetris
 
         Rect _tabRect;
 
+        /// <summary>最近一次画出来的面板矩形（HitUi 用：横版按右上角摆、竖版贴折叠键左边）。</summary>
+        Rect _panelRect;
+
+        /// <summary>「只亮 z 面」那颗三段式按钮的矩形（同样给 HitUi 用）。</summary>
+        Rect _focusRect;
+
+        /// <summary>视图层：切换「只亮 z 面」用。</summary>
+        public GridView View;
+
         /// <summary>
         /// 这个点（GUI 坐标，左上原点）算不算压在层次图这块界面上：折叠键 + 展开后的面板。
         ///
@@ -261,11 +357,17 @@ namespace MinecraftTetris
             if (_tabRect.width > 0f && _tabRect.Contains(gui))
                 return true;
 
-            if (Open && ReservedWidth > 0f)
+            if (_focusRect.width > 0f && _focusRect.Contains(gui))
+                return true;
+
+            // 用**上一帧画出来的面板矩形**（横版和竖版各记一次）。
+            // 原来这里按 ReservedWidth 算，而 ReservedWidth 只有竖版才会设 ——
+            // 横屏时它一直是 0，于是横屏在面板上划手指，相机照样转（用户报的就是这个）。
+            if (Open && _panelRect.width > 0f)
             {
-                float pad = UiSkin.P(4f);
-                return new Rect(Screen.width - ReservedWidth - pad, 0f,
-                    ReservedWidth + pad, Screen.height).Contains(gui);
+                float pad = UiSkin.P(6f);
+                return new Rect(_panelRect.x - pad, _panelRect.y - pad,
+                    _panelRect.width + pad * 2f, _panelRect.height + pad * 2f).Contains(gui);
             }
             return false;
         }
@@ -386,6 +488,7 @@ namespace MinecraftTetris
             // 贴在折叠键的左边（键一直占着最右边那一条）
             float x = Mathf.Max(UiSkin.P(4f), _tabRect.x - gap - w);
             var panel = new Rect(x, topY, w, h);
+            _panelRect = panel;
             Hud.DrawPanel(panel);
 
             // 场地按这个宽度往左让
@@ -584,6 +687,7 @@ namespace MinecraftTetris
             float safeRight = Mathf.Max(0f, Screen.width - (safe.x + safe.width));
             var panel = new Rect(Screen.width - safeRight - w - UiSkin.P(compact ? 8f : 14f),
                 topY, w, h);
+            _panelRect = panel;
             Hud.DrawPanel(panel);
 
             float x = panel.x + pad;

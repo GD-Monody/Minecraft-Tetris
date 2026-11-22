@@ -1680,31 +1680,29 @@ namespace MinecraftTetris
                 },
                 new GuideItem
                 {
-                    Ids = new[] { FindBlock("obsidian"), FindBlock("crying_obsidian") },
-                    Title = "黑曜石 / 哭泣的黑曜石",
-                    Desc = "炸不掉，可以拿来当挡板。",
-                },
-                new GuideItem
-                {
+                    // 黑曜石和下面那几种是同一类：都炸不掉，合成一条说
                     Ids = new[]
                     {
+                        FindBlock("obsidian"), FindBlock("crying_obsidian"),
                         FindBlock("ancient_debris"), FindBlock("netherite_block"),
                         FindBlock("reinforced_deepslate"), FindBlock("command_block"),
                     },
                     Title = "防爆方块",
-                    Desc = "远古残骸、下界合金块、强化深板岩、命令方块都炸不掉。",
+                    Desc = "黑曜石、远古残骸、下界合金块、强化深板岩、命令方块都炸不掉。",
                 },
                 new GuideItem
                 {
                     Ids = new[] { FindBlock("water") },
                     Title = "水",
-                    Desc = "往低处和两边流，一格最多 8 份。碰到源岩浆会变成黑曜石。",
+                    Desc = "往低处和两边流，一格最多 8 份，碰到源岩浆会变成黑曜石。"
+                        + "TNT 上方有水时，它爆炸不会破坏任何方块。",
                 },
                 new GuideItem
                 {
                     Ids = new[] { FindBlock("lava") },
                     Title = "岩浆",
-                    Desc = "流得比水慢；源岩浆碰到水变黑曜石，流动的岩浆变圆石。挨着 TNT 会把它点着。",
+                    Desc = "流得比水慢；源岩浆碰到水变黑曜石，流动的岩浆变圆石。"
+                        + "TNT 挨着岩浆会被点着。",
                 },
                 new GuideItem
                 {

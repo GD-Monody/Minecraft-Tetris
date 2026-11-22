@@ -296,6 +296,20 @@ namespace MinecraftTetris
                 Blocks = new List<int>(),
             };
 
+            // 头顶那格有水：这颗 TNT 算「被水压住了」，只冒烟不拆方块
+            // （原版里水能把爆炸的破坏力挡住，这里只判正上方一格，规则简单好懂）。
+            bool shielded = Fluids.IdAt(p.X, p.Y + 1, p.Z) == Fluids.WaterId
+                && Fluids.AmountAt(p.X, p.Y + 1, p.Z) > 0;
+
+            grid.Set(p.X, p.Y, p.Z, 0);   // 不管炸不炸，这颗自己都要消失
+
+            if (shielded)
+            {
+                // 特效照放（Blast 里没有格子 = 只画烟不毁东西）
+                _blasts.Add(blast);
+                return;
+            }
+
             int r = Mathf.CeilToInt(BlastRadius);
             float r2 = BlastRadius * BlastRadius;
 
@@ -316,13 +330,10 @@ namespace MinecraftTetris
 
                         int id = grid.Get(x, y, z);
 
-                        // 爆心那一格就是这颗自己：直接清掉。
-                        // 不特判的话它会走下面的 TNT 分支，把自己又点一次（永远炸不完）。
+                        // 爆心那一格就是这颗自己：上面已经清过了，这里跳过
+                        // （不特判的话它会走下面的 TNT 分支，把自己又点一次，永远炸不完）。
                         if (dx == 0 && dy == 0 && dz == 0)
-                        {
-                            grid.Set(x, y, z, 0);
                             continue;
-                        }
 
                         if (id <= 0)
                         {
