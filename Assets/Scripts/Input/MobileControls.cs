@@ -631,15 +631,15 @@ namespace MinecraftTetris
             UiSkin.Apply();
             EnsureStyles();
 
-            Rect strip = new Rect(0f, Screen.height - _stripH, Screen.width, _stripH);
-            Fill(strip, UiSkin.StripFill);
-            Fill(new Rect(0f, strip.y, Screen.width, 1f), UiSkin.AccentSoft);
-
-            // 暂停时不画操作键：暂停面板是居中一块板，底下这排圆钮会从板的边缘露出来
-            // （横屏九键最明显，右边一列直接顶在面板外面）。
+            // 暂停时整条操作栏都不画：按钮收起来之后，那条底比背景亮一档，
+            // 会在屏幕下方留下一块很显眼的矩形（竖屏截图里就是一条白白的大条）。
             // 只跳过绘制 —— 布局、相机让出的那一条都不动，否则取消暂停时场地会跳一下。
             if (!Paused)
             {
+                Rect strip = new Rect(0f, Screen.height - _stripH, Screen.width, _stripH);
+                Fill(strip, UiSkin.StripFill);
+                Fill(new Rect(0f, strip.y, Screen.width, 1f), UiSkin.AccentSoft);
+
                 DrawPad();
 
                 for (int i = 0; i < Slots; i++)
@@ -647,10 +647,11 @@ namespace MinecraftTetris
                     if (_enabled[i])
                         DrawSlot(i);
                 }
-            }
 
-            if (Locked)
-                Fill(strip, UiSkin.FreezeOverlay);
+                // 结算界面按键照样画着，只是压暗
+                if (Locked)
+                    Fill(strip, UiSkin.FreezeOverlay);
+            }
 
             DrawPause();
         }
