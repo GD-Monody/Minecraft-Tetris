@@ -1030,7 +1030,11 @@ namespace MinecraftTetris
             bool wide = WidePage;
             float rowH = Pg(wide ? 32f : 46f);
             float rowGap = Pg(wide ? 5f : 10f);
-            float colW = Pg(400f);
+            // 列表宽度取「面板宽 - 两边留白」和 560 设计像素里窄的那个，再**居中**。
+            // 原来固定 400 宽、从 panel.x + 40 起排，面板加宽到 940 之后整块挤在左边，
+            // 右边空一大片（用户截图里就是这样）。
+            float colW = Mathf.Min(w - Pg(80f), Pg(560f));
+            float colX = panel.x + (w - colW) * 0.5f;
 
             PageTitle(panel, "特殊方块机制", 12f);
 
@@ -1046,7 +1050,7 @@ namespace MinecraftTetris
             float contentH = GameSettings.MechCount * (rowH + rowGap) - rowGap;
             float maxScroll = Mathf.Max(0f, contentH - viewH);
 
-            Rect clip = new Rect(panel.x + Pg(40f), top, colW, viewH);
+            Rect clip = new Rect(colX, top, colW, viewH);
 
             // 滚轮：悬停在列表上就滚。这里手动消费 ScrollWheel 事件，步长一行多一点，
             // 不用 BeginScrollView 是因为它的滚动条样式和这套手绘 UI 对不上，
