@@ -127,8 +127,10 @@ namespace MinecraftTetris.EditorTools
             Check("朝向 0：I 型沿 x 展开", probe.CellOffset(3).x == 3 && probe.CellOffset(3).y == 0);
 
             PieceRotation yaw90 = PieceRotation.Identity.Rotate(RotationAxis.Yaw, true);
-            Check("俯视 90°：+x 转到 +z",
-                yaw90.X == new Vector3Int(0, 0, 1) && yaw90.Y == Vector3Int.up);
+            // 俯视顺时针：从上往下看，+x（屏幕右）应该转到 -z（朝玩家这边），
+            // 原来断言的是 +z，方向反了 —— 游戏里表现为「按顺时针键转出来是逆时针」。
+            Check("俯视 90°（顺时针）：+x 转到 -z",
+                yaw90.X == new Vector3Int(0, 0, -1) && yaw90.Y == Vector3Int.up);
 
             PieceRotation pitch90 = PieceRotation.Identity.Rotate(RotationAxis.Pitch, true);
             Check("往背面翻 90°：+y 转到 +z（画面深处）",

@@ -138,9 +138,14 @@ namespace MinecraftTetris
             }
             else if (mode == (int)RotationAxis.Yaw)
             {
-                c0 = new Vector3Int(0, 0, 1);
+                // 绕竖直轴「从上往下看的顺时针」：+x 转到 -z。
+                //
+                // 原来这里写的是「+x 转到 +z」，实际转出来是**逆时针** —— 于是
+                // 「俯视顺时针」这个动作反倒往逆时针走，键位怎么调都对不上，
+                // 手机右边的箭头也是反的。这里按实测改正。
+                c0 = new Vector3Int(0, 0, -1);
                 c1 = new Vector3Int(0, 1, 0);
-                c2 = new Vector3Int(-1, 0, 0);
+                c2 = new Vector3Int(1, 0, 0);
             }
             else
             {
