@@ -103,7 +103,7 @@ namespace MinecraftTetris
         }
 
         /// <summary>背景音乐音量上限（1 = 满）。默认 0.45：音乐是垫底的，不能盖过放置音。</summary>
-        public const float DefaultMusicVolume = 0.45f;
+        public const float DefaultMusicVolume = 0.50f;
 
         /// <summary>背景音乐音量 0 ~ 1，0 = 关。两位小数。</summary>
         public static float MusicVolume

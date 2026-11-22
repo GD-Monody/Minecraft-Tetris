@@ -630,6 +630,11 @@ namespace MinecraftTetris
 
         void DrawPad()
         {
+            // 十字键模式下这块只是「摆方向的空地」，画个框反而像一块没用的面板，
+            // 直接不画；滑动模式才需要它提示「这儿能划」。
+            if (GameSettings.MoveStyle == GameSettings.MoveDpad)
+                return;
+
             bool active = _padFinger >= 0;
             Fill(_pad, Light
                 ? (active ? new Color(0.74f, 0.86f, 1f, 0.55f) : new Color(1f, 1f, 1f, 0.45f))
