@@ -973,6 +973,26 @@ namespace MinecraftTetris.EditorTools
             Check("铁块身体连着给两块（倒 T 四格才拼得出来）", ironGivesTwo);
             Check("三种身体都能抽到", bodyHit[0] > 0 && bodyHit[1] > 0 && bodyHit[2] > 0);
 
+            // 身体落定就补南瓜头：玩家自己抽到铁块 / 铜块把身体搭好之后，
+            // 不用再等那 90 块的周期（等到了摆法也多半被埋了）。
+            BlockPools.Build();                 // 清计数，自检里不碰存档
+            BlockPools.OnPieceLanded(snowPool);
+            Check("雪块落定后下一抽给南瓜头", BlockPools.NextRandomId() == pumpkinPool);
+
+            BlockPools.OnPieceLanded(ironPool);
+            Check("刚发过南瓜头，紧接着落身体不会连发（冷却生效）",
+                BlockPools.NextRandomId() != pumpkinPool);
+
+            for (int i = 0; i < BlockPools.PumpkinFollowGap + 1; i++)
+                BlockPools.NextRandomId();
+            BlockPools.OnPieceLanded(ironPool);
+            Check("冷却过后铁块落地补南瓜头", BlockPools.NextRandomId() == pumpkinPool);
+
+            for (int i = 0; i < BlockPools.PumpkinFollowGap + 1; i++)
+                BlockPools.NextRandomId();
+            BlockPools.OnPieceLanded(Tnt.TntId);   // 随便一块非身体方块
+            Check("普通方块落地不补南瓜头", BlockPools.NextRandomId() != pumpkinPool);
+
             int stoneId = 1;
             for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
             {

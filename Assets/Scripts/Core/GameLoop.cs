@@ -675,6 +675,11 @@ namespace MinecraftTetris
             Tnt.PrimeContact(Grid);
             FlushTntPrimed();
 
+            // 刚落的这块要是傀儡身体（雪块 / 铁块 / 铜块），下一块补个南瓜头，
+            // 不然玩家把身体搭好了却等不到脑袋（见 BlockPools.OnPieceLanded）
+            if (!fluidPiece)
+                BlockPools.OnPieceLanded(blockId);
+
             SpawnNext();
         }
 

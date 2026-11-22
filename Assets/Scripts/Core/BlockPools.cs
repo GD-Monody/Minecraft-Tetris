@@ -32,6 +32,9 @@ namespace MinecraftTetris
         // 间隔比玻璃长：傀儡是收藏品，一场游戏见两三个就够了，满地南瓜头反而怪。
         public const int PumpkinEvery = 90;
 
+        /// <summary>「身体落地补南瓜头」两次之间至少隔多少块。</summary>
+        public const int PumpkinFollowGap = 16;
+
         static int[] _special;
         static int[] _normal;
         static int _waterId = -1;
@@ -66,6 +69,16 @@ namespace MinecraftTetris
         static int _bodyLeft;
         /// <summary>身体给完了，下一次抽就是南瓜头。</summary>
         static bool _pendingPumpkin;
+
+        /// <summary>
+        /// 距上一块南瓜头又抽了几块。
+        ///
+        /// 以前南瓜头只靠 PumpkinEvery（90 块）定期发，玩家自己抽到铁块 / 铜块、
+        /// 把身体搭好了，还得等几十块才可能等到南瓜头 —— 那时候摆法多半已经被
+        /// 后面的方块埋掉了，机制等于玩不到。现在身体一落地就补南瓜头，
+        /// 但用这个计数挡一下，免得雪块每三十块来一次、满场都是南瓜。
+        /// </summary>
+        static int _sincePumpkin;
 
         public static int[] Special { get { Ensure(); return _special; } }
         public static int[] Normal { get { Ensure(); return _normal; } }
@@ -113,6 +126,7 @@ namespace MinecraftTetris
             _bodyId = 0;
             _bodyLeft = 0;
             _pendingPumpkin = false;
+            _sincePumpkin = PumpkinFollowGap;   // 开局第一块身体就能接上南瓜
             for (int i = 0; i < blocks.Length; i++)
             {
                 string n = blocks[i].Name;
@@ -233,10 +247,12 @@ namespace MinecraftTetris
             if (_pendingPumpkin)
             {
                 _pendingPumpkin = false;
+                _sincePumpkin = 0;
                 return _pumpkinId;
             }
 
             _count++;
+            _sincePumpkin++;
             if (_special.Length > 0 && _count % SpecialEvery == 0)
             {
                 // 特殊方块里：水 30%、岩浆 20%、TNT 20%、基岩 12%、结构方块 10%，剩下的是沙类。
@@ -307,6 +323,7 @@ namespace MinecraftTetris
                 // 开关关掉也照发：池子不跟着设置变（见上面基岩 / 结构方块那段）。
                 // 身体还是给，不然南瓜头孤零零落在场上，看着像 bug。
                 _pumpkinCount = 0;
+                _sincePumpkin = 0;
                 int need = PickGolemBody(out _bodyId);
                 if (need > 0)
                 {
@@ -321,6 +338,29 @@ namespace MinecraftTetris
             if (_normal.Length == 0)
                 return 1;
             return _normal[Random.Range(0, _normal.Length)];
+        }
+
+        /// <summary>
+        /// 一块「傀儡身体」（雪块 / 铁块 / 铜块）落定了：接下来给一块南瓜头。
+        ///
+        /// 为什么挂在落定而不是出块：出块时还不知道玩家会不会用它搭身体，
+        /// 落定之后才有意义 —— 刚好搭好的身体，下一块就能被南瓜头压上。
+        /// 出块和落定之间隔一块（出块顺序是「先定下一块的材质」），
+        /// 所以玩家看到的是「身体 → 一块别的 → 南瓜头」，手感上仍然是紧跟。
+        /// </summary>
+        public static void OnPieceLanded(int blockId)
+        {
+            Ensure();
+            if (blockId <= 0 || _pumpkinId <= 0)
+                return;
+            if (blockId != _snowId && blockId != _ironId && blockId != _copperId)
+                return;
+            if (_pendingPumpkin || _bodyLeft > 0)
+                return;                       // 已经在排队，别叠两层
+            if (_sincePumpkin < PumpkinFollowGap)
+                return;                       // 刚发过，缓一缓
+            _pendingPumpkin = true;
+            _pumpkinCount = 0;                // 定期发那一路别紧接着又发一次
         }
 
         /// <summary>
