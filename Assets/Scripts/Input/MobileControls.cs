@@ -325,14 +325,17 @@ namespace MinecraftTetris
                 float topY = Mathf.Max(topInset + ps + m, Hud.MobileBarHeight);
                 float availH = Mathf.Max(1f, h - topY - safeBottom - pad);
 
-                float padW = w * (basic ? 0.34f : 0.30f) - pad;
-                float padH = availH * (basic ? 0.62f : 0.72f);
+                // 横屏整组按键都收小一档：原来圆钮直径接近屏高的四分之一，
+                // 摆在两侧像个大饼，把场地挤在中间一条缝里。
+                // 边长砍一半（面积差不多是原来的四分之一），拇指照样够得着。
+                float padW = w * (basic ? 0.26f : 0.24f) - pad;
+                float padH = availH * (basic ? 0.58f : 0.62f);
                 _pad = new Rect(safeLeft + pad, topY + availH - padH, padW, padH);
 
-                // 右边按键区：九键要比四键占得更宽、更高
-                float btnW = (basic ? 0.26f : 0.36f) * w - pad;
+                // 右边按键区：贴着右下角，块头同样收小
+                float btnW = (basic ? 0.20f : 0.26f) * w - pad;
                 float btnLeft = w - safeRight - pad - btnW;
-                float btnTop = topY + availH * (basic ? 0.46f : 0.26f);
+                float btnTop = topY + availH * (basic ? 0.52f : 0.40f);
                 float btnH = Mathf.Max(1f, h - safeBottom - pad - btnTop);
 
                 LayoutGrid(new Rect(btnLeft, btnTop, btnW, btnH), pad * 0.5f);
@@ -389,8 +392,10 @@ namespace MinecraftTetris
             float m = Mathf.Min(_pad.width, _pad.height);
             float cx = _pad.x + _pad.width * 0.5f;
             float cy = _pad.y + _pad.height * 0.5f;
-            float side = m * 0.38f;
-            float arm = m * 0.26f;
+            // 圆钮直径砍到原来的一半左右（面积 1/4），十字的间距保持不变，
+            // 免得四颗挤成一坨
+            float side = m * 0.26f;
+            float arm = m * 0.30f;
 
             _slot[DirUp] = new Rect(cx - side * 0.5f, cy - arm - side * 0.5f, side, side);
             _slot[DirDown] = new Rect(cx - side * 0.5f, cy + arm - side * 0.5f, side, side);
