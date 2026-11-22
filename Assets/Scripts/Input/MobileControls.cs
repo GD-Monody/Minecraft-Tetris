@@ -35,9 +35,6 @@ namespace MinecraftTetris
         /// <summary>槽位数按高级键位算（3x3），初级只用前四个。下标即“行优先”的位置。</summary>
         const int Slots = 9;
 
-        /// <summary>初级那两个旋转键各自停在哪一档：0 面内 / 1 俯视 / 2 前后翻。</summary>
-        int _cycleL, _cycleR;
-
         /// <summary>软降按住后的连发间隔（秒）。松手就停。</summary>
         const float SoftRepeat = 0.055f;
 
@@ -99,7 +96,6 @@ namespace MinecraftTetris
 
         GUIStyle _labelStyle;
         GUIStyle _pauseStyle;
-        GUIStyle _padStyle;
         int _styleSize = -1;
         int _lastW, _lastH;
         int _lastDepth = -1;
@@ -178,12 +174,11 @@ namespace MinecraftTetris
 
             if (KeyLayout == GameSettings.KeysBasic)
             {
-                // 深度 1 时没有「俯视 / 前后翻」可言，循环锁在面内那一档
-                int cl = CanDepth ? _cycleL : 0;
-                int cr = CanDepth ? _cycleR : 0;
-
-                _act[0] = cl == 0 ? Act.InL : (cl == 1 ? Act.YawL : Act.PitchUp);
-                _act[1] = cr == 0 ? Act.InR : (cr == 1 ? Act.YawR : Act.PitchDown);
+                // 初级就是「按左就往左转、按右就往右转」，固定面内旋转。
+                // 之前做过「每按一次轮换一根轴」，结果第二下开始就转到别的轴上去了，
+                // 连转两下等于没转 —— 用户直接当成 bug 报了，撤掉。
+                _act[0] = Act.InL;
+                _act[1] = Act.InR;
                 _act[2] = Act.Soft;
                 _act[3] = Act.Hard;
                 for (int i = 0; i < 4; i++)
@@ -491,19 +486,6 @@ namespace MinecraftTetris
                 case Act.Hard: _out.HardDrop = true; break;
             }
 
-            if (KeyLayout != GameSettings.KeysBasic || !CanDepth)
-                return;
-
-            if (slot == 0)
-            {
-                _cycleL = (_cycleL + 1) % 3;
-                BuildSlots();      // 换档之后按钮上的符号要跟着变
-            }
-            else if (slot == 1)
-            {
-                _cycleR = (_cycleR + 1) % 3;
-                BuildSlots();
-            }
         }
 
         /// <summary>把这一帧的触屏操作交给玩法层。和键盘的输入按位或，两边同时生效。</summary>
@@ -566,35 +548,54 @@ namespace MinecraftTetris
                 : (active ? new Color(0.12f, 0.17f, 0.24f, 0.55f) : new Color(0.09f, 0.11f, 0.15f, 0.5f)));
             Border(_pad, new Color(UiSkin.Accent.r, UiSkin.Accent.g, UiSkin.Accent.b, active ? 0.65f : 0.22f));
 
-            // 中间一个「拖」：这块是移动区，按键只管旋转和降落
-            GUI.Label(_pad, "拖", _padStyle);
         }
 
+        /// <summary>
+        /// 圆形按键：一圈淡描边 + 实心圆底 + 中间的符号。
+        /// 原来画的是方框，四角硬邦邦地压在通栏里，和整体风格不搭。
+        /// </summary>
         void DrawSlot(int i)
         {
             bool down = _finger[i] >= 0;
             bool hot = _act[i] == Act.Hard;
 
+            Rect cell = _slot[i];
+            float d = Mathf.Min(cell.width, cell.height) * 0.94f;
+            var box = new Rect(cell.center.x - d * 0.5f, cell.center.y - d * 0.5f, d, d);
+
             Color fill = down
-                ? (Light ? new Color(0.70f, 0.84f, 1f, 0.95f) : new Color(0.20f, 0.48f, 0.68f, 0.92f))
-                : (Light ? new Color(1f, 1f, 1f, 0.86f) : new Color(0.11f, 0.13f, 0.18f, 0.88f));
+                ? (Light ? new Color(0.72f, 0.85f, 1f, 0.98f) : new Color(0.22f, 0.50f, 0.70f, 0.95f))
+                : (Light ? new Color(1f, 1f, 1f, 0.92f) : new Color(0.12f, 0.15f, 0.20f, 0.92f));
 
             // 硬降是最高频的一下，给个暖色，一眼能找到
             if (hot)
-                fill = down ? new Color(0.85f, 0.45f, 0.18f, 0.95f)
-                    : (Light ? new Color(1f, 0.92f, 0.86f, 0.95f) : new Color(0.28f, 0.16f, 0.09f, 0.9f));
+            {
+                fill = down
+                    ? new Color(0.88f, 0.50f, 0.22f, 0.98f)
+                    : (Light ? new Color(1f, 0.93f, 0.87f, 0.98f) : new Color(0.30f, 0.18f, 0.10f, 0.95f));
+            }
 
-            Color border = hot
-                ? new Color(1f, 0.62f, 0.32f, down ? 0.95f : 0.5f)
-                : new Color(UiSkin.Accent.r, UiSkin.Accent.g, UiSkin.Accent.b, down ? 0.9f : 0.28f);
+            Color rim = hot
+                ? new Color(1f, 0.60f, 0.30f, down ? 0.95f : 0.55f)
+                : new Color(UiSkin.Accent.r, UiSkin.Accent.g, UiSkin.Accent.b, down ? 0.95f : 0.34f);
 
-            Fill(_slot[i], fill);
-            Border(_slot[i], border);
+            float rimW = Mathf.Max(1.6f, d * 0.040f);
+            DrawDisc(box, rim);
+            DrawDisc(new Rect(box.x + rimW, box.y + rimW, d - rimW * 2f, d - rimW * 2f), fill);
 
             Color ink = Light
-                ? new Color(0.12f, 0.16f, 0.22f, down ? 0.95f : 0.8f)
-                : new Color(0.86f, 0.93f, 1f, down ? 0.95f : 0.8f);
-            DrawSymbol(_slot[i], _act[i], ink);
+                ? new Color(0.14f, 0.18f, 0.24f, down ? 0.95f : 0.82f)
+                : new Color(0.88f, 0.94f, 1f, down ? 0.95f : 0.84f);
+            DrawSymbol(box, _act[i], ink);
+        }
+
+        /// <summary>画一个圆（用带抗锯齿的圆盘贴图拉伸）。</summary>
+        static void DrawDisc(Rect r, Color c)
+        {
+            Color old = GUI.color;
+            GUI.color = c;
+            GUI.DrawTexture(r, DiscTexture);
+            GUI.color = old;
         }
 
         // ── 符号 ──────────────────────────────────────────────────────────
@@ -674,10 +675,75 @@ namespace MinecraftTetris
         }
 
         // ── 程序生成的贴图 ────────────────────────────────────────────────
+        //
+        // 一律 64×64、每像素 3×3 超采样。原来用 32×32 逐像素硬判决，放大之后
+        // 圆弧全是台阶，用户直接说「太丑」—— 抗锯齿是必须的。
+
+        const int TexSize = 64;
+        const int TesSs = 3;
+
+        static Texture2D NewTex()
+        {
+            return new Texture2D(TexSize, TexSize, TextureFormat.RGBA32, false)
+            {
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp,
+            };
+        }
+
+        /// <summary>把「某点是否在形状里」的判定按 3×3 超采样铺成一张贴图。</summary>
+        delegate bool ShapeTest(float x, float y);
+
+        static Texture2D BuildShape(ShapeTest test)
+        {
+            Texture2D tex = NewTex();
+            var px = new Color32[TexSize * TexSize];
+            float step = 1f / TesSs;
+            for (int y = 0; y < TexSize; y++)
+            {
+                for (int x = 0; x < TexSize; x++)
+                {
+                    float a = 0f;
+                    for (int sy = 0; sy < TesSs; sy++)
+                    {
+                        for (int sx = 0; sx < TesSs; sx++)
+                        {
+                            if (test(x + (sx + 0.5f) * step, y + (sy + 0.5f) * step))
+                                a += 1f / (TesSs * TesSs);
+                        }
+                    }
+                    px[y * TexSize + x] = new Color(1f, 1f, 1f, a);
+                }
+            }
+            tex.SetPixels32(px);
+            tex.Apply();
+            return tex;
+        }
+
+        static Texture2D _discTex;
+
+        /// <summary>实心圆，用来画圆形按键。</summary>
+        static Texture2D DiscTexture
+        {
+            get
+            {
+                if (_discTex != null)
+                    return _discTex;
+
+                float c = (TexSize - 1) * 0.5f;
+                float rMax = c - 0.6f;
+                _discTex = BuildShape(delegate (float x, float y)
+                {
+                    float dx = x - c, dy = y - c;
+                    return dx * dx + dy * dy <= rMax * rMax;
+                });
+                return _discTex;
+            }
+        }
 
         static Texture2D _arrowTex;
 
-        /// <summary>朝上的实心三角（白 + 透明）。转 180 度就是向下。</summary>
+        /// <summary>朝上的实心三角。转 180 度就是向下的降落箭头。</summary>
         static Texture2D ArrowTexture
         {
             get
@@ -685,27 +751,18 @@ namespace MinecraftTetris
                 if (_arrowTex != null)
                     return _arrowTex;
 
-                const int S = 32;
-                var tex = new Texture2D(S, S, TextureFormat.RGBA32, false);
-                tex.filterMode = FilterMode.Bilinear;
-                var px = new Color32[S * S];
-                for (int y = 0; y < S; y++)
+                _arrowTex = BuildShape(delegate (float x, float y)
                 {
-                    for (int x = 0; x < S; x++)
-                    {
-                        // SetPixels 的 y = 0 是贴图**底部**，所以顶点落在 v = 1（踩过一次）
-                        float u = (x + 0.5f) / S - 0.5f;
-                        float v = (y + 0.5f) / S;
-                        float halfW = 0.46f * (1f - v);
-                        float d = Mathf.Abs(u) - halfW;
-                        float a = Mathf.Clamp01(0.5f - d * S * 0.5f);
-                        px[y * S + x] = new Color(1f, 1f, 1f, a);
-                    }
-                }
-                tex.SetPixels32(px);
-                tex.Apply();
-                _arrowTex = tex;
-                return tex;
+                    // 注意 SetPixels 的 y = 0 是贴图**底部**，所以 v 越大越靠上
+                    float u = x / TexSize - 0.5f;
+                    float v = y / TexSize;
+                    const float baseV = 0.12f, tipV = 0.90f;
+                    if (v < baseV || v > tipV)
+                        return false;
+                    float t = (v - baseV) / (tipV - baseV);
+                    return Mathf.Abs(u) <= 0.42f * (1f - t);
+                });
+                return _arrowTex;
             }
         }
 
@@ -714,25 +771,17 @@ namespace MinecraftTetris
         static Texture2D ArcCw { get { return _arcCw != null ? _arcCw : (_arcCw = BuildArc(true)); } }
         static Texture2D ArcCcw { get { return _arcCcw != null ? _arcCcw : (_arcCcw = BuildArc(false)); } }
 
-        /// <summary>
-        /// 一段圆弧 + 末端三角箭头，表示旋转；顺时针 / 逆时针各生成一张。
-        /// 逐像素算出来的 —— 字体里没有这种符号，也没有现成的矢量绘制可用。
-        /// </summary>
+        /// <summary>圆弧 + 末端三角箭头，表示「转」。顺时针 / 逆时针各一张。</summary>
         static Texture2D BuildArc(bool cw)
         {
-            const int S = 32;
-            var tex = new Texture2D(S, S, TextureFormat.RGBA32, false);
-            tex.filterMode = FilterMode.Bilinear;
-            var px = new Color32[S * S];
+            float cx = (TexSize - 1) * 0.5f;
+            float cy = (TexSize - 1) * 0.5f;
+            float radius = 21.0f;
+            float half = 3.9f;      // 弧线粗细的一半
+            float from = 58f;       // 起点角度
+            float sweep = 246f;     // 扫过的角度，剩下留给箭头
 
-            float cx = (S - 1) * 0.5f;
-            float cy = (S - 1) * 0.5f;
-            float radius = 10.5f;
-            float half = 2.0f;     // 弧线粗细的一半
-            float from = 55f;      // 起点角度（度）
-            float sweep = 250f;    // 扫过的角度，剩下 110 度留给箭头
-
-            // 箭头落在弧的终点上，沿切线方向外指
+            // 箭头落在弧的终点，沿切线方向外指
             float endDeg = cw ? from - sweep : from + sweep;
             float er = endDeg * Mathf.Deg2Rad;
             float ex = cx + Mathf.Cos(er) * radius;
@@ -741,31 +790,23 @@ namespace MinecraftTetris
             float tr = tDeg * Mathf.Deg2Rad;
             float tx = Mathf.Cos(tr), ty = Mathf.Sin(tr);
             float nx = -ty, ny = tx;
-            float tipX = ex + tx * 7.4f, tipY = ey + ty * 7.4f;
-            float b1x = ex - tx * 2.8f + nx * 5.4f, b1y = ey - ty * 2.8f + ny * 5.4f;
-            float b2x = ex - tx * 2.8f - nx * 5.4f, b2y = ey - ty * 2.8f - ny * 5.4f;
+            float tipX = ex + tx * 13.5f, tipY = ey + ty * 13.5f;
+            float b1x = ex - tx * 4.5f + nx * 9.6f, b1y = ey - ty * 4.5f + ny * 9.6f;
+            float b2x = ex - tx * 4.5f - nx * 9.6f, b2y = ey - ty * 4.5f - ny * 9.6f;
 
-            for (int y = 0; y < S; y++)
+            return BuildShape(delegate (float x, float y)
             {
-                for (int x = 0; x < S; x++)
+                float dx = x - cx, dy = y - cy;
+                float dist = Mathf.Sqrt(dx * dx + dy * dy);
+                if (Mathf.Abs(dist - radius) <= half)
                 {
-                    float dx = x - cx;
-                    float dy = y - cy;
-                    float d = Mathf.Sqrt(dx * dx + dy * dy);
                     float ang = Mathf.Atan2(dy, dx) * Mathf.Rad2Deg;
                     float t = Mathf.Repeat(cw ? from - ang : ang - from, 360f);
-
-                    bool onArc = Mathf.Abs(d - radius) <= half && t <= sweep;
-                    bool inHead = PointInTri(x, y, tipX, tipY, b1x, b1y, b2x, b2y);
-
-                    if (onArc || inHead)
-                        px[y * S + x] = new Color(1f, 1f, 1f, 1f);
+                    if (t <= sweep)
+                        return true;
                 }
-            }
-
-            tex.SetPixels32(px);
-            tex.Apply();
-            return tex;
+                return PointInTri(x, y, tipX, tipY, b1x, b1y, b2x, b2y);
+            });
         }
 
         static bool PointInTri(float px, float py,
@@ -807,11 +848,6 @@ namespace MinecraftTetris
             _labelStyle.font = UiSkin.Font;
             _labelStyle.fontSize = size;
             _labelStyle.alignment = TextAnchor.MiddleCenter;
-
-            _padStyle = new GUIStyle(_labelStyle);
-            _padStyle.normal.textColor = Light
-                ? new Color(0.30f, 0.40f, 0.52f, 0.85f)
-                : new Color(0.55f, 0.72f, 0.86f, 0.75f);
 
             // 暂停键上的「暂停 / 继续」单独一档：方键，字太大就折成两行
             _pauseStyle = new GUIStyle(_labelStyle);
