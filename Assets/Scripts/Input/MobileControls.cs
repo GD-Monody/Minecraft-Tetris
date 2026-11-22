@@ -131,7 +131,8 @@ namespace MinecraftTetris
         float _accX, _accY;
 
         GUIStyle _labelStyle;
-        GUIStyle _dirStyle;
+        /// <summary>十字键中心那个「拖」字用的样式（比按键字号小一档）。</summary>
+        GUIStyle _centerStyle;
         int _styleSize = -1;
         int _lastW, _lastH;
 
@@ -649,7 +650,9 @@ namespace MinecraftTetris
                     ? (Light ? new Color(0.62f, 0.80f, 1f, 0.95f) : new Color(0.18f, 0.44f, 0.62f, 0.9f))
                     : (Light ? new Color(1f, 1f, 1f, 0.92f) : new Color(0.13f, 0.17f, 0.23f, 0.85f)));
                 Border(_dirRect[d], new Color(UiSkin.Accent.r, UiSkin.Accent.g, UiSkin.Accent.b, down ? 0.9f : 0.34f));
-                GUI.Label(_dirRect[d], Labels[i], _dirStyle);
+                DrawArrow(_dirRect[d], d, Light
+                    ? new Color(0.12f, 0.16f, 0.22f, down ? 0.95f : 0.8f)
+                    : new Color(0.86f, 0.93f, 1f, down ? 0.95f : 0.8f));
             }
 
             // 滑动模式下中心那块空着，写个「拖」提示这块区域能按住拖动；
@@ -659,7 +662,66 @@ namespace MinecraftTetris
                 float cx = _pad.x + _pad.width * 0.5f;
                 float cy = _pad.y + _pad.height * 0.5f;
                 float t = _dirRect[0].width;
-                GUI.Label(new Rect(cx - t * 0.5f, cy - t * 0.5f, t, t), "拖", _dirStyle);
+                GUI.Label(new Rect(cx - t * 0.5f, cy - t * 0.5f, t, t), "拖", _centerStyle);
+            }
+        }
+
+        /// <summary>
+        /// 在按钮里画一个箭头。方向 0 上 / 1 下 / 2 左 / 3 右。
+        ///
+        /// 不用字体里的「▲」：这套界面用的是方正楷体，箭头字形不一定有，
+        /// WebGL 又没有字体回退，缺字会直接画成空白。自己生成一张三角形贴图再旋转，
+        /// 任何字体、任何分辨率都不会翻车。
+        /// </summary>
+        void DrawArrow(Rect r, int dir, Color c)
+        {
+            float side = Mathf.Min(r.width, r.height) * 0.50f;
+            var box = new Rect(r.center.x - side * 0.5f, r.center.y - side * 0.5f, side, side);
+
+            Matrix4x4 old = GUI.matrix;
+            float deg = dir == 0 ? 0f : dir == 1 ? 180f : dir == 2 ? 90f : -90f;
+            GUIUtility.RotateAroundPivot(deg, r.center);
+
+            Color oc = GUI.color;
+            GUI.color = c;
+            GUI.DrawTexture(box, ArrowTexture);
+            GUI.color = oc;
+            GUI.matrix = old;
+        }
+
+        static Texture2D _arrowTex;
+
+        /// <summary>朝上的实心三角（白 + 透明），用来旋转出四个方向。</summary>
+        static Texture2D ArrowTexture
+        {
+            get
+            {
+                if (_arrowTex != null)
+                    return _arrowTex;
+
+                const int S = 32;
+                var tex = new Texture2D(S, S, TextureFormat.RGBA32, false);
+                tex.filterMode = FilterMode.Bilinear;
+                var px = new Color32[S * S];
+                for (int y = 0; y < S; y++)
+                {
+                    for (int x = 0; x < S; x++)
+                    {
+                        // 归一化到 [-0.5, 0.5]。注意 SetPixels 的 y=0 是**贴图底部**
+                        // （Unity 的纹理原点在左下），所以 v 直接取 y 的比例，
+                        // 顶点在 v=1 那一行 —— 写反了箭头会朝下（踩过一次）。
+                        float u = (x + 0.5f) / S - 0.5f;
+                        float v = (y + 0.5f) / S;
+                        float halfW = 0.46f * (1f - v);
+                        float d = Mathf.Abs(u) - halfW;
+                        float a = Mathf.Clamp01(0.5f - d * S * 0.5f);
+                        px[y * S + x] = new Color(1f, 1f, 1f, a);
+                    }
+                }
+                tex.SetPixels32(px);
+                tex.Apply();
+                _arrowTex = tex;
+                return tex;
             }
         }
 
@@ -721,13 +783,14 @@ namespace MinecraftTetris
                 ? new Color(0.10f, 0.12f, 0.16f, 0.95f)
                 : new Color(0.88f, 0.94f, 1f, 0.95f);
 
+            // 中心提示要在文字色定好之后再拷，不然拷到的是默认色
+            _centerStyle = new GUIStyle(_labelStyle);
+            _centerStyle.fontSize = Mathf.Clamp(Mathf.RoundToInt(_dirRect[0].width * 0.55f), 10, 18);
+
             // 暂停键上的「暂停 / 继续」单独一档：它是方键，字太大就折成两行
             //（横屏 44 宽时「暂停」被竖着排成了两行，真机截图上很明显）
             _pauseStyle = new GUIStyle(_labelStyle);
             _pauseStyle.fontSize = Mathf.Max(10, Mathf.RoundToInt(Hud.MobilePauseSize * 0.34f));
-
-            _dirStyle = new GUIStyle(_labelStyle);
-            _dirStyle.fontSize = Mathf.Clamp(Mathf.RoundToInt(_dirRect[0].width * 0.48f), 10, 22);
 
         }
 

@@ -57,8 +57,18 @@ namespace MinecraftTetris
             MaxDistance = Distance * 1.9f;
         }
 
+        /// <summary>
+        /// 标题页 / 设置面板开着的时候把相机输入关掉。
+        /// 那些界面用的是同一套触摸事件（滚动列表就是在滑），不挡的话在设置里滑一下，
+        /// 场地也跟着转，回到游戏时视角是歪的。
+        /// </summary>
+        public static bool BlockInput;
+
         void Update()
         {
+            if (BlockInput)
+                _last.Clear();
+
             if (MobileMode.Enabled)
             {
                 TouchCamera();
@@ -89,6 +99,9 @@ namespace MinecraftTetris
 
         void MouseCamera()
         {
+            if (BlockInput)
+                return;
+
             if (Input.GetMouseButton(1))
             {
                 Yaw += Input.GetAxis("Mouse X") * 4f;
@@ -111,6 +124,9 @@ namespace MinecraftTetris
         /// </summary>
         void TouchCamera()
         {
+            if (BlockInput)
+                return;
+
             int free = 0;
             Vector2 sum = Vector2.zero;
             Vector2 first = Vector2.zero, second = Vector2.zero;

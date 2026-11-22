@@ -99,9 +99,41 @@
       var MT_DEBUG = /[?&]debug=1/.test(location.search);
       if (MT_DEBUG) debugBox.style.display = 'block';
 
+      // 目标画布比例：横 16:9 / 竖 9:16，auto 返回 0（铺满容器）。
+      function mtTargetRatio() {
+        var m = mtGetOrientation();
+        return m === 'landscape' ? 16 / 9 : m === 'portrait' ? 9 / 16 : 0;
+      }
+
       function mtSyncCanvas() {
-        var cssW = container.clientWidth;
-        var cssH = container.clientHeight;
+        var boxW = container.clientWidth;
+        var boxH = container.clientHeight;
+        var ratio = mtTargetRatio();
+        var cssW = boxW;
+        var cssH = boxH;
+
+        if (ratio > 0) {
+          // 系统锁不了方向时（iOS Safari、微信内置浏览器、桌面浏览器）的兜底：
+          // 把画布按目标比例摆好、四周留黑边。Unity 只看画布尺寸，
+          // 比例对了版式就跟着切 —— 设置里那个「横屏 / 竖屏」至少不再是一按没反应。
+          var w = boxW;
+          var h = boxW / ratio;
+          if (h > boxH) { h = boxH; w = boxH * ratio; }
+          cssW = Math.max(1, Math.round(w));
+          cssH = Math.max(1, Math.round(h));
+          canvas.style.position = 'absolute';
+          canvas.style.width = cssW + 'px';
+          canvas.style.height = cssH + 'px';
+          canvas.style.left = Math.round((boxW - cssW) * 0.5) + 'px';
+          canvas.style.top = Math.round((boxH - cssH) * 0.5) + 'px';
+        } else {
+          canvas.style.position = '';
+          canvas.style.width = '';
+          canvas.style.height = '';
+          canvas.style.left = '';
+          canvas.style.top = '';
+        }
+
         var w = Math.max(1, Math.round(cssW * MT_DPR));
         var h = Math.max(1, Math.round(cssH * MT_DPR));
         if (canvas.width !== w) canvas.width = w;

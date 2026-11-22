@@ -275,6 +275,9 @@ namespace MinecraftTetris
             if (Visible)
                 _t += Time.deltaTime;
 
+            // 标题页 / 设置面板在前台时，触摸是在滚列表、点按钮，不该同时转场地
+            CameraRig.BlockInput = Visible || ShowSettings;
+
             // 切页 / 开关设置面板时把动画计时归零（见 DrawSettingsPanel 里的滑入）
             bool on = ShowSettings;
             if (_page != _pageSeen || on != _settingsSeen)
