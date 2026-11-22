@@ -16,6 +16,17 @@ namespace MinecraftTetris
         /// <summary>手机上的操作层。给了它，被按键认领的手指就不拿来转视角。</summary>
         public MobileControls Controls;
 
+        /// <summary>
+        /// 这个屏幕点（GUI 坐标，左上原点）算不算压在界面块上。由 Bootstrap 接上。
+        ///
+        /// 手机上 IMGUI 的控件不消费 Input.touches：在层次图面板上划、在操作条空白处划，
+        /// 相机照样跟着转，画面和手指一起跑。所以按「起手位置落在哪」自己判一次。
+        /// </summary>
+        public System.Func<Vector2, bool> UiHit;
+
+        /// <summary>起手落在界面上的手指：整段都不算转视角，抬起来才清。</summary>
+        readonly HashSet<int> _uiFingers = new HashSet<int>();
+
         // 爆炸震屏：_shake 从 1 衰减到 0，位移按它的平方收，收尾不会突然停。
         float _shake;
         float _shakeAmp;
@@ -67,7 +78,10 @@ namespace MinecraftTetris
         void Update()
         {
             if (BlockInput)
+            {
                 _last.Clear();
+                _uiFingers.Clear();
+            }
 
             if (MobileMode.Enabled)
             {
@@ -135,6 +149,28 @@ namespace MinecraftTetris
             {
                 Touch t = Input.GetTouch(i);
                 int id = t.fingerId;
+
+                // 起手压在界面块上（层次图 / 操作条 / 顶部统计）的手指，整段都不转视角。
+                // 只认「起手」这一下：从场地划进面板的仍然算转视角，不会突然卡住。
+                if (t.phase == TouchPhase.Began)
+                {
+                    bool onUi = UiHit != null &&
+                        UiHit(new Vector2(t.position.x, Screen.height - t.position.y));
+                    if (onUi)
+                    {
+                        _uiFingers.Add(id);
+                        _last.Remove(id);
+                        continue;
+                    }
+                }
+
+                if (_uiFingers.Contains(id))
+                {
+                    if (t.phase == TouchPhase.Ended || t.phase == TouchPhase.Canceled)
+                        _uiFingers.Remove(id);
+                    _last.Remove(id);
+                    continue;
+                }
 
                 if (Controls != null && Controls.Claims(id))
                 {

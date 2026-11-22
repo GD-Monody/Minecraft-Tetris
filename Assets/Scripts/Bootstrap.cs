@@ -652,6 +652,32 @@ namespace MinecraftTetris
         /// 挪世界坐标会带来透视变形（场地越靠上越歪），viewport 只是少画几行像素，
         /// 场地本身还是正的，长宽比变了相机距离会自动重算。
         /// </summary>
+        /// <summary>
+        /// 这个点（GUI 坐标，左上原点）是不是落在界面块上：底部操作条、顶部统计条、层次图。
+        ///
+        /// 手机上 IMGUI 控件不消费 Input.touches —— 在层次图面板上划、在操作条的空白处划，
+        /// 相机照样跟着转，看着像「界面和场地一起动」。相机那边按起手位置判一次，
+        /// 落在这些块里的手指整段都不算转视角。
+        /// </summary>
+        bool HitMobileUi(Vector2 gui)
+        {
+            if (!MobileMode.Enabled)
+                return false;
+
+            // 底部整条操作带：按键之外的空白也归它，划空白同样不该转视角
+            if (_mobile != null && gui.y >= Screen.height - _mobile.StripHeight)
+                return true;
+
+            // 顶部统计条（分数面板 + 暂停键）
+            if (gui.y <= Hud.MobileBarHeight)
+                return true;
+
+            if (_layerMap != null && _layerMap.HitUi(gui))
+                return true;
+
+            return false;
+        }
+
         void SyncMobileUi()
         {
             if (_mobile == null || _mainCam == null)
@@ -2647,6 +2673,8 @@ namespace MinecraftTetris
 
             _mainCam = cam;
             _rig = rig;
+            // 手指起手压在界面块上就不转视角（见 HitMobileUi）—— 必须等 _rig 建好再接
+            rig.UiHit = HitMobileUi;
             _normalCullMask = cam.cullingMask;
         }
     }

@@ -241,6 +241,29 @@ namespace MinecraftTetris
         Rect _tabRect;
 
         /// <summary>
+        /// 这个点（GUI 坐标，左上原点）算不算压在层次图这块界面上：折叠键 + 展开后的面板。
+        ///
+        /// 手机上 IMGUI 不消费 Input.touches，在面板上划手指相机照样跟着转，
+        /// 所以相机那边按「起手位置」自己判一次（见 CameraRig.UiHit）。
+        /// </summary>
+        public bool HitUi(Vector2 gui)
+        {
+            if (Hidden || Loop == null || Loop.Grid == null || !UsefulFor(Loop.Grid.SizeZ))
+                return false;
+
+            if (_tabRect.width > 0f && _tabRect.Contains(gui))
+                return true;
+
+            if (Open && ReservedWidth > 0f)
+            {
+                float pad = UiSkin.P(4f);
+                return new Rect(Screen.width - ReservedWidth - pad, 0f,
+                    ReservedWidth + pad, Screen.height).Contains(gui);
+            }
+            return false;
+        }
+
+        /// <summary>
         /// 字号：手机上按屏高比例算。
         ///
         /// 早先这里用的是 UiSkin.Size(设计值)，而手机那套倍数按 dpi 折算会到 2 倍上下 ——
@@ -566,7 +589,7 @@ namespace MinecraftTetris
             }
             else
             {
-                GUI.Label(new Rect(x, y, mapW - UiSkin.P(96f), headH), "俯视图  y = " + _y, _titleStyle);
+                GUI.Label(new Rect(x, y, mapW - UiSkin.P(96f), headH), "层次图  y = " + _y, _titleStyle);
                 GUI.Label(new Rect(x + mapW - UiSkin.P(96f), y, UiSkin.P(96f), headH),
                     missing == 0 ? "已满" : "还差 " + missing,
                     missing == 0 ? _headFullStyle : _headMissStyle);
