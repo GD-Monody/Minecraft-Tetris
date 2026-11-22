@@ -650,10 +650,11 @@ namespace MinecraftTetris
         /// 换成「按键设置」—— 桌面的窗口比例由玩家自己拉，网页版也会跟着重排，
         /// 摆一个改不了任何东西的按钮只会让人以为坏了。
         /// </summary>
+        /// <summary>可滚动的设置项数目（不含底部的「返回」——那颗固定在面板底下）。</summary>
         static int SettingRowCount()
         {
-            // 手机上多一行「移动方式」（滑动 / 十字），「返回」跟着往后挪一位
-            return MobileMode.Enabled ? 11 : 10;
+            // 手机比桌面多一行「键位：初级 / 高级」
+            return MobileMode.Enabled ? 10 : 9;
         }
 
         void DrawSettingsMain()
@@ -674,7 +675,12 @@ namespace MinecraftTetris
             // 和「特殊方块机制」页同一套做法（滚轮 + 手指拖动 + 整行吸附）。
             int count = SettingRowCount();
             float top = panel.y + Pg(wide ? 34f : 78f);
-            float viewH = Mathf.Max(bh, panel.yMax - Pg(wide ? 12f : 18f) - top);
+
+            // 「返回」固定在面板底部，不跟着列表滚 ——
+            // 之前它排在第 11 行，滚到中间就看不见了，想退出得先滑到底。
+            float backY = panel.yMax - Pg(wide ? 12f : 18f) - bh;
+            float viewH = Mathf.Max(bh, backY - Pg(10f) - top);
+
             float contentH = count * step - (step - bh);
             float maxScroll = Mathf.Max(0f, contentH - viewH);
 
@@ -694,6 +700,9 @@ namespace MinecraftTetris
 
             if (maxScroll > 0f)
                 DrawScrollBar(clip, viewH, contentH, maxScroll, _mainScroll);
+
+            if (GUI.Button(new Rect(bx, backY, bw, bh), "返回", _btnBig))
+                BeginCloseSettings();
         }
 
         /// <summary>
@@ -705,14 +714,6 @@ namespace MinecraftTetris
             // 手机上不显示「按键设置」：只有触屏，键盘映射没有意义；
             // 桌面上反过来，把「屏幕方向」那一格换成「按键设置」—— 桌面窗口比例
             // 自己拉就行，网页版也会跟着重排，不需要这一项。
-            // 「返回」永远是最后一行：手机多出来的那行把下标推后了一位
-            if (i == SettingRowCount() - 1)
-            {
-                if (GUI.Button(r, "返回", _btnBig))
-                    BeginCloseSettings();
-                return;
-            }
-
             int idx = i;
             if (!MobileMode.Enabled && i == 6)
             {

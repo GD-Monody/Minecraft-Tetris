@@ -643,17 +643,18 @@ namespace MinecraftTetris
         {
             switch (a)
             {
+                // 平移用「带杆的箭头」（←→↑↓），和降落那些实心三角分得开
                 case Act.MoveL:
-                    DrawArrow(r, 2, c);
+                    DrawLineArrow(r, 180f, c);
                     break;
                 case Act.MoveR:
-                    DrawArrow(r, 3, c);
+                    DrawLineArrow(r, 0f, c);
                     break;
                 case Act.MoveAway:
-                    DrawArrow(r, 0, c);
+                    DrawLineArrow(r, -90f, c);
                     break;
                 case Act.MoveNear:
-                    DrawArrow(r, 1, c);
+                    DrawLineArrow(r, 90f, c);
                     break;
 
                 case Act.Soft:
@@ -691,6 +692,23 @@ namespace MinecraftTetris
                     DrawArc(r, false, 0.6f, 1.2f, c);
                     break;
             }
+        }
+
+        /// <summary>带杆的箭头（←→↑↓），0 度朝右。整块绕中心旋转到指定角度。</summary>
+        void DrawLineArrow(Rect r, float deg, Color c)
+        {
+            float side = Mathf.Min(r.width, r.height) * 0.62f;
+            var box = new Rect(r.center.x - side * 0.5f, r.center.y - side * 0.5f, side, side);
+
+            Matrix4x4 old = GUI.matrix;
+            // 注意 GUI 坐标 y 朝下：正角度是顺时针，所以「朝上」得用 -90
+            GUIUtility.RotateAroundPivot(deg, box.center);
+
+            Color oc = GUI.color;
+            GUI.color = c;
+            GUI.DrawTexture(box, LineArrowTexture);
+            GUI.color = oc;
+            GUI.matrix = old;
         }
 
         /// <summary>空心的向下三角（软降）。</summary>
@@ -863,6 +881,36 @@ namespace MinecraftTetris
                     return Mathf.Abs(u) <= 0.42f * (1f - t);
                 });
                 return _arrowTex;
+            }
+        }
+
+        static Texture2D _lineArrowTex;
+
+        /// <summary>带杆的箭头，朝右：一根横杆 + 末端三角头。</summary>
+        static Texture2D LineArrowTexture
+        {
+            get
+            {
+                if (_lineArrowTex != null)
+                    return _lineArrowTex;
+
+                float cy = (TexSize - 1) * 0.5f;
+                const float shaftFrom = 11f;
+                const float shaftTo = 41f;
+                const float tipX = 55f;
+                const float halfShaft = 3.0f;
+                const float headHalf = 10.0f;
+
+                _lineArrowTex = BuildShape(delegate (float x, float y)
+                {
+                    if (x >= shaftFrom && x <= shaftTo && Mathf.Abs(y - cy) <= halfShaft)
+                        return true;
+                    return PointInTri(x, y,
+                        tipX, cy,
+                        shaftTo - 1f, cy - headHalf,
+                        shaftTo - 1f, cy + headHalf);
+                });
+                return _lineArrowTex;
             }
         }
 
