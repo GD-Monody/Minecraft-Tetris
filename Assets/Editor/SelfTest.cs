@@ -1578,7 +1578,7 @@ namespace MinecraftTetris.EditorTools
 
             bool pagesFit = true;
             bool pagesPositive = true;
-            for (int pi = 0; pi <= (int)TitleScreen.PageMech; pi++)
+            for (int pi = 0; pi <= TitleScreen.PageLast; pi++)
             {
                 Vector2 design = TitleScreen.PageDesign(pi);
                 float target = TitleScreen.PageTargetOf(pi);

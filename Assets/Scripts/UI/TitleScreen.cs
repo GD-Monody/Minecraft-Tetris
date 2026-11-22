@@ -15,13 +15,16 @@ namespace MinecraftTetris
         [Serializable]
         class TitleMeta { public CharMeta[] chars; }
 
-        enum SettingsPage { Main, Keys, Size, Workshop, Speed, Music, Guide, Mech }
+        enum SettingsPage { Main, Keys, Size, Workshop, Speed, Music, Guide, Mech, Sound, Control, Screen, Play }
 
         /// <summary>「游戏规则」页在 SettingsPage 里的下标，调试开关要用。</summary>
         public const int PageGuide = (int)SettingsPage.Guide;
 
         /// <summary>「特殊方块机制开关」页的下标。</summary>
         public const int PageMech = (int)SettingsPage.Mech;
+
+        /// <summary>最后一个设置页的下标（自检按它遍历所有页）。</summary>
+        public const int PageLast = (int)SettingsPage.Play;
 
         struct Mote
         {
@@ -229,7 +232,7 @@ namespace MinecraftTetris
         public void OpenSettingsPage(int page)
         {
             ShowSettings = true;
-            _page = (SettingsPage)Mathf.Clamp(page, 0, (int)SettingsPage.Mech);
+            _page = (SettingsPage)Mathf.Clamp(page, 0, PageLast);
             _mechScroll = Vector2.zero;
             _blockScroll = 0f;
             _keyScroll = 0f;
@@ -640,23 +643,27 @@ namespace MinecraftTetris
                 case SettingsPage.Mech:
                     DrawSettingsMech();
                     break;
+                case SettingsPage.Sound:
+                    DrawSettingsSound();
+                    break;
+                case SettingsPage.Control:
+                    DrawSettingsControl();
+                    break;
+                case SettingsPage.Screen:
+                    DrawSettingsScreen();
+                    break;
+                case SettingsPage.Play:
+                    DrawSettingsPlay();
+                    break;
             }
 
             GUI.matrix = matBack;
         }
 
         /// <summary>
-        /// 设置主页一共几行。手机上是十行（含「屏幕方向」），桌面上把「屏幕方向」
-        /// 换成「按键设置」—— 桌面的窗口比例由玩家自己拉，网页版也会跟着重排，
-        /// 摆一个改不了任何东西的按钮只会让人以为坏了。
+        /// 设置主页：四个分组入口。上一版是一长串十一行、还得滚动，
+        /// 手机上滑半天找不到东西 —— 分成四组，每组一页，两到四行就到底。
         /// </summary>
-        /// <summary>可滚动的设置项数目（不含底部的「返回」——那颗固定在面板底下）。</summary>
-        static int SettingRowCount()
-        {
-            // 手机比桌面多两行：「键位：初级 / 高级」「移动：滑动 / 十字键」
-            return MobileMode.Enabled ? 11 : 9;
-        }
-
         void DrawSettingsMain()
         {
             Rect panel = BeginPage(420f, 648f);
@@ -668,215 +675,205 @@ namespace MinecraftTetris
             bool wide = WidePage;
             float bw = Pg(wide ? 340f : 300f);
             float bh = Pg(wide ? 36f : 42f);
-            float step = Pg(wide ? 44f : 54f);
+            float step = Pg(wide ? 46f : 58f);
             float bx = panel.x + (w - bw) * 0.5f;
+            float top = panel.y + Pg(wide ? 48f : 92f);
 
-            // 列表可滚动：加进「屏幕方向」之后已经十项，横屏的画布放不下一屏。
-            // 和「特殊方块机制」页同一套做法（滚轮 + 手指拖动 + 整行吸附）。
-            int count = SettingRowCount();
-            float top = panel.y + Pg(wide ? 34f : 78f);
-
-            // 「返回」固定在面板底部，不跟着列表滚 ——
-            // 之前它排在第 11 行，滚到中间就看不见了，想退出得先滑到底。
-            float backY = panel.yMax - Pg(wide ? 12f : 18f) - bh;
-            float viewH = Mathf.Max(bh, backY - Pg(10f) - top);
-
-            float contentH = count * step - (step - bh);
-            float maxScroll = Mathf.Max(0f, contentH - viewH);
-
-            var clip = new Rect(bx, top, bw, viewH);
-            ScrollList(clip, maxScroll, ref _mainScroll, step);
-
-            GUI.BeginGroup(clip);
-            for (int i = 0; i < count; i++)
+            string[] names = { "音乐", "操作", "屏幕", "玩法" };
+            SettingsPage[] pages =
             {
-                var r = new Rect(0f, i * step - _mainScroll, bw, bh);
-                if (r.y + bh < 0f || r.y > viewH)
-                    continue;   // 看不见的不画
+                SettingsPage.Sound, SettingsPage.Control, SettingsPage.Screen, SettingsPage.Play,
+            };
 
-                DrawSettingRow(i, r);
+            for (int i = 0; i < names.Length; i++)
+            {
+                if (GUI.Button(new Rect(bx, top + i * step, bw, bh), names[i], _btnBig))
+                    _page = pages[i];
             }
-            GUI.EndGroup();
 
-            if (maxScroll > 0f)
-                DrawScrollBar(clip, viewH, contentH, maxScroll, _mainScroll);
-
+            float backY = panel.yMax - Pg(wide ? 12f : 18f) - bh;
             if (GUI.Button(new Rect(bx, backY, bw, bh), "返回", _btnBig))
                 BeginCloseSettings();
         }
 
         /// <summary>
-        /// 画设置主页的第 i 行。坐标是相对于滚动区左上角的（外面套了 BeginGroup），
-        /// 所以这里直接用 0 / r 里的坐标，不要再加 panel.x。
+        /// 分组页的通用壳：标题 + 若干行 + 底部固定的「返回」。
+        /// 分组内容最多四行，不需要滚动。
         /// </summary>
-        void DrawSettingRow(int i, Rect r)
+        void DrawGroupPage(string title, string[] labels, System.Action[] actions)
         {
-            // 手机上不显示「按键设置」：只有触屏，键盘映射没有意义；
-            // 桌面上反过来，把「屏幕方向」那一格换成「按键设置」—— 桌面窗口比例
-            // 自己拉就行，网页版也会跟着重排，不需要这一项。
-            int idx = i;
-            if (!MobileMode.Enabled && i == 6)
+            Rect panel = BeginPage(420f, 648f);
+            float w = panel.width;
+            DrawPanel(panel);
+
+            PageTitle(panel, title, 16f);
+
+            bool wide = WidePage;
+            float bw = Pg(wide ? 340f : 300f);
+            float bh = Pg(wide ? 36f : 42f);
+            float step = Pg(wide ? 46f : 58f);
+            float bx = panel.x + (w - bw) * 0.5f;
+            float top = panel.y + Pg(wide ? 48f : 92f);
+
+            for (int i = 0; i < labels.Length; i++)
             {
-                if (GUI.Button(r, "按键设置", _btnBig))
-                {
-                    _page = SettingsPage.Keys;
-                    _capturingAction = -1;
-                    _keyScroll = 0f;
-                }
-                return;
+                if (GUI.Button(new Rect(bx, top + i * step, bw, bh), labels[i], _btnBig))
+                    Fire(actions[i]);
             }
 
-            switch (idx)
-            {
-                case 0:
-                    if (GUI.Button(r, SfxEnabled ? "音效：开" : "音效：关", _btnBig))
+            float backY = panel.yMax - Pg(wide ? 12f : 18f) - bh;
+            if (GUI.Button(new Rect(bx, backY, bw, bh), "返回", _btnBig))
+                _page = SettingsPage.Main;
+        }
+
+        /// <summary>音乐：音效开关 + 音量（原来那行「音乐」）。</summary>
+        void DrawSettingsSound()
+        {
+            string music = GameSettings.MusicVolume <= 0.005f
+                ? "音量：关"
+                : "音量：" + Mathf.RoundToInt(GameSettings.MusicVolume * 100f) + "%";
+
+            DrawGroupPage("音乐",
+                new[] { SfxEnabled ? "音效：开" : "音效：关", music },
+                new System.Action[]
+                {
+                    () =>
                     {
                         bool next = !SfxEnabled;
                         PlayerPrefs.SetInt(SfxKey, next ? 1 : 0);
                         PlayerPrefs.Save();
                         if (OnSfxChanged != null)
                             OnSfxChanged(next);
-                    }
-                    break;
-
-                case 1:
-                    // 背景配色：手机在户外/强光下黑底几乎看不见东西，亮色底能救回来。
-                    if (GUI.Button(r, UiSkin.Current == UiSkin.Theme.Light ? "背景：亮色" : "背景：暗色", _btnBig))
-                    {
-                        UiSkin.Current = UiSkin.Current == UiSkin.Theme.Light
-                            ? UiSkin.Theme.Dark
-                            : UiSkin.Theme.Light;
-                    }
-                    break;
-
-                case 2:
-                {
-                    // 深度 1 时一层就是一行，层消没有意义，按钮直接置灰
-                    bool canLayer = GameSettings.CanUseLayerMode;
-                    string elimName = !canLayer
-                        ? "消除：行消（Z=1 固定）"
-                        : (GameSettings.ElimMode == GameSettings.ElimLayer ? "消除：层消" : "消除：行消");
-                    GUI.enabled = canLayer;
-                    bool elimClicked = GUI.Button(r, elimName, _btnBig);
-                    GUI.enabled = true;
-                    // IMGUI 关掉 GUI.enabled 只是不吃点击，自定义贴图不会自己变灰，压一层半透明盖住
-                    if (!canLayer)
-                        DrawRect(r, new Color(0.05f, 0.06f, 0.08f, 0.45f));
-
-                    if (elimClicked)
-                    {
-                        int next = GameSettings.ElimMode == GameSettings.ElimLayer
-                            ? GameSettings.ElimRows
-                            : GameSettings.ElimLayer;
-                        GameSettings.SetElimMode(next);
-                    }
-                    break;
-                }
-
-                case 3:
-                    if (GUI.Button(r, "下落速度：" + GameSettings.FallSpeed.ToString("0.00") + "×", _btnBig))
-                    {
-                        _tmpSpeed = GameSettings.FallSpeed;
-                        _page = SettingsPage.Speed;
-                    }
-                    break;
-
-                case 4:
-                {
-                    string musicName = GameSettings.MusicVolume <= 0.005f
-                        ? "音乐：关"
-                        : "音乐：" + Mathf.RoundToInt(GameSettings.MusicVolume * 100f) + "%";
-                    if (GUI.Button(r, musicName, _btnBig))
+                    },
+                    () =>
                     {
                         _tmpMusic = GameSettings.MusicVolume;
                         _page = SettingsPage.Music;
-                    }
-                    break;
+                    },
+                });
+        }
+
+        /// <summary>操作：移动方式 / 键位（桌面换成按键设置）/ 落点提示。</summary>
+        void DrawSettingsControl()
+        {
+            var labels = new System.Collections.Generic.List<string>();
+            var acts = new System.Collections.Generic.List<System.Action>();
+
+            if (MobileMode.Enabled)
+            {
+                labels.Add(GameSettings.MoveStyle == GameSettings.MoveDpad ? "移动：十字键" : "移动：滑动");
+                acts.Add(() => GameSettings.SetMoveStyle(GameSettings.MoveStyle == GameSettings.MoveDpad
+                    ? GameSettings.MoveSwipe
+                    : GameSettings.MoveDpad));
+
+                labels.Add(GameSettings.KeyLayout == GameSettings.KeysAdvanced ? "键位：高级" : "键位：初级");
+                acts.Add(() => GameSettings.SetKeyLayout(GameSettings.KeyLayout == GameSettings.KeysAdvanced
+                    ? GameSettings.KeysBasic
+                    : GameSettings.KeysAdvanced));
+            }
+            else
+            {
+                // 桌面没有触屏，只有键盘映射可调
+                labels.Add("按键设置");
+                acts.Add(() =>
+                {
+                    _page = SettingsPage.Keys;
+                    _capturingAction = -1;
+                    _keyScroll = 0f;
+                });
+            }
+
+            labels.Add(GameSettings.GhostPiece ? "落点提示：开" : "落点提示：关");
+            acts.Add(() => GameSettings.SetGhostPiece(!GameSettings.GhostPiece));
+
+            DrawGroupPage("操作", labels.ToArray(), acts.ToArray());
+        }
+
+        /// <summary>屏幕：方向（手机才有）+ 背景配色。</summary>
+        void DrawSettingsScreen()
+        {
+            var labels = new System.Collections.Generic.List<string>();
+            var acts = new System.Collections.Generic.List<System.Action>();
+
+            if (MobileMode.Enabled)
+            {
+                switch (MobileMode.Orientation)
+                {
+                    case MobileMode.ScreenMode.Landscape: labels.Add("屏幕：横屏"); break;
+                    case MobileMode.ScreenMode.Portrait: labels.Add("屏幕：竖屏"); break;
+                    default: labels.Add("屏幕：自动"); break;
                 }
+                acts.Add(() =>
+                {
+                    MobileMode.ScreenMode next;
+                    switch (MobileMode.Orientation)
+                    {
+                        case MobileMode.ScreenMode.Auto: next = MobileMode.ScreenMode.Landscape; break;
+                        case MobileMode.ScreenMode.Landscape: next = MobileMode.ScreenMode.Portrait; break;
+                        default: next = MobileMode.ScreenMode.Auto; break;
+                    }
+                    MobileMode.SetOrientation(next);
+                    _rotateHintClosed = false;   // 换了一次设置，提示重新算
+                });
+            }
 
-                case 5:
-                    // 落点提示：下落时把方块会停在哪儿用高亮方框标出来（3D 场地里不标很难估）
-                    if (GUI.Button(r, GameSettings.GhostPiece ? "落点提示：开" : "落点提示：关", _btnBig))
-                        GameSettings.SetGhostPiece(!GameSettings.GhostPiece);
-                    break;
+            labels.Add(UiSkin.Current == UiSkin.Theme.Light ? "背景：亮色" : "背景：暗色");
+            acts.Add(() =>
+            {
+                UiSkin.Current = UiSkin.Current == UiSkin.Theme.Light
+                    ? UiSkin.Theme.Dark
+                    : UiSkin.Theme.Light;
+            });
 
-                case 6:
-                    DrawScreenOrientationRow(r);
-                    break;
+            DrawGroupPage("屏幕", labels.ToArray(), acts.ToArray());
+        }
 
-                case 7:
-                    if (GUI.Button(r, "场地尺寸", _btnBig))
+        /// <summary>玩法：场地尺寸 / 下落速度 / 消除方式 / 特殊方块开关。</summary>
+        void DrawSettingsPlay()
+        {
+            bool canLayer = GameSettings.CanUseLayerMode;
+            string elim = !canLayer
+                ? "消除：行消（Z=1 固定）"
+                : (GameSettings.ElimMode == GameSettings.ElimLayer ? "消除：层消" : "消除：行消");
+
+            DrawGroupPage("玩法",
+                new[]
+                {
+                    "场地尺寸",
+                    "下落速度：" + GameSettings.FallSpeed.ToString("0.00") + "×",
+                    elim,
+                    "特殊方块开关",
+                },
+                new System.Action[]
+                {
+                    () =>
                     {
                         _tmpX = GameSettings.SizeX;
                         _tmpY = GameSettings.SizeY;
                         _tmpZ = GameSettings.SizeZ;
                         _page = SettingsPage.Size;
-                    }
-                    break;
-
-                case 8:
-                    // 特殊方块各机制的开关都收在这一页里
-                    if (GUI.Button(r, "特殊方块开关", _btnBig))
+                    },
+                    () =>
+                    {
+                        _tmpSpeed = GameSettings.FallSpeed;
+                        _page = SettingsPage.Speed;
+                    },
+                    () =>
+                    {
+                        if (!canLayer)
+                            return;
+                        GameSettings.SetElimMode(GameSettings.ElimMode == GameSettings.ElimLayer
+                            ? GameSettings.ElimRows
+                            : GameSettings.ElimLayer);
+                    },
+                    () =>
                     {
                         _mechScroll = Vector2.zero;
                         _page = SettingsPage.Mech;
-                    }
-                    break;
-
-                case 9:
-                    // 手机上才有这两行
-                    if (GUI.Button(r, GameSettings.KeyLayout == GameSettings.KeysAdvanced
-                            ? "键位：高级" : "键位：初级", _btnBig))
-                    {
-                        GameSettings.SetKeyLayout(GameSettings.KeyLayout == GameSettings.KeysAdvanced
-                            ? GameSettings.KeysBasic
-                            : GameSettings.KeysAdvanced);
-                    }
-                    break;
-
-                case 10:
-                    if (GUI.Button(r, GameSettings.MoveStyle == GameSettings.MoveDpad
-                            ? "移动：十字键" : "移动：滑动", _btnBig))
-                    {
-                        GameSettings.SetMoveStyle(GameSettings.MoveStyle == GameSettings.MoveDpad
-                            ? GameSettings.MoveSwipe
-                            : GameSettings.MoveDpad);
-                    }
-                    break;
-            }
+                    },
+                });
         }
 
-        /// <summary>
-        /// 「屏幕方向」这一行：自动 / 横屏 / 竖屏 循环。
-        ///
-        /// 网页版把这个选择推给页面：横屏 / 竖屏 会让浏览器进全屏再调
-        /// <c>screen.orientation.lock()</c>，系统真的转屏之后窗口尺寸变化、
-        /// 模板把新尺寸写回画布，Unity 就按新方向排版（见 WebGLTemplates 里的模板）。
-        /// 桌面版没有这回事，窗口比例由玩家自己拉。
-        /// </summary>
-        void DrawScreenOrientationRow(Rect r)
-        {
-            string name;
-            switch (MobileMode.Orientation)
-            {
-                case MobileMode.ScreenMode.Landscape: name = "屏幕：横屏"; break;
-                case MobileMode.ScreenMode.Portrait: name = "屏幕：竖屏"; break;
-                default: name = "屏幕：自动"; break;
-            }
-
-            if (GUI.Button(r, name, _btnBig))
-            {
-                MobileMode.ScreenMode next;
-                switch (MobileMode.Orientation)
-                {
-                    case MobileMode.ScreenMode.Auto: next = MobileMode.ScreenMode.Landscape; break;
-                    case MobileMode.ScreenMode.Landscape: next = MobileMode.ScreenMode.Portrait; break;
-                    default: next = MobileMode.ScreenMode.Auto; break;
-                }
-                MobileMode.SetOrientation(next);
-                _rotateHintClosed = false;   // 换了一次设置，提示重新算
-            }
-        }
 
         /// <summary>
         /// 「选了横屏，但屏幕还是竖的」时压一层提示。
@@ -2217,6 +2214,10 @@ namespace MinecraftTetris
                 case SettingsPage.Music: return new Vector2(500f, 360f);
                 case SettingsPage.Guide: return new Vector2(1000f, 596f);   // 取三栏里最高那一栏
                 case SettingsPage.Mech: return new Vector2(480f, 900f);
+                case SettingsPage.Sound:
+                case SettingsPage.Control:
+                case SettingsPage.Screen:
+                case SettingsPage.Play: return new Vector2(420f, 648f);   // 分组页，和主页同一块板
             }
             return new Vector2(420f, 594f);
         }

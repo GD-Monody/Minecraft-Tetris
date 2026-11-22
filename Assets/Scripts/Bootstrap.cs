@@ -243,6 +243,18 @@ namespace MinecraftTetris
                 _title.Visible = true;
                 _title.OpenSettingsPage(5);
             }
+            // -page N：直接开某个设置页（N 是 SettingsPage 的下标），截图核对用
+            {
+                string[] argvAll = System.Environment.GetCommandLineArgs();
+                int pageAt = System.Array.IndexOf(argvAll, "-page");
+                if (pageAt >= 0 && pageAt + 1 < argvAll.Length
+                    && int.TryParse(argvAll[pageAt + 1], out int pageNo))
+                {
+                    _title.Visible = true;
+                    _title.OpenSettingsPage(pageNo);
+                }
+            }
+
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-workshop") >= 0)
             {
                 _title.Visible = true;
