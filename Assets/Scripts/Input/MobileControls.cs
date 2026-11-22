@@ -30,7 +30,15 @@ namespace MinecraftTetris
         const int PitchDown = 5;  // 往正面翻
         const int SoftDropBtn = 6;
         const int HardDropBtn = 7;
-        const int BtnCount = 8;
+
+        // 十字方向键：上 = 往远处推（z 变大），下 = 往近处拉。和拖动那条路一致。
+        // 它们不参与右下角那套两列网格，位置由 LayoutDpad 单独算。
+        const int DirUp = 8;
+        const int DirDown = 9;
+        const int DirLeft = 10;
+        const int DirRight = 11;
+        const int DirFirst = 8;
+        const int BtnCount = 12;
 
         static readonly string[] Labels =
         {
@@ -38,7 +46,12 @@ namespace MinecraftTetris
             "俯视 左", "俯视 右",
             "上翻", "下翻",
             "软降", "硬降",
+            "上", "下", "左", "右",
         };
+
+        /// <summary>方向键按住后的连发：第一下立即生效，之后按这个间隔续。</summary>
+        const float DirFirstDelay = 0.24f;
+        const float DirRepeat = 0.10f;
 
         /// <summary>控制条占屏高的比例。相机取景按这个让出下面一块，见 Bootstrap.SetCameraRect。</summary>
         /// <summary>
@@ -51,9 +64,12 @@ namespace MinecraftTetris
         /// <summary>横屏时操作条占屏高的比例。横屏高度本来就少，再按 0.34 切会把场地压扁。</summary>
         public const float WideStripRatio = 0.23f;
 
-        /// <summary>拖动区攒够多远走一格（屏宽的倍数）。</summary>
-        const float StepX = 0.070f;
-        const float StepZ = 0.085f;
+        /// <summary>
+        /// 拖动区攒够多远走一格（**拖动区自身**宽高的倍数，不是屏宽的）。
+        /// 原来是屏宽的 7% / 8.5%，横屏拖动区窄、同样距离换来的格数就少，手感发涩。
+        /// </summary>
+        const float StepX = 0.18f;
+        const float StepZ = 0.22f;
 
         /// <summary>软降按住后的连发间隔（秒）。松手就停。</summary>
         const float SoftRepeat = 0.055f;
@@ -86,6 +102,10 @@ namespace MinecraftTetris
         public System.Action OnPause;
 
         readonly Rect[] _btn = new Rect[BtnCount];
+        /// <summary>十字键的四个矩形：0 上 / 1 下 / 2 左 / 3 右。</summary>
+        readonly Rect[] _dirRect = new Rect[4];
+        /// <summary>这一局画不画上下两个方向键（z = 1 时只有左右有意义）。</summary>
+        bool _dirUpDown;
         readonly int[] _btnFinger = new int[BtnCount];
         readonly float[] _btnNext = new float[BtnCount];
 
@@ -107,7 +127,7 @@ namespace MinecraftTetris
         float _accX, _accY;
 
         GUIStyle _labelStyle;
-        GUIStyle _hintStyle;
+        GUIStyle _dirStyle;
         int _styleSize = -1;
         int _lastW, _lastH;
 
@@ -151,13 +171,27 @@ namespace MinecraftTetris
 
             for (int i = 0; i < BtnCount; i++)
             {
-                if (_btnFinger[i] < 0 || i != SoftDropBtn)
+                if (_btnFinger[i] < 0)
                     continue;
                 float now = Time.unscaledTime;
                 while (now >= _btnNext[i])
                 {
-                    _out.SoftDrop = true;
-                    _btnNext[i] += SoftRepeat;
+                    if (i == SoftDropBtn)
+                    {
+                        _out.SoftDrop = true;
+                        _btnNext[i] += SoftRepeat;
+                    }
+                    else if (i >= DirFirst)
+                    {
+                        // 按住方向键一直走：Tetris 里按住方向是常规操作，
+                        // 只发一次的话一格一格点太累
+                        Fire(i);
+                        _btnNext[i] += DirRepeat;
+                    }
+                    else
+                    {
+                        break;
+                    }
                 }
             }
         }
@@ -205,6 +239,7 @@ namespace MinecraftTetris
                 float padW = w * 0.28f - pad;
                 float padH = availH * 0.5f;
                 _pad = new Rect(safeLeft + pad, topY + availH - padH, padW, padH);
+                LayoutDpad();
 
                 // 右：按键只占右下角 —— 铺满整条右边太大了（实测占了近三分之一屏），
                 // 而且把右上角腾出来留给俯视图按钮和面板。
@@ -235,6 +270,7 @@ namespace MinecraftTetris
             float vPadW = (w - safeLeft - safeRight) * 0.42f;
             _pad = new Rect(safeLeft + pad, top + pad,
                 vPadW - pad * 1.5f, _stripH - pad * 2f - safeBottom);
+            LayoutDpad();
 
             float vBtnLeft = _pad.xMax + pad;
             float vBtnRight = w - safeRight - pad;
@@ -254,6 +290,24 @@ namespace MinecraftTetris
                     _pad.y + row * (vBh + vGap), vBw, vBh);
             }
             ContentBottom = top;
+        }
+
+        /// <summary>
+        /// 十字键摆在拖动区正中：四根箭头贴着中心往外伸，四个角留空 ——
+        /// 角上还能继续按住拖动，两种操作方式并存，不用二选一。
+        /// </summary>
+        void LayoutDpad()
+        {
+            float cx = _pad.x + _pad.width * 0.5f;
+            float cy = _pad.y + _pad.height * 0.5f;
+            float arm = Mathf.Min(_pad.width, _pad.height) * 0.42f;
+            float t = arm * 0.62f;            // 箭头宽度
+            float len = Mathf.Max(8f, arm - t * 0.5f);
+
+            _dirRect[0] = new Rect(cx - t * 0.5f, cy - arm, t, len);
+            _dirRect[1] = new Rect(cx - t * 0.5f, cy + t * 0.5f, t, len);
+            _dirRect[2] = new Rect(cx - arm, cy - t * 0.5f, len, t);
+            _dirRect[3] = new Rect(cx + t * 0.5f, cy - t * 0.5f, len, t);
         }
 
         /// <summary>场地深度：优先用 Bootstrap 传来的真实值，拿不到再看设置。</summary>
@@ -285,6 +339,9 @@ namespace MinecraftTetris
             _vis[_visCount++] = SoftDropBtn;
             _vis[_visCount++] = HardDropBtn;
 
+            // 十字键：z = 1 时前后没有意义（转了也转不过去），只留左右
+            _dirUpDown = sizeZ > 1;
+
             // 藏起来的按键要松开，不然它记着上一次的手指，结算时还在发指令
             for (int i = 0; i < BtnCount; i++)
             {
@@ -295,6 +352,12 @@ namespace MinecraftTetris
 
         bool IsVisible(int i)
         {
+            // 方向键不在 _vis 里（它们不走右下角那套网格），单独判
+            if (i == DirUp || i == DirDown)
+                return _dirUpDown;
+            if (i == DirLeft || i == DirRight)
+                return true;
+
             for (int k = 0; k < _visCount; k++)
                 if (_vis[k] == i)
                     return true;
@@ -381,6 +444,18 @@ namespace MinecraftTetris
                 return;
             }
 
+            // 十字键：先判它们，落在箭头上就不算拖动
+            for (int d = 0; d < 4; d++)
+            {
+                int i = DirFirst + d;
+                if (_btnFinger[i] >= 0 || !IsVisible(i) || !_dirRect[d].Contains(p))
+                    continue;
+                _btnFinger[i] = finger;
+                _btnNext[i] = Time.unscaledTime + DirFirstDelay;
+                Fire(i);
+                return;
+            }
+
             if (_pad.Contains(p))
             {
                 _padFinger = finger;
@@ -404,8 +479,12 @@ namespace MinecraftTetris
             // 第一版按注释想当然写成「往上划 → Up」，结果推上去方块反而钻到镜头跟前。
             _accY -= dy;
 
-            float stepX = Screen.width * StepX;
-            float stepZ = Screen.width * StepZ;
+            // 步长按**拖动区自身**的尺寸算，不按屏宽。
+            // 按屏宽算的话：竖屏拖动区占 42% 宽，横屏只占 28%，同一个「屏宽 7%」
+            // 在横屏上要走 1.5 倍的像素才动一格 —— 手感就是横屏特别涩、推不动。
+            // 0.18 / 0.22 这两档正好等于原来竖屏的绝对像素（42% × 0.18 ≈ 屏宽 7.5%）。
+            float stepX = Mathf.Max(8f, _pad.width * StepX);
+            float stepZ = Mathf.Max(8f, _pad.height * StepZ);
 
             while (_accX >= stepX)
             {
@@ -463,6 +542,12 @@ namespace MinecraftTetris
                 case PitchDown: _out.RotatePitchCCW = true; break;
                 case SoftDropBtn: _out.SoftDrop = true; break;
                 case HardDropBtn: _out.HardDrop = true; break;
+                // 注意语义：InputState 里 Up 是「往近处」（z 减小）、Down 是「往远处」（z 增大）。
+                // 屏幕上「上」箭头应该把方块往远处推，所以对应的是 Down。
+                case DirUp: _out.Down = true; break;
+                case DirDown: _out.Up = true; break;
+                case DirLeft: _out.Left = true; break;
+                case DirRight: _out.Right = true; break;
             }
         }
 
@@ -507,6 +592,7 @@ namespace MinecraftTetris
             Fill(new Rect(0f, strip.y, Screen.width, 1f), UiSkin.AccentSoft);
 
             DrawPad();
+            DrawDpad();
             for (int k = 0; k < _visCount; k++)
                 DrawButton(_vis[k]);
 
@@ -524,16 +610,33 @@ namespace MinecraftTetris
                 : (active ? new Color(0.12f, 0.17f, 0.24f, 0.55f) : new Color(0.09f, 0.11f, 0.15f, 0.5f)));
             Border(_pad, new Color(UiSkin.Accent.r, UiSkin.Accent.g, UiSkin.Accent.b, active ? 0.65f : 0.22f));
 
-            // 横屏时这块又矮又窄，两行字会挤成一团，合成一行
-            if (Screen.width > Screen.height)
+            // 中间那块现在摆着十字键，原来那两行说明字只能让位：
+            // 拖动的提示缩成十字中心一个「拖」字（见 DrawDpad），
+            // 方向键自己写着「上/下/左/右」，不用再解释。
+        }
+
+        /// <summary>十字键：比右下角那组按键更淡一点，它们是常驻的方向盘，不该抢眼。</summary>
+        void DrawDpad()
+        {
+            for (int d = 0; d < 4; d++)
             {
-                GUI.Label(new Rect(_pad.x, _pad.y, _pad.width, _pad.height), "拖动移动", _hintStyle);
-                return;
+                int i = DirFirst + d;
+                if (!IsVisible(i))
+                    continue;
+
+                bool down = _btnFinger[i] >= 0;
+                Fill(_dirRect[d], down
+                    ? (Light ? new Color(0.62f, 0.80f, 1f, 0.95f) : new Color(0.18f, 0.44f, 0.62f, 0.9f))
+                    : (Light ? new Color(1f, 1f, 1f, 0.92f) : new Color(0.13f, 0.17f, 0.23f, 0.85f)));
+                Border(_dirRect[d], new Color(UiSkin.Accent.r, UiSkin.Accent.g, UiSkin.Accent.b, down ? 0.9f : 0.34f));
+                GUI.Label(_dirRect[d], Labels[i], _dirStyle);
             }
-            GUI.Label(new Rect(_pad.x, _pad.y + _pad.height * 0.36f, _pad.width, _pad.height * 0.16f),
-                "拖动 移动方块", _hintStyle);
-            GUI.Label(new Rect(_pad.x, _pad.y + _pad.height * 0.52f, _pad.width, _pad.height * 0.14f),
-                "左右 / 前后", _hintStyle);
+
+            // 中心那一小块空着，写上「拖」提示这块区域还能按住拖动
+            float cx = _pad.x + _pad.width * 0.5f;
+            float cy = _pad.y + _pad.height * 0.5f;
+            float t = _dirRect[0].width;
+            GUI.Label(new Rect(cx - t * 0.5f, cy - t * 0.5f, t, t), "拖", _dirStyle);
         }
 
         void DrawButton(int i)
@@ -599,11 +702,9 @@ namespace MinecraftTetris
             _pauseStyle = new GUIStyle(_labelStyle);
             _pauseStyle.fontSize = Mathf.Max(10, Mathf.RoundToInt(Hud.MobilePauseSize * 0.34f));
 
-            _hintStyle = new GUIStyle(_labelStyle);
-            _hintStyle.fontSize = Mathf.RoundToInt(Mathf.Clamp(_pad.height * 0.075f, 12f, 28f));
-            _hintStyle.normal.textColor = Light
-                ? new Color(0.30f, 0.40f, 0.52f, 0.85f)
-                : new Color(0.55f, 0.72f, 0.86f, 0.75f);
+            _dirStyle = new GUIStyle(_labelStyle);
+            _dirStyle.fontSize = Mathf.Clamp(Mathf.RoundToInt(_dirRect[0].width * 0.48f), 10, 22);
+
         }
 
         static void Fill(Rect r, Color c)
