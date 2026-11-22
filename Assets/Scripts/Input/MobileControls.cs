@@ -350,7 +350,9 @@ namespace MinecraftTetris
             _stripH = Mathf.Clamp(h * (basic ? StripRatio : 0.26f), 1f, h * 0.5f);
             float top = h - _stripH;
 
-            float vPadW = (w - safeLeft - safeRight) * (basic ? 0.40f : 0.30f);
+            // 竖屏拖动区别占太宽：初级 0.40 时右边只剩 58%，四个键被压得比拖动框还小；
+            // 高级 0.30 时十字键被挤到 30 像素，基本点不中。两边各让一步。
+            float vPadW = (w - safeLeft - safeRight) * (basic ? 0.34f : 0.36f);
             _pad = new Rect(safeLeft + pad, top + pad,
                 vPadW - pad * 1.5f, _stripH - pad * 2f - safeBottom);
 
@@ -392,10 +394,11 @@ namespace MinecraftTetris
             float m = Mathf.Min(_pad.width, _pad.height);
             float cx = _pad.x + _pad.width * 0.5f;
             float cy = _pad.y + _pad.height * 0.5f;
-            // 圆钮直径砍到原来的一半左右（面积 1/4），十字的间距保持不变，
-            // 免得四颗挤成一坨
-            float side = m * 0.26f;
-            float arm = m * 0.30f;
+            // 横屏那套是刻意收小的（0.26，约为原来的 1/4 面积）；
+            // 竖屏的拖动区本来就窄，照 0.26 算只剩 30 像素，手指根本按不准，单独给一档。
+            bool wide = Screen.width > Screen.height;
+            float side = m * (wide ? 0.26f : 0.46f);
+            float arm = m * (wide ? 0.30f : 0.34f);
 
             _slot[DirUp] = new Rect(cx - side * 0.5f, cy - arm - side * 0.5f, side, side);
             _slot[DirDown] = new Rect(cx - side * 0.5f, cy + arm - side * 0.5f, side, side);
