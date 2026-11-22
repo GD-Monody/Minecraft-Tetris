@@ -492,8 +492,15 @@ namespace MinecraftTetris
 
             GUI.Label(new Rect(panel.x, panel.y + Ps(16f), w, Ps(40f)), "已暂停", _pauseTitleBig);
 
-            string[] labels = { "继续游戏", "设置", "重新开始", "退出到主界面" };
-            System.Action[] acts = { OnResumeClick, OnSettingsClick, OnRestartClick, OnQuitToTitleClick };
+            // 按钮顺序横竖屏不一样：
+            // 竖屏一列，用户要「设置」压在最底下；横屏 2x2，要「重新开始」在继续右边、
+            // 「设置」在继续下面（也就是左下），所以两种顺序各自排。
+            string[] labels = wide
+                ? new[] { "继续游戏", "重新开始", "设置", "退出到主界面" }
+                : new[] { "继续游戏", "重新开始", "退出到主界面", "设置" };
+            System.Action[] acts = wide
+                ? new[] { OnResumeClick, OnRestartClick, OnSettingsClick, OnQuitToTitleClick }
+                : new[] { OnResumeClick, OnRestartClick, OnQuitToTitleClick, OnSettingsClick };
 
             float top = panel.y + Ps(66f);
             float gap = Ps(12f);

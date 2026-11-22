@@ -357,9 +357,10 @@ namespace MinecraftTetris
 
             if (ShowSettings || _closing)
             {
-                // 关闭动画期间先把标题页画出来垫在下面，面板滑出去时露出的是它，
-                // 而不是一片空白
-                if (_closing)
+                // 关闭动画期间先把标题页画出来垫在下面，面板滑出去时露出的是它，而不是一片空白。
+                // 但从暂停面板进来的不算：那时候底下应该是暂停着的游戏，垫标题页会把它盖掉
+                //（实测关设置的一瞬间整张标题页闪出来了）。
+                if (_closing && !_fromPause)
                     DrawTitleScreen();
 
                 if (_page == SettingsPage.Keys && !_closing)
