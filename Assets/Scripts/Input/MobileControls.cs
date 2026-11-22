@@ -679,7 +679,9 @@ namespace MinecraftTetris
             var box = new Rect(r.center.x - side * 0.5f, r.center.y - side * 0.5f, side, side);
 
             Matrix4x4 old = GUI.matrix;
-            float deg = dir == 0 ? 0f : dir == 1 ? 180f : dir == 2 ? 90f : -90f;
+            // RotateAroundPivot 正角度在 GUI 坐标（y 朝下）里是顺时针：
+            // 左边那颗要指左，得逆时针转 90，别写反了（左右镜像最难一眼看出来）。
+            float deg = dir == 0 ? 0f : dir == 1 ? 180f : dir == 2 ? -90f : 90f;
             GUIUtility.RotateAroundPivot(deg, r.center);
 
             Color oc = GUI.color;
