@@ -34,8 +34,13 @@ namespace MinecraftTetris
             Soft, Hard,
         }
 
-        /// <summary>槽位数按高级键位算（3x3），初级只用前四个。下标即“行优先”的位置。</summary>
-        const int Slots = 9;
+        /// <summary>键位区槽位数（3x3，初级只用前四个）。</summary>
+        const int GridSlots = 9;
+
+        /// <summary>再加上「移动：十字键」那四颗（9 上 / 10 下 / 11 左 / 12 右）。</summary>
+        const int Slots = 13;
+
+        const int DirUp = 9, DirDown = 10, DirLeft = 11, DirRight = 12;
 
         /// <summary>软降按住后的连发间隔（秒）。松手就停。</summary>
         const float SoftRepeat = 0.055f;
@@ -108,6 +113,7 @@ namespace MinecraftTetris
         int _lastW, _lastH;
         int _lastDepth = -1;
         int _lastLayout = -1;
+        int _lastMove = -1;
         int _styleTheme = -1;
         bool _styleWide;
 
@@ -132,7 +138,7 @@ namespace MinecraftTetris
         void Update()
         {
             if (Screen.width != _lastW || Screen.height != _lastH || CurrentDepth != _lastDepth
-                || KeyLayout != _lastLayout)
+                || KeyLayout != _lastLayout || GameSettings.MoveStyle != _lastMove)
                 Layout();
 
             _out = default(InputState);
@@ -191,6 +197,8 @@ namespace MinecraftTetris
                 _enabled[i] = false;
             }
 
+            BuildDpadSlots();
+
             _rows = 2;
             _cols = 2;
 
@@ -209,27 +217,42 @@ namespace MinecraftTetris
             }
 
             // 高级：按行优先摆进 3x3，正中（下标 4）空着。
-            // 十字那四个位置是**平移**（1 左 / 2 上 / 3 右 / 8 下），
-            // 4 / 6 是面内旋转，7 / 9 是软降 / 硬降。
+            // 十字那四个位置（1/2/3/8）**功能仍是旋转**，只是图标画成箭头
+            // （用户明确要求：图标换箭头，但别改动作）。
             _rows = 3;
             _cols = 3;
-            _act[0] = Act.MoveL;      // 1
-            _act[1] = Act.MoveAway;   // 2
-            _act[2] = Act.MoveR;      // 3
-            _act[3] = Act.InL;        // 4
+            _act[0] = Act.YawL;       // 1 俯视左（←）
+            _act[1] = Act.PitchUp;    // 2 上翻（↑）
+            _act[2] = Act.YawR;       // 3 俯视右（→）
+            _act[3] = Act.InL;        // 4 面内左
             _act[4] = Act.None;       // 5（空）
-            _act[5] = Act.InR;        // 6
-            _act[6] = Act.Soft;       // 7
-            _act[7] = Act.MoveNear;   // 8
-            _act[8] = Act.Hard;       // 9
+            _act[5] = Act.InR;        // 6 面内右
+            _act[6] = Act.Soft;       // 7 软降
+            _act[7] = Act.PitchDown;  // 8 下翻（↓）
+            _act[8] = Act.Hard;       // 9 硬降
 
-            for (int i = 0; i < Slots; i++)
+            for (int i = 0; i < GridSlots; i++)
             {
                 if (_act[i] == Act.None)
                     continue;
                 // z = 1 时俯视和前后翻没有意义，画成灰的、不接输入
                 _enabled[i] = IsDepthAct(_act[i]) ? CanDepth : true;
             }
+        }
+
+        /// <summary>「移动：十字键」时补上那四颗方向键（滑动模式下不出现）。</summary>
+        void BuildDpadSlots()
+        {
+            bool on = GameSettings.MoveStyle == GameSettings.MoveDpad;
+            _act[DirUp] = Act.MoveAway;
+            _act[DirDown] = Act.MoveNear;
+            _act[DirLeft] = Act.MoveL;
+            _act[DirRight] = Act.MoveR;
+
+            _enabled[DirUp] = on && CanDepth;   // 深度 1 没有前后可言
+            _enabled[DirDown] = on && CanDepth;
+            _enabled[DirLeft] = on;
+            _enabled[DirRight] = on;
         }
 
         /// <summary>没有深度（z = 1）就做不了的动作：绕竖直轴转、前后翻、上下游。</summary>
@@ -270,6 +293,7 @@ namespace MinecraftTetris
             _lastH = Screen.height;
             _lastDepth = CurrentDepth;
             _lastLayout = KeyLayout;
+            _lastMove = GameSettings.MoveStyle;
 
             BuildSlots();
 
@@ -312,6 +336,7 @@ namespace MinecraftTetris
                 float btnH = Mathf.Max(1f, h - safeBottom - pad - btnTop);
 
                 LayoutGrid(new Rect(btnLeft, btnTop, btnW, btnH), pad * 0.5f);
+                LayoutDpad();
                 ContentBottom = btnTop;
                 return;
             }
@@ -332,6 +357,7 @@ namespace MinecraftTetris
 
             // 四键 2x2、九键 3x3 都铺在通栏里，通栏高度已经按键位数调过
             LayoutGrid(new Rect(keysLeft, _pad.y, keysW, _pad.height), pad * 0.8f);
+            LayoutDpad();
             ContentBottom = top;
         }
 
@@ -341,7 +367,7 @@ namespace MinecraftTetris
             float bw = (block.width - gap * (_cols - 1)) / _cols;
             float bh = (block.height - gap * (_rows - 1)) / _rows;
 
-            for (int i = 0; i < Slots; i++)
+            for (int i = 0; i < GridSlots; i++)
             {
                 if (!_enabled[i])
                 {
@@ -352,6 +378,24 @@ namespace MinecraftTetris
                 int col = i % _cols;
                 _slot[i] = new Rect(block.x + col * (bw + gap), block.y + row * (bh + gap), bw, bh);
             }
+        }
+
+        /// <summary>十字移动键摆在拖动区正中：四个圆钮，正中留空。</summary>
+        void LayoutDpad()
+        {
+            if (GameSettings.MoveStyle != GameSettings.MoveDpad)
+                return;
+
+            float m = Mathf.Min(_pad.width, _pad.height);
+            float cx = _pad.x + _pad.width * 0.5f;
+            float cy = _pad.y + _pad.height * 0.5f;
+            float side = m * 0.38f;
+            float arm = m * 0.26f;
+
+            _slot[DirUp] = new Rect(cx - side * 0.5f, cy - arm - side * 0.5f, side, side);
+            _slot[DirDown] = new Rect(cx - side * 0.5f, cy + arm - side * 0.5f, side, side);
+            _slot[DirLeft] = new Rect(cx - arm - side * 0.5f, cy - side * 0.5f, side, side);
+            _slot[DirRight] = new Rect(cx + arm - side * 0.5f, cy - side * 0.5f, side, side);
         }
 
         // ── 触摸 ──────────────────────────────────────────────────────────
@@ -432,7 +476,8 @@ namespace MinecraftTetris
                 return;
             }
 
-            if (_pad.Contains(p))
+            // 选了「移动：十字键」就只认按钮，拖动不再移动方块（两套方式是分开的）
+            if (GameSettings.MoveStyle == GameSettings.MoveSwipe && _pad.Contains(p))
             {
                 _padFinger = finger;
                 _padLast = p;
@@ -443,7 +488,7 @@ namespace MinecraftTetris
 
         void Drag(int finger, Vector2 p)
         {
-            if (finger != _padFinger)
+            if (finger != _padFinger || GameSettings.MoveStyle != GameSettings.MoveSwipe)
                 return;
 
             float dx = p.x - _padLast.x;
@@ -676,20 +721,18 @@ namespace MinecraftTetris
                     DrawArc(r, true, 1f, 1f, c, -90f);
                     break;
 
-                // 俯视是绕竖直轴，画成扁椭圆（像从上面看下去的圈）
+                // 俯视 / 前后翻：图标按用户要求换成箭头，动作仍是绕轴旋转
                 case Act.YawL:
-                    DrawArc(r, false, 1.2f, 0.6f, c);
+                    DrawLineArrow(r, 180f, c);
                     break;
                 case Act.YawR:
-                    DrawArc(r, true, 1.2f, 0.6f, c);
+                    DrawLineArrow(r, 0f, c);
                     break;
-
-                // 前后翻是绕水平轴，画成竖椭圆
                 case Act.PitchUp:
-                    DrawArc(r, true, 0.6f, 1.2f, c);
+                    DrawLineArrow(r, -90f, c);
                     break;
                 case Act.PitchDown:
-                    DrawArc(r, false, 0.6f, 1.2f, c);
+                    DrawLineArrow(r, 90f, c);
                     break;
             }
         }

@@ -15,6 +15,7 @@ namespace MinecraftTetris
         const string MusicVolumeKey = "music.volume";
         const string GhostKey = "ghost.piece";
         const string KeyLayoutKey = "keys.layout";
+        const string MoveStyleKey = "move.style";
 
         public const int MinSizeX = 5;
         public const int MaxSizeX = 20;
@@ -130,6 +131,34 @@ namespace MinecraftTetris
         /// 3D 场地里方块能往深处挪，光靠自己看很难估落点，所以默认开着。
         /// 觉得碍眼可以在设置里关掉，不影响任何玩法。
         /// </summary>
+        /// <summary>手机移动方式：滑动 / 十字方向键。和键位布局是两件独立的事。</summary>
+        public const int MoveSwipe = 0;
+        public const int MoveDpad = 1;
+
+        static int _moveOverride = -1;
+
+        public static int MoveStyle
+        {
+            get
+            {
+                if (_moveOverride >= 0)
+                    return _moveOverride;
+                return PlayerPrefs.GetInt(MoveStyleKey, MoveSwipe) == MoveDpad ? MoveDpad : MoveSwipe;
+            }
+        }
+
+        public static void SetMoveStyle(int style)
+        {
+            PlayerPrefs.SetInt(MoveStyleKey, style == MoveDpad ? MoveDpad : MoveSwipe);
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>只影响本次运行（-move dpad|swipe 调试用）。</summary>
+        public static void OverrideMoveStyle(int style)
+        {
+            _moveOverride = style == MoveDpad ? MoveDpad : MoveSwipe;
+        }
+
         /// <summary>手机按键布局：初级四键 / 高级九键（3x3，正中留空）。默认初级。</summary>
         public const int KeysBasic = 0;
         public const int KeysAdvanced = 1;

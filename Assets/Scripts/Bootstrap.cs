@@ -91,6 +91,15 @@ namespace MinecraftTetris
                     : UiSkin.Theme.Light);
             }
 
+            // -move dpad|swipe：本次运行临时换移动方式（不写存档）
+            int moveAt = System.Array.IndexOf(themeArgv, "-move");
+            if (moveAt >= 0 && moveAt + 1 < themeArgv.Length)
+            {
+                GameSettings.OverrideMoveStyle(themeArgv[moveAt + 1] == "dpad"
+                    ? GameSettings.MoveDpad
+                    : GameSettings.MoveSwipe);
+            }
+
             // -keys basic|advanced：本次运行临时换手机键位布局，只用于截图核对（不写存档）
             int keysAt = System.Array.IndexOf(themeArgv, "-keys");
             if (keysAt >= 0 && keysAt + 1 < themeArgv.Length)

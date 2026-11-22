@@ -653,8 +653,8 @@ namespace MinecraftTetris
         /// <summary>可滚动的设置项数目（不含底部的「返回」——那颗固定在面板底下）。</summary>
         static int SettingRowCount()
         {
-            // 手机比桌面多一行「键位：初级 / 高级」
-            return MobileMode.Enabled ? 10 : 9;
+            // 手机比桌面多两行：「键位：初级 / 高级」「移动：滑动 / 十字键」
+            return MobileMode.Enabled ? 11 : 9;
         }
 
         void DrawSettingsMain()
@@ -824,13 +824,23 @@ namespace MinecraftTetris
                     break;
 
                 case 9:
-                    // 只会在手机上出现（桌面 10 行，下标 9 是返回）
+                    // 手机上才有这两行
                     if (GUI.Button(r, GameSettings.KeyLayout == GameSettings.KeysAdvanced
                             ? "键位：高级" : "键位：初级", _btnBig))
                     {
                         GameSettings.SetKeyLayout(GameSettings.KeyLayout == GameSettings.KeysAdvanced
                             ? GameSettings.KeysBasic
                             : GameSettings.KeysAdvanced);
+                    }
+                    break;
+
+                case 10:
+                    if (GUI.Button(r, GameSettings.MoveStyle == GameSettings.MoveDpad
+                            ? "移动：十字键" : "移动：滑动", _btnBig))
+                    {
+                        GameSettings.SetMoveStyle(GameSettings.MoveStyle == GameSettings.MoveDpad
+                            ? GameSettings.MoveSwipe
+                            : GameSettings.MoveDpad);
                     }
                     break;
             }
