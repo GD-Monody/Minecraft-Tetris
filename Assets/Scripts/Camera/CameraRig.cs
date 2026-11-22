@@ -27,6 +27,16 @@ namespace MinecraftTetris
         /// <summary>起手落在界面上的手指：整段都不算转视角，抬起来才清。</summary>
         readonly HashSet<int> _uiFingers = new HashSet<int>();
 
+        /// <summary>
+        /// 暂停 / 结算时额外挡一层（Bootstrap 每帧推）。
+        ///
+        /// BlockInput 由标题页每帧按「标题 / 设置是否在前台」重置，没法两边写同一个字段，
+        /// 所以单开一个：暂停时游戏视角不该还能转。
+        /// </summary>
+        public static bool ExtraBlock;
+
+        static bool Blocked { get { return BlockInput || ExtraBlock; } }
+
         // 爆炸震屏：_shake 从 1 衰减到 0，位移按它的平方收，收尾不会突然停。
         float _shake;
         float _shakeAmp;
@@ -77,7 +87,7 @@ namespace MinecraftTetris
 
         void Update()
         {
-            if (BlockInput)
+            if (Blocked)
             {
                 _last.Clear();
                 _uiFingers.Clear();
@@ -113,7 +123,7 @@ namespace MinecraftTetris
 
         void MouseCamera()
         {
-            if (BlockInput)
+            if (Blocked)
                 return;
 
             if (Input.GetMouseButton(1))
@@ -138,7 +148,7 @@ namespace MinecraftTetris
         /// </summary>
         void TouchCamera()
         {
-            if (BlockInput)
+            if (Blocked)
                 return;
 
             int free = 0;

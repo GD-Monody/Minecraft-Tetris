@@ -17,6 +17,12 @@ namespace MinecraftTetris
         public bool Hidden;
 
         /// <summary>
+        /// 暂停 / 结算时锁交互：折叠键和层号滑条照样画着，但不响应点击和拖动。
+        /// 之前暂停后还能点开面板、拖层号，底下的局面已经定了，动了也没意义。
+        /// </summary>
+        public bool InputLocked;
+
+        /// <summary>
         /// 面板宽度上限（像素），0 = 不限。
         ///
         /// 桌面上面板是浮在 3D 画面上的，窗口一窄，按屏宽 34% 算出来的宽度就会伸进场地里，
@@ -230,7 +236,8 @@ namespace MinecraftTetris
             GUI.Label(r, text, _pillStyle);
 
             // 按钮是透明的，只负责接点击，画好的那层不会被它盖掉
-            if (GUI.Button(r, GUIContent.none, GUIStyle.none))
+            // 暂停 / 结算时这颗键只画不响应
+            if (!InputLocked && GUI.Button(r, GUIContent.none, GUIStyle.none))
             {
                 Open = !open;
                 return Open;
@@ -440,14 +447,17 @@ namespace MinecraftTetris
         void DrawYSliderV(Rect r, int sizeY)
         {
             Event e = Event.current;
+            if (InputLocked)
+                _drag = false;      // 暂停那一刻正在拖也断掉
+            bool live = !InputLocked;
             float handle = Mathf.Clamp(r.height * 0.14f, 10f, 40f);
             float travel = Mathf.Max(1f, r.height - handle);
             float t = sizeY > 1 ? (float)_y / (sizeY - 1) : 1f;
 
-            if (e != null && e.type == EventType.MouseDown && e.button == 0 && r.Contains(e.mousePosition))
+            if (live && e != null && e.type == EventType.MouseDown && e.button == 0 && r.Contains(e.mousePosition))
                 _drag = true;
 
-            if (_drag && e != null && (e.type == EventType.MouseDown || e.type == EventType.MouseDrag))
+            if (live && _drag && e != null && (e.type == EventType.MouseDown || e.type == EventType.MouseDrag))
             {
                 // 屏幕 y 向下增大，层号向上增大，所以这里反过来算
                 float nt = 1f - Mathf.Clamp01((e.mousePosition.y - r.y - handle * 0.5f) / travel);
@@ -457,7 +467,7 @@ namespace MinecraftTetris
                 e.Use();
             }
 
-            if (e != null && e.type == EventType.MouseUp && _drag)
+            if (live && e != null && e.type == EventType.MouseUp && _drag)
             {
                 _drag = false;
                 e.Use();
@@ -659,14 +669,17 @@ namespace MinecraftTetris
         void DrawYSlider(Rect r, int sizeY)
         {
             Event e = Event.current;
+            if (InputLocked)
+                _drag = false;      // 暂停那一刻正在拖也断掉
+            bool live = !InputLocked;
             float handle = Mathf.Min(UiSkin.P(12f), r.height);
             float travel = Mathf.Max(1f, r.width - handle);
             float t = sizeY > 1 ? (float)_y / (sizeY - 1) : 0f;
 
-            if (e != null && e.type == EventType.MouseDown && e.button == 0 && r.Contains(e.mousePosition))
+            if (live && e != null && e.type == EventType.MouseDown && e.button == 0 && r.Contains(e.mousePosition))
                 _drag = true;
 
-            if (_drag && e != null && (e.type == EventType.MouseDown || e.type == EventType.MouseDrag))
+            if (live && _drag && e != null && (e.type == EventType.MouseDown || e.type == EventType.MouseDrag))
             {
                 float nt = Mathf.Clamp01((e.mousePosition.x - r.x - handle * 0.5f) / travel);
                 int ny = Mathf.RoundToInt(nt * (sizeY - 1));
@@ -675,7 +688,7 @@ namespace MinecraftTetris
                 e.Use();
             }
 
-            if (e != null && e.type == EventType.MouseUp && _drag)
+            if (live && e != null && e.type == EventType.MouseUp && _drag)
             {
                 _drag = false;
                 e.Use();

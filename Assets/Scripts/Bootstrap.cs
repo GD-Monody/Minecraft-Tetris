@@ -563,6 +563,14 @@ namespace MinecraftTetris
                 // 而且视觉上也是两层打架
                 _hud.HidePausePanel = _title != null && _title.ShowSettings;
             }
+
+            // 暂停 / 结算之后，视角不能再转、层次图也不能再点开或拖层号 ——
+            // 局面已经定住了，这些交互只会让人以为还在进行中。
+            // （右上角那颗「继续」是例外，见 MobileControls.DrawPause）
+            bool frozen = _paused || _loop.GameOver;
+            CameraRig.ExtraBlock = frozen;
+            if (_layerMap != null)
+                _layerMap.InputLocked = frozen;
             if (_music != null)
                 _music.SetPaused(_paused);
 
