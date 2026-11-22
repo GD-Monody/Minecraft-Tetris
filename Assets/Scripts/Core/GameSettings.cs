@@ -14,7 +14,7 @@ namespace MinecraftTetris
         const string FallSpeedKey = "fall.speed";
         const string MusicVolumeKey = "music.volume";
         const string GhostKey = "ghost.piece";
-        const string MoveStyleKey = "move.style";
+        const string KeyLayoutKey = "keys.layout";
 
         public const int MinSizeX = 5;
         public const int MaxSizeX = 20;
@@ -130,33 +130,33 @@ namespace MinecraftTetris
         /// 3D 场地里方块能往深处挪，光靠自己看很难估落点，所以默认开着。
         /// 觉得碍眼可以在设置里关掉，不影响任何玩法。
         /// </summary>
-        /// <summary>手机上的移动方式：滑动 / 十字方向键。两套是二选一，不混用。</summary>
-        public const int MoveSwipe = 0;
-        public const int MoveDpad = 1;
+        /// <summary>手机按键布局：初级四键 / 高级九键（3x3，正中留空）。默认初级。</summary>
+        public const int KeysBasic = 0;
+        public const int KeysAdvanced = 1;
 
-        /// <summary>本次运行临时覆盖（-move dpad 调试用），-1 = 不覆盖，照存档来。</summary>
-        static int _moveOverride = -1;
+        /// <summary>本次运行临时覆盖（-keys basic|advanced 调试用），-1 = 照存档。</summary>
+        static int _layoutOverride = -1;
 
-        public static int MoveStyle
+        public static int KeyLayout
         {
             get
             {
-                if (_moveOverride >= 0)
-                    return _moveOverride;
-                return PlayerPrefs.GetInt(MoveStyleKey, MoveSwipe) == MoveDpad ? MoveDpad : MoveSwipe;
+                if (_layoutOverride >= 0)
+                    return _layoutOverride;
+                return PlayerPrefs.GetInt(KeyLayoutKey, KeysBasic) == KeysAdvanced ? KeysAdvanced : KeysBasic;
             }
         }
 
-        /// <summary>只影响本次运行，不写存档（截图核对用，和 -theme 一个路子）。</summary>
-        public static void OverrideMoveStyle(int style)
+        public static void SetKeyLayout(int layout)
         {
-            _moveOverride = style == MoveDpad ? MoveDpad : MoveSwipe;
+            PlayerPrefs.SetInt(KeyLayoutKey, layout == KeysAdvanced ? KeysAdvanced : KeysBasic);
+            PlayerPrefs.Save();
         }
 
-        public static void SetMoveStyle(int style)
+        /// <summary>只影响本次运行，不写存档（截图核对用，和 -theme 一个路子）。</summary>
+        public static void OverrideKeyLayout(int layout)
         {
-            PlayerPrefs.SetInt(MoveStyleKey, style == MoveDpad ? MoveDpad : MoveSwipe);
-            PlayerPrefs.Save();
+            _layoutOverride = layout == KeysAdvanced ? KeysAdvanced : KeysBasic;
         }
 
         public static bool GhostPiece

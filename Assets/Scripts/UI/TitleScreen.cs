@@ -824,13 +824,12 @@ namespace MinecraftTetris
 
                 case 9:
                     // 只会在手机上出现（桌面 10 行，下标 9 是返回）
-                    if (GUI.Button(r, GameSettings.MoveStyle == GameSettings.MoveDpad
-                            ? "移动：十字键" : "移动：滑动",
-                            _btnBig))
+                    if (GUI.Button(r, GameSettings.KeyLayout == GameSettings.KeysAdvanced
+                            ? "键位：高级" : "键位：初级", _btnBig))
                     {
-                        GameSettings.SetMoveStyle(GameSettings.MoveStyle == GameSettings.MoveDpad
-                            ? GameSettings.MoveSwipe
-                            : GameSettings.MoveDpad);
+                        GameSettings.SetKeyLayout(GameSettings.KeyLayout == GameSettings.KeysAdvanced
+                            ? GameSettings.KeysBasic
+                            : GameSettings.KeysAdvanced);
                     }
                     break;
             }
