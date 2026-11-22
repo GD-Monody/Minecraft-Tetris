@@ -252,7 +252,10 @@ namespace MinecraftTetris
 
         static readonly GameAction[] AllActions =
         {
-            GameAction.Left, GameAction.Right, GameAction.Forward, GameAction.Back,
+            // 显示顺序：前移（W）排在 后移（S）上面。注意枚举里 Forward 才是
+            // z 减小（朝玩家）那个，Back 是 z 增大 —— 名字和直觉是反的，
+            // 这里按玩家看到的「前移 / 后移」排，别按枚举字面意思排。
+            GameAction.Left, GameAction.Right, GameAction.Back, GameAction.Forward,
             GameAction.SoftDrop, GameAction.HardDrop,
             GameAction.RotateCW, GameAction.RotateCCW,
             GameAction.RotateYawCW, GameAction.RotateYawCCW,
@@ -1530,8 +1533,9 @@ namespace MinecraftTetris
 
         static void ResetKeys()
         {
+            // 默认键按枚举下标取，不能按 AllActions 的顺序 —— 两者顺序已经不一样了
             for (int i = 0; i < AllActions.Length; i++)
-                KeyboardInput.Save(AllActions[i], KeyboardInput.Defaults[i]);
+                KeyboardInput.Save(AllActions[i], KeyboardInput.Defaults[(int)AllActions[i]]);
         }
 
         static string ActionLabel(GameAction a)
