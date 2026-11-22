@@ -14,6 +14,7 @@ namespace MinecraftTetris
         const string FallSpeedKey = "fall.speed";
         const string MusicVolumeKey = "music.volume";
         const string GhostKey = "ghost.piece";
+        const string MoveStyleKey = "move.style";
 
         public const int MinSizeX = 5;
         public const int MaxSizeX = 20;
@@ -129,6 +130,35 @@ namespace MinecraftTetris
         /// 3D 场地里方块能往深处挪，光靠自己看很难估落点，所以默认开着。
         /// 觉得碍眼可以在设置里关掉，不影响任何玩法。
         /// </summary>
+        /// <summary>手机上的移动方式：滑动 / 十字方向键。两套是二选一，不混用。</summary>
+        public const int MoveSwipe = 0;
+        public const int MoveDpad = 1;
+
+        /// <summary>本次运行临时覆盖（-move dpad 调试用），-1 = 不覆盖，照存档来。</summary>
+        static int _moveOverride = -1;
+
+        public static int MoveStyle
+        {
+            get
+            {
+                if (_moveOverride >= 0)
+                    return _moveOverride;
+                return PlayerPrefs.GetInt(MoveStyleKey, MoveSwipe) == MoveDpad ? MoveDpad : MoveSwipe;
+            }
+        }
+
+        /// <summary>只影响本次运行，不写存档（截图核对用，和 -theme 一个路子）。</summary>
+        public static void OverrideMoveStyle(int style)
+        {
+            _moveOverride = style == MoveDpad ? MoveDpad : MoveSwipe;
+        }
+
+        public static void SetMoveStyle(int style)
+        {
+            PlayerPrefs.SetInt(MoveStyleKey, style == MoveDpad ? MoveDpad : MoveSwipe);
+            PlayerPrefs.Save();
+        }
+
         public static bool GhostPiece
         {
             get { return PlayerPrefs.GetInt(GhostKey, 1) != 0; }

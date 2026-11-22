@@ -117,6 +117,7 @@ namespace MinecraftTetris
         readonly int[] _vis = new int[BtnCount];
         int _visCount;
         int _lastSizeZ = -1;
+        bool _lastDpad;
         Rect _pad;
         Rect _pauseRect;
         float _stripH;
@@ -151,7 +152,8 @@ namespace MinecraftTetris
 
         void Update()
         {
-            if (Screen.width != _lastW || Screen.height != _lastH || CurrentDepth != _lastSizeZ)
+            if (Screen.width != _lastW || Screen.height != _lastH || CurrentDepth != _lastSizeZ
+                || DpadMode != _lastDpad)
                 Layout();
 
             _out = default(InputState);
@@ -215,6 +217,7 @@ namespace MinecraftTetris
 
             float pad = Mathf.Max(6f, w * 0.016f);
 
+            _lastDpad = DpadMode;
             PickVisibleButtons(CurrentDepth);
 
             // 暂停键贴右上角，和顶部横条同高同尺寸（Hud.MobilePauseSize 是唯一的尺寸来源，
@@ -300,14 +303,21 @@ namespace MinecraftTetris
         {
             float cx = _pad.x + _pad.width * 0.5f;
             float cy = _pad.y + _pad.height * 0.5f;
-            float arm = Mathf.Min(_pad.width, _pad.height) * 0.42f;
-            float t = arm * 0.62f;            // 箭头宽度
+            // 十字模式下拖动区整块都给箭头，臂长/宽度都放大一档
+            float arm = Mathf.Min(_pad.width, _pad.height) * (DpadMode ? 0.47f : 0.42f);
+            float t = arm * (DpadMode ? 0.70f : 0.62f);   // 箭头宽度
             float len = Mathf.Max(8f, arm - t * 0.5f);
 
             _dirRect[0] = new Rect(cx - t * 0.5f, cy - arm, t, len);
             _dirRect[1] = new Rect(cx - t * 0.5f, cy + t * 0.5f, t, len);
             _dirRect[2] = new Rect(cx - arm, cy - t * 0.5f, len, t);
             _dirRect[3] = new Rect(cx + t * 0.5f, cy - t * 0.5f, len, t);
+        }
+
+        /// <summary>这一局用的是不是十字键（另一套是滑动）。两套二选一，不混用。</summary>
+        static bool DpadMode
+        {
+            get { return GameSettings.MoveStyle == GameSettings.MoveDpad; }
         }
 
         /// <summary>场地深度：优先用 Bootstrap 传来的真实值，拿不到再看设置。</summary>
@@ -352,11 +362,16 @@ namespace MinecraftTetris
 
         bool IsVisible(int i)
         {
-            // 方向键不在 _vis 里（它们不走右下角那套网格），单独判
-            if (i == DirUp || i == DirDown)
-                return _dirUpDown;
-            if (i == DirLeft || i == DirRight)
+            // 方向键不在 _vis 里（它们不走右下角那套网格），单独判。
+            // 滑动模式下整组都不出现 —— 两套是二选一。
+            if (i >= DirFirst)
+            {
+                if (!DpadMode)
+                    return false;
+                if (i == DirUp || i == DirDown)
+                    return _dirUpDown;
                 return true;
+            }
 
             for (int k = 0; k < _visCount; k++)
                 if (_vis[k] == i)
@@ -444,7 +459,7 @@ namespace MinecraftTetris
                 return;
             }
 
-            // 十字键：先判它们，落在箭头上就不算拖动
+            // 十字键：先判它们，落在箭头上就不算拖动（滑动模式下这组不出现）
             for (int d = 0; d < 4; d++)
             {
                 int i = DirFirst + d;
@@ -456,7 +471,7 @@ namespace MinecraftTetris
                 return;
             }
 
-            if (_pad.Contains(p))
+            if (!DpadMode && _pad.Contains(p))
             {
                 _padFinger = finger;
                 _padLast = p;
@@ -467,7 +482,7 @@ namespace MinecraftTetris
 
         void Drag(int finger, Vector2 p)
         {
-            if (finger != _padFinger)
+            if (finger != _padFinger || DpadMode)
                 return;
 
             float dx = p.x - _padLast.x;
@@ -604,6 +619,8 @@ namespace MinecraftTetris
 
         void DrawPad()
         {
+            // 滑动模式：这块是拖动区，画个淡框提示「可以在这里划」
+            // 十字模式：它是箭头的底板，也画
             bool active = _padFinger >= 0;
             Fill(_pad, Light
                 ? (active ? new Color(0.74f, 0.86f, 1f, 0.55f) : new Color(1f, 1f, 1f, 0.45f))
@@ -632,11 +649,15 @@ namespace MinecraftTetris
                 GUI.Label(_dirRect[d], Labels[i], _dirStyle);
             }
 
-            // 中心那一小块空着，写上「拖」提示这块区域还能按住拖动
-            float cx = _pad.x + _pad.width * 0.5f;
-            float cy = _pad.y + _pad.height * 0.5f;
-            float t = _dirRect[0].width;
-            GUI.Label(new Rect(cx - t * 0.5f, cy - t * 0.5f, t, t), "拖", _dirStyle);
+            // 滑动模式下中心那块空着，写个「拖」提示这块区域能按住拖动；
+            // 十字模式下整块都是箭头，不写。
+            if (!DpadMode)
+            {
+                float cx = _pad.x + _pad.width * 0.5f;
+                float cy = _pad.y + _pad.height * 0.5f;
+                float t = _dirRect[0].width;
+                GUI.Label(new Rect(cx - t * 0.5f, cy - t * 0.5f, t, t), "拖", _dirStyle);
+            }
         }
 
         void DrawButton(int i)

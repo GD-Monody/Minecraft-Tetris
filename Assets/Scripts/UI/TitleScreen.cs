@@ -649,7 +649,8 @@ namespace MinecraftTetris
         /// </summary>
         static int SettingRowCount()
         {
-            return 10;
+            // 手机上多一行「移动方式」（滑动 / 十字），「返回」跟着往后挪一位
+            return MobileMode.Enabled ? 11 : 10;
         }
 
         void DrawSettingsMain()
@@ -701,6 +702,14 @@ namespace MinecraftTetris
             // 手机上不显示「按键设置」：只有触屏，键盘映射没有意义；
             // 桌面上反过来，把「屏幕方向」那一格换成「按键设置」—— 桌面窗口比例
             // 自己拉就行，网页版也会跟着重排，不需要这一项。
+            // 「返回」永远是最后一行：手机多出来的那行把下标推后了一位
+            if (i == SettingRowCount() - 1)
+            {
+                if (GUI.Button(r, "返回", _btnBig))
+                    BeginCloseSettings();
+                return;
+            }
+
             int idx = i;
             if (!MobileMode.Enabled && i == 6)
             {
@@ -811,8 +820,15 @@ namespace MinecraftTetris
                     break;
 
                 case 9:
-                    if (GUI.Button(r, "返回", _btnBig))
-                        BeginCloseSettings();
+                    // 只会在手机上出现（桌面 10 行，下标 9 是返回）
+                    if (GUI.Button(r, GameSettings.MoveStyle == GameSettings.MoveDpad
+                            ? "移动：十字键" : "移动：滑动",
+                            _btnBig))
+                    {
+                        GameSettings.SetMoveStyle(GameSettings.MoveStyle == GameSettings.MoveDpad
+                            ? GameSettings.MoveSwipe
+                            : GameSettings.MoveDpad);
+                    }
                     break;
             }
         }
