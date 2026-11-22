@@ -49,7 +49,8 @@ namespace MinecraftTetris
         /// 看着就是「闪一下」。让主程序把 Hud.DrawPauseBlock 接过来，
         /// 设置面板画之前先垫一层暂停画面。
         /// </summary>
-        public Action PauseBackdrop;
+        /// <summary>参数 = 要不要连「已暂停」那块板一起画（false 只画暗底）。</summary>
+        public Action<bool> PauseBackdrop;
         public bool HasContinue;
 
         /// <summary>「游戏规则」页当前看哪一栏：0 玩法、1 按键、2 特殊方块。</summary>
@@ -373,10 +374,11 @@ namespace MinecraftTetris
                 if (_closing && !_fromPause)
                     DrawTitleScreen();
 
-                // 从暂停进来的：底下垫「已暂停」那块 —— 打开和关闭都要垫，
-                // 不然滑入 / 滑出的过程里露出的是没压暗的场地
+                // 从暂停进来的：底下垫一层暗底。
+                // 只有关闭动画（面板正在滑走）才连「已暂停」那块板一起画 ——
+                // 设置开着的时候画出来的话，横屏设置只占右半屏，左边会漏出暂停面板的按钮。
                 if (_fromPause && PauseBackdrop != null)
-                    PauseBackdrop();
+                    PauseBackdrop(_closing);
 
                 if (_page == SettingsPage.Keys && !_closing)
                     HandleCapture();
@@ -723,11 +725,14 @@ namespace MinecraftTetris
             PageTitle(panel, "设置", 16f);
 
             bool wide = WidePage;
-            float bw = Pg(wide ? 340f : 300f);
-            float bh = Pg(wide ? 36f : 42f);
-            float step = Pg(wide ? 46f : 58f);
+            bool desk = !MobileMode.Enabled;
+            // 电脑上这块面板 940 宽，300 宽 + 18 号字的按钮在里面显得很空、字也小
+            //（用户反馈「设置里的选项及文字都太小」）。桌面单独给一档更大的。
+            float bw = Pg(wide ? 340f : (desk ? 470f : 300f));
+            float bh = Pg(wide ? 36f : (desk ? 54f : 42f));
+            float step = Pg(wide ? 46f : (desk ? 76f : 58f));
             float bx = panel.x + (w - bw) * 0.5f;
-            float top = panel.y + Pg(wide ? 48f : 92f);
+            float top = panel.y + Pg(wide ? 48f : (desk ? 86f : 92f));
 
             string[] names = { "音乐", "操作", "屏幕", "玩法" };
             SettingsPage[] pages =
@@ -759,11 +764,14 @@ namespace MinecraftTetris
             PageTitle(panel, title, 16f);
 
             bool wide = WidePage;
-            float bw = Pg(wide ? 340f : 300f);
-            float bh = Pg(wide ? 36f : 42f);
-            float step = Pg(wide ? 46f : 58f);
+            bool desk = !MobileMode.Enabled;
+            // 电脑上这块面板 940 宽，300 宽 + 18 号字的按钮在里面显得很空、字也小
+            //（用户反馈「设置里的选项及文字都太小」）。桌面单独给一档更大的。
+            float bw = Pg(wide ? 340f : (desk ? 470f : 300f));
+            float bh = Pg(wide ? 36f : (desk ? 54f : 42f));
+            float step = Pg(wide ? 46f : (desk ? 76f : 58f));
             float bx = panel.x + (w - bw) * 0.5f;
-            float top = panel.y + Pg(wide ? 48f : 92f);
+            float top = panel.y + Pg(wide ? 48f : (desk ? 86f : 92f));
 
             for (int i = 0; i < labels.Length; i++)
             {
@@ -1809,8 +1817,8 @@ namespace MinecraftTetris
             float colW = Pg(430f);
             float colGap = Pg(40f);
             float rowH = Pg(96f);
-            // 这一栏没有提示行了，内容往上提一点，不然标签和正文之间空出一道
-            float top = panel.y + Pg(112f);
+            // 提示行占 100~128，内容得从它下面开始（112 的时候第一行标题正好压在提示上）
+            float top = panel.y + Pg(126f);
 
             for (int i = 0; i < PlayRules.Length; i++)
             {
@@ -1879,7 +1887,7 @@ namespace MinecraftTetris
                 "右键拖拽→视角旋转，滚轮滑动→视角放大/缩小", _guideNoteBig);
         }
 
-        /// <summary>特殊方块栏：十一项三列，图标从方块图集里切。两列六行在放大后放不下。</summary>
+        /// <summary>特殊方块栏：十一项，电脑两列 + 滚动、手机单列 + 滚动，图标从方块图集里切。</summary>
         void DrawRulesBlocks(Rect panel)
         {
             if (MobileMode.Enabled)
@@ -1930,17 +1938,38 @@ namespace MinecraftTetris
                 return;
             }
 
-            const int perCol = 4;
-            float colW = Pg(293f);
-            // 标题、切换栏、提示各占一段之后只剩这么多，行高再大就压到「返回」上了
-            float rowH2 = Pg(96f);
-            float top2 = panel.y + Pg(128f);
+            // 电脑：两列 + 上下滚动。
+            // 以前是四列 293 宽，四列加起来 1252 > 面板的 1000，最右一列直接画到面板外面
+            // （用户截图里右边露出半个图标就是这个）。两列之后一行两项、十一项六行，
+            // 竖着放不下就滚 —— 滚轮、按住拖动都认。
+            const int cols = 2;
+            float colW = Pg(438f);
+            float colGap = Pg(26f);
+            float rowH2 = Pg(104f);
+            float top2 = panel.y + Pg(128f);   // 提示行到 128，别压上去
+            float pcBottom = panel.yMax - Pg(64f);   // 给底部「返回」留出来
+            float pcViewH = Mathf.Max(rowH2, pcBottom - top2);
+            int pcRows = Mathf.CeilToInt(_guideItems.Length / (float)cols);
+            float pcContentH = pcRows * rowH2;
+            float pcMaxScroll = Mathf.Max(0f, pcContentH - pcViewH);
 
+            var pcClip = new Rect(panel.x + Pg(40f), top2,
+                cols * colW + (cols - 1) * colGap, pcViewH);
+            ScrollList(pcClip, pcMaxScroll, ref _blockScroll);
+
+            GUI.BeginGroup(pcClip);
             for (int i = 0; i < _guideItems.Length; i++)
             {
-                float x = panel.x + Pg(40f) + (i / perCol) * (colW + Pg(20f));
-                DrawGuideRow(x, top2 + (i % perCol) * rowH2, colW, _guideItems[i]);
+                int row = i / cols;
+                float y = row * rowH2 - _blockScroll;
+                if (y + rowH2 < 0f || y > pcViewH)
+                    continue;   // 看不见的不画
+                float x = (i % cols) * (colW + colGap);
+                DrawGuideRow(x, y, colW, _guideItems[i]);
             }
+            GUI.EndGroup();
+
+            DrawScrollBar(pcClip, pcViewH, pcContentH, pcMaxScroll, _blockScroll);
         }
 
         // 拖动滚动：一帧只处理一次。OnGUI 一帧会跑 Layout / Repaint 好几趟，
@@ -2293,15 +2322,17 @@ namespace MinecraftTetris
         {
             _panelTitleBig.fontSize = Fg(32);
             _panelHeadingBig.fontSize = Fg(40);
-            _rowLabelBig.fontSize = Fg(18);
+            _rowLabelBig.fontSize = Fg(MobileMode.Enabled ? 18 : 21);
             _hintBig.fontSize = Fg(18);
-            _valueBig.fontSize = Fg(22);
+            _valueBig.fontSize = Fg(MobileMode.Enabled ? 22 : 24);
             _sliderShadowBig.fontSize = Fg(22);
             _guideNameBig.fontSize = Fg(19);
             _guideDescBig.fontSize = Fg(14);
             _guideNoteBig.fontSize = Fg(17);
             _guideKeyBig.fontSize = Fg(19);
-            _btnBig.fontSize = Fg(18);
+            // 电脑上按钮字号单独放大一档：18 号在 940 宽的面板里偏小，
+            // 手机（含横屏）沿用原值，那边的面板本来就窄
+            _btnBig.fontSize = Fg(MobileMode.Enabled ? 18 : 24);
 
             // 创意工坊用的是没放大那套样式（目标 1 倍），同样跟着折减
             _panelTitleStyle.fontSize = Fg(32);
@@ -2843,7 +2874,9 @@ namespace MinecraftTetris
             _guideKeyBig = MakeStylePx(Fg(19), UiSkin.TextPrimary, TextAnchor.MiddleCenter, FontStyle.Bold);
             _guideKeyBig.wordWrap = false;
             _btnBig = new GUIStyle(_btnStyle);
-            _btnBig.fontSize = Fg(18);
+            // 电脑上按钮字号单独放大一档：18 号在 940 宽的面板里偏小，
+            // 手机（含横屏）沿用原值，那边的面板本来就窄
+            _btnBig.fontSize = Fg(MobileMode.Enabled ? 18 : 24);
 
         }
 

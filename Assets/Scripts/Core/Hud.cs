@@ -474,11 +474,16 @@ namespace MinecraftTetris
         /// 那段时间 HUD 是藏起来的，暂停画面得由 TitleScreen 代画一次，
         /// 否则设置滑出/滑入的这二百毫秒露出来的是亮着的场地，看着就是「闪一下」。
         /// </summary>
-        public void DrawPauseBlock(bool interactive)
+        public void DrawPauseBlock(bool interactive, bool withPanel = true)
         {
             GUI.color = UiSkin.FreezeOverlay;
             GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
             GUI.color = Color.white;
+
+            // 只要暗底：设置面板开着的时候底下不该再露出「已暂停」那块板
+            // （横屏设置只占右半屏，左边那半会漏出暂停面板的按钮，看着像没关掉）
+            if (!withPanel)
+                return;
 
             // 横竖屏分别排版：
             // 竖屏一列四颗（高度富余，竖着排好读）；横屏改 2x2（横屏只有四百来像素高，
