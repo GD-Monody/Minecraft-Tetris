@@ -163,6 +163,15 @@ namespace MinecraftTetris
         const float WidePageW = 480f;
         const float WidePageH = 480f;
 
+        /// <summary>
+        /// 设置这一族在横屏手机上的画布高度。
+        ///
+        /// 横屏可用高度只有四百来像素，按 480 高的画布算倍数会被压到 0.35，
+        /// 字小到看不清（用户反馈）。设成 400 之后同样的屏幕高度能放大到 1.05 倍左右，
+        /// 字号大约涨四成。只作用于设置页 —— 规则页那种密集排版还按 480 走。
+        /// </summary>
+        const float SettingsWideH = 400f;
+
         /// <summary>页面切换动画的时长（秒）。</summary>
         const float PageMotionTime = 0.20f;
 
@@ -739,7 +748,7 @@ namespace MinecraftTetris
         /// </summary>
         void DrawSettingsMain()
         {
-            Rect panel = BeginPage(SettingsDesign.x, SettingsDesign.y);
+            Rect panel = BeginPage(SettingsDesign.x, SettingsDesign.y, PageTarget, SettingsWideH);
             float w = panel.width;
             DrawPanel(panel);
 
@@ -747,13 +756,14 @@ namespace MinecraftTetris
 
             bool wide = WidePage;
             bool desk = !MobileMode.Enabled;
-            // 电脑上这块面板 940 宽，300 宽 + 18 号字的按钮在里面显得很空、字也小
-            //（用户反馈「设置里的选项及文字都太小」）。桌面单独给一档更大的。
-            float bw = Pg(wide ? 340f : (desk ? 470f : 300f));
-            float bh = Pg(wide ? 36f : (desk ? 54f : 42f));
-            float step = Pg(wide ? 46f : (desk ? 76f : 58f));
+            // 三种情况各给一档（都按用户反馈「字和按钮太小」调过）：
+            // 电脑 470×54 行距 76；手机竖屏 360×54 行距 72；手机横屏 380×46 行距 58
+            //（横屏可用高度只有四百来像素，行距再大四行就顶到「返回」上了）。
+            float bw = Pg(desk ? 470f : (wide ? 380f : 360f));
+            float bh = Pg(desk ? 54f : (wide ? 56f : 54f));
+            float step = Pg(desk ? 76f : (wide ? 68f : 72f));
             float bx = panel.x + (w - bw) * 0.5f;
-            float top = panel.y + Pg(wide ? 48f : (desk ? 86f : 92f));
+            float top = panel.y + Pg(desk ? 86f : (wide ? 44f : 88f));
 
             string[] names = { "音乐", "操作", "屏幕", "玩法" };
             SettingsPage[] pages =
@@ -778,7 +788,7 @@ namespace MinecraftTetris
         /// </summary>
         void DrawGroupPage(string title, string[] labels, System.Action[] actions)
         {
-            Rect panel = BeginPage(SettingsDesign.x, SettingsDesign.y);
+            Rect panel = BeginPage(SettingsDesign.x, SettingsDesign.y, PageTarget, SettingsWideH);
             float w = panel.width;
             DrawPanel(panel);
 
@@ -786,13 +796,14 @@ namespace MinecraftTetris
 
             bool wide = WidePage;
             bool desk = !MobileMode.Enabled;
-            // 电脑上这块面板 940 宽，300 宽 + 18 号字的按钮在里面显得很空、字也小
-            //（用户反馈「设置里的选项及文字都太小」）。桌面单独给一档更大的。
-            float bw = Pg(wide ? 340f : (desk ? 470f : 300f));
-            float bh = Pg(wide ? 36f : (desk ? 54f : 42f));
-            float step = Pg(wide ? 46f : (desk ? 76f : 58f));
+            // 三种情况各给一档（都按用户反馈「字和按钮太小」调过）：
+            // 电脑 470×54 行距 76；手机竖屏 360×54 行距 72；手机横屏 380×46 行距 58
+            //（横屏可用高度只有四百来像素，行距再大四行就顶到「返回」上了）。
+            float bw = Pg(desk ? 470f : (wide ? 380f : 360f));
+            float bh = Pg(desk ? 54f : (wide ? 56f : 54f));
+            float step = Pg(desk ? 76f : (wide ? 68f : 72f));
             float bx = panel.x + (w - bw) * 0.5f;
-            float top = panel.y + Pg(wide ? 48f : (desk ? 86f : 92f));
+            float top = panel.y + Pg(desk ? 86f : (wide ? 44f : 88f));
 
             for (int i = 0; i < labels.Length; i++)
             {
@@ -1010,7 +1021,7 @@ namespace MinecraftTetris
             // 面板高度钳在屏幕内，装不下的部分用滚轮看，右侧画一条自绘的滚动指示条。
             // 必须先 BeginPage：下面的 rowH / colW 都要用这一页刚算出来的倍数
             // 上下各留一截、装不下就折减倍数：标题和返回键永远在屏内
-            Rect panel = BeginPage(SettingsDesign.x, SettingsDesign.y);
+            Rect panel = BeginPage(SettingsDesign.x, SettingsDesign.y, PageTarget, SettingsWideH);
             float w = panel.width;
             float h = panel.height;
             DrawPanel(panel);
@@ -1110,7 +1121,7 @@ namespace MinecraftTetris
 
             // 必须先 BeginPage：下面的 rowH / colW 都要用这一页刚算出来的倍数
             // 设计值：80 + 2×400 + 60 宽；62 + 6×52 + 104 高
-            Rect panel = BeginPage(SettingsDesign.x, SettingsDesign.y);
+            Rect panel = BeginPage(SettingsDesign.x, SettingsDesign.y, PageTarget, SettingsWideH);
             float w = panel.width;
             float h = panel.height;
             DrawPanel(panel);
@@ -1166,7 +1177,7 @@ namespace MinecraftTetris
         /// </summary>
         void DrawSettingsKeysMobile()
         {
-            Rect panel = BeginPage(SettingsDesign.x, SettingsDesign.y);
+            Rect panel = BeginPage(SettingsDesign.x, SettingsDesign.y, PageTarget, SettingsWideH);
             float w = panel.width;
             float h = panel.height;
             DrawPanel(panel);
@@ -1242,7 +1253,7 @@ namespace MinecraftTetris
 
         void DrawSettingsSize()
         {
-            Rect panel = BeginPage(SettingsDesign.x, SettingsDesign.y);
+            Rect panel = BeginPage(SettingsDesign.x, SettingsDesign.y, PageTarget, SettingsWideH);
             float w = panel.width;
             DrawPanel(panel);
 
@@ -1298,7 +1309,7 @@ namespace MinecraftTetris
 
         void DrawSettingsSpeed()
         {
-            Rect panel = BeginPage(SettingsDesign.x, SettingsDesign.y);
+            Rect panel = BeginPage(SettingsDesign.x, SettingsDesign.y, PageTarget, SettingsWideH);
             float w = panel.width;
             float h = panel.height;
             DrawPanel(panel);
@@ -1357,7 +1368,7 @@ namespace MinecraftTetris
         /// </summary>
         void DrawSettingsMusic()
         {
-            Rect panel = BeginPage(SettingsDesign.x, SettingsDesign.y);
+            Rect panel = BeginPage(SettingsDesign.x, SettingsDesign.y, PageTarget, SettingsWideH);
             float w = panel.width;
             float h = panel.height;
             DrawPanel(panel);
@@ -2265,7 +2276,8 @@ namespace MinecraftTetris
             }
         }
 
-        Rect BeginPage(float designW, float designH, float target = PageTarget)
+        Rect BeginPage(float designW, float designH, float target = PageTarget,
+            float wideH = WidePageH)
         {
             float margin = UiSkin.P(PageMargin);
             float bandW = Mathf.Max(1f, Screen.width - margin * 2f);
@@ -2280,11 +2292,11 @@ namespace MinecraftTetris
                 // 高度还是各页自己的（但不超过统一画布高）：内容少的页（下落速度、
                 // 音乐音量）面板就矮一些，不会像固定 480 高那样下半截空一大片。
                 bandW *= 0.52f;      // 右半屏那条带子的宽度
-                _pageScale = UiSkin.FitScale(WidePageW, WidePageH, target, bandW, availH, PageMin);
+                _pageScale = UiSkin.FitScale(WidePageW, wideH, target, bandW, availH, PageMin);
                 SyncPageFonts();
 
                 float w = Pg(WidePageW);
-                float h = Pg(Mathf.Min(designH, WidePageH));
+                float h = Pg(Mathf.Min(designH, wideH));
                 float bandLeft = Screen.width - margin - bandW;
                 return new Rect(bandLeft + (bandW - w) * 0.5f,
                     (Screen.height - h) * 0.5f, w, h);
@@ -2343,9 +2355,9 @@ namespace MinecraftTetris
         {
             _panelTitleBig.fontSize = Fg(32);
             _panelHeadingBig.fontSize = Fg(40);
-            _rowLabelBig.fontSize = Fg(MobileMode.Enabled ? 18 : 21);
+            _rowLabelBig.fontSize = Fg(MobileMode.Enabled ? 20 : 21);
             _hintBig.fontSize = Fg(18);
-            _valueBig.fontSize = Fg(MobileMode.Enabled ? 22 : 24);
+            _valueBig.fontSize = Fg(MobileMode.Enabled ? 24 : 24);
             _sliderShadowBig.fontSize = Fg(22);
             _guideNameBig.fontSize = Fg(19);
             _guideDescBig.fontSize = Fg(14);
@@ -2353,7 +2365,7 @@ namespace MinecraftTetris
             _guideKeyBig.fontSize = Fg(19);
             // 电脑上按钮字号单独放大一档：18 号在 940 宽的面板里偏小，
             // 手机（含横屏）沿用原值，那边的面板本来就窄
-            _btnBig.fontSize = Fg(MobileMode.Enabled ? 18 : 24);
+            _btnBig.fontSize = Fg(MobileMode.Enabled ? 26 : 24);
 
             // 创意工坊用的是没放大那套样式（目标 1 倍），同样跟着折减
             _panelTitleStyle.fontSize = Fg(32);
@@ -2897,7 +2909,7 @@ namespace MinecraftTetris
             _btnBig = new GUIStyle(_btnStyle);
             // 电脑上按钮字号单独放大一档：18 号在 940 宽的面板里偏小，
             // 手机（含横屏）沿用原值，那边的面板本来就窄
-            _btnBig.fontSize = Fg(MobileMode.Enabled ? 18 : 24);
+            _btnBig.fontSize = Fg(MobileMode.Enabled ? 26 : 24);
 
         }
 
