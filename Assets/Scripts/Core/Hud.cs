@@ -485,10 +485,10 @@ namespace MinecraftTetris
             if (!withPanel)
                 return;
 
-            // 横竖屏分别排版：
-            // 竖屏一列四颗（高度富余，竖着排好读）；横屏改 2x2（横屏只有四百来像素高，
-            // 四颗铺一列会顶出屏幕，而且横向本来就宽，摆两列更省地方）。
-            bool wide = Screen.width > Screen.height;
+            // 排版：一列 / 2x2 两种。
+            // 只有**手机横屏**用 2x2 —— 那边高度只有四百来像素，四颗铺一列会顶出屏幕；
+            // 电脑屏幕再宽也按一列排（用户要求：电脑就是竖着四颗，别分两列）。
+            bool wide = MobileMode.Enabled && Screen.width > Screen.height;
             float designW = wide ? 460f : 320f;
             float designH = wide ? 214f : 326f;
 
