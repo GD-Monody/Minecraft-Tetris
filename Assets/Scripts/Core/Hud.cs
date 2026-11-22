@@ -462,6 +462,20 @@ namespace MinecraftTetris
             if (HidePausePanel)
                 return;
 
+            EnsureStyles();
+            DrawPauseBlock(true);
+        }
+
+        /// <summary>
+        /// 画「已暂停」那一块：暗底 + 面板 + 四颗按钮。
+        ///
+        /// interactive = false 时按钮只画不接点击。设置面板从暂停里打开时，
+        /// 这块要垫在设置下面当背景（见 TitleScreen.PauseBackdrop）——
+        /// 那段时间 HUD 是藏起来的，暂停画面得由 TitleScreen 代画一次，
+        /// 否则设置滑出/滑入的这二百毫秒露出来的是亮着的场地，看着就是「闪一下」。
+        /// </summary>
+        public void DrawPauseBlock(bool interactive)
+        {
             GUI.color = UiSkin.FreezeOverlay;
             GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
             GUI.color = Color.white;
@@ -505,6 +519,11 @@ namespace MinecraftTetris
             float top = panel.y + Ps(66f);
             float gap = Ps(12f);
 
+            // GUI.enabled = false 时按钮照样画（样式带自己的底图，不会变灰），
+            // 只是不接点击 —— 正好用来当「垫在设置下面的那一层」
+            bool wasEnabled = GUI.enabled;
+            GUI.enabled = interactive;
+
             if (wide)
             {
                 float sidePad = Ps(44f);
@@ -530,6 +549,8 @@ namespace MinecraftTetris
                         acts[i]();
                 }
             }
+
+            GUI.enabled = wasEnabled;
         }
 
         void DrawCenterText(string text)

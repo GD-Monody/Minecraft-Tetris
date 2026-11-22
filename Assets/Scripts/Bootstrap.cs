@@ -189,6 +189,11 @@ namespace MinecraftTetris
                 gameObject.AddComponent<CursorTrail>();
 
             _title = gameObject.AddComponent<TitleScreen>();
+            // 暂停里打开设置时 HUD 会整个藏起来（不然分数面板压在设置标题上），
+            // 暂停画面改由标题页垫在设置下面 —— 这条必须等 _title 建好之后再接，
+            // 早一行就是 NullReferenceException，Start 直接中断、整屏黑（踩过）。
+            _title.PauseBackdrop = delegate { _hud.DrawPauseBlock(false); };
+
             if (_skipTitleIntroOnce)
             {
                 // 别播开场：动画时间直接推到底。

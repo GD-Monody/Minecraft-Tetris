@@ -40,6 +40,16 @@ namespace MinecraftTetris
 
         public bool Visible = true;
         public bool ShowSettings;
+
+        /// <summary>
+        /// 画「已暂停」那一块（暗底 + 面板），由 Hud 提供、不接点击。
+        ///
+        /// 从暂停里打开设置时 HUD 会整个藏起来（不然分数面板会压在设置标题上），
+        /// 于是这块背景就没人画了：设置滑出 / 滑入的两百毫秒里露出来的是亮着的场地，
+        /// 看着就是「闪一下」。让主程序把 Hud.DrawPauseBlock 接过来，
+        /// 设置面板画之前先垫一层暂停画面。
+        /// </summary>
+        public Action PauseBackdrop;
         public bool HasContinue;
 
         /// <summary>「游戏规则」页当前看哪一栏：0 玩法、1 按键、2 特殊方块。</summary>
@@ -362,6 +372,11 @@ namespace MinecraftTetris
                 //（实测关设置的一瞬间整张标题页闪出来了）。
                 if (_closing && !_fromPause)
                     DrawTitleScreen();
+
+                // 从暂停进来的：底下垫「已暂停」那块 —— 打开和关闭都要垫，
+                // 不然滑入 / 滑出的过程里露出的是没压暗的场地
+                if (_fromPause && PauseBackdrop != null)
+                    PauseBackdrop();
 
                 if (_page == SettingsPage.Keys && !_closing)
                     HandleCapture();
