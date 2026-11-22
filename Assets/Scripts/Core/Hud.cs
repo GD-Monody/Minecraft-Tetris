@@ -166,10 +166,10 @@ namespace MinecraftTetris
             _labelCenter = MakeStyle(16, LabelColor);
             _labelCenter.alignment = TextAnchor.MiddleCenter;
 
-            // 左上角统计面板的三档字号：横屏面板矮（38dp），字也得跟着小一档
-            _mobileLabel = MakeStyle(wide ? 9 : 11, LabelColor);
-            _mobileValue = MakeStyle(wide ? 16 : 19, ValueColor);
-            _mobileSub = MakeStyle(wide ? 9 : 11, LabelColor);
+            // 左上角统计面板的三档字号：横屏面板矮（44dp），字也跟着小一档
+            _mobileLabel = MakeStyle(wide ? 10 : 12, LabelColor);
+            _mobileValue = MakeStyle(wide ? 18 : 22, ValueColor);
+            _mobileSub = MakeStyle(wide ? 10 : 12, LabelColor);
             _mobileSub.alignment = TextAnchor.MiddleLeft;
 
             _btnNormal = SolidTexture(UiSkin.ButtonFill);
@@ -320,7 +320,8 @@ namespace MinecraftTetris
         /// </summary>
         public static float MobileStatsHeight
         {
-            get { return UiSkin.P(MobileMode.Enabled && Screen.width > Screen.height ? 38f : 46f); }
+            // 38/46 → 44/54：原来手机上那行分数字号偏小，一眼看不清当前得分
+            get { return UiSkin.P(MobileMode.Enabled && Screen.width > Screen.height ? 44f : 54f); }
         }
 
         /// <summary>
@@ -329,8 +330,9 @@ namespace MinecraftTetris
         /// </summary>
         public static float MobilePauseSize
         {
-            // 横屏矮一档：48 在 420 高的横屏里要吃掉十分之一还多
-            get { return UiSkin.P(MobileMode.Enabled && Screen.width > Screen.height ? 40f : 48f); }
+            // 横屏矮一档：40 在 420 高的横屏里只占十分之一不到，看着太小，提到 46；
+            // 竖屏 48 → 56，拇指按得准一些
+            get { return UiSkin.P(MobileMode.Enabled && Screen.width > Screen.height ? 46f : 56f); }
         }
 
         /// <summary>
@@ -350,7 +352,7 @@ namespace MinecraftTetris
 
             float h = MobileStatsHeight;
             // 宽度给到 184，但不能压住右上角的暂停键（窄屏上就按剩余宽度铺满）
-            float w = Mathf.Min(UiSkin.P(184f),
+            float w = Mathf.Min(UiSkin.P(198f),
                 Screen.width - safe.x - rightInset - m * 2f - MobilePauseSize);
             var panel = new Rect(safe.x + m, topInset + m, w, h);
             DrawPanel(panel);
