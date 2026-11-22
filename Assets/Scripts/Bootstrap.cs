@@ -175,10 +175,42 @@ namespace MinecraftTetris
                 _layerMap = gameObject.AddComponent<LayerMap>();
                 _layerMap.Loop = _loop;
                 _layerMap.View = _view;     // 「只亮 z 面」要改视图层的可见性
+                _layerMap.Controls = _mobile;   // 横屏时那颗按钮要跟暂停键对齐
                 _layerMap.Hidden = true;    // 开始界面盖着的时候不画
                 // -openmap：截图核对俯视图的版式用（手机上它默认是收起的）
                 if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-openmap") >= 0)
                     _layerMap.Open = true;
+            }
+
+            // -focus N：直接开「只亮 z 面」到第 N 层（截图核对用）
+            {
+                // 变量名别叫 argv：Start() 后面还有一处 var argv，内层同名会 CS0136
+                string[] focusArgv = System.Environment.GetCommandLineArgs();
+                int at = System.Array.IndexOf(focusArgv, "-focus");
+                if (at >= 0 && at + 1 < focusArgv.Length
+                    && int.TryParse(focusArgv[at + 1], out int focusZ))
+                    _view.SetFocusZ(focusZ);
+
+                // -fillz：铺几层墙（每层一种方块），核对「只亮 z 面」的半透明效果用
+                if (System.Array.IndexOf(focusArgv, "-fillz") >= 0)
+                {
+                    int[] wall = new int[3];
+                    for (int i = 0, k = 0; i < BlockCatalog.Blocks.Length && k < 3; i++)
+                    {
+                        string nm = BlockCatalog.Blocks[i].Name;
+                        if (nm == "stone" || nm == "dirt" || nm == "oak_planks")
+                            wall[k++] = i + 1;
+                    }
+                    if (wall[1] == 0) wall[1] = wall[0];
+                    if (wall[2] == 0) wall[2] = wall[0];
+
+                    var g = _loop.Grid;
+                    for (int z = 0; z < g.SizeZ; z++)
+                        for (int x = 0; x < g.SizeX; x++)
+                            for (int y = 0; y < 7; y++)
+                                g.Set(x, y, z, wall[z % 3]);
+                    _view.RefreshAll();
+                }
             }
 
             _particles = gameObject.AddComponent<ParticleBurst>();

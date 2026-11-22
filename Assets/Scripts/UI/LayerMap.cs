@@ -201,40 +201,40 @@ namespace MinecraftTetris
                 return;
 
             bool compact = MobileMode.Enabled;
-            float w = compact
-                ? Mathf.Clamp(Screen.width * 0.34f, UiSkin.P(110f), UiSkin.P(176f))
-                : UiSkin.P(176f);
-            float h = compact
-                ? Mathf.Clamp(Screen.height * 0.05f, UiSkin.P(22f), UiSkin.P(40f))
-                : UiSkin.P(32f);
+            bool wide = Screen.width > Screen.height;
+            Rect pause = compact && Controls != null ? Controls.PauseRect : new Rect();
+
+            // 宽度跟层次图面板一致；横屏要挤到暂停键左边，放不下时按到暂停键的距离收窄。
+            // 高度按宽度比例、还受暂停键高度约束，三段式才好按。
+            float w = Mathf.Max(UiSkin.P(80f), _panelRect.width);
+            float h = Mathf.Clamp(w * 0.5f,
+                compact ? UiSkin.P(40f) : UiSkin.P(44f), UiSkin.P(compact ? 62f : 54f));
 
             float x, y;
-            if (compact)
+            if (compact && wide)
             {
-                // 竖屏的折叠键是屏幕最右边那一条竖键，按钮要从它左边往外长 ——
-                // 直接用 _tabRect.x 当左边界会顶出屏幕（第一版就被裁掉了一半）。
-                Rect safe = Screen.safeArea;
-                float safeRight = Mathf.Max(0f, Screen.width - (safe.x + safe.width));
-                if (Screen.width > Screen.height)
+                // 横屏：挪到暂停键左边、和它同一行，左线框对齐下面那块层次图 ——
+                // 右上角本来就是空的（分数在左上），放在这里不压场地也不压按键。
+                x = _panelRect.x;
+                float right = pause.width > 0f ? pause.x - UiSkin.P(8f) : Screen.width;
+                w = Mathf.Max(UiSkin.P(72f), Mathf.Min(w, right - x));
+                if (pause.height > 0f)
                 {
-                    // 横屏：面板在右上角，折叠键在左上角，挂在键下面不会撞
-                    x = _tabRect.x;
-                    y = _tabRect.yMax + UiSkin.P(6f);
+                    h = Mathf.Clamp(pause.height * 0.82f,
+                        UiSkin.P(40f), UiSkin.P(64f));
+                    y = pause.y + (pause.height - h) * 0.5f;
                 }
                 else
                 {
-                    // 竖屏：面板从右上角一路往下长，贴在键下面会压在面板上（第一版就是），
-                    // 改成挂在面板底边下面、靠右对齐
-                    x = Screen.width - safeRight - w - UiSkin.P(4f);
-                    y = _panelRect.yMax + UiSkin.P(6f);
+                    y = _tabRect.yMax + UiSkin.P(6f);
                 }
             }
             else
             {
-                // 桌面的面板贴着屏幕顶（pad 只有十几像素），放它上面会被切掉半个按钮，
-                // 改挂在面板下面
+                // 竖屏 / 桌面：直接挂在面板正下方、和面板左边缘对齐 ——
+                // 宽度一样了，对齐之后看着就是面板的延伸
                 x = _panelRect.x;
-                y = _panelRect.yMax + UiSkin.P(8f);
+                y = _panelRect.yMax + UiSkin.P(compact ? 6f : 8f);
             }
             var r = new Rect(x, y, w, h);
             _focusRect = r;
@@ -252,10 +252,15 @@ namespace MinecraftTetris
             DrawBorder(r, new Color(UiSkin.Accent.r, UiSkin.Accent.g, UiSkin.Accent.b, on ? 0.72f : 0.32f));
 
             float zone = w * 0.24f;
+            // 中间那段只有 w*0.52，竖屏面板只有九十来像素宽 —— 「只亮 z=1」六七个字放不下，
+            // 缩成「z=1」（按钮在层次图旁边，本来就看得出来是干什么的）
+            bool narrow = w * 0.52f < UiSkin.P(104f);
+            string mid = on
+                ? (narrow ? "z=" + fz : "只亮 z=" + fz)
+                : (narrow ? "只亮" : "只亮 z 面");
             GUI.Label(new Rect(r.x, r.y, zone, h), "−", _pillStyle);
             GUI.Label(new Rect(r.xMax - zone, r.y, zone, h), "+", _pillStyle);
-            GUI.Label(new Rect(r.x + zone, r.y, w - zone * 2f, h),
-                on ? "只亮 z=" + fz : "只亮 z 面", _pillStyle);
+            GUI.Label(new Rect(r.x + zone, r.y, w - zone * 2f, h), mid, _pillStyle);
 
             if (InputLocked)
                 return;
@@ -342,6 +347,9 @@ namespace MinecraftTetris
 
         /// <summary>视图层：切换「只亮 z 面」用。</summary>
         public GridView View;
+
+        /// <summary>手机操作层：横屏时那颗按钮要跟暂停键同一行（见 PauseRect）。</summary>
+        public MobileControls Controls;
 
         /// <summary>
         /// 这个点（GUI 坐标，左上原点）算不算压在层次图这块界面上：折叠键 + 展开后的面板。
@@ -646,7 +654,9 @@ namespace MinecraftTetris
             if (!compact)
             {
                 float mapWEstimate = (availW - pad * 2f - labelW);
-                footH = UiSkin.P(mapWEstimate < UiSkin.P(210f) ? 26f : 44f);
+                // 两行脚注（「行消/层消」+「当前方块在 y=…」）需要 2×24 + 一点余量，
+                // 原来给 44 时第二行正好压在面板底边上，被切掉一半
+                footH = UiSkin.P(mapWEstimate < UiSkin.P(210f) ? 30f : 56f);
             }
 
             float fixedH = pad * 2f + headH + gapA + sliderH + gapB + gapB + footH;
@@ -748,7 +758,7 @@ namespace MinecraftTetris
                 GUI.Label(new Rect(x, fy, mapW, UiSkin.P(20f)),
                     layerMode ? "层消：整层填满才消" : "行消：每一排单独消", _smallStyle);
                 if (HasPartialWater(grid, _y))
-                    GUI.Label(new Rect(x, fy + UiSkin.P(20f), mapW, UiSkin.P(20f)),
+                    GUI.Label(new Rect(x, fy + UiSkin.P(24f), mapW, UiSkin.P(22f)),
                         "有半格水，不算填满", _smallStyle);
                 else
                 {
@@ -756,7 +766,7 @@ namespace MinecraftTetris
                     // 这里指一下它在第几层 —— 想看就自己拖过去，别替玩家做决定。
                     int py = PieceMinY();
                     if (py >= 0 && py != _y)
-                        GUI.Label(new Rect(x, fy + UiSkin.P(20f), mapW, UiSkin.P(20f)),
+                        GUI.Label(new Rect(x, fy + UiSkin.P(24f), mapW, UiSkin.P(22f)),
                             "当前方块在 y = " + py, _smallStyle);
                 }
             }

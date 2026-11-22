@@ -14,6 +14,27 @@ namespace MinecraftTetris
 
         static Material _atlasMaterial;
         static Material _transparentMaterial;
+        static Material _ghostMaterial;
+
+        /// <summary>
+        /// 「只亮 z 面」里非焦点层用的半透明材质：同一张图集，整体乘一个 alpha。
+        /// 走资源引用（构建版里 Shader.Find 找不到没被材质引用的 shader）。
+        /// </summary>
+        public static Material GhostMaterial
+        {
+            get
+            {
+                if (_ghostMaterial == null)
+                {
+                    _ghostMaterial = Resources.Load<Material>("BlockGhostMat");
+                    if (_ghostMaterial != null && _ghostMaterial.mainTexture == null)
+                        _ghostMaterial.mainTexture = AtlasMaterial.mainTexture;
+                    if (_ghostMaterial == null)
+                        _ghostMaterial = AtlasMaterial;   // 兜底：找不到就当成不淡化
+                }
+                return _ghostMaterial;
+            }
+        }
 
         public static Material AtlasMaterial
         {

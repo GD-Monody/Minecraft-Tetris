@@ -125,6 +125,11 @@ namespace MinecraftTetris
         public float StripHeight { get { return _stripH; } }
 
         /// <summary>
+        /// 暂停键的矩形（GUI 坐标）。层次图旁边那颗「只亮 z 面」按钮要跟它同一行、贴在它左边。
+        /// </summary>
+        public Rect PauseRect { get { return _pauseRect; } }
+
+        /// <summary>
         /// 控制区的最上沿（像素 y）。上方的面板（俯视图）按它收尾，别压在按键上。
         /// 竖屏是底部通栏的顶边，横屏是右下角那堆按键的顶边。
         /// </summary>

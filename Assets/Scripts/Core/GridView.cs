@@ -13,6 +13,9 @@ namespace MinecraftTetris
         GameObject[,,] _cells;
         Vector3[,,] _cellVisual;
 
+        /// <summary>每格当前用的材质下标（方块 id - 1），切「只亮 z 面」时要按它换回原材质。</summary>
+        int[,,] _cellMat;
+
         /// <summary>
         /// 这一格的视觉位置是不是已经贴在格子上了。贴上之后 Update 就完全不管它 ——
         /// 场上一大半格子是静止的，以前每帧照样给它们算一次 Lerp、写一次 transform，
@@ -65,20 +68,23 @@ namespace MinecraftTetris
                         if (go == null)
                             continue;
                         var mr = go.GetComponent<MeshRenderer>();
-                        if (mr != null)
-                            mr.enabled = _focusZ < 0 || z == _focusZ;
+                        if (mr == null)
+                            continue;
 
-                        if (_fireCovers != null && _fireCovers[x, y, z] != null)
+                        // 非焦点层不隐藏，换成半透明材质 —— 和创意工坊里「只亮当前层」一个效果，
+                        // 还能看出后面有没有东西，不会整块凭空消失
+                        bool dim = _focusZ >= 0 && z != _focusZ;
+                        mr.enabled = true;
+                        if (dim)
                         {
-                            var fr = _fireCovers[x, y, z].GetComponent<MeshRenderer>();
-                            if (fr != null)
-                                fr.enabled = _focusZ < 0 || z == _focusZ;
+                            mr.sharedMaterial = BlockMesh.GhostMaterial;
+                        }
+                        else if (_cellMat != null)
+                        {
+                            bool flash = _flashing != null && _flashing[x, y, z];
+                            mr.sharedMaterial = flash ? FlashMaterial : _materials[_cellMat[x, y, z]];
                         }
                     }
-
-            // 落点提示在切片视图里只会让人误会（它可能落在别的层），一并收起
-            if (_ghostRoot != null)
-                _ghostRoot.gameObject.SetActive(_focusZ < 0);
         }
 
         Mesh[] _meshes;
@@ -144,6 +150,7 @@ namespace MinecraftTetris
         {
             Grid = grid;
             _cells = new GameObject[grid.SizeX, grid.SizeY, grid.SizeZ];
+            _cellMat = new int[grid.SizeX, grid.SizeY, grid.SizeZ];
             _cellVisual = new Vector3[grid.SizeX, grid.SizeY, grid.SizeZ];
             _settled = new bool[grid.SizeX, grid.SizeY, grid.SizeZ];
             _flashing = new bool[grid.SizeX, grid.SizeY, grid.SizeZ];
@@ -420,11 +427,8 @@ namespace MinecraftTetris
             }
 
             go.SetActive(true);
-            {
-                var mr = go.GetComponent<MeshRenderer>();
-                if (mr != null)
-                    mr.enabled = _focusZ < 0 || z == _focusZ;
-            }
+            if (_cellMat != null)
+                _cellMat[x, y, z] = idx;
             go.transform.position = _cellVisual[x, y, z];
             // 朝向每次都从网格里那一格读，不留在显示对象上：对象是按格位复用的，
             // 留着就等于「这一格的上一任」的朝向，方块一下落就换了脸
@@ -442,7 +446,9 @@ namespace MinecraftTetris
                 _flashing[x, y, z] = false;
                 wantFlash = false;
             }
-            go.GetComponent<MeshRenderer>().sharedMaterial = wantFlash ? FlashMaterial : _materials[idx];
+            go.GetComponent<MeshRenderer>().sharedMaterial =
+                (_focusZ >= 0 && z != _focusZ) ? BlockMesh.GhostMaterial
+                : (wantFlash ? FlashMaterial : _materials[idx]);
         }
 
         /// <summary>
@@ -920,8 +926,9 @@ namespace MinecraftTetris
                     go.SetActive(true);
                     go.GetComponent<MeshFilter>().sharedMesh = _meshes[idx];
                     var mr = go.GetComponent<MeshRenderer>();
-                    mr.sharedMaterial = _materials[idx];
-                    mr.enabled = _focusZ < 0 || _pieceTarget[i].z == _focusZ;
+                    bool dim = _focusZ >= 0 && _pieceTarget[i].z != _focusZ;
+                    mr.sharedMaterial = dim ? BlockMesh.GhostMaterial : _materials[idx];
+                    mr.enabled = true;
                 }
                 else
                 {
