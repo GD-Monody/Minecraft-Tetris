@@ -164,6 +164,16 @@ namespace MinecraftTetris
         /// </summary>
         int _pageDir = 1;
 
+        /// <summary>这次切页是不是「返回上一层」。按页面下标大小猜方向早就不准了（分组之后）。</summary>
+        bool _pageBack;
+
+        /// <summary>切到某个设置页。back = true 表示这是返回上一层，动画从左边滑回来。</summary>
+        void GoPage(SettingsPage page, bool back = false)
+        {
+            _page = page;
+            _pageBack = back;
+        }
+
         /// <summary>关闭设置面板的动画计时（返回按钮不立刻收起，先滑出去再收）。</summary>
         float _closeT = 99f;
         bool _closing;
@@ -285,8 +295,9 @@ namespace MinecraftTetris
             bool on = ShowSettings;
             if (_page != _pageSeen || on != _settingsSeen)
             {
-                // 设置主页是 0，子页都比它大：新页的下标变小就是「点返回回到上一层」
-                _pageDir = (on && _settingsSeen && (int)_page < (int)_pageSeen) ? -1 : 1;
+                // 只有真正按了「返回」才从左边滑回来；进下一层一律从右边进
+                _pageDir = (on && _settingsSeen && _pageBack) ? -1 : 1;
+                _pageBack = false;
                 _pageSeen = _page;
                 _settingsSeen = on;
                 _pageT = 0f;
@@ -666,7 +677,7 @@ namespace MinecraftTetris
         /// </summary>
         void DrawSettingsMain()
         {
-            Rect panel = BeginPage(420f, 648f);
+            Rect panel = BeginPage(SettingsDesign.x, SettingsDesign.y);
             float w = panel.width;
             DrawPanel(panel);
 
@@ -702,7 +713,7 @@ namespace MinecraftTetris
         /// </summary>
         void DrawGroupPage(string title, string[] labels, System.Action[] actions)
         {
-            Rect panel = BeginPage(420f, 648f);
+            Rect panel = BeginPage(SettingsDesign.x, SettingsDesign.y);
             float w = panel.width;
             DrawPanel(panel);
 
@@ -723,7 +734,7 @@ namespace MinecraftTetris
 
             float backY = panel.yMax - Pg(wide ? 12f : 18f) - bh;
             if (GUI.Button(new Rect(bx, backY, bw, bh), "返回", _btnBig))
-                _page = SettingsPage.Main;
+                GoPage(SettingsPage.Main, true);   // 分组页的上一层是设置主页
         }
 
         /// <summary>音乐：音效开关 + 音量（原来那行「音乐」）。</summary>
@@ -748,7 +759,7 @@ namespace MinecraftTetris
                     () =>
                     {
                         _tmpMusic = GameSettings.MusicVolume;
-                        _page = SettingsPage.Music;
+                        GoPage(SettingsPage.Music);
                     },
                 });
         }
@@ -777,7 +788,7 @@ namespace MinecraftTetris
                 labels.Add("按键设置");
                 acts.Add(() =>
                 {
-                    _page = SettingsPage.Keys;
+                    GoPage(SettingsPage.Keys);
                     _capturingAction = -1;
                     _keyScroll = 0f;
                 });
@@ -851,12 +862,12 @@ namespace MinecraftTetris
                         _tmpX = GameSettings.SizeX;
                         _tmpY = GameSettings.SizeY;
                         _tmpZ = GameSettings.SizeZ;
-                        _page = SettingsPage.Size;
+                        GoPage(SettingsPage.Size);
                     },
                     () =>
                     {
                         _tmpSpeed = GameSettings.FallSpeed;
-                        _page = SettingsPage.Speed;
+                        GoPage(SettingsPage.Speed);
                     },
                     () =>
                     {
@@ -869,7 +880,7 @@ namespace MinecraftTetris
                     () =>
                     {
                         _mechScroll = Vector2.zero;
-                        _page = SettingsPage.Mech;
+                        GoPage(SettingsPage.Mech);
                     },
                 });
         }
@@ -931,7 +942,7 @@ namespace MinecraftTetris
             // 面板高度钳在屏幕内，装不下的部分用滚轮看，右侧画一条自绘的滚动指示条。
             // 必须先 BeginPage：下面的 rowH / colW 都要用这一页刚算出来的倍数
             // 上下各留一截、装不下就折减倍数：标题和返回键永远在屏内
-            Rect panel = BeginPage(480f, 900f);
+            Rect panel = BeginPage(SettingsDesign.x, SettingsDesign.y);
             float w = panel.width;
             float h = panel.height;
             DrawPanel(panel);
@@ -1011,7 +1022,7 @@ namespace MinecraftTetris
 
             if (GUI.Button(new Rect(panel.x + (w - bw) * 0.5f, panel.y + h - Pg(wide ? 50f : 74f),
                         bw, Pg(wide ? 36f : 44f)), "返回", _btnBig))
-                _page = SettingsPage.Main;
+                GoPage(SettingsPage.Play, true);
         }
 
         void DrawSettingsKeys()
@@ -1031,7 +1042,7 @@ namespace MinecraftTetris
 
             // 必须先 BeginPage：下面的 rowH / colW 都要用这一页刚算出来的倍数
             // 设计值：80 + 2×400 + 60 宽；62 + 6×52 + 104 高
-            Rect panel = BeginPage(940f, 478f);
+            Rect panel = BeginPage(SettingsDesign.x, SettingsDesign.y);
             float w = panel.width;
             float h = panel.height;
             DrawPanel(panel);
@@ -1077,7 +1088,7 @@ namespace MinecraftTetris
             if (GUI.Button(new Rect(bx + bw + gap, bottomY, bw, Pg(44f)), "返回", _btnBig))
             {
                 _capturingAction = -1;
-                _page = SettingsPage.Main;
+                GoPage(SettingsPage.Control, true);
             }
         }
 
@@ -1087,7 +1098,7 @@ namespace MinecraftTetris
         /// </summary>
         void DrawSettingsKeysMobile()
         {
-            Rect panel = BeginPage(460f, 790f);
+            Rect panel = BeginPage(SettingsDesign.x, SettingsDesign.y);
             float w = panel.width;
             float h = panel.height;
             DrawPanel(panel);
@@ -1157,13 +1168,13 @@ namespace MinecraftTetris
             if (GUI.Button(new Rect(panel.xMax - Pg(40f) - bw, bottomY, bw, Pg(44f)), "返回", _btnBig))
             {
                 _capturingAction = -1;
-                _page = SettingsPage.Main;
+                GoPage(SettingsPage.Control, true);
             }
         }
 
         void DrawSettingsSize()
         {
-            Rect panel = BeginPage(460f, 500f);
+            Rect panel = BeginPage(SettingsDesign.x, SettingsDesign.y);
             float w = panel.width;
             DrawPanel(panel);
 
@@ -1201,7 +1212,7 @@ namespace MinecraftTetris
             y += Pg(wide ? 46f : 54f);
 
             if (GUI.Button(new Rect(bx, y, rowW, Pg(wide ? 34f : 42f)), "返回", _btnBig))
-                _page = SettingsPage.Main;
+                GoPage(SettingsPage.Play, true);
         }
 
         /// <summary>尺寸滑条：值是整数，拖的时候四舍五入到最近的格数。</summary>
@@ -1219,7 +1230,7 @@ namespace MinecraftTetris
 
         void DrawSettingsSpeed()
         {
-            Rect panel = BeginPage(500f, 360f);
+            Rect panel = BeginPage(SettingsDesign.x, SettingsDesign.y);
             float w = panel.width;
             float h = panel.height;
             DrawPanel(panel);
@@ -1269,7 +1280,7 @@ namespace MinecraftTetris
             }
 
             if (GUI.Button(new Rect(bx + rowW - Pg(190f), bottomY, Pg(190f), bh), "返回", _btnBig))
-                _page = SettingsPage.Main;
+                GoPage(SettingsPage.Play, true);
         }
 
         /// <summary>
@@ -1278,7 +1289,7 @@ namespace MinecraftTetris
         /// </summary>
         void DrawSettingsMusic()
         {
-            Rect panel = BeginPage(500f, 360f);
+            Rect panel = BeginPage(SettingsDesign.x, SettingsDesign.y);
             float w = panel.width;
             float h = panel.height;
             DrawPanel(panel);
@@ -1320,7 +1331,7 @@ namespace MinecraftTetris
             }
 
             if (GUI.Button(new Rect(bx + rowW - Pg(190f), bottomY, Pg(190f), bh), "返回", _btnBig))
-                _page = SettingsPage.Main;
+                GoPage(SettingsPage.Sound, true);
         }
 
         /// <summary>滑条上的文字：0 就直接写「关」，别显示 0%。</summary>
@@ -2149,6 +2160,22 @@ namespace MinecraftTetris
         /// （只缩面板不缩字、字会顶破按钮这个坑在暂停面板上踩过一次）。
         /// </summary>
         /// <param name="target">这一页想放大的倍数，默认 PageTarget；装不下由 FitScale 折减。</param>
+        /// <summary>
+        /// 设置这一族页面共用的设计画布。
+        ///
+        /// 以前每页各报各的尺寸（玩法 420×648、场地尺寸 460×500、音量 500×360…），
+        /// 切页时面板高度会"啪"地变一下 —— 滑入动画还在，但面板先变了个大小，看着就是跳。
+        /// 现在统一成一块板，页与页之间只剩水平位移，动画才连得上。
+        /// </summary>
+        static Vector2 SettingsDesign
+        {
+            get
+            {
+                // 手机 460×900（机制页最高，按它定）；桌面横着排，940×478
+                return MobileMode.Enabled ? new Vector2(460f, 900f) : new Vector2(940f, 478f);
+            }
+        }
+
         Rect BeginPage(float designW, float designH, float target = PageTarget)
         {
             float margin = UiSkin.P(PageMargin);
@@ -2206,18 +2233,9 @@ namespace MinecraftTetris
         {
             switch ((SettingsPage)page)
             {
-                case SettingsPage.Main: return new Vector2(420f, 594f);
-                case SettingsPage.Keys: return new Vector2(940f, 478f);
-                case SettingsPage.Size: return new Vector2(460f, 500f);
                 case SettingsPage.Workshop: return new Vector2(680f, 690f);
-                case SettingsPage.Speed: return new Vector2(500f, 360f);
-                case SettingsPage.Music: return new Vector2(500f, 360f);
                 case SettingsPage.Guide: return new Vector2(1000f, 596f);   // 取三栏里最高那一栏
-                case SettingsPage.Mech: return new Vector2(480f, 900f);
-                case SettingsPage.Sound:
-                case SettingsPage.Control:
-                case SettingsPage.Screen:
-                case SettingsPage.Play: return new Vector2(420f, 648f);   // 分组页，和主页同一块板
+                default: return SettingsDesign;   // 设置这一族共用一个画布（切页不跳）
             }
             return new Vector2(420f, 594f);
         }
