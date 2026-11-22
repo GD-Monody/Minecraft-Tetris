@@ -618,7 +618,8 @@ namespace MinecraftTetris
                     DrawArc(r, false, 1f, 1f, c);
                     break;
                 case Act.InR:
-                    DrawArc(r, true, 1f, 1f, c);
+                    // 开口朝上看着别扭，整块逆时针转 90 度
+                    DrawArc(r, true, 1f, 1f, c, -90f);
                     break;
 
                 // 俯视是绕竖直轴，画成扁椭圆（像从上面看下去的圈）
@@ -661,7 +662,7 @@ namespace MinecraftTetris
         }
 
         /// <summary>圆弧 + 箭头，表示「转」。aspect 把圆压成椭圆，用来区分转哪根轴。</summary>
-        void DrawArc(Rect r, bool cw, float aspectX, float aspectY, Color c)
+        void DrawArc(Rect r, bool cw, float aspectX, float aspectY, Color c, float rotDeg = 0f)
         {
             float side = Mathf.Min(r.width, r.height) * 0.54f;
             var box = new Rect(r.center.x - side * aspectX * 0.5f,
@@ -670,7 +671,19 @@ namespace MinecraftTetris
 
             Color oc = GUI.color;
             GUI.color = c;
-            GUI.DrawTexture(box, cw ? ArcCw : ArcCcw);
+
+            if (Mathf.Abs(rotDeg) > 0.01f)
+            {
+                // 绕按钮中心整体转一下：符号的开口朝向按视觉再调（用户指定）
+                Matrix4x4 old = GUI.matrix;
+                GUIUtility.RotateAroundPivot(rotDeg, r.center);
+                GUI.DrawTexture(box, cw ? ArcCw : ArcCcw);
+                GUI.matrix = old;
+            }
+            else
+            {
+                GUI.DrawTexture(box, cw ? ArcCw : ArcCcw);
+            }
             GUI.color = oc;
         }
 
