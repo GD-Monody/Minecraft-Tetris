@@ -167,6 +167,9 @@ namespace MinecraftTetris
         /// <summary>这次切页是不是「返回上一层」。按页面下标大小猜方向早就不准了（分组之后）。</summary>
         bool _pageBack;
 
+        /// <summary>这次设置是从游戏暂停面板打开的：关掉之后要回到暂停面板，不是回标题页。</summary>
+        bool _fromPause;
+
         /// <summary>切到某个设置页。back = true 表示这是返回上一层，动画从左边滑回来。</summary>
         void GoPage(SettingsPage page, bool back = false)
         {
@@ -185,6 +188,22 @@ namespace MinecraftTetris
         /// 关设置面板。返回按钮都走这里 —— 直接置 ShowSettings = false 的话面板是「啪」一下消失，
         /// 没有切换感（真机反馈「点返回没有动画」）。
         /// </summary>
+        /// <summary>游戏里点暂停 → 设置。只画设置面板（背景是暂停着的场地），关掉就退回暂停。</summary>
+        public void OpenSettingsFromPause()
+        {
+            ShowSettings = true;
+            _fromPause = true;
+            _closing = false;
+            _closeT = 0f;
+            _pageT = 0f;
+            _pageDir = 1;
+            _page = SettingsPage.Main;
+            _pageSeen = SettingsPage.Main;
+            _settingsSeen = false;     // 当成一次「刚打开」，让滑入动画从右边重新播
+            _capturingAction = -1;
+            _dragSlider = -1;
+        }
+
         public void BeginCloseSettings()
         {
             if (!ShowSettings || _closing)
@@ -315,13 +334,17 @@ namespace MinecraftTetris
                 {
                     _closing = false;
                     ShowSettings = false;
+                    if (_fromPause)
+                        _fromPause = false;   // 退回暂停面板（它自己会重新画出来）
                 }
             }
         }
 
         void OnGUI()
         {
-            if (!Visible)
+            // 从暂停面板打开的设置：标题页本身不显示（Visible 为 false），
+            // 但设置面板要压在暂停画面上画出来
+            if (!Visible && !(ShowSettings && _fromPause))
                 return;
 
             // 标题 / 设置页是画得最多的一块（光尘、标题、按钮、滑条）。鼠标动一下

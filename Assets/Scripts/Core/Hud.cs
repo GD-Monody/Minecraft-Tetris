@@ -14,6 +14,12 @@ namespace MinecraftTetris
         public bool Hidden;
         public System.Action OnRestartClick;
         public System.Action OnResumeClick;
+
+        /// <summary>暂停面板里点了「设置」。</summary>
+        public System.Action OnSettingsClick;
+
+        /// <summary>设置面板盖在暂停画面上时，暂停面板先不画（免得两层按钮打架）。</summary>
+        public bool HidePausePanel;
         public System.Action OnQuitToTitleClick;
 
         int _best;
@@ -453,65 +459,69 @@ namespace MinecraftTetris
 
         void DrawPausePanel()
         {
+            if (HidePausePanel)
+                return;
+
             GUI.color = UiSkin.FreezeOverlay;
             GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
             GUI.color = Color.white;
 
-            // 目标放大 PauseScale 倍；窗口装不下就折减倍数。字号、面板、按钮
-            // 全部跟同一个 scale 走，任何分辨率下面板都完整、比例都一致。
-            // 上一版踩的坑：面板高按 ×1 的设计值传了 Ps(262)，×2 的内容塞进一半高的
-            // 面板，按钮整排跑出去；根因是布局值和容器尺寸用了两套基准，现在统一。
-            //
-            // 宽度也得算进去：下面 w 的取值区间下限是 Ps(300)，窗口一窄这个下限本身
-            // 就比半屏还宽（870 宽的窗口算出 615），面板会被撑到 86% 宽。
-            // 所以先按「面板最多占屏宽 55%」反推一个倍数上限，再取三者最小的。
-            // 只对「移动端 + 横屏」收紧：桌面客户端即使是宽窗口也保持原来那套。
-            bool wide = MobileMode.Enabled && Screen.width > Screen.height;
+            // 横竖屏分别排版：
+            // 竖屏一列四颗（高度富余，竖着排好读）；横屏改 2x2（横屏只有四百来像素高，
+            // 四颗铺一列会顶出屏幕，而且横向本来就宽，摆两列更省地方）。
+            bool wide = Screen.width > Screen.height;
+            float designW = wide ? 460f : 320f;
+            float designH = wide ? 214f : 326f;
+
+            // 倍率先按「整块面板装得下」折减，字号、面板、按钮都跟同一个 scale 走，
+            // 任何分辨率下面板都完整、比例一致。
             float scale = Mathf.Min(PauseScale,
-                (Screen.height - UiSkin.P(40f)) / UiSkin.P(262f),
-                Screen.width * 0.55f / UiSkin.P(300f));
-            // 横屏高度只有四百出头，按「刚好装下」算出来的倍数会让面板铺满 88% 的高度，
-            // 看着像整屏都是暂停页。再主动收一档，留出场景的底色。
-            if (wide)
-                scale *= 0.78f;
-            scale = Mathf.Max(scale, 0.55f);
+                (Screen.height - UiSkin.P(40f)) / UiSkin.P(designH),
+                Screen.width * (wide ? 0.62f : 0.56f) / UiSkin.P(designW));
+            scale = Mathf.Max(scale, 0.5f);
             float Ps(float design) => UiSkin.P(design * scale);
 
-            _pauseTitleBig.fontSize = UiSkin.Size(Mathf.RoundToInt(34f * scale));
-            _pauseBtnBig.fontSize = UiSkin.Size(Mathf.RoundToInt(18f * scale));
+            _pauseTitleBig.fontSize = UiSkin.Size(Mathf.RoundToInt(30f * scale));
+            _pauseBtnBig.fontSize = UiSkin.Size(Mathf.RoundToInt(17f * scale));
             _pauseBtnBig.contentOffset = new Vector2(0f, UiSkin.P(3f * scale));
 
-            float w = Mathf.Clamp(Screen.width * (wide ? 0.40f : 0.48f), Ps(300f), Ps(440f));
-            w = Mathf.Min(w, Screen.width - UiSkin.P(40f));    // 宽度同样保底，小窗不出屏
-            float h = Ps(262f);
+            float w = Ps(designW);
+            float h = Ps(designH);
             var panel = new Rect((Screen.width - w) * 0.5f, (Screen.height - h) * 0.5f, w, h);
             DrawPanel(panel);
 
-            GUI.Label(new Rect(panel.x, panel.y + Ps(16f), panel.width, Ps(42f)), "已暂停", _pauseTitleBig);
+            GUI.Label(new Rect(panel.x, panel.y + Ps(16f), w, Ps(40f)), "已暂停", _pauseTitleBig);
 
-            // 左右留白：最多各占面板宽的 15%。
-            // 原来直接减 Ps(160)，窄屏上这个数可能比整个面板还宽（430 宽的屏上它算出 368），
-            // 按钮被压成一条竖线，字只剩下半个 —— 手机暂停页就是这么坏的
-            float bw = panel.width - Mathf.Min(Ps(160f), panel.width * 0.3f);
-            float bx = panel.x + (panel.width - bw) * 0.5f;
-            float by = panel.y + Ps(74f);
+            string[] labels = { "继续游戏", "设置", "重新开始", "退出到主界面" };
+            System.Action[] acts = { OnResumeClick, OnSettingsClick, OnRestartClick, OnQuitToTitleClick };
 
-            if (GUI.Button(new Rect(bx, by, bw, Ps(40f)), "继续游戏", _pauseBtnBig))
+            float top = panel.y + Ps(66f);
+            float gap = Ps(12f);
+
+            if (wide)
             {
-                if (OnResumeClick != null)
-                    OnResumeClick();
+                float sidePad = Ps(44f);
+                float bw = (w - sidePad * 2f - gap) * 0.5f;
+                float bh = Ps(46f);
+                for (int i = 0; i < labels.Length; i++)
+                {
+                    int col = i % 2;
+                    int row = i / 2;
+                    var r = new Rect(panel.x + sidePad + col * (bw + gap), top + row * (bh + gap), bw, bh);
+                    if (GUI.Button(r, labels[i], _pauseBtnBig) && acts[i] != null)
+                        acts[i]();
+                }
             }
-            by += Ps(52f);
-            if (GUI.Button(new Rect(bx, by, bw, Ps(40f)), "重新开始", _pauseBtnBig))
+            else
             {
-                if (OnRestartClick != null)
-                    OnRestartClick();
-            }
-            by += Ps(52f);
-            if (GUI.Button(new Rect(bx, by, bw, Ps(40f)), "退出到主界面", _pauseBtnBig))
-            {
-                if (OnQuitToTitleClick != null)
-                    OnQuitToTitleClick();
+                float bw = w - Ps(56f);
+                float bh = Ps(48f);
+                for (int i = 0; i < labels.Length; i++)
+                {
+                    var r = new Rect(panel.x + Ps(28f), top + i * (bh + gap), bw, bh);
+                    if (GUI.Button(r, labels[i], _pauseBtnBig) && acts[i] != null)
+                        acts[i]();
+                }
             }
         }
 

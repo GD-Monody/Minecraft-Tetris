@@ -154,6 +154,8 @@ namespace MinecraftTetris
             _hud.OnRestartClick = RestartGame;
             _hud.OnResumeClick = OnResumeClick;
             _hud.OnQuitToTitleClick = QuitToTitle;
+            // 暂停面板里的「设置」：把设置面板压在暂停画面上打开，关掉后回到暂停
+            _hud.OnSettingsClick = delegate { _title.OpenSettingsFromPause(); };
 
             _nextPreview = gameObject.AddComponent<NextPreview>();
             _nextPreview.Init(_view);
@@ -530,6 +532,16 @@ namespace MinecraftTetris
                 // 绑键位时按到空格就会误开一局。开局改成只能鼠标点「开始游戏」按钮。
                 return;
             }
+            // 设置面板可以盖在暂停画面上（游戏里点暂停 → 设置）。这期间 HUD 一律藏起来，
+            // 否则分数面板、俯视图会浮在设置面板上面（截图里分数直接压在「设置」标题上）。
+            if (_title != null && _title.ShowSettings)
+            {
+                SetHudHidden(true);
+                if (_view != null)
+                    _view.HideGhost();
+                return;
+            }
+
             SetHudHidden(false);
             if (_music != null)
                 _music.SetMenuMode(false);
@@ -540,7 +552,12 @@ namespace MinecraftTetris
                 TogglePause();
 
             if (_hud != null)
+            {
                 _hud.Paused = _paused;
+                // 设置面板压在暂停画面上时，把暂停面板藏起来：它画的按钮在下面还能被点到，
+                // 而且视觉上也是两层打架
+                _hud.HidePausePanel = _title != null && _title.ShowSettings;
+            }
             if (_music != null)
                 _music.SetPaused(_paused);
 
@@ -641,7 +658,7 @@ namespace MinecraftTetris
             bool inGame = _loop != null && _title != null && !_title.Visible;
             bool over = _loop != null && _loop.GameOver;
 
-            _mobile.Visible = inGame;
+            _mobile.Visible = inGame && (_title == null || !_title.ShowSettings);
             _mobile.Paused = _paused;
             _mobile.Over = over;
             _mobile.Depth = SizeZ;      // z = 1 时只留面内旋转那两个键
