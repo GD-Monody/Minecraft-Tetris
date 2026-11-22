@@ -98,6 +98,8 @@ namespace MinecraftTetris
         readonly bool[] _enabled = new bool[Slots];
 
         int _rows = 2, _cols = 2;
+        /// <summary>右边网格算出来的圆钮直径，左边的按键按它对齐大小。</summary>
+        float _btnDia = 40f;
         Rect _pad;
         Rect _pauseRect;
         float _stripH;
@@ -325,20 +327,23 @@ namespace MinecraftTetris
                 float topY = Mathf.Max(topInset + ps + m, Hud.MobileBarHeight);
                 float availH = Mathf.Max(1f, h - topY - safeBottom - pad);
 
-                // 横屏整组按键都收小一档：原来圆钮直径接近屏高的四分之一，
-                // 摆在两侧像个大饼，把场地挤在中间一条缝里。
-                // 边长砍一半（面积差不多是原来的四分之一），拇指照样够得着。
-                float padW = w * (basic ? 0.26f : 0.24f) - pad;
-                float padH = availH * (basic ? 0.58f : 0.62f);
-                _pad = new Rect(safeLeft + pad, topY + availH - padH, padW, padH);
-
-                // 右边按键区：贴着右下角，块头同样收小
+                // 右边按键区：贴着右下角
                 float btnW = (basic ? 0.20f : 0.26f) * w - pad;
                 float btnLeft = w - safeRight - pad - btnW;
                 float btnTop = topY + availH * (basic ? 0.52f : 0.40f);
                 float btnH = Mathf.Max(1f, h - safeBottom - pad - btnTop);
 
+                // 先排右边的网格 —— 它会算出「标准圆钮直径」，左边按这个尺寸对齐
                 LayoutGrid(new Rect(btnLeft, btnTop, btnW, btnH), pad * 0.5f);
+
+                // 左边：拖动区 / 十字键区。宽度按十字的实际占位倒推，
+                // 免得圆钮放大之后挤出这块区域
+                float d = _btnDia;
+                float need = d * 2.95f;                       // 十字的外接边长（两臂 + 钮）
+                float padW = Mathf.Clamp(Mathf.Max(w * 0.24f, need), 1f, w * 0.38f) - pad;
+                float padH = Mathf.Clamp(Mathf.Max(availH * 0.58f, need), 1f, availH);
+                _pad = new Rect(safeLeft + pad, topY + availH - padH, padW, padH);
+
                 LayoutDpad();
                 ContentBottom = btnTop;
                 return;
@@ -371,6 +376,8 @@ namespace MinecraftTetris
         {
             float bw = (block.width - gap * (_cols - 1)) / _cols;
             float bh = (block.height - gap * (_rows - 1)) / _rows;
+            // 圆钮直径（DrawSlot 里是 min(cell) * 0.94）：左侧按它对齐
+            _btnDia = Mathf.Min(bw, bh) * 0.94f;
 
             for (int i = 0; i < GridSlots; i++)
             {
@@ -391,15 +398,26 @@ namespace MinecraftTetris
             if (GameSettings.MoveStyle != GameSettings.MoveDpad)
                 return;
 
+            bool wide = Screen.width > Screen.height;
             float m = Mathf.Min(_pad.width, _pad.height);
+
+            // 横屏：和右边按键一样大（用户要求两边齐）；竖屏沿用原来那档，
+            // 竖屏拖动区窄，直接用标准直径会顶出去。
+            float side = wide ? _btnDia : m * 0.46f;
+            float arm = wide ? side * 0.95f : m * 0.34f;
+
+            if (wide && !CanDepth)
+            {
+                // 只有左右两颗（z = 1）：摆到左下角、并排，不再吊在左侧中间
+                float gap = side * 0.30f;
+                float y = _pad.yMax - side;
+                _slot[DirLeft] = new Rect(_pad.x, y, side, side);
+                _slot[DirRight] = new Rect(_pad.x + side + gap, y, side, side);
+                return;
+            }
+
             float cx = _pad.x + _pad.width * 0.5f;
             float cy = _pad.y + _pad.height * 0.5f;
-            // 横屏那套是刻意收小的（0.26，约为原来的 1/4 面积）；
-            // 竖屏的拖动区本来就窄，照 0.26 算只剩 30 像素，手指根本按不准，单独给一档。
-            bool wide = Screen.width > Screen.height;
-            float side = m * (wide ? 0.26f : 0.46f);
-            float arm = m * (wide ? 0.30f : 0.34f);
-
             _slot[DirUp] = new Rect(cx - side * 0.5f, cy - arm - side * 0.5f, side, side);
             _slot[DirDown] = new Rect(cx - side * 0.5f, cy + arm - side * 0.5f, side, side);
             _slot[DirLeft] = new Rect(cx - arm - side * 0.5f, cy - side * 0.5f, side, side);
