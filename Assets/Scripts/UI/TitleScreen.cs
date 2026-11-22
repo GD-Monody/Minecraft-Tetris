@@ -1851,7 +1851,10 @@ namespace MinecraftTetris
                 float rowW = narrowW - Pg(20f);
                 var clip = new Rect(panel.x + Pg(40f), top, rowW, viewH);
 
-                ScrollList(clip, maxScroll, ref _blockScroll, step);
+                // 这里**不做整行吸附**：这一页的 step 正好等于一整个介绍框，
+                // 一吸附就等于每滑一下就跳一屏，怎么调都还是"抽"的。
+                // 干脆完全跟手，上下各露半行也就露半行。
+                ScrollList(clip, maxScroll, ref _blockScroll);
 
                 GUI.BeginGroup(clip);
                 for (int i = 0; i < _guideItems.Length; i++)
@@ -1979,8 +1982,17 @@ namespace MinecraftTetris
             if (!dragging && snap > 0f)
             {
                 float target = Mathf.Clamp(Mathf.Round(scroll / snap) * snap, 0f, maxScroll);
-                float speed = Mathf.Max(600f, snap * 6f);
-                scroll = Mathf.MoveTowards(scroll, target, speed * Time.unscaledDeltaTime);
+                if (Mathf.Abs(target - scroll) <= 0.5f)
+                {
+                    scroll = target;
+                }
+                else if (e.type == EventType.Repaint)
+                {
+                    // 只在 Repaint 那一趟推进：OnGUI 一帧要跑好几趟（Layout / Repaint /
+                    // 各种输入事件），每趟都推一次的话动画会跑成几倍速，看着就是抽动。
+                    float speed = Mathf.Max(600f, snap * 6f);
+                    scroll = Mathf.MoveTowards(scroll, target, speed * Time.unscaledDeltaTime);
+                }
             }
         }
 
