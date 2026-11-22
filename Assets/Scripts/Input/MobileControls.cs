@@ -635,12 +635,18 @@ namespace MinecraftTetris
             Fill(strip, UiSkin.StripFill);
             Fill(new Rect(0f, strip.y, Screen.width, 1f), UiSkin.AccentSoft);
 
-            DrawPad();
-
-            for (int i = 0; i < Slots; i++)
+            // 暂停时不画操作键：暂停面板是居中一块板，底下这排圆钮会从板的边缘露出来
+            // （横屏九键最明显，右边一列直接顶在面板外面）。
+            // 只跳过绘制 —— 布局、相机让出的那一条都不动，否则取消暂停时场地会跳一下。
+            if (!Paused)
             {
-                if (_enabled[i])
-                    DrawSlot(i);
+                DrawPad();
+
+                for (int i = 0; i < Slots; i++)
+                {
+                    if (_enabled[i])
+                        DrawSlot(i);
+                }
             }
 
             if (Locked)
