@@ -174,6 +174,21 @@ namespace MinecraftTetris
         /// 把一格整体搬到另一格：编号、先后序号、朝向一起走。
         /// 消行 / 层消 / 重力都走这里，省得每加一份"跟着方块的数据"就得记得改三处搬移。
         /// </summary>
+        /// <summary>
+        /// 把这一格的写入序号刷成最新（方块本身不动）。
+        ///
+        /// 给「位置没变、但语义上算刚放下」的场景用：玻璃碎掉后整列塌陷，
+        /// 塌下来的方块序号还是旧的，压在下面另一块玻璃上就不会触发压碎。
+        /// </summary>
+        public void Touch(int x, int y, int z)
+        {
+            if (x < 0 || x >= SizeX || y < 0 || y >= SizeY || z < 0 || z >= SizeZ)
+                return;
+            if (_cells[x, y, z] == 0)
+                return;
+            _stamp[x, y, z] = ++_stampSeq;
+        }
+
         public void Move(int fx, int fy, int fz, int tx, int ty, int tz)
         {
             int id = _cells[fx, fy, fz];

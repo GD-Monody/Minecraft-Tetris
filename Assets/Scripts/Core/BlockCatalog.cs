@@ -83,6 +83,9 @@ namespace MinecraftTetris
         /// <summary>结构方块的编号（0 = 表里没这个方块）。落定时记住构造，被消时还原。</summary>
         public static readonly int StructureId = FindId("structure_block");
 
+        /// <summary>侦测器的编号（0 = 表里没这个方块）。底面贴着 TNT 会点燃它，见 Observer.cs。</summary>
+        public static readonly int ObserverId = FindId("observer");
+
         /// <summary>玻璃的编号（0 = 表里没这个方块）。上面压着方块就会碎，见 Glass.cs。</summary>
         public static readonly int GlassId = FindId("glass");
 

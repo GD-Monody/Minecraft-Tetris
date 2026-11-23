@@ -1664,7 +1664,7 @@ namespace MinecraftTetris.EditorTools
                     1920f - pageMargin * 2f, 1080f - pageMargin * 2f, 0.35f)) <= 1920f - pageMargin * 2f + 0.5f);
 
             // ---------- 特殊方块机制开关 ----------
-            Check("机制开关一共十四项", GameSettings.MechCount == 14);
+            Check("机制开关一共十六项", GameSettings.MechCount == 16);
 
             int mechSand = 0, mechLog = 0, mechObsidian = 0;
             for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
@@ -1775,12 +1775,13 @@ namespace MinecraftTetris.EditorTools
             Check("玻璃上面没东西就不碎", Glass.Crush(gGlass) == 0);
 
             gGlass.Set(2, 1, 0, mechSand);
-            Check("上面压着方块，玻璃就碎", Glass.Crush(gGlass) == 1 && gGlass.Get(2, 0, 0) == 0);
+            Check("上面压着方块，玻璃就碎", Glass.Crush(gGlass) == 1);
             Check("碎掉的格子记在 LastCrushed 里",
                 Glass.LastCrushed.Count == 1 && Glass.LastCrushed[0].x == 2 && Glass.LastCrushed[0].y == 0);
-
-            Gravity.Settle(gGlass);
-            Check("玻璃碎完，上面的沙落到底", gGlass.Get(2, 0, 0) == mechSand);
+            // 规则页写的是「碎完上方的东西接着往下掉」：普通方块悬空本来不会掉，
+            // 所以碎掉那一刻就整列塌一格，不等重力（重力只管沙子这类）
+            Check("玻璃碎完，上方的方块当场塌下来补位",
+                gGlass.Get(2, 0, 0) == mechSand && gGlass.Get(2, 1, 0) == 0);
 
             // 新规则的核心：先来后到。玻璃落定时上方本来就有东西，不该当场碎
             var gGlassLate = new Grid(5, 5, 1);
@@ -1798,7 +1799,8 @@ namespace MinecraftTetris.EditorTools
             Check("玻璃叠玻璃不碎（上方是玻璃不算压）", Glass.Crush(gGlassPair) == 0);
             gGlassPair.Set(2, 2, 0, mechSand);
             Check("玻璃上再压一块实心方块，两块玻璃不会一次全碎",
-                Glass.Crush(gGlassPair) == 1 && gGlassPair.Get(2, 1, 0) == 0 && gGlassPair.Get(2, 0, 0) == glassId);
+                Glass.Crush(gGlassPair) == 1 && gGlassPair.Get(2, 0, 0) == glassId);
+            Check("碎掉那一格由上方的方块补上", gGlassPair.Get(2, 1, 0) == mechSand);
 
             // 读档进来的格子没有先后，不能一开局就噼里啪啦碎一片
             var gGlassLoad = new Grid(2, 2, 1);
@@ -1817,6 +1819,74 @@ namespace MinecraftTetris.EditorTools
             Check("关掉玻璃压碎就不碎",
                 Glass.Crush(gGlassOff) == 0 && gGlassOff.Get(2, 0, 0) == glassId);
             GameSettings.SetMech(GameSettings.MechKind.GlassCrush, true);
+
+            // ---------- 侦测器点燃 TNT ----------
+            int obsId = BlockCatalog.ObserverId;
+            Check("方块表里有侦测器", obsId > 0 && Tnt.TntId > 0);
+
+            GameSettings.SetMech(GameSettings.MechKind.TntExplode, true);
+            GameSettings.SetMech(GameSettings.MechKind.ObserverIgnite, true);
+            Tnt.Reset();
+
+            var gObsBelow = new Grid(5, 5, 1);
+            gObsBelow.Set(2, 0, 0, Tnt.TntId);
+            gObsBelow.Set(2, 1, 0, obsId);
+            Check("侦测器底面贴着 TNT 就点着它", Observer.IgniteTntBelow(gObsBelow) == 1);
+            Tnt.Reset();
+
+            var gObsSide = new Grid(5, 5, 1);
+            gObsSide.Set(2, 0, 0, Tnt.TntId);
+            gObsSide.Set(3, 0, 0, obsId);          // 侧面挨着，不是激发面
+            Check("侧面挨着 TNT 不点着（只有激发面算）", Observer.IgniteTntBelow(gObsSide) == 0);
+
+            var gObsTop = new Grid(5, 5, 1);
+            gObsTop.Set(2, 1, 0, Tnt.TntId);
+            gObsTop.Set(2, 0, 0, obsId);           // 侦测器在下面，激发面朝下是空的
+            Check("侦测器在 TNT 下面不点着（激发面朝下）", Observer.IgniteTntBelow(gObsTop) == 0);
+
+            GameSettings.SetMech(GameSettings.MechKind.ObserverIgnite, false);
+            Check("关掉侦测器开关就不点着", Observer.IgniteTntBelow(gObsBelow) == 0);
+            GameSettings.SetMech(GameSettings.MechKind.ObserverIgnite, true);
+            Tnt.Reset();
+
+            // ---------- 混凝土受重力 ----------
+            int concreteId = 0, concreteSolidId = 0;
+            for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
+            {
+                if (BlockCatalog.Blocks[i].Name == "white_concrete_powder")
+                    concreteId = i + 1;
+                else if (BlockCatalog.Blocks[i].Name == "white_concrete")
+                    concreteSolidId = i + 1;
+            }
+            Check("方块表里有混凝土粉末", concreteId > 0);
+            Check("方块表里有硬化混凝土", concreteSolidId > 0);
+
+            GameSettings.SetMech(GameSettings.MechKind.ConcreteFall, true);
+            GameSettings.SetMech(GameSettings.MechKind.SandFall, false);
+
+            var gConcrete = new Grid(3, 5, 1);
+            gConcrete.Set(1, 4, 0, concreteId);
+            Gravity.Settle(gConcrete);
+            Check("混凝土粉末受重力落到最下面", gConcrete.Get(1, 0, 0) == concreteId);
+
+            // 硬化后的混凝土是成品砖，不该跟着掉
+            var gConcreteSolid = new Grid(3, 5, 1);
+            gConcreteSolid.Set(1, 4, 0, concreteSolidId);
+            Check("硬化混凝土不受重力",
+                !Gravity.Settle(gConcreteSolid) && gConcreteSolid.Get(1, 4, 0) == concreteSolidId);
+
+            var gSandOff = new Grid(3, 5, 1);
+            gSandOff.Set(1, 4, 0, mechSand);
+            Check("两个开关分开：混凝土粉末开着、沙子关着时沙子不动",
+                !Gravity.Settle(gSandOff) && gSandOff.Get(1, 4, 0) == mechSand);
+
+            GameSettings.SetMech(GameSettings.MechKind.ConcreteFall, false);
+            GameSettings.SetMech(GameSettings.MechKind.SandFall, true);
+            var gConcreteOff = new Grid(3, 5, 1);
+            gConcreteOff.Set(1, 4, 0, concreteId);
+            Check("关掉混凝土粉末下落，它停在半空",
+                !Gravity.Settle(gConcreteOff) && gConcreteOff.Get(1, 4, 0) == concreteId);
+            GameSettings.SetMech(GameSettings.MechKind.ConcreteFall, true);
 
             var gGlassStack = new Grid(5, 6, 1);
             gGlassStack.Set(2, 0, 0, glassId);
@@ -1843,9 +1913,10 @@ namespace MinecraftTetris.EditorTools
             gOrder.Grid.Set(2, 1, 0, glassId);
             gOrder.Grid.Set(2, 2, 0, mechSand);
             gOrder.CrushGlass();
-            Check("玻璃压碎的事件顺序：每轮先清画面再落重力",
-                order.Count == 4 && order[0] == "crush1" && order[1] == "settle"
-                    && order[2] == "crush1" && order[3] == "settle");
+            // 塌陷是当场搬方块，不再靠 Gravity 落下来，所以事件里没有 settle；
+            // 两层玻璃各报一次 crush
+            Check("玻璃压碎的事件顺序：每碎一层先清画面、再当场塌陷",
+                order.Count == 2 && order[0] == "crush1" && order[1] == "crush1");
             Check("连碎两层后沙落到底，全程没有多报格子",
                 gOrder.Grid.Get(2, 0, 0) == mechSand && CountFilled(gOrder.Grid) == 1);
 

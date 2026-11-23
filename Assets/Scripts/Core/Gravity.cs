@@ -17,6 +17,16 @@ namespace MinecraftTetris
     /// </summary>
     public static class Gravity
     {
+        /// <summary>
+        /// 混凝土粉末（设置里是单独一项开关）。
+        /// 只认粉末：硬化后的混凝土是成品砖，原版也不会掉（用户特意纠正过）。
+        /// </summary>
+        static bool IsConcretePowder(string name)
+        {
+            return name.EndsWith("_concrete_powder");
+        }
+
+        /// <summary>这一类方块本身会不会受重力（不管设置里开没开）。</summary>
         public static bool IsFalling(int blockId)
         {
             if (blockId <= 0)
@@ -30,10 +40,23 @@ namespace MinecraftTetris
                 return true;
             if (n.StartsWith("suspicious_sand") || n.StartsWith("suspicious_gravel"))
                 return true;
-            if (n.EndsWith("_concrete_powder"))
+            if (IsConcretePowder(n))
                 return true;
 
             return false;
+        }
+
+        /// <summary>
+        /// 这一格现在受不受重力：沙类是「沙子与沙砾下落」，混凝土是「混凝土受重力下落」。
+        /// 两个机制的开关是分开的，所以不能只看 IsFalling。
+        /// </summary>
+        public static bool FallsEnabled(int blockId)
+        {
+            if (!IsFalling(blockId))
+                return false;
+
+            string n = BlockCatalog.Of(blockId).Name;
+            return IsConcretePowder(n) ? GameSettings.ConcreteFalls : GameSettings.SandFalls;
         }
 
         /// <summary>
@@ -42,8 +65,8 @@ namespace MinecraftTetris
         /// </summary>
         public static bool Settle(Grid grid, List<GravityStep> moves = null)
         {
-            // 设置里关掉「沙子与沙砾下落」：沙类就成普通方块，停在半空不动
-            if (grid == null || !GameSettings.SandFalls)
+            // 两个重力机制的开关都关掉就没什么可做的（沙类 / 混凝土各自一项）
+            if (grid == null || (!GameSettings.SandFalls && !GameSettings.ConcreteFalls))
                 return false;
 
             bool any = false;
@@ -55,12 +78,14 @@ namespace MinecraftTetris
 
                 for (int z = 0; z < grid.SizeZ; z++)
                 {
-                    for (int y = 0; y < grid.SizeY - 1; y++)
+                    // 扫到最顶层（y < SizeY）：只扫到 SizeY-1 的话，停在顶格的沙
+                    // 下面正好空了也不会掉。y=0 时 IsFree(y=-1) 返回 false，不会越界
+                    for (int y = 0; y < grid.SizeY; y++)
                     {
                         for (int x = 0; x < grid.SizeX; x++)
                         {
                             int b = grid.Get(x, y, z);
-                            if (b <= 0 || !IsFalling(b))
+                            if (b <= 0 || !FallsEnabled(b))
                                 continue;
                             if (!grid.IsFree(x, y - 1, z))
                                 continue;

@@ -252,16 +252,22 @@ namespace MinecraftTetris
             Golem = 11,
             FireBurn = 12,
             SpongeSoak = 13,
+
+            /// <summary>侦测器底面贴着 TNT 时把它点燃（原版侦测器输出红石信号）。</summary>
+            ObserverIgnite = 14,
+            /// <summary>混凝土粉末像沙子一样受重力下落（硬化后的混凝土不掉）。</summary>
+            ConcreteFall = 15,
         }
 
         /// <summary>开关总数。设置页和自检都按它遍历。</summary>
-        public const int MechCount = 14;
+        public const int MechCount = 16;
 
         static readonly string[] MechKeys =
         {
             "mech.tnt", "mech.ignite", "mech.sand", "mech.leaves", "mech.water",
             "mech.lava", "mech.structure", "mech.bedrock", "mech.blastproof", "mech.glass",
             "mech.melt", "mech.golem", "mech.fire", "mech.sponge",
+            "mech.observer", "mech.concrete",
         };
 
         static readonly string[] MechLabels =
@@ -269,6 +275,7 @@ namespace MinecraftTetris
             "TNT 爆炸", "接触点火", "沙子与沙砾下落", "原木长树叶", "水会流动",
             "岩浆会流动", "结构方块还原", "基岩钉住不动", "防爆方块炸不掉", "玻璃被压碎",
             "雪与冰遇岩浆融化", "傀儡召唤", "木头羊毛树叶会着火", "海绵吸水",
+            "侦测器点燃 TNT", "混凝土粉末受重力下落",
         };
 
         public static string MechLabel(MechKind kind)
@@ -304,7 +311,7 @@ namespace MinecraftTetris
             PlayerPrefs.Save();
         }
 
-        /// <summary>十四项是不是全开着（一键开关按钮靠它决定显示「一键开启」还是「一键关闭」）。</summary>
+        /// <summary>十六项是不是全开着（一键开关按钮靠它决定显示「一键开启」还是「一键关闭」）。</summary>
         public static bool AllMechOn()
         {
             for (int i = 0; i < MechCount; i++)
@@ -337,6 +344,8 @@ namespace MinecraftTetris
         public static bool TntExplodes { get { return Mech(MechKind.TntExplode); } }
         public static bool ContactIgnites { get { return Mech(MechKind.ContactIgnite); } }
         public static bool SandFalls { get { return Mech(MechKind.SandFall); } }
+        public static bool ConcreteFalls { get { return Mech(MechKind.ConcreteFall); } }
+        public static bool ObserverIgnites { get { return Mech(MechKind.ObserverIgnite); } }
         public static bool LeavesGrow { get { return Mech(MechKind.LeafGrow); } }
         public static bool WaterFlows { get { return Mech(MechKind.WaterFlow); } }
         public static bool LavaFlows { get { return Mech(MechKind.LavaFlow); } }

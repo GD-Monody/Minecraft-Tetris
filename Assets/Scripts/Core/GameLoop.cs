@@ -675,6 +675,11 @@ namespace MinecraftTetris
             Tnt.PrimeContact(Grid);
             FlushTntPrimed();
 
+            // 侦测器底面压着 TNT 也会把它点着（见 Observer.cs）。
+            // 同样放在消行之后：消行会把整排往下挪，先点火记下的坐标就错位了。
+            if (!fluidPiece && Observer.IgniteTntBelow(Grid) > 0)
+                FlushTntPrimed();
+
             // 刚落的这块要是傀儡身体（雪块 / 铁块 / 铜块），下一块补个南瓜头，
             // 不然玩家把身体搭好了却等不到脑袋（见 BlockPools.OnPieceLanded）
             if (!fluidPiece)

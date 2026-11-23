@@ -26,6 +26,10 @@ namespace MinecraftTetris
         // 所以定期发，间隔比玻璃短一点（融化是消耗品，化一次就没了）。
         public const int MeltEvery = 30;
 
+        // 侦测器也是「道具」：要跟 TNT 同时在场上才有用。TNT 平均 60 块来一次
+        // （特殊池 20% × 每 12 块），侦测器间隔设得比它短一点，场上才总有得压。
+        public const int ObserverEvery = 34;
+
         // 南瓜头是「道具」，和 TNT 一样不进普通池：召傀儡得靠它在场上凑摆法，
         // 埋在三百多分之一的普通池里等于这个玩法不存在。到点的时候先把身体
         // （雪块 / 铁块 / 铜块）放下来，南瓜头紧跟其后 —— 顺序见 NextRandomId。
@@ -52,6 +56,8 @@ namespace MinecraftTetris
         static int _iceId = -1;
         /// <summary>南瓜头编号。不进普通池，按块数定期发，见 PumpkinEvery。</summary>
         static int _pumpkinId = -1;
+        /// <summary>侦测器编号。不进普通池，按块数定期发，见 ObserverEvery。</summary>
+        static int _observerId = -1;
         /// <summary>铁块 / 铜块编号。它们照旧留在普通池里，只是南瓜头会拉一块过来。</summary>
         static int _ironId = -1;
         static int _copperId = -1;
@@ -62,6 +68,8 @@ namespace MinecraftTetris
         static int _meltCount;
         /// <summary>距上一块南瓜头又抽了几块。</summary>
         static int _pumpkinCount;
+        /// <summary>距上一块侦测器又抽了几块。</summary>
+        static int _observerCount;
         /// <summary>抽到 TNT 之后，下一次抽必然给红石块 —— 见 NextRandomId。</summary>
         static bool _forceRedstone;
         /// <summary>南瓜头要用的「身体」是哪种方块、还欠几块（身体在前，见 NextRandomId）。</summary>
@@ -92,6 +100,7 @@ namespace MinecraftTetris
                 if (SpecialNames[i] == name)
                     return true;
             }
+            // 只有混凝土粉末受重力（硬化块是成品砖，见 Gravity），所以只把粉末收进特殊池
             return name.EndsWith("_concrete_powder");
         }
 
@@ -117,11 +126,13 @@ namespace MinecraftTetris
             _snowId = -1;
             _iceId = -1;
             _pumpkinId = -1;
+            _observerId = -1;
             _ironId = -1;
             _copperId = -1;
             _glassCount = 0;
             _meltCount = 0;
             _pumpkinCount = 0;
+            _observerCount = 0;
             _forceRedstone = false;
             _bodyId = 0;
             _bodyLeft = 0;
@@ -197,6 +208,12 @@ namespace MinecraftTetris
                         _pumpkinId = i + 1;
                     continue;
                 }
+                if (n == "observer")
+                {
+                    // 侦测器不进普通池：它得和 TNT 碰上才有戏，混在三百多种里等于不存在
+                    _observerId = i + 1;
+                    continue;
+                }
                 if (n == "iron_block")
                 {
                     // 铁块 / 铜块不拿出来：它们本来就是普通砖，偶尔自然出现也能拿去凑傀儡。
@@ -220,7 +237,8 @@ namespace MinecraftTetris
                       " / TNT " + _tntId + " 红石 " + _redstoneId +
                       " 基岩 " + _bedrockId + " 结构 " + _structureId + " 玻璃 " + _glassId +
                       " 雪 " + _snowId + " 冰 " + _iceId +
-                      " / 南瓜 " + _pumpkinId + " 铁块 " + _ironId + " 铜块 " + _copperId);
+                      " / 南瓜 " + _pumpkinId + " 铁块 " + _ironId + " 铜块 " + _copperId +
+                      " 侦测器 " + _observerId);
         }
 
         /// <summary>抽一个材质编号。每隔 SpecialEvery 个方块抽一次特殊池，水和岩浆在特殊池里占比较高。</summary>
@@ -302,6 +320,8 @@ namespace MinecraftTetris
                 _meltCount++;
             if (_pumpkinId > 0)
                 _pumpkinCount++;
+            if (_observerId > 0)
+                _observerCount++;
 
             if (_glassId > 0 && _glassCount >= GlassEvery)
             {
@@ -316,6 +336,12 @@ namespace MinecraftTetris
                 if (_snowId > 0 && _iceId > 0)
                     return Random.value < 0.5f ? _snowId : _iceId;
                 return _snowId > 0 ? _snowId : _iceId;
+            }
+
+            if (_observerId > 0 && _observerCount >= ObserverEvery)
+            {
+                _observerCount = 0;
+                return _observerId;
             }
 
             if (_pumpkinId > 0 && _pumpkinCount >= PumpkinEvery)

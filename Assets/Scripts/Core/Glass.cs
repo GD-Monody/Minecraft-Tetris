@@ -13,8 +13,10 @@ namespace MinecraftTetris
     /// - 上面那块也是玻璃就不算压：玻璃压玻璃会连锁碎一大片，太吵，也不符合「易碎品被重物压」的直觉；
     /// - 之后不管是谁落上来都算：玩家新摆的方块、沙子掉下来的、TNT 炸完剩下的、结构方块还原搭回去的
     ///   都是新写入的格子，序号更新，于是压碎下面这格玻璃；
-    /// - 碎掉之后上方的东西失去支撑，会下落的东西接着掉，可能再压到下面一层玻璃，
-    ///   见 GameLoop.CrushGlass 的循环；
+    /// - 碎掉之后上方整列**下移一格**（规则页写的就是「碎完上方的东西接着往下掉」），
+    ///   普通方块悬空本来不会掉，所以这一下不能靠 Gravity，得整列搬；
+    ///   塌下来的那块会刷新序号，压在下面另一块玻璃上就会接着碎，
+    ///   连锁由 GameLoop.CrushGlass 的循环兜住；
     /// - 碎哪几格记在 LastCrushed 里，视图层照着播音效、撒碎块。
     ///
     /// 为什么还是一遍场地扫描：方块落到玻璃上的来源太多（落定、重力、行消下移、层消下移、
@@ -51,7 +53,9 @@ namespace MinecraftTetris
             if (glassId <= 0)
                 return 0;
 
-            int count = 0;
+            // 先扫一遍，把该碎的记下来再动手：一边扫一边碎的话，
+            // 塌陷会把还没扫到的格子挪走，后面的判定就乱了
+            var hit = new System.Collections.Generic.List<Vector3Int>();
 
             // 最上面一层上面不会有方块，少扫一排
             for (int y = 0; y < grid.SizeY - 1; y++)
@@ -72,15 +76,46 @@ namespace MinecraftTetris
                         if (grid.Stamp(x, y + 1, z) <= grid.Stamp(x, y, z))
                             continue;
 
-                        grid.Set(x, y, z, 0);
-                        count++;
-                        if (outCells != null)
-                            outCells.Add(new Vector3Int(x, y, z));
+                        hit.Add(new Vector3Int(x, y, z));
                     }
                 }
             }
 
-            return count;
+            for (int i = 0; i < hit.Count; i++)
+            {
+                Vector3Int c = hit[i];
+                // 前面的塌陷可能已经把它挪走了
+                if (grid.Get(c.x, c.y, c.z) != glassId)
+                    continue;
+
+                grid.Set(c.x, c.y, c.z, 0);
+                if (outCells != null)
+                    outCells.Add(c);
+                Collapse(grid, c.x, c.y, c.z);
+            }
+
+            return hit.Count;
+        }
+
+        /// <summary>
+        /// 玻璃碎掉后，把这一列**上方的方块整列下移一格**。
+        ///
+        /// 规则页写的是「碎完上方的东西接着往下掉」，但普通方块悬空本来不会掉
+        /// （原版 MC 也一样），光靠 Gravity.Settle 只会有沙子混凝土往下走，
+        /// 所以这里得手动搬。
+        /// </summary>
+        static void Collapse(Grid grid, int x, int y, int z)
+        {
+            int yy = y + 1;
+            while (yy < grid.SizeY && grid.Get(x, yy, z) > 0)
+            {
+                grid.Move(x, yy, z, x, yy - 1, z);
+                yy++;
+            }
+
+            // 落到最下面那块算「刚压上去」：刷新序号，压在下面另一块玻璃上才会继续碎
+            if (grid.Get(x, y, z) > 0)
+                grid.Touch(x, y, z);
         }
     }
 }

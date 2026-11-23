@@ -1137,7 +1137,7 @@ namespace MinecraftTetris
         /// </summary>
         void DrawSettingsMech()
         {
-            // 十四项改单列 + 滚轮滚动。原来排三列，界面放大一倍后宽度直接溢出屏幕；
+            // 机制改单列 + 滚轮滚动。原来排三列，界面放大一倍后宽度直接溢出屏幕；
             // 而且机制以后还会加，行数变多固定面板迟早又出事。改成滚动列表一劳永逸：
             // 面板高度钳在屏幕内，装不下的部分用滚轮看，右侧画一条自绘的滚动指示条。
             // 必须先 BeginPage：下面的 rowH / colW 都要用这一页刚算出来的倍数
@@ -1175,6 +1175,12 @@ namespace MinecraftTetris
             float maxScroll = Mathf.Max(0f, contentH - viewH);
 
             Rect clip = new Rect(colX, top, colW, viewH);
+
+            // -mechscroll N：把机制列表直接滚到 N（截图核对最后几项用）
+            string[] mArgs = System.Environment.GetCommandLineArgs();
+            int mAt = System.Array.IndexOf(mArgs, "-mechscroll");
+            if (mAt >= 0 && mAt + 1 < mArgs.Length && float.TryParse(mArgs[mAt + 1], out float mWant))
+                _mechScroll.y = Mathf.Clamp(mWant, 0f, maxScroll);
 
             // 滚轮：悬停在列表上就滚。这里手动消费 ScrollWheel 事件，步长一行多一点，
             // 不用 BeginScrollView 是因为它的滚动条样式和这套手绘 UI 对不上，
@@ -1219,7 +1225,7 @@ namespace MinecraftTetris
                 "关掉只是这种方块不再按特殊规则动，方块照常出现", _guideNoteBig);
 
             // 一键开关：全开时这颗键是「一键关闭」，否则是「一键开启」——
-            // 十四项一个一个点太烦，想快速对比「全关 vs 全开」时用得上。
+            // 一项一项点太烦，想快速对比「全关 vs 全开」时用得上。
             float bw = Pg(wide ? 300f : 260f);
             bool allOn = GameSettings.AllMechOn();
             if (TutBtn(new Rect(panel.x + (w - bw) * 0.5f, panel.y + h - Pg(wide ? 94f : 132f),
@@ -1760,6 +1766,11 @@ namespace MinecraftTetris
             public int[] Ids;
             public string Title;
             public string Desc;
+            /// <summary>
+            /// 图标画哪一面：0=顶 1=底 2=北（正面）3=南 4=东 5=西。
+            /// 默认顶面；侦测器得上正面，顶面只是一块灰板，看不出是它。
+            /// </summary>
+            public int IconFace;
         }
 
         static GuideItem[] _guideItems;
@@ -1785,7 +1796,18 @@ namespace MinecraftTetris
                 {
                     Ids = new[] { Tnt.TntId, Tnt.RedstoneId },
                     Title = "TNT / 红石块",
-                    Desc = "红石方块会激活TNT，在几秒钟后爆炸，同时引爆周围的TNT。",
+                    Desc = "红石方块、以及侦测器的激发面会激活TNT，在几秒钟后爆炸，"
+                        + "同时引爆周围的TNT。",
+                },
+                new GuideItem
+                {
+                    Ids = new[] { BlockCatalog.ObserverId },
+                    Title = "侦测器",
+                    IconFace = 2,       // 正面那只「眼睛」，顶面是一块灰板认不出来
+                    // 方块没有朝向（同一格永远画同一面），所以把激发面固定成底面，
+                    // 文案里必须说清楚，否则玩家会以为四面都能引燃
+                    Desc = "只有激发面（朝下那一面）贴着 TNT 才会把它点着；"
+                        + "侧面、顶上贴着 TNT 都不算。",
                 },
                 new GuideItem
                 {
@@ -1832,6 +1854,13 @@ namespace MinecraftTetris
                     Ids = new[] { FindBlock("sand"), FindBlock("gravel") },
                     Title = "沙子 / 沙砾",
                     Desc = "下面是空的就往下掉，被炸出的弹坑会自己填平。",
+                },
+                new GuideItem
+                {
+                    // 会掉的是粉末，不是硬化后的混凝土（用户特意纠正过）；展示一张白的就够
+                    Ids = new[] { FindBlock("white_concrete_powder") },
+                    Title = "混凝土粉末",
+                    Desc = "和沙子一样受重力，下面是空的就往下掉。",
                 },
                 new GuideItem
                 {
@@ -2084,7 +2113,8 @@ namespace MinecraftTetris
                 float top = panel.y + Pg(wide ? 62f : 126f);
                 // 返回按钮的顶边在 yMax - 76，这里再多留一点：贴着按钮裁的话，
                 // 最后一行字会被切一半、看着像被按钮压住。
-                float bottomEdge = wide ? panel.yMax - Pg(54f) : panel.yMax - Pg(104f);
+                // 底部按钮顶边在 yMax - 76，这里要多让一截，否则列表最后一条会被按钮压住
+                float bottomEdge = wide ? panel.yMax - Pg(84f) : panel.yMax - Pg(104f);
                 float viewH = Mathf.Max(Pg(60f), bottomEdge - top);
                 // 右边留一列给滚动条：不留的话条子直接压在说明文字最后几个字上
                 float rowW = narrowW - Pg(20f);
@@ -2142,7 +2172,7 @@ namespace MinecraftTetris
             float colGap = Pg(26f);
             float rowH2 = Pg(104f);
             float top2 = panel.y + Pg(128f);   // 提示行到 128，别压上去
-            float pcBottom = panel.yMax - Pg(64f);   // 给底部「返回」留出来
+            float pcBottom = panel.yMax - Pg(84f);   // 给底部「新手教程 / 返回」那一行留出来
             float pcViewH = Mathf.Max(rowH2, pcBottom - top2);
             int pcRows = Mathf.CeilToInt(_guideItems.Length / (float)cols);
             float pcContentH = pcRows * rowH2;
@@ -2363,7 +2393,7 @@ namespace MinecraftTetris
                 int col = slot % 3;
                 int row = slot / 3;
                 DrawBlockIcon(new Rect(x + col * (icon + gap), y + Pg(2f) + row * (icon + gap),
-                    icon, icon), item.Ids[i]);
+                    icon, icon), item.Ids[i], item.IconFace);
                 slot++;
             }
 
@@ -2381,7 +2411,7 @@ namespace MinecraftTetris
         }
 
         /// <summary>从方块图集里切一格顶面出来画成图标；方块表里查不到就画个灰块。</summary>
-        void DrawBlockIcon(Rect r, int blockId)
+        void DrawBlockIcon(Rect r, int blockId, int face = 0)
         {
             // 边框画在 rect **里面**：先铺一层深色底、再把贴图缩进 1px 盖上。
             // 原来画在 r 外面（r.x-1），而列表最左一列正好贴着滚动区的裁剪边，
@@ -2395,7 +2425,17 @@ namespace MinecraftTetris
                 return;
             }
 
-            Tile tile = BlockCatalog.Of(blockId).Up;
+            BlockDef def = BlockCatalog.Of(blockId);
+            Tile tile;
+            switch (face)
+            {
+                case 1: tile = def.Down; break;
+                case 2: tile = def.North; break;
+                case 3: tile = def.South; break;
+                case 4: tile = def.East; break;
+                case 5: tile = def.West; break;
+                default: tile = def.Up; break;
+            }
             int cell = BlockCatalog.CellPixels;
             int pad = BlockCatalog.TilePadding;
             float aw = (float)BlockCatalog.AtlasColumns * cell;
@@ -3141,6 +3181,9 @@ namespace MinecraftTetris
         static GUIStyle MakeStyle(int size, Color color, TextAnchor anchor, FontStyle style)
         {
             var s = new GUIStyle(GUI.skin.label);
+            // 皮肤默认字体在运行时是 null（靠 Unity 内部兜底），
+            // CjkWrap 量字宽时要拿 font 做缓存键，null 会直接 NRE
+            s.font = UiSkin.Font;
             s.fontSize = UiSkin.Size(size);
             s.normal.textColor = color;
             s.alignment = anchor;
@@ -3152,6 +3195,7 @@ namespace MinecraftTetris
         static GUIStyle MakeStylePx(int px, Color color, TextAnchor anchor, FontStyle style)
         {
             var s = new GUIStyle(GUI.skin.label);
+            s.font = UiSkin.Font;
             s.fontSize = px;
             s.normal.textColor = color;
             s.alignment = anchor;

@@ -2338,10 +2338,13 @@ namespace MinecraftTetris
             for (int i = 0; i < _loop.LastGlassCrushed.Count; i++)
             {
                 Vector3Int c = _loop.LastGlassCrushed[i];
-                _view.SetCell(c.x, c.y, c.z, 0);
                 if (_particles != null)
                     _particles.EmitCell(c.x, c.y, c.z, BlockCatalog.GlassId, 2);
             }
+
+            // 整场重画：玻璃碎掉后上方那一列会**整列下移一格**（见 Glass.Collapse），
+            // 只清碎掉那一格的话，塌下来的方块在画面上还停在原处 —— 格子空了、方块浮着。
+            _view.RefreshAll();
         }
 
         /// <summary>
