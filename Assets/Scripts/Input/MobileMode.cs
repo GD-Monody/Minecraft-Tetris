@@ -155,6 +155,12 @@ namespace MinecraftTetris
 
         static bool UrlSaysMobile()
         {
+            // 桌面浏览器想看手机版式：mobileforce=1 直接放行。
+            // 正常的 mobile=1 还要验触屏（见下），电脑上验不过就会落回键盘版式，
+            // 验收手机界面时总不能真拿手机逐条截图。
+            if (UrlSays("mobileforce=1"))
+                return true;
+
             if (!UrlSays("mobile=1"))
                 return false;
 

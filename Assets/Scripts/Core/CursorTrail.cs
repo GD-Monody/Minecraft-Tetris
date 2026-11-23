@@ -62,9 +62,31 @@ namespace MinecraftTetris
         /// </summary>
         public static void DrawLast()
         {
+            if (_defer || _instance == null)
+                return;
+            _instance.Draw();
+        }
+
+        /// <summary>
+        /// 这一帧的拖尾别急着画，交给更上面的层（新手教程）。
+        ///
+        /// 原来是「谁先调谁画」——HUD / 标题页在教程之前调，拖尾就被教程的遮罩盖住了。
+        /// 教程在自己的 Update 里喊一声，那些较早的调用就都让开，最后由它调 DrawTop 收尾。
+        /// 每帧都要重新设：这一帧没人接管（教程没跑），行为就和原来一样。
+        /// </summary>
+        public static void DeferNextDraw(bool on)
+        {
+            _defer = on;
+        }
+
+        /// <summary>由最上层的界面在 OnGUI 末尾调用：无视「已画过」的判断，直接画一遍。</summary>
+        public static void DrawTop()
+        {
             if (_instance != null)
                 _instance.Draw();
         }
+
+        static bool _defer;
 
         void Awake()
         {

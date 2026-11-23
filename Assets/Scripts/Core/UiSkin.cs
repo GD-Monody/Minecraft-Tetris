@@ -174,7 +174,8 @@ namespace MinecraftTetris
                 Changed();
         }
 
-        static bool Light { get { return Current == Theme.Light; } }
+        /// <summary>现在是亮色主题吗（教程等外部模块也要按它挑颜色）。</summary>
+        public static bool Light { get { return Current == Theme.Light; } }
 
         /// <summary>3D 场景的背景色。整屏的底色就是它。</summary>
         public static Color SceneBg

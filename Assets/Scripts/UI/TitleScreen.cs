@@ -25,6 +25,34 @@ namespace MinecraftTetris
 
         /// <summary>最后一个设置页的下标（自检按它遍历所有页）。</summary>
         public const int PageLast = (int)SettingsPage.Play;
+        public const int PageMain = (int)SettingsPage.Main;
+        public const int PageKeys = (int)SettingsPage.Keys;
+        public const int PageSize = (int)SettingsPage.Size;
+        public const int PageWorkshop = (int)SettingsPage.Workshop;
+        public const int PageSound = (int)SettingsPage.Sound;
+        public const int PageControl = (int)SettingsPage.Control;
+        public const int PageScreen = (int)SettingsPage.Screen;
+        public const int PagePlay = (int)SettingsPage.Play;
+
+        /// <summary>当前设置页（新手教程按它判断玩家有没有走到那一页）。</summary>
+        public int CurrentPage { get { return (int)_page; } }
+
+        /// <summary>最近一次画出来的设置面板矩形（教程高亮用）。</summary>
+        public Rect PageRect { get { return _pageRect; } }
+
+        /// <summary>
+        /// 主菜单按钮的矩形，按文字查（教程要指出「点这里」）。
+        /// 每帧画按钮时记一次，按钮还没滑进来时用上一帧的值，都是零就返回 false。
+        /// </summary>
+        public bool TryMenuRect(string label, out Rect rect)
+        {
+            return _menuRects.TryGetValue(label, out rect) && rect.width > 4f;
+        }
+
+        readonly System.Collections.Generic.Dictionary<string, Rect> _menuRects
+            = new System.Collections.Generic.Dictionary<string, Rect>();
+
+        Rect _pageRect;
 
         struct Mote
         {
@@ -40,6 +68,9 @@ namespace MinecraftTetris
 
         public bool Visible = true;
         public bool ShowSettings;
+
+        /// <summary>规则页里点了「新手教程」（由 Bootstrap 接到 Tutorial.Restart）。</summary>
+        public Action OnTutorialRequested;
 
         /// <summary>
         /// 画「已暂停」那一块（暗底 + 面板），由 Hud 提供、不接点击。
@@ -270,6 +301,86 @@ namespace MinecraftTetris
         void OnEnable()
         {
             _t = 0f;
+        }
+
+        /// <summary>
+        /// 带教程锁的按钮：教程进行中时，只有当前步骤白名单里的按钮能点，其余锁住并弹提示。
+        ///
+        /// 这个文件里所有的 GUI.Button 都换成了它 —— 只要漏一处，那一处就是穿帮点
+        /// （玩家能在教程讲 A 的时候点「返回」，界面就和文字对不上了）。
+        /// </summary>
+        /// <summary>
+        /// 重命名时按了回车没有。网页版由 HTML input 上报（IMGUI 拿不到输入法的键），
+        /// 桌面版直接读 KeyDown。
+        /// </summary>
+        static bool EnterPressed()
+        {
+            if (WebGLTextInput.ConsumeEnter())
+                return true;
+
+            Event e = Event.current;
+            return e != null && e.type == EventType.KeyDown
+                && (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter);
+        }
+
+        /// <summary>
+        /// 模具名字输入框。浏览器里 IMGUI 的 TextField 收不到输入法上屏的字（只能打英文），
+        /// 所以 WebGL 换成「画一块假输入框 + 点一下弹出 HTML input」，把值读回来。
+        /// </summary>
+        string NameField(Rect r, string text)
+        {
+            if (!WebGLTextInput.Supported)
+                return GUI.TextField(r, text, 16, _btnStyle);
+
+            DrawRect(r, UiSkin.Light ? new Color(1f, 1f, 1f, 0.94f)
+                                     : new Color(0.10f, 0.12f, 0.16f, 0.94f));
+            GUI.Label(new Rect(r.x + Pg(6f), r.y, r.width - Pg(12f), r.height),
+                string.IsNullOrEmpty(text) ? "点这里输入名字" : text, _btnStyle);
+
+            if (GUI.Button(r, GUIContent.none, GUIStyle.none))
+                WebGLTextInput.Open(r, text);
+
+            // 浮层开着的时候，每帧把里面的字同步回来
+            if (WebGLTextInput.Active)
+                text = WebGLTextInput.Value();
+            return text;
+        }
+
+        bool TutBtn(Rect r, string label, GUIStyle style)
+        {
+            if (Tutorial.Allows(label))
+                return GUI.Button(r, label, style);
+
+            GUI.Label(r, label, style);   // 样式照画，只是不响应
+            // 蒙一层灰：玩家一眼就知道「这颗现在点不动」，而不是以为界面卡了
+            DrawRect(r, UiSkin.Light ? new Color(0.80f, 0.82f, 0.86f, 0.62f)
+                                     : new Color(0f, 0f, 0f, 0.38f));
+            LockedClick(r);
+            return false;
+        }
+
+        /// <summary>被锁住的按钮：只在真的点上去时提示一句（画的时候不能弹，否则每帧一条）。</summary>
+        static void LockedClick(Rect r)
+        {
+            Event e = Event.current;
+            if (e == null || e.type != EventType.MouseDown || e.button != 0)
+                return;
+            if (!r.Contains(e.mousePosition))
+                return;
+            Tutorial.NotifyLocked();
+            e.Use();
+        }
+
+        bool TutBtn(Rect r, string label)
+        {
+            if (Tutorial.Allows(label))
+                return GUI.Button(r, label);
+
+            GUI.Label(r, label);
+            DrawRect(r, UiSkin.Light ? new Color(0.80f, 0.82f, 0.86f, 0.62f)
+                                     : new Color(0f, 0f, 0f, 0.38f));
+            LockedClick(r);
+            return false;
         }
 
         public void Show(bool show)
@@ -652,10 +763,11 @@ namespace MinecraftTetris
                     y += (1f - p) * UiSkin.P(18f);
                 }
                 var rect = new Rect(x, y, lay.width, lay.height);
+                _menuRects[items[i].Key] = rect;      // 教程高亮用
 
                 Color prev = GUI.color;
                 GUI.color = new Color(1f, 1f, 1f, p);
-                if (GUI.Button(rect, items[i].Key, _menuBtnStyle))
+                if (TutBtn(rect, items[i].Key, _menuBtnStyle))
                     items[i].Value?.Invoke();
                 GUI.color = prev;
             }
@@ -701,6 +813,10 @@ namespace MinecraftTetris
             Matrix4x4 matBack = GUI.matrix;
             if (Mathf.Abs(offset) > 0.01f)
                 GUI.matrix = matBack * Matrix4x4.Translate(new Vector3(offset, 0f, 0f));
+
+            // 离开创意工坊（或已经改完名）就把 HTML 输入浮层收掉，别让它飘在别的页面上
+            if (WebGLTextInput.Active && (_page != SettingsPage.Workshop || !_renaming))
+                WebGLTextInput.Close();
 
             switch (_page)
             {
@@ -776,12 +892,14 @@ namespace MinecraftTetris
 
             for (int i = 0; i < names.Length; i++)
             {
-                if (GUI.Button(new Rect(bx, top + i * step, bw, bh), names[i], _btnBig))
+                var r = new Rect(bx, top + i * step, bw, bh);
+                _menuRects["设置/" + names[i]] = r;
+                if (TutBtn(r, names[i], _btnBig))
                     _page = pages[i];
             }
 
             float backY = panel.yMax - Pg(wide ? 12f : 18f) - bh;
-            if (GUI.Button(new Rect(bx, backY, bw, bh), "返回", _btnBig))
+            if (TutBtn(new Rect(bx, backY, bw, bh), "返回", _btnBig))
                 BeginCloseSettings();
         }
 
@@ -810,12 +928,12 @@ namespace MinecraftTetris
 
             for (int i = 0; i < labels.Length; i++)
             {
-                if (GUI.Button(new Rect(bx, top + i * step, bw, bh), labels[i], _btnBig))
+                if (TutBtn(new Rect(bx, top + i * step, bw, bh), labels[i], _btnBig))
                     Fire(actions[i]);
             }
 
             float backY = panel.yMax - Pg(wide ? 12f : 18f) - bh;
-            if (GUI.Button(new Rect(bx, backY, bw, bh), "返回", _btnBig))
+            if (TutBtn(new Rect(bx, backY, bw, bh), "返回", _btnBig))
                 GoPage(SettingsPage.Main, true);   // 分组页的上一层是设置主页
         }
 
@@ -1009,7 +1127,7 @@ namespace MinecraftTetris
             Rect ok = new Rect(panel.x + (panel.width - UiSkin.P(160f)) * 0.5f,
                 panel.yMax - UiSkin.P(56f), UiSkin.P(160f), UiSkin.P(40f));
             _menuBtnStyle.fontSize = Mathf.Max(12, Mathf.RoundToInt(UiSkin.Size(17)));
-            if (GUI.Button(ok, "先用竖屏", _menuBtnStyle))
+            if (TutBtn(ok, "先用竖屏", _menuBtnStyle))
                 _rotateHintClosed = true;
         }
 
@@ -1050,8 +1168,10 @@ namespace MinecraftTetris
             // 底下的说明文字压在上面，看着像排版坏了）
             float availH = Mathf.Max(rowH, panel.yMax - bottomReserve - top);
             int rowsFit = Mathf.Max(1, Mathf.FloorToInt((availH + rowGap) / (rowH + rowGap)));
-            float viewH = rowsFit * (rowH + rowGap) - rowGap;
-            float contentH = GameSettings.MechCount * (rowH + rowGap) - rowGap;
+            // 行高按可用高度平分：只按整行取整的话，列表下面会空出接近一整行的一大块空白
+            float stepH = availH / rowsFit;
+            float viewH = availH;
+            float contentH = GameSettings.MechCount * stepH;
             float maxScroll = Mathf.Max(0f, contentH - viewH);
 
             Rect clip = new Rect(colX, top, colW, viewH);
@@ -1061,7 +1181,7 @@ namespace MinecraftTetris
             // 隐藏滚动条之后滚轮行为又没法控制，干脆 BeginGroup 裁剪 + 自己记滚动量。
             if (Event.current.type == EventType.ScrollWheel && clip.Contains(Event.current.mousePosition))
             {
-                _mechScroll.y = Mathf.Clamp(_mechScroll.y + Event.current.delta.y * Pg(48f), 0f, maxScroll);
+                _mechScroll.y = Mathf.Clamp(_mechScroll.y + Event.current.delta.y * Pg(52f), 0f, maxScroll);
                 Event.current.Use();
             }
             // 手机上 WebGL 不把触摸转成 MouseDrag，只能自己读 touches
@@ -1075,11 +1195,11 @@ namespace MinecraftTetris
                 bool on = GameSettings.Mech(kind);
                 string label = GameSettings.MechLabel(kind) + (on ? "：开" : "：关");
 
-                float y = i * (rowH + rowGap) - _mechScroll.y;
-                if (y + rowH < 0f || y > viewH)        // 看不见的不画，省一点开销
+                float y = i * stepH - _mechScroll.y;
+                if (y + stepH < 0f || y > viewH)      // 看不见的不画，省一点开销
                     continue;
 
-                if (GUI.Button(new Rect(0f, y, colW, rowH), label, _btnBig))
+                if (TutBtn(new Rect(0f, y, colW, rowH), label, _btnBig))
                     GameSettings.SetMech(kind, !on);
             }
             GUI.EndGroup();
@@ -1102,12 +1222,12 @@ namespace MinecraftTetris
             // 十四项一个一个点太烦，想快速对比「全关 vs 全开」时用得上。
             float bw = Pg(wide ? 300f : 260f);
             bool allOn = GameSettings.AllMechOn();
-            if (GUI.Button(new Rect(panel.x + (w - bw) * 0.5f, panel.y + h - Pg(wide ? 94f : 132f),
+            if (TutBtn(new Rect(panel.x + (w - bw) * 0.5f, panel.y + h - Pg(wide ? 94f : 132f),
                         bw, Pg(wide ? 34f : 42f)),
                     allOn ? "一键关闭" : "一键开启", _btnBig))
                 GameSettings.SetAllMech(!allOn);
 
-            if (GUI.Button(new Rect(panel.x + (w - bw) * 0.5f, panel.y + h - Pg(wide ? 50f : 74f),
+            if (TutBtn(new Rect(panel.x + (w - bw) * 0.5f, panel.y + h - Pg(wide ? 50f : 74f),
                         bw, Pg(wide ? 36f : 44f)), "返回", _btnBig))
                 GoPage(SettingsPage.Play, true);
         }
@@ -1154,7 +1274,7 @@ namespace MinecraftTetris
                     ? "按任意键…"
                     : KeyName(KeyboardInput.GetPrimaryKey(action));
 
-                if (GUI.Button(new Rect(x + Pg(175f), y, Pg(225f), rowH), keyName, _btnBig))
+                if (TutBtn(new Rect(x + Pg(175f), y, Pg(225f), rowH), keyName, _btnBig))
                     _capturingAction = (int)action;
             }
 
@@ -1166,13 +1286,13 @@ namespace MinecraftTetris
             float bx = panel.x + (w - (bw * 2f + gap)) * 0.5f;
             float bottomY = panel.y + h - Pg(66f);
 
-            if (GUI.Button(new Rect(bx, bottomY, bw, Pg(44f)), "恢复默认", _btnBig))
+            if (TutBtn(new Rect(bx, bottomY, bw, Pg(44f)), "恢复默认", _btnBig))
             {
                 ResetKeys();
                 if (OnKeysChanged != null)
                     OnKeysChanged();
             }
-            if (GUI.Button(new Rect(bx + bw + gap, bottomY, bw, Pg(44f)), "返回", _btnBig))
+            if (TutBtn(new Rect(bx + bw + gap, bottomY, bw, Pg(44f)), "返回", _btnBig))
             {
                 _capturingAction = -1;
                 GoPage(SettingsPage.Control, true);
@@ -1233,7 +1353,7 @@ namespace MinecraftTetris
                     ? "按任意键…"
                     : KeyName(KeyboardInput.GetPrimaryKey(action));
 
-                if (GUI.Button(new Rect(rowW - keyW, y, keyW, lineH), keyName, _btnBig))
+                if (TutBtn(new Rect(rowW - keyW, y, keyW, lineH), keyName, _btnBig))
                     _capturingAction = (int)action;
             }
             GUI.EndGroup();
@@ -1246,13 +1366,13 @@ namespace MinecraftTetris
 
             float bw = (w - Pg(120f)) * 0.5f;
             float bottomY = panel.y + h - Pg(wide ? 52f : 66f);
-            if (GUI.Button(new Rect(panel.x + Pg(40f), bottomY, bw, Pg(44f)), "恢复默认", _btnBig))
+            if (TutBtn(new Rect(panel.x + Pg(40f), bottomY, bw, Pg(44f)), "恢复默认", _btnBig))
             {
                 ResetKeys();
                 if (OnKeysChanged != null)
                     OnKeysChanged();
             }
-            if (GUI.Button(new Rect(panel.xMax - Pg(40f) - bw, bottomY, bw, Pg(44f)), "返回", _btnBig))
+            if (TutBtn(new Rect(panel.xMax - Pg(40f) - bw, bottomY, bw, Pg(44f)), "返回", _btnBig))
             {
                 _capturingAction = -1;
                 GoPage(SettingsPage.Control, true);
@@ -1290,7 +1410,7 @@ namespace MinecraftTetris
 
             // 文案从「应用并重启」改成「应用」：它确实会重载场景（尺寸变了只能重建场地），
             // 但重载后直接回到标题页、不再播开场动画，玩家感觉不到「重启」这一步。
-            if (GUI.Button(new Rect(bx, y, rowW, Pg(wide ? 38f : 44f)), "应用", _btnBig))
+            if (TutBtn(new Rect(bx, y, rowW, Pg(wide ? 38f : 44f)), "应用", _btnBig))
             {
                 GameSettings.SetSize(_tmpX, _tmpY, _tmpZ);
                 if (OnSizeApplied != null)
@@ -1298,7 +1418,7 @@ namespace MinecraftTetris
             }
             y += Pg(wide ? 46f : 54f);
 
-            if (GUI.Button(new Rect(bx, y, rowW, Pg(wide ? 34f : 42f)), "返回", _btnBig))
+            if (TutBtn(new Rect(bx, y, rowW, Pg(wide ? 34f : 42f)), "返回", _btnBig))
                 GoPage(SettingsPage.Play, true);
         }
 
@@ -1358,7 +1478,7 @@ namespace MinecraftTetris
 
             float bottomY = panel.y + h - Pg(62f);
             float bh = Pg(42f);
-            if (GUI.Button(new Rect(bx, bottomY, Pg(190f), bh), "恢复标准", _btnBig))
+            if (TutBtn(new Rect(bx, bottomY, Pg(190f), bh), "恢复标准", _btnBig))
             {
                 _tmpSpeed = GameSettings.DefaultFallSpeed;
                 GameSettings.SetFallSpeed(_tmpSpeed);
@@ -1366,7 +1486,7 @@ namespace MinecraftTetris
                     OnFallSpeedChanged();
             }
 
-            if (GUI.Button(new Rect(bx + rowW - Pg(190f), bottomY, Pg(190f), bh), "返回", _btnBig))
+            if (TutBtn(new Rect(bx + rowW - Pg(190f), bottomY, Pg(190f), bh), "返回", _btnBig))
                 GoPage(SettingsPage.Play, true);
         }
 
@@ -1409,7 +1529,7 @@ namespace MinecraftTetris
 
             float bottomY = panel.y + h - Pg(62f);
             float bh = Pg(42f);
-            if (GUI.Button(new Rect(bx, bottomY, Pg(190f), bh), "恢复默认", _btnBig))
+            if (TutBtn(new Rect(bx, bottomY, Pg(190f), bh), "恢复默认", _btnBig))
             {
                 _tmpMusic = GameSettings.DefaultMusicVolume;
                 GameSettings.SetMusicVolume(_tmpMusic);
@@ -1417,7 +1537,7 @@ namespace MinecraftTetris
                     OnMusicChanged();
             }
 
-            if (GUI.Button(new Rect(bx + rowW - Pg(190f), bottomY, Pg(190f), bh), "返回", _btnBig))
+            if (TutBtn(new Rect(bx + rowW - Pg(190f), bottomY, Pg(190f), bh), "返回", _btnBig))
                 GoPage(SettingsPage.Sound, true);
         }
 
@@ -1806,7 +1926,7 @@ namespace MinecraftTetris
                 // 看着反倒是灰的那个像被选中（真机截图反馈「颜色反了」）。
                 // 现在两颗按钮同色，选中的那颗底下压一条强调色横线，两套主题都一眼能看出。
                 var tabRect = new Rect(tx + slot * (tw + tgap), ty, tw, th);
-                if (GUI.Button(tabRect, GuideTabNames[i], _btnBig))
+                if (TutBtn(tabRect, GuideTabNames[i], _btnBig))
                     _guideTab = i;
                 if (_guideTab == i)
                 {
@@ -1833,7 +1953,27 @@ namespace MinecraftTetris
             Rect backRect = wide
                 ? new Rect(panel.x + (w - Pg(200f)) * 0.5f, panel.yMax - Pg(46f), Pg(200f), Pg(34f))
                 : new Rect(panel.x + w - Pg(230f), panel.yMax - Pg(76f), Pg(180f), Pg(44f));
-            if (GUI.Button(backRect, "返回", _btnBig))
+
+            // 新手教程：规则页是最容易被翻到的地方，把入口放这儿，
+            // 跳过的玩家和想复习的玩家都能自己找回来（原来只能靠调试参数重置）
+            // 横屏两颗按钮**成对居中**：原来是挂在「返回」左边，170 宽一减就顶出面板了
+            float tutW = Pg(wide ? 170f : 180f);
+            Rect tutRect;
+            if (wide)
+            {
+                float gapBtn = Pg(16f);
+                float totalW = tutW + gapBtn + backRect.width;
+                float startX = panel.x + (w - totalW) * 0.5f;
+                tutRect = new Rect(startX, backRect.y, tutW, backRect.height);
+                backRect = new Rect(startX + tutW + gapBtn, backRect.y, backRect.width, backRect.height);
+            }
+            else
+            {
+                tutRect = new Rect(panel.x + Pg(50f), backRect.y, tutW, backRect.height);
+            }
+            if (TutBtn(tutRect, "新手教程", _btnBig) && OnTutorialRequested != null)
+                OnTutorialRequested();
+            if (TutBtn(backRect, "返回", _btnBig))
                 BeginCloseSettings();
         }
 
@@ -2165,156 +2305,14 @@ namespace MinecraftTetris
             DrawRect(new Rect(barX, barY, barW, barH), new Color(0.78f, 0.82f, 0.9f, 0.55f));
         }
 
-        /// <summary>行首禁则：这些字符排到一行的开头很难看，宁可让上一行多挤一个字。</summary>
-        const string NoLineStart = "，。、；：？！）】｝」』”’%°℃";
-
-        /// <summary>断行结果缓存：OnGUI 一帧要跑好几趟，别每次都逐字量一遍。</summary>
-        static readonly System.Collections.Generic.Dictionary<string, string> _wrapCache =
-            new System.Collections.Generic.Dictionary<string, string>();
-
-        static bool IsWordChar(char c)
-        {
-            return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
-        }
-
-        /// <summary>
-        /// 按像素宽度给中文断行。
-        ///
-        /// IMGUI 自带的 wordWrap 只认半角空格，中文「哪里都能断」：会把「TNT」拆成
-        /// T / NT、把句号顶到下一行开头。这里自己量：优先别把英文和数字拆开，
-        /// 行首出现标点就把标点拉回上一行，剩下的按字断。已有的 \n 当硬换行保留。
-        /// </summary>
         string WrapCjk(string text, GUIStyle style, float width)
         {
-            if (string.IsNullOrEmpty(text) || width <= 0f)
-                return text;
-
-            string key = text + "|" + Mathf.RoundToInt(width) + "|" + style.fontSize;
-            string cached;
-            if (_wrapCache.TryGetValue(key, out cached))
-                return cached;
-
-            var sb = new System.Text.StringBuilder(text.Length + 16);
-            string[] paras = text.Split('\n');
-            for (int pi = 0; pi < paras.Length; pi++)
-            {
-                if (pi > 0)
-                    sb.Append('\n');
-
-                string para = paras[pi];
-                string best = WrapPara(para, style, width);
-
-                // 最后一行只剩一两个字（「块。」这种）很难看：允许行宽松 4% / 8%
-                // 再断一次，只要能把行数降下来就采用 —— 相当于给排版留一点弹性。
-                if (LineCount(best) > 1 && LineWidestWidth(LastLine(best), style) < width * 0.5f)
-                {
-                    for (int k = 1; k <= 3; k++)
-                    {
-                        string alt = WrapPara(para, style, width * (1f + 0.04f * k));
-                        if (LineCount(alt) < LineCount(best))
-                        {
-                            best = alt;
-                            break;
-                        }
-                    }
-                }
-                sb.Append(best);
-            }
-
-            string outText = sb.ToString();
-            _wrapCache[key] = outText;
-            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-logwrap") >= 0)
-                Debug.Log("[wrap] w=" + Mathf.RoundToInt(width) + " fs=" + style.fontSize
-                    + " => " + outText.Replace("\n", " / "));
-            return outText;
+            return CjkWrap.Wrap(text, style, width);
         }
 
-        /// <summary>按给定宽度把一段（不含换行）断成若干行，返回以 \n 连接的结果。</summary>
-        string WrapPara(string para, GUIStyle style, float width)
-        {
-            var sb = new System.Text.StringBuilder(para.Length + 8);
-            float lineW = 0f;
-            int lineStart = 0;
-            for (int i = 0; i < para.Length; i++)
-            {
-                char c = para[i];
-                float cw = style.CalcSize(new GUIContent(c.ToString())).x;
-                if (lineW + cw <= width || i == lineStart)
-                {
-                    lineW += cw;
-                    continue;
-                }
-
-                // 行首是标点：把它一起塞回本行（最多超一个字的宽度，看不出来）
-                if (NoLineStart.IndexOf(c) >= 0)
-                {
-                    sb.Append(para, lineStart, i - lineStart + 1);
-                    sb.Append('\n');
-                    lineStart = i + 1;
-                    lineW = 0f;
-                    continue;
-                }
-
-                int cut = i;
-                // 正落在英文/数字中间：退到这个词的开头再断
-                if (IsWordChar(c))
-                {
-                    int j = i;
-                    while (j > lineStart && IsWordChar(para[j - 1]))
-                        j--;
-                    if (j > lineStart)
-                        cut = j;
-                }
-                // 行尾正好是一个英文词（…黑曜石。TNT / 上方…）：把它挪到下一行，
-                // 别让「TNT」孤零零挂在行尾
-                else if (cut > lineStart && IsWordChar(para[cut - 1]))
-                {
-                    int j = cut;
-                    while (j > lineStart && IsWordChar(para[j - 1]))
-                        j--;
-                    if (j > lineStart)
-                        cut = j;
-                }
-
-                sb.Append(para, lineStart, cut - lineStart);
-                sb.Append('\n');
-                lineStart = cut;
-                lineW = 0f;
-                for (int k = cut; k <= i; k++)
-                    lineW += style.CalcSize(new GUIContent(para[k].ToString())).x;
-            }
-            sb.Append(para, lineStart, para.Length - lineStart);
-            return sb.ToString();
-        }
-
-        static int LineCount(string s)
-        {
-            int n = 1;
-            for (int i = 0; i < s.Length; i++)
-                if (s[i] == '\n')
-                    n++;
-            return n;
-        }
-
-        static string LastLine(string s)
-        {
-            int i = s.LastIndexOf('\n');
-            return i < 0 ? s : s.Substring(i + 1);
-        }
-
-        static float LineWidestWidth(string line, GUIStyle style)
-        {
-            return line.Length == 0 ? 0f : style.CalcSize(new GUIContent(line)).x;
-        }
-
-        /// <summary>断好的文字实际多宽：Label 的矩形照它给，免得 IMGUI 再自己折一次行。</summary>
         float WrappedWidth(string wrapped, GUIStyle style)
         {
-            float max = 0f;
-            string[] lines = wrapped.Split('\n');
-            for (int i = 0; i < lines.Length; i++)
-                max = Mathf.Max(max, LineWidestWidth(lines[i], style));
-            return max + 2f;
+            return CjkWrap.MaxLineWidth(wrapped, style) + 2f;
         }
 
         /// <summary>一条规则里图标的尺寸与排布（一行最多 3 个，超过就排第二行）。</summary>
@@ -2506,14 +2504,16 @@ namespace MinecraftTetris
                 float w = Pg(WidePageW);
                 float h = Pg(Mathf.Min(designH, wideH));
                 float bandLeft = Screen.width - margin - bandW;
-                return new Rect(bandLeft + (bandW - w) * 0.5f,
+                _pageRect = new Rect(bandLeft + (bandW - w) * 0.5f,
                     (Screen.height - h) * 0.5f, w, h);
+                return _pageRect;
             }
 
             _pageScale = UiSkin.FitScale(designW, designH, target, bandW, availH, PageMin);
             SyncPageFonts();
 
-            return CenterPanel(Pg(designW), Pg(designH));
+            _pageRect = CenterPanel(Pg(designW), Pg(designH));
+            return _pageRect;
         }
 
         /// <summary>
@@ -2664,7 +2664,7 @@ namespace MinecraftTetris
 
             GUI.Label(new Rect(panel.x, panel.y + Pg(12f), w, Pg(44f)), "创意工坊", _panelTitleStyle);
 
-            if (GUI.Button(new Rect(panel.x + w - Pg(94f), panel.y + Pg(18f), Pg(70f), Pg(32f)),
+            if (TutBtn(new Rect(panel.x + w - Pg(94f), panel.y + Pg(18f), Pg(70f), Pg(32f)),
                     "返回", _btnStyle))
             {
                 _renaming = false;
@@ -2687,7 +2687,7 @@ namespace MinecraftTetris
                 var rect = new Rect(listX, listY + i * (itemH + itemGap), Pg(230f), itemH);
                 if (i == _moldSel)
                     DrawRect(rect, new Color(0.42f, 0.86f, 1f, 0.22f));
-                if (GUI.Button(rect, label, _listStyle) && i != _moldSel)
+                if (TutBtn(rect, label, _listStyle) && i != _moldSel)
                 {
                     _moldSel = i;
                     _renaming = false;
@@ -2717,25 +2717,25 @@ namespace MinecraftTetris
 
             GUI.Label(new Rect(viewX, rowY + Pg(2f), Pg(28f), Pg(30f)), "层", _rowLabelStyle);
             // 箭头用 ← →（GB2312 里有）：◀ ▶ 楷体里没有，两个字形都被替换成同一个三角，分不出左右
-            if (GUI.Button(new Rect(viewX + Pg(30f), rowY, Pg(36f), bh), "←", _btnStyle) && Workbench != null)
+            if (TutBtn(new Rect(viewX + Pg(30f), rowY, Pg(36f), bh), "←", _btnStyle) && Workbench != null)
                 Workbench.Layer = Workbench.Layer - 1;
             GUI.Label(new Rect(viewX + Pg(70f), rowY, Pg(56f), bh),
                 Workbench != null ? (Workbench.Layer + 1) + " / " + MoldData.Size : "-", _rowLabelStyle);
-            if (GUI.Button(new Rect(viewX + Pg(130f), rowY, Pg(36f), bh), "→", _btnStyle) && Workbench != null)
+            if (TutBtn(new Rect(viewX + Pg(130f), rowY, Pg(36f), bh), "→", _btnStyle) && Workbench != null)
                 Workbench.Layer = Workbench.Layer + 1;
-            if (GUI.Button(new Rect(viewX + Pg(178f), rowY, Pg(140f), bh),
+            if (TutBtn(new Rect(viewX + Pg(178f), rowY, Pg(140f), bh),
                     Workbench != null && Workbench.DimOthers ? "只亮当前层：开" : "只亮当前层：关", _btnStyle)
                 && Workbench != null)
                 Workbench.DimOthers = !Workbench.DimOthers;
 
             float row2 = rowY + Pg(40f);
-            if (GUI.Button(new Rect(viewX, row2, Pg(78f), bh), "镜像", _btnStyle) && Workbench != null)
+            if (TutBtn(new Rect(viewX, row2, Pg(78f), bh), "镜像", _btnStyle) && Workbench != null)
                 Workbench.Mirror();
-            if (GUI.Button(new Rect(viewX + Pg(86f), row2, Pg(78f), bh), "居中", _btnStyle) && Workbench != null)
+            if (TutBtn(new Rect(viewX + Pg(86f), row2, Pg(78f), bh), "居中", _btnStyle) && Workbench != null)
                 Workbench.Recenter();
-            if (GUI.Button(new Rect(viewX + Pg(172f), row2, Pg(78f), bh), "清空", _btnStyle) && Workbench != null)
+            if (TutBtn(new Rect(viewX + Pg(172f), row2, Pg(78f), bh), "清空", _btnStyle) && Workbench != null)
                 Workbench.Clear();
-            if (GUI.Button(new Rect(viewX + Pg(258f), row2, Pg(104f), bh), "复位视角", _btnStyle) && Workbench != null)
+            if (TutBtn(new Rect(viewX + Pg(258f), row2, Pg(104f), bh), "复位视角", _btnStyle) && Workbench != null)
                 Workbench.ResetView();
 
             // 提示行 / 状态行。重命名时这一块让给输入框，不然两排字会叠在一起
@@ -2745,14 +2745,15 @@ namespace MinecraftTetris
             if (_renaming)
             {
                 GUI.Label(new Rect(bx, hintY + Pg(2f), Pg(56f), Pg(30f)), "名字", _rowLabelStyle);
-                _renameText = GUI.TextField(new Rect(bx + Pg(58f), hintY, Pg(300f), Pg(32f)),
-                    _renameText, 16, _btnStyle);
-                if (GUI.Button(new Rect(bx + Pg(370f), hintY, Pg(70f), Pg(32f)), "确定", _btnStyle))
+                _renameText = NameField(new Rect(bx + Pg(58f), hintY, Pg(300f), Pg(32f)), _renameText);
+                bool enter = EnterPressed();
+                if (enter || TutBtn(new Rect(bx + Pg(370f), hintY, Pg(70f), Pg(32f)), "确定", _btnStyle))
                 {
                     MoldData.Rename(_moldSel, _renameText);
                     _renaming = false;
+                    WebGLTextInput.Close();
                 }
-                if (GUI.Button(new Rect(bx + Pg(452f), hintY, Pg(70f), Pg(32f)), "取消", _btnStyle))
+                if (TutBtn(new Rect(bx + Pg(452f), hintY, Pg(70f), Pg(32f)), "取消", _btnStyle))
                     _renaming = false;
             }
             else
@@ -2768,7 +2769,7 @@ namespace MinecraftTetris
             float by = hintY + Pg(56f);
             float bh2 = Pg(40f);
 
-            if (GUI.Button(new Rect(bx, by, Pg(110f), bh2), "新建模具", _btnStyle))
+            if (TutBtn(new Rect(bx, by, Pg(110f), bh2), "新建模具", _btnStyle))
             {
                 MoldData.Add();
                 _moldSel = MoldData.Items.Count - 1;
@@ -2776,7 +2777,7 @@ namespace MinecraftTetris
                 LoadMoldEdit();
             }
 
-            if (GUI.Button(new Rect(bx + Pg(122f), by, Pg(110f), bh2), "删除模具", _btnStyle))
+            if (TutBtn(new Rect(bx + Pg(122f), by, Pg(110f), bh2), "删除模具", _btnStyle))
             {
                 MoldData.Remove(_moldSel);
                 if (_moldSel >= MoldData.Items.Count)
@@ -2784,7 +2785,7 @@ namespace MinecraftTetris
                 LoadMoldEdit();
             }
 
-            if (GUI.Button(new Rect(bx + Pg(244f), by, Pg(100f), bh2), "重命名", _btnStyle))
+            if (TutBtn(new Rect(bx + Pg(244f), by, Pg(100f), bh2), "重命名", _btnStyle))
             {
                 if (_moldSel >= 0 && _moldSel < MoldData.Items.Count)
                 {
@@ -2795,7 +2796,7 @@ namespace MinecraftTetris
 
             bool on = _moldSel >= 0 && _moldSel < MoldData.Items.Count
                       && MoldData.Items[_moldSel].enabled != 0;
-            if (GUI.Button(new Rect(bx + Pg(356f), by, Pg(110f), bh2),
+            if (TutBtn(new Rect(bx + Pg(356f), by, Pg(110f), bh2),
                     on ? "启用中" : "未启用", _btnStyle))
             {
                 if (_moldSel >= 0 && _moldSel < MoldData.Items.Count)
@@ -2826,7 +2827,7 @@ namespace MinecraftTetris
 
             GUI.Label(new Rect(panel.x, panel.y + Pg(12f), w, Pg(44f)), "创意工坊", _panelTitleStyle);
 
-            if (GUI.Button(new Rect(panel.x + w - Pg(94f), panel.y + Pg(18f), Pg(70f), Pg(32f)),
+            if (TutBtn(new Rect(panel.x + w - Pg(94f), panel.y + Pg(18f), Pg(70f), Pg(32f)),
                     "返回", _btnStyle))
             {
                 _renaming = false;
@@ -2843,7 +2844,7 @@ namespace MinecraftTetris
             float selH = Pg(40f);
             int count = MoldData.Items.Count;
 
-            if (GUI.Button(new Rect(colX, selY, Pg(44f), selH), "←", _btnStyle)
+            if (TutBtn(new Rect(colX, selY, Pg(44f), selH), "←", _btnStyle)
                 && count > 0)
             {
                 _moldSel = (_moldSel - 1 + count) % count;
@@ -2858,7 +2859,7 @@ namespace MinecraftTetris
                   + "   " + (_moldSel + 1) + "/" + count;
             GUI.Label(new Rect(colX + Pg(50f), selY, colW - Pg(110f), selH), label, _listStyle);
 
-            if (GUI.Button(new Rect(colX + colW - Pg(44f), selY, Pg(44f), selH), "→", _btnStyle)
+            if (TutBtn(new Rect(colX + colW - Pg(44f), selY, Pg(44f), selH), "→", _btnStyle)
                 && count > 0)
             {
                 _moldSel = (_moldSel + 1) % count;
@@ -2899,13 +2900,13 @@ namespace MinecraftTetris
             float bh = Pg(40f);
 
             GUI.Label(new Rect(colX, rowY + Pg(5f), Pg(28f), Pg(30f)), "层", _rowLabelStyle);
-            if (GUI.Button(new Rect(colX + Pg(30f), rowY, Pg(44f), bh), "←", _btnStyle) && Workbench != null)
+            if (TutBtn(new Rect(colX + Pg(30f), rowY, Pg(44f), bh), "←", _btnStyle) && Workbench != null)
                 Workbench.Layer = Workbench.Layer - 1;
             GUI.Label(new Rect(colX + Pg(80f), rowY, Pg(60f), bh),
                 Workbench != null ? (Workbench.Layer + 1) + " / " + MoldData.Size : "-", _rowLabelStyle);
-            if (GUI.Button(new Rect(colX + Pg(146f), rowY, Pg(44f), bh), "→", _btnStyle) && Workbench != null)
+            if (TutBtn(new Rect(colX + Pg(146f), rowY, Pg(44f), bh), "→", _btnStyle) && Workbench != null)
                 Workbench.Layer = Workbench.Layer + 1;
-            if (GUI.Button(new Rect(colX + Pg(196f), rowY, Pg(190f), bh),
+            if (TutBtn(new Rect(colX + Pg(196f), rowY, Pg(190f), bh),
                     Workbench != null && Workbench.DimOthers ? "只亮当前层：开" : "只亮当前层：关", _btnStyle)
                 && Workbench != null)
                 Workbench.DimOthers = !Workbench.DimOthers;
@@ -2916,7 +2917,7 @@ namespace MinecraftTetris
             string[] names = { "镜像", "居中", "清空", "复位" };
             for (int i = 0; i < 4; i++)
             {
-                if (!GUI.Button(new Rect(colX + i * (bw5 + Pg(6f)), row2, bw5, bh), names[i], _btnStyle))
+                if (!TutBtn(new Rect(colX + i * (bw5 + Pg(6f)), row2, bw5, bh), names[i], _btnStyle))
                     continue;
                 if (Workbench == null)
                     continue;
@@ -2927,7 +2928,7 @@ namespace MinecraftTetris
             }
 
             bool erasing = Workbench != null && Workbench.EraseMode;
-            if (GUI.Button(new Rect(colX + 4 * (bw5 + Pg(6f)), row2, bw5, bh),
+            if (TutBtn(new Rect(colX + 4 * (bw5 + Pg(6f)), row2, bw5, bh),
                     erasing ? "擦除中" : "擦除", _btnStyle) && Workbench != null)
                 Workbench.EraseMode = !erasing;
 
@@ -2955,21 +2956,21 @@ namespace MinecraftTetris
                 GUI.Label(new Rect(colX, by - Pg(26f), colW, Pg(24f)),
                     "启用的模具会和 7 种默认方块一起随机出现", _rowLabelStyle);
 
-            if (GUI.Button(new Rect(colX, by, bw4, bh), "新建", _btnStyle))
+            if (TutBtn(new Rect(colX, by, bw4, bh), "新建", _btnStyle))
             {
                 MoldData.Add();
                 _moldSel = MoldData.Items.Count - 1;
                 _renaming = false;
                 LoadMoldEdit();
             }
-            if (GUI.Button(new Rect(colX + bw4 + Pg(6f), by, bw4, bh), "删除", _btnStyle))
+            if (TutBtn(new Rect(colX + bw4 + Pg(6f), by, bw4, bh), "删除", _btnStyle))
             {
                 MoldData.Remove(_moldSel);
                 if (_moldSel >= MoldData.Items.Count)
                     _moldSel = MoldData.Items.Count - 1;
                 LoadMoldEdit();
             }
-            if (GUI.Button(new Rect(colX + (bw4 + Pg(6f)) * 2f, by, bw4, bh), "改名", _btnStyle))
+            if (TutBtn(new Rect(colX + (bw4 + Pg(6f)) * 2f, by, bw4, bh), "改名", _btnStyle))
             {
                 if (_moldSel >= 0 && _moldSel < MoldData.Items.Count)
                 {
@@ -2980,7 +2981,7 @@ namespace MinecraftTetris
 
             bool on = _moldSel >= 0 && _moldSel < MoldData.Items.Count
                       && MoldData.Items[_moldSel].enabled != 0;
-            if (GUI.Button(new Rect(colX + (bw4 + Pg(6f)) * 3f, by, bw4, bh),
+            if (TutBtn(new Rect(colX + (bw4 + Pg(6f)) * 3f, by, bw4, bh),
                     on ? "启用中" : "未启用", _btnStyle))
             {
                 if (_moldSel >= 0 && _moldSel < MoldData.Items.Count)
@@ -2992,14 +2993,16 @@ namespace MinecraftTetris
             {
                 var box = new Rect(colX, by - Pg(48f), colW, Pg(40f));
                 DrawRect(box, new Color(0f, 0f, 0f, 0.6f));
-                _renameText = GUI.TextField(new Rect(box.x + Pg(6f), box.y + Pg(4f), box.width - Pg(120f), Pg(32f)),
-                    _renameText, 16, _btnStyle);
-                if (GUI.Button(new Rect(box.xMax - Pg(110f), box.y + Pg(4f), Pg(50f), Pg(32f)), "确定", _btnStyle))
+                _renameText = NameField(new Rect(box.x + Pg(6f), box.y + Pg(4f),
+                    box.width - Pg(120f), Pg(32f)), _renameText);
+                bool enter2 = EnterPressed();
+                if (enter2 || TutBtn(new Rect(box.xMax - Pg(110f), box.y + Pg(4f), Pg(50f), Pg(32f)), "确定", _btnStyle))
                 {
                     MoldData.Rename(_moldSel, _renameText);
                     _renaming = false;
+                    WebGLTextInput.Close();
                 }
-                if (GUI.Button(new Rect(box.xMax - Pg(56f), box.y + Pg(4f), Pg(50f), Pg(32f)), "取消", _btnStyle))
+                if (TutBtn(new Rect(box.xMax - Pg(56f), box.y + Pg(4f), Pg(50f), Pg(32f)), "取消", _btnStyle))
                     _renaming = false;
             }
         }

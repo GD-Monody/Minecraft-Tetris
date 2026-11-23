@@ -246,6 +246,11 @@ namespace MinecraftTetris
             int fz = View.FocusZ;
             bool on = fz >= 0;
 
+            // 玩家看到的层号和内部 z 是**反的**：屏幕最里面那层是 z=1。
+            // 内部 z=0 是最靠近镜头的一层（渲染顺序决定的），用户要求「先亮最后面那层」，
+            // 所以这里换一次：显示号 = SizeZ - 1 - 实际 z。
+            int shownZ = on ? grid.SizeZ - 1 - fz : 0;
+
             Fill(r, Light
                 ? (on ? new Color(0.82f, 0.92f, 1f, 0.96f) : new Color(1f, 1f, 1f, 0.92f))
                 : (on ? new Color(0.15f, 0.24f, 0.32f, 0.95f) : new Color(0.10f, 0.13f, 0.18f, 0.9f)));
@@ -256,7 +261,7 @@ namespace MinecraftTetris
             // 缩成「z=1」（按钮在层次图旁边，本来就看得出来是干什么的）
             bool narrow = w * 0.52f < UiSkin.P(104f);
             string mid = on
-                ? (narrow ? "z=" + fz : "只亮 z=" + fz)
+                ? (narrow ? "z=" + (shownZ + 1) : "只亮 z=" + (shownZ + 1))
                 : (narrow ? "只亮" : "只亮 z 面");
             GUI.Label(new Rect(r.x, r.y, zone, h), "−", _pillStyle);
             GUI.Label(new Rect(r.xMax - zone, r.y, zone, h), "+", _pillStyle);
@@ -269,12 +274,15 @@ namespace MinecraftTetris
             if (e != null && e.type == EventType.MouseDown && e.button == 0 && r.Contains(e.mousePosition))
             {
                 float lx = e.mousePosition.x - r.x;
+                // 打开时落在**最后面**那层（显示 z=1）：内部 z=0 是最靠近镜头的一层，
+                // 所以「最后面」= SizeZ - 1。之前这里给的 0，打开就显示成 z=4。
+                int last = grid.SizeZ - 1;
                 if (lx < zone)
-                    View.SetFocusZ(on ? Mathf.Max(0, fz - 1) : 0);
+                    View.SetFocusZ(on ? Mathf.Min(last, fz + 1) : last);
                 else if (lx > w - zone)
-                    View.SetFocusZ(on ? Mathf.Min(grid.SizeZ - 1, fz + 1) : 0);
+                    View.SetFocusZ(on ? Mathf.Max(0, fz - 1) : last);
                 else
-                    View.SetFocusZ(on ? -1 : 0);
+                    View.SetFocusZ(on ? -1 : last);
                 e.Use();
             }
         }
@@ -347,6 +355,15 @@ namespace MinecraftTetris
 
         /// <summary>视图层：切换「只亮 z 面」用。</summary>
         public GridView View;
+
+        /// <summary>折叠键的矩形（教程要指出「点这里」）。</summary>
+        public Rect TabRect { get { return _tabRect; } }
+
+        /// <summary>面板是不是展开着。</summary>
+        public bool IsOpen { get { return Open; } }
+
+        /// <summary>展开后那块面板的矩形（教程高亮用；电脑上它常驻，没有折叠键）。</summary>
+        public Rect PanelRect { get { return _panelRect; } }
 
         /// <summary>手机操作层：横屏时那颗按钮要跟暂停键同一行（见 PauseRect）。</summary>
         public MobileControls Controls;
@@ -506,7 +523,7 @@ namespace MinecraftTetris
             float cy = panel.y + pad;
 
             int missing = MissingInLayer(grid, _y);
-            GUI.Label(new Rect(cx, cy, mapW + gap + sliderW, headH), "第 " + _y + " 层", _titleStyle);
+            GUI.Label(new Rect(cx, cy, mapW + gap + sliderW, headH), "第 " + (_y + 1) + " 层", _titleStyle);
             cy += headH + gap;
 
             // 行 = x（0 在最上），列 = z（0 在最左）—— 相当于把横版俯视图顺时针转 90°
@@ -709,11 +726,11 @@ namespace MinecraftTetris
                 // 窄屏放不下「俯视图 y = 12」加「还差 40」两段，缺口数字挪到底下那行；
                 // 表头也压成「y=0 层」—— 一百多像素宽写六个汉字会被切掉半个字（真机截图
                 // 里就是「俯视图 y=(」）。「俯视」两个字外面那颗按钮上已经有了。
-                GUI.Label(new Rect(x, y, mapW, headH), "y=" + _y + " 层", _titleStyle);
+                GUI.Label(new Rect(x, y, mapW, headH), "y=" + (_y + 1) + " 层", _titleStyle);
             }
             else
             {
-                GUI.Label(new Rect(x, y, mapW - UiSkin.P(96f), headH), "层次图  y = " + _y, _titleStyle);
+                GUI.Label(new Rect(x, y, mapW - UiSkin.P(96f), headH), "层次图  y = " + (_y + 1), _titleStyle);
                 GUI.Label(new Rect(x + mapW - UiSkin.P(96f), y, UiSkin.P(96f), headH),
                     missing == 0 ? "已满" : "还差 " + missing,
                     missing == 0 ? _headFullStyle : _headMissStyle);
@@ -767,7 +784,7 @@ namespace MinecraftTetris
                     int py = PieceMinY();
                     if (py >= 0 && py != _y)
                         GUI.Label(new Rect(x, fy + UiSkin.P(24f), mapW, UiSkin.P(22f)),
-                            "当前方块在 y = " + py, _smallStyle);
+                            "当前方块在 y = " + (py + 1), _smallStyle);
                 }
             }
 
@@ -828,9 +845,9 @@ namespace MinecraftTetris
 
             // 字压在滑条上：先描一层深色影子再写白字，不然压在圆头上就看不见了
             GUI.Label(new Rect(r.x + UiSkin.P(8f) + 1f, r.y + 2f, r.width - UiSkin.P(16f), r.height),
-                "第 " + _y + " 层", _sliderShadow);
+                "第 " + (_y + 1) + " 层", _sliderShadow);
             GUI.Label(new Rect(r.x + UiSkin.P(8f), r.y + 1f, r.width - UiSkin.P(16f), r.height),
-                "第 " + _y + " 层", _titleStyle);
+                "第 " + (_y + 1) + " 层", _titleStyle);
         }
 
         void DrawCell(Rect r, Grid grid, int x, int y, int z)

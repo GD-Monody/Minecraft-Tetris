@@ -143,7 +143,9 @@ namespace MinecraftTetris
             {
                 if (_moveOverride >= 0)
                     return _moveOverride;
-                return PlayerPrefs.GetInt(MoveStyleKey, MoveSwipe) == MoveDpad ? MoveDpad : MoveSwipe;
+                // 默认给十字键：新玩家进来就能看到四个方向键，比「拖一下才知道能拖」直观。
+                // 老存档里已经存过 swipe 的照旧，不会被改掉。
+                return PlayerPrefs.GetInt(MoveStyleKey, MoveDpad) == MoveDpad ? MoveDpad : MoveSwipe;
             }
         }
 
@@ -280,7 +282,26 @@ namespace MinecraftTetris
             int i = (int)kind;
             if (i < 0 || i >= MechKeys.Length)
                 return true;
-            return PlayerPrefs.GetInt(MechKeys[i], 1) != 0;
+            // 默认关：新玩家进来就是纯俄罗斯方块，机制留到「设置 → 玩法」里自己开。
+            // 老玩家存过 1 的（键存在）照旧按存的走。
+            return PlayerPrefs.GetInt(MechKeys[i], 0) != 0;
+        }
+
+        /// <summary>
+        /// 一次性把机制全部关掉（老存档迁移用）。
+        ///
+        /// 默认值从「全开」改成「全关」只影响新装的机器 —— 老机器上每个键都存过 1，
+        /// 读的时候走存档，改了默认值它们还是开着。新手教程要在纯俄罗斯方块的状态下
+        /// 讲基础玩法，所以这里刷一次，之后玩家自己开的就留在存档里不再动。
+        /// </summary>
+        public static void MigrateMechOffOnce()
+        {
+            const string key = "mech.defaultOff.v1";
+            if (PlayerPrefs.GetInt(key, 0) != 0)
+                return;
+            PlayerPrefs.SetInt(key, 1);
+            SetAllMech(false);
+            PlayerPrefs.Save();
         }
 
         /// <summary>十四项是不是全开着（一键开关按钮靠它决定显示「一键开启」还是「一键关闭」）。</summary>

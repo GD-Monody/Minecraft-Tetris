@@ -16,6 +16,9 @@ namespace MinecraftTetris
         GridView _view;
         KeyboardInput _input;
         MobileControls _mobile;
+
+        /// <summary>新手教程。第一次进游戏由它接管一段时间。</summary>
+        Tutorial _tutorial;
         SfxPlayer _sfx;
         MusicPlayer _music;
         Hud _hud;
@@ -120,6 +123,9 @@ namespace MinecraftTetris
             Grid.CountsAsFilled = (x, y, z) => Fluids.AmountAt(x, y, z) >= Fluids.MaxAmount;
             Grid.OnCellCleared = (x, y, z) => Fluids.ClearCell(x, y, z);
 
+            // 机制默认值改过一次（全开 → 全关），老存档在这里刷一次
+            GameSettings.MigrateMechOffOnce();
+
             _loop = new GameLoop(SizeX, SizeY, SizeZ, (int)System.DateTime.Now.Ticks);
             _loop.FallSpeed = GameSettings.FallSpeed;
 
@@ -221,6 +227,9 @@ namespace MinecraftTetris
             if (!MobileMode.Enabled)
                 gameObject.AddComponent<CursorTrail>();
 
+            // 点击挡板：必须比标题页先挂（OnGUI 顺序 = 挂载顺序，先画的先吃点击）
+            gameObject.AddComponent<TutorialBlocker>();
+
             _title = gameObject.AddComponent<TitleScreen>();
             // 暂停里打开设置时 HUD 会整个藏起来（不然分数面板压在设置标题上），
             // 暂停画面改由标题页垫在设置下面 —— 这条必须等 _title 建好之后再接，
@@ -235,7 +244,13 @@ namespace MinecraftTetris
                 _skipTitleIntroOnce = false;
                 _title.SkipIntro();
             }
+            // 新手教程：第一次进来先问「小白还是达人」，然后带一遍流程。
+            // 必须等 _title 建好才挂 —— 它要读标题页的按钮矩形和当前页。
+            _tutorial = gameObject.AddComponent<Tutorial>();
+            _tutorial.Bind(this, _title, _hud, _mobile, _layerMap);
+
             _title.HasContinue = GameSave.HasSave;
+            _title.OnTutorialRequested = delegate { _tutorial.Restart(); };
             _title.OnStartGame += StartNewGame;
             _title.OnContinue += ContinueGame;
             _title.OnQuit += QuitGame;
@@ -677,6 +692,22 @@ namespace MinecraftTetris
             Debug.Log("[window] 窗口设为 " + w + "x" + h);
         }
 
+        /// <summary>现在是不是在游戏里（标题页 / 设置盖着的时候算不在）。</summary>
+        public bool InGame
+        {
+            get { return _title != null && !_title.Visible; }
+        }
+
+        /// <summary>当前是否暂停（教程讲玩法时要把局面停住）。</summary>
+        public bool IsPaused { get { return _paused; } }
+
+        /// <summary>按状态设置暂停，不来回切（教程一步可能调好几次）。</summary>
+        public void SetPaused(bool on)
+        {
+            if (_paused != on)
+                TogglePause();
+        }
+
         /// <summary>暂停 / 恢复。Esc 和手机上的暂停键都走这里，免得两处各写一遍。</summary>
         void TogglePause()
         {
@@ -1093,6 +1124,9 @@ namespace MinecraftTetris
         void OnSizeApplied()
         {
             GameSave.Clear();
+            // 场景马上就重载了，教程那边的「场地已经调深」这一步靠这个标记认账
+            PlayerPrefs.SetInt("tutorial.sizeApplied", 1);
+            PlayerPrefs.Save();
             // 别让玩家调完尺寸又看一遍开场动画
             _skipTitleIntroOnce = true;
             UnityEngine.SceneManagement.SceneManager.LoadScene(
@@ -1102,6 +1136,12 @@ namespace MinecraftTetris
         void OnResumeClick()
         {
             _paused = false;
+        }
+
+        /// <summary>教程的「退出到主界面」按钮走这里（暂停面板教程期间是不显示的）。</summary>
+        public void GameToTitle()
+        {
+            QuitToTitle();
         }
 
         void QuitToTitle()

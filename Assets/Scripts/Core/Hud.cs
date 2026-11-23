@@ -361,6 +361,7 @@ namespace MinecraftTetris
             float w = Mathf.Min(UiSkin.P(214f),
                 Screen.width - safe.x - rightInset - m * 2f - MobilePauseSize);
             var panel = new Rect(safe.x + m, topInset + m, w, h);
+            _statsPanel = panel;
             DrawPanel(panel);
             // 不画那条绿色装饰线：桌面的大面板上它是点缀，这块小面板上正好压在
             // 「消除 / 最高」那行字底下，看着像给字划了条下划线
@@ -395,6 +396,7 @@ namespace MinecraftTetris
         void DrawScorePanel()
         {
             var panel = new Rect(UiSkin.P(14f), UiSkin.P(14f), UiSkin.P(246f), UiSkin.P(158f));
+            _statsPanel = panel;
             DrawPanel(panel);
 
             float x = panel.x + UiSkin.P(16f);
@@ -474,6 +476,15 @@ namespace MinecraftTetris
         /// 那段时间 HUD 是藏起来的，暂停画面得由 TitleScreen 代画一次，
         /// 否则设置滑出/滑入的这二百毫秒露出来的是亮着的场地，看着就是「闪一下」。
         /// </summary>
+        /// <summary>暂停面板的矩形（教程要在它旁边挖洞，别把自己的说明板盖在按钮上）。</summary>
+        public Rect PausePanelRect { get { return _pausePanel; } }
+
+        /// <summary>左上角统计面板（分数 / 消除 / 最高）的矩形，教程高亮用。</summary>
+        public Rect StatsRect { get { return _statsPanel; } }
+
+        Rect _pausePanel;
+        Rect _statsPanel;
+
         public void DrawPauseBlock(bool interactive, bool withPanel = true)
         {
             GUI.color = UiSkin.FreezeOverlay;
@@ -507,6 +518,7 @@ namespace MinecraftTetris
             float w = Ps(designW);
             float h = Ps(designH);
             var panel = new Rect((Screen.width - w) * 0.5f, (Screen.height - h) * 0.5f, w, h);
+            _pausePanel = panel;
             DrawPanel(panel);
 
             GUI.Label(new Rect(panel.x, panel.y + Ps(16f), w, Ps(40f)), "已暂停", _pauseTitleBig);
