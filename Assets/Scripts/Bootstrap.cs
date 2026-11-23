@@ -1124,9 +1124,13 @@ namespace MinecraftTetris
         void OnSizeApplied()
         {
             GameSave.Clear();
-            // 场景马上就重载了，教程那边的「场地已经调深」这一步靠这个标记认账
-            PlayerPrefs.SetInt("tutorial.sizeApplied", 1);
-            PlayerPrefs.Save();
+            // 场景马上就重载了，教程那边的「场地已经调深」这一步靠这个标记认账。
+            // 只有真的调到两层以上才记账 —— 停在 z=1 点「应用」不该算完成那一步。
+            if (GameSettings.SizeZ >= 2)
+            {
+                PlayerPrefs.SetInt("tutorial.sizeApplied", 1);
+                PlayerPrefs.Save();
+            }
             // 别让玩家调完尺寸又看一遍开场动画
             _skipTitleIntroOnce = true;
             UnityEngine.SceneManagement.SceneManager.LoadScene(

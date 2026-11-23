@@ -46,6 +46,8 @@ namespace MinecraftTetris
             /// 让开 80px 会把说明板顶到三维建造台上面去。
             /// </summary>
             public bool BottomEdge;
+            /// <summary>紧凑版说明板：字号、内边距、按钮都矮一档，少挡点内容。</summary>
+            public bool Compact;
             /// <summary>这一步不给「上一步」——前面那块屏幕已经回不去了（比如从游戏退回主界面之后）。</summary>
             public bool NoBack;
             /// <summary>说明板上除了「下一步」之外的自定义动作（比如「退出到主界面」）。</summary>
@@ -448,6 +450,7 @@ namespace MinecraftTetris
             {
                 Title = "最后是创意工坊",
                 BottomEdge = true,      // 工坊内容长，说明板直接贴页面底边
+                Compact = true,         // 再扁一档，尽量少挡下面的选项
                 Body = "这里可以自己做方块模具，做好的模具会混进平时的出块池。",
                 Hole = () => PageRect(),
                 PanelCorner = true,
@@ -459,6 +462,7 @@ namespace MinecraftTetris
             {
                 Title = "创意工坊怎么用",
                 BottomEdge = true,
+                Compact = true,
                 Body = "左边是模具列表，中间是三维建造台：点一格放一块，再点一下拿走。\n"
                     + "右边可以试拼自己的模具，满意了保存、启用，它就会进游戏。",
                 Hole = () => PageRect(),
@@ -1051,12 +1055,14 @@ namespace MinecraftTetris
             // 悬停时亮一点：两张卡并排，没有反馈显得死板
             bool hot0 = cardA.Contains(Event.current.mousePosition);
             bool hot1 = cardB.Contains(Event.current.mousePosition);
+            // 实底：半透明时卡片下面那层投影/面板会透出第二块浅色矩形，
+            // 看着像「框里套框」—— 用户说的别扭就是这个
             Color cardFillA = UiSkin.Light
-                ? new Color(1f, 1f, 1f, hot0 ? 0.95f : 0.72f)
-                : new Color(0.22f, 0.26f, 0.33f, hot0 ? 0.95f : 0.78f);
+                ? new Color(1f, 1f, 1f, hot0 ? 1f : 0.94f)
+                : new Color(0.20f, 0.24f, 0.30f, 1f);
             Color cardFillB = UiSkin.Light
-                ? new Color(1f, 1f, 1f, hot1 ? 0.95f : 0.72f)
-                : new Color(0.22f, 0.26f, 0.33f, hot1 ? 0.95f : 0.78f);
+                ? new Color(1f, 1f, 1f, hot1 ? 1f : 0.94f)
+                : new Color(0.20f, 0.24f, 0.30f, 1f);
             Color cardLine = new Color(UiSkin.Accent.r, UiSkin.Accent.g, UiSkin.Accent.b, 0.50f);
 
             for (int i = 0; i < 2; i++)
@@ -1064,9 +1070,6 @@ namespace MinecraftTetris
                 var card = i == 0 ? cardA : cardB;
 
                 float cRad = UiSkin.P(12f);
-                RoundedFill(new Rect(card.x - UiSkin.P(2f), card.y + UiSkin.P(2f),
-                        card.width + UiSkin.P(4f), card.height + UiSkin.P(4f)),
-                    new Color(0f, 0f, 0f, 0.12f), cRad + UiSkin.P(2f));
                 // 描边用「大一圈的圆角矩形垫在下面」画：四条直边在圆角处会断成四个括号，
                 // 双色叠一层才是一圈完整的边
                 RoundedFill(new Rect(card.x - UiSkin.P(1.5f), card.y - UiSkin.P(1.5f),
@@ -1106,7 +1109,9 @@ namespace MinecraftTetris
             // 结果文字和按钮都按旧宽度摆，直接溢出面板（用户截图里那样）。
             // 现在宽度只有一处来源，后面全都用 panel.width。
             bool portrait = MobileMode.Enabled && Screen.width <= Screen.height;
-            float pad = UiSkin.P(22f);
+            float pad = UiSkin.P(s.Compact ? 16f : 22f);
+            // 正文字号按步骤调（样式是共享的，每帧设一次）
+            _bStyle.fontSize = UiSkin.Size(s.Compact ? 14 : 16);
 
             float wFrac, wMax;
             if (s.PanelCorner)
@@ -1135,7 +1140,7 @@ namespace MinecraftTetris
             float bw = Mathf.Min(innerW,
                 Mathf.Max(UiSkin.P(40f), CjkWrap.MaxLineWidth(wrapped, _bStyle)) + UiSkin.P(4f));
             float bodyH = _bStyle.CalcHeight(new GUIContent(wrapped), bw);
-            float btnH = UiSkin.P(48f);
+            float btnH = UiSkin.P(s.Compact ? 42f : 48f);
             float titleH = Mathf.Max(UiSkin.P(32f),
                 _hStyle.CalcHeight(new GUIContent(s.Title ?? ""), innerW));
             bool canBack = _step > 0 && !s.NoBack;
@@ -1195,7 +1200,9 @@ namespace MinecraftTetris
             // 竖屏设置页：底边让开页面底部那行按钮（返回 / 新手教程）
             if (sitInPage)
             {
-                float bottomGap = s.BottomEdge ? UiSkin.P(8f) : UiSkin.P(80f);
+                // 贴底：面板底边和页面底边齐平。留缝会露出页面底部那行按钮的半截，
+                // 看着像拼接没对齐；压过去又超出页面边框，所以正好齐平。
+                float bottomGap = s.BottomEdge ? 0f : UiSkin.P(80f);
                 float py2 = pageR.yMax - bottomGap - ph;
                 if (py2 < pageR.y + UiSkin.P(8f))
                     py2 = pageR.y + UiSkin.P(8f);
