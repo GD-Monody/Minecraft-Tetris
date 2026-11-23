@@ -38,7 +38,9 @@ namespace MinecraftTetris
                 return text;
 
             string key = text + "|" + Mathf.RoundToInt(width) + "|" + style.fontSize
-                + "|" + (allowSlack ? 1 : 0) + "|" + style.font.GetInstanceID();
+                + "|" + (allowSlack ? 1 : 0) + "|"
+                // 字体可能是 null（皮肤默认字体在运行时就是 null），这里不能直接取 ID
+                + (style.font != null ? style.font.GetInstanceID() : 0);
             string cached;
             if (_cache.TryGetValue(key, out cached))
                 return cached;

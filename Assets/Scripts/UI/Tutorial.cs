@@ -100,9 +100,9 @@ namespace MinecraftTetris
         GUIStyle _hintStyle, _toastStyle;
         bool _styles;
 
-        /// <summary>「下一步」的渐变底：亮色主题浅蓝、暗色主题浅灰。</summary>
-        Texture2D _btnTex;
-        bool _btnTexLight;
+        /// <summary>建样式时用的是哪个主题（切了主题要重建）。</summary>
+        UiSkin.Theme _styleTheme;
+
 
         Rect _hole;
         bool _hasHole;
@@ -777,8 +777,12 @@ namespace MinecraftTetris
 
         void EnsureStyles()
         {
-            if (_styles)
+            // 主题换了必须重建：样式里的颜色是初始化那一刻从 UiSkin 取的固定值，
+            // 只建一次的话，切到暗色后标题还是近黑色 —— 压在深色说明板上几乎看不见
+            // （用户截图里的「深色模式文字辨认不清」就是这个）。
+            if (_styles && _styleTheme == UiSkin.Current)
                 return;
+            _styleTheme = UiSkin.Current;
             _styles = true;
 
             _hStyle = new GUIStyle();
@@ -846,64 +850,24 @@ namespace MinecraftTetris
         }
 
         /// <summary>
-        /// 「下一步」的底：竖着的渐变。
+        /// 主按钮（下一步 / 看完了 / 退出到主界面）：实心强调色 + 白字。
         ///
-        /// 亮色主题是浅蓝（接近白 → 浅蓝），暗色主题是浅灰（接近白 → 浅灰）——
-        /// 对应的文字都用近黑色：浅底上再放白字就糊了。贴图两套各建一次，
-        /// 换主题时才重建（每帧 new Texture2D 会一直漏显存）。
+        /// 原来是「近白的浅蓝 / 浅灰渐变 + 深色字」，暗色主题下就是一块刺眼的白板，
+        /// 和周围完全不搭（用户反馈「白色有点奇怪」）。
+        /// 文字统一用白色，所以底色取偏深的一档 —— 暗色主题的 Accent 是亮青，
+        /// 白字压上去看不清。
         /// </summary>
-        Texture2D ButtonTexture()
-        {
-            bool light = UiSkin.Light;
-            if (_btnTex != null && _btnTexLight == light)
-                return _btnTex;
-
-            if (_btnTex != null)
-                Destroy(_btnTex);
-
-            const int h = 64;
-            _btnTex = new Texture2D(4, h, TextureFormat.RGBA32, false);
-            _btnTex.wrapMode = TextureWrapMode.Clamp;
-            _btnTex.filterMode = FilterMode.Bilinear;
-
-            Color top, bottom;
-            if (light)
-            {
-                top = new Color(0.93f, 0.97f, 1f);      // 近白的浅蓝
-                bottom = new Color(0.71f, 0.84f, 1f);   // 浅蓝
-            }
-            else
-            {
-                top = new Color(0.97f, 0.97f, 0.98f);   // 近白
-                bottom = new Color(0.79f, 0.81f, 0.85f); // 浅灰
-            }
-
-            for (int y = 0; y < h; y++)
-            {
-                Color c = Color.Lerp(bottom, top, y / (float)(h - 1));   // 贴图 y 向上，所以反着插值
-                for (int x = 0; x < 4; x++)
-                    _btnTex.SetPixel(x, y, c);
-            }
-            _btnTex.Apply();
-            _btnTexLight = light;
-            return _btnTex;
-        }
-
-        /// <summary>画一颗「浅色渐变 + 深色文字」的按钮，返回有没有被点。</summary>
         bool DrawActionButton(Rect r, string label)
         {
-            GUI.DrawTexture(r, ButtonTexture(), ScaleMode.StretchToFill, false);
+            bool hot = r.Contains(Event.current.mousePosition);
+            Color bg = UiSkin.Light
+                ? new Color(0.09f, 0.45f, 0.83f)
+                : new Color(0.16f, 0.46f, 0.86f);
+            if (hot)
+                bg = Color.Lerp(bg, Color.white, 0.16f);
 
-            Color line = UiSkin.Light
-                ? new Color(UiSkin.Accent.r, UiSkin.Accent.g, UiSkin.Accent.b, 0.55f)
-                : new Color(1f, 1f, 1f, 0.45f);
-            float t = UiSkin.P(1.5f);
-            Fill(new Rect(r.x, r.y, r.width, t), line);
-            Fill(new Rect(r.x, r.yMax - t, r.width, t), line);
-            Fill(new Rect(r.x, r.y, t, r.height), line);
-            Fill(new Rect(r.xMax - t, r.y, t, r.height), line);
-
-            GUI.Label(r, label, _btnLabel);
+            Fill(r, bg);
+            GUI.Label(r, label, _btnLabelAlt);
             return GUI.Button(r, GUIContent.none, GUIStyle.none);
         }
 
@@ -944,9 +908,11 @@ namespace MinecraftTetris
         {
             get
             {
+                // alpha 拉到 0.96：0.88 时压在暗遮罩上会显成一块灰，
+                // 但留一点点透，后面还是能隐约看到游戏画面
                 return UiSkin.Light
-                    ? new Color(1f, 1f, 1f, 0.88f)
-                    : new Color(0.12f, 0.14f, 0.18f, 0.90f);
+                    ? new Color(1f, 1f, 1f, 0.96f)
+                    : new Color(0.13f, 0.15f, 0.19f, 0.96f);
             }
         }
 
@@ -1033,17 +999,21 @@ namespace MinecraftTetris
             float cardsH = stack ? cardH[0] + gap + cardH[1] : Mathf.Max(cardH[0], cardH[1]);
             float ph = pad * 2f + qH + UiSkin.P(16f) + cardsH;
 
-            var panel = new Rect((Screen.width - pw) * 0.5f, (Screen.height - ph) * 0.5f, pw, ph);
+            // 竖屏别压住标题副标：正居中时板顶会盖掉「Made by Monody」
+            float minY = portrait ? Screen.height * 0.27f : UiSkin.P(12f);
+            float panelY = Mathf.Max((Screen.height - ph) * 0.5f, minY);
+            panelY = Mathf.Min(panelY, Mathf.Max(UiSkin.P(12f), Screen.height - ph - UiSkin.P(12f)));
+            var panel = new Rect((Screen.width - pw) * 0.5f, panelY, pw, ph);
 
-            float rad = UiSkin.P(16f);
-            RoundedFill(new Rect(panel.x + UiSkin.P(2f), panel.y + UiSkin.P(5f), panel.width, panel.height),
-                new Color(0f, 0f, 0f, 0.22f), rad);
-            RoundedFill(panel, GlassFill, rad);
+            // 恢复「一块底板 + 两张卡」：单独两块白卡浮在压暗的画面上更散、更乱
+            // （用户反馈「改丑了」）。问句回到板内居中，不再用暗色胶囊。
+            // 直角矩形，和界面里的按钮统一。
+            Fill(panel, GlassFill);
 
-            var qStyle = _hStyle;
+            // GUIStyle 是引用类型，拷一份再改 alignment，否则会改到 _hStyle
+            var qStyle = new GUIStyle(_hStyle);
             qStyle.alignment = TextAnchor.MiddleCenter;
             GUI.Label(new Rect(panel.x + pad, panel.y + pad, innerW, qH), question, qStyle);
-            qStyle.alignment = TextAnchor.UpperLeft;
 
             float top = panel.y + pad + qH + UiSkin.P(16f);
             // 先把两张卡的位置算出来（悬停判断要用）
@@ -1071,17 +1041,21 @@ namespace MinecraftTetris
             {
                 var card = i == 0 ? cardA : cardB;
 
-                float cRad = UiSkin.P(12f);
-                // 描边用「大一圈的圆角矩形垫在下面」画：四条直边在圆角处会断成四个括号，
-                // 双色叠一层才是一圈完整的边
-                RoundedFill(new Rect(card.x - UiSkin.P(1.5f), card.y - UiSkin.P(1.5f),
-                    card.width + UiSkin.P(3f), card.height + UiSkin.P(3f)), cardLine, cRad + UiSkin.P(1.5f));
-                RoundedFill(card, i == 0 ? cardFillA : cardFillB, cRad);
+                // 直角卡片：外面垫一圈边线色，里面填实色（就是「描边 + 底」两层）
+                float bw2 = UiSkin.P(1.5f);
+                Fill(new Rect(card.x - bw2, card.y - bw2,
+                    card.width + bw2 * 2f, card.height + bw2 * 2f), cardLine);
+                Fill(card, i == 0 ? cardFillA : cardFillB);
 
                 float ty = UiSkin.P(16f);
                 GUI.Label(new Rect(card.x, card.y + ty, cardW, titleH), titles[i], _optTitle);
-                GUI.Label(new Rect(card.x + bodyPad, card.y + ty + titleH + UiSkin.P(10f),
-                    bodyW[i], bodyH[i] + UiSkin.P(8f)), wrapped[i], _optBody);
+
+                // 说明文字整块居中：原来 Label 宽度只取「最长那一行」的宽度，
+                // 于是整块偏在卡片左边（用户看到的「没有居中」就是它）
+                var bodyStyle = new GUIStyle(_optBody);
+                bodyStyle.alignment = TextAnchor.UpperCenter;
+                GUI.Label(new Rect(card.x, card.y + ty + titleH + UiSkin.P(10f),
+                    cardW, bodyH[i] + UiSkin.P(8f)), wrapped[i], bodyStyle);
 
                 if (GUI.Button(card, GUIContent.none, GUIStyle.none))
                     Choose(i == 0);
@@ -1211,19 +1185,9 @@ namespace MinecraftTetris
                 panel = new Rect(pageR.x + (pageR.width - pw) * 0.5f, py2, pw, ph);
             }
 
-            float rad = UiSkin.P(14f);
-            // 投影画得比面板大一圈：面板是半透明的，同尺寸的深色垫在下面会把整块染成灰的
-            RoundedFill(new Rect(panel.x - UiSkin.P(3f), panel.y + UiSkin.P(3f),
-                    panel.width + UiSkin.P(6f), panel.height + UiSkin.P(6f)),
-                new Color(0f, 0f, 0f, 0.16f), rad + UiSkin.P(3f));
-            // 整页讲解时后面是密集文字，透上来很花；这种步骤把面板做「实」一点
-            Color fill = GlassFill;
-            if (s.PanelCorner)
-                fill.a = UiSkin.Light ? 0.96f : 0.95f;
-            RoundedFill(panel, fill, rad);
-            // 顶边一条细高光，用来交代「这是一块板」而不是糊在地上的颜色
-            Fill(new Rect(panel.x + rad, panel.y, panel.width - rad * 2f, UiSkin.P(2f)),
-                new Color(UiSkin.Accent.r, UiSkin.Accent.g, UiSkin.Accent.b, 0.55f));
+            // 直角矩形：主页按钮、设置项全是直角，面板用圆角会跟界面「两套风格」（用户要求统一）。
+            // 投影也去掉了 —— 暗色主题下大一圈的深色垫会从板底露出来，看着像多了一条黑线。
+            Fill(panel, GlassFill);
 
             GUI.Label(new Rect(panel.x + pad, panel.y + pad, innerW, titleH), s.Title, _hStyle);
 
@@ -1290,7 +1254,7 @@ namespace MinecraftTetris
             float skipW = UiSkin.P(150f);
             var skipBox = new Rect(Screen.width - skipW - UiSkin.P(10f), UiSkin.P(8f),
                 skipW, UiSkin.P(38f));
-            RoundedFill(skipBox, new Color(0f, 0f, 0f, 0.46f), skipBox.height * 0.5f);
+            Fill(skipBox, new Color(0f, 0f, 0f, 0.46f));
             var skip = new Rect(skipBox.x + UiSkin.P(10f), skipBox.y,
                 skipBox.width - UiSkin.P(20f), skipBox.height);
             if (GUI.Button(skip, "跳过教程  " + (_step + 1) + "/" + _steps.Count, _skipStyle))
