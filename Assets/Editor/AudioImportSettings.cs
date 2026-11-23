@@ -15,6 +15,9 @@ namespace MinecraftTetris.EditorTools
     /// </summary>
     public class AudioImportSettings : AssetPostprocessor
     {
+        /// <summary>网页版的音乐压缩质量（构建前会按这个值强制重导一遍）。</summary>
+        public const float WebGLMusicQuality = 0.35f;
+
         void OnPreprocessAudio()
         {
             string path = assetPath.Replace('\\', '/');
@@ -25,15 +28,25 @@ namespace MinecraftTetris.EditorTools
             if (importer == null)
                 return;
 
+            // 直接改**默认**设置，不再只依赖平台覆盖：
+            // 实测 SetOverrideSampleSettings(WebGL, …) 没有落到 .meta 里
+            // （platformSettingOverrides 一直是空的），于是网页版一直在用默认的
+            // Streaming —— 浏览器不支持流式播放，等于没声音；顺带质量也一直按 0.7 算。
+            // 统一改成「压缩进内存 + 0.35 + 单声道」，两端一致，包体也小一截。
             AudioImporterSampleSettings settings = importer.defaultSampleSettings;
-            settings.loadType = AudioClipLoadType.Streaming;
+            settings.loadType = AudioClipLoadType.CompressedInMemory;
             settings.compressionFormat = AudioCompressionFormat.Vorbis;
-            settings.quality = 0.7f;
+            settings.quality = WebGLMusicQuality;
+            // 背景音乐降到 22.05 kHz：这叫「田园风」的曲子本来就没有高频细节，
+            // 砍掉一半采样点听不出来，体积再省一半
+            settings.sampleRateSetting = AudioSampleRateSetting.OverrideSampleRate;
+            settings.sampleRateOverride = 22050;
             // 2022 里 preloadAudioData 挪进了 SampleSettings（AudioImporter 上那个已过时）
             settings.preloadAudioData = false;
             importer.defaultSampleSettings = settings;
 
-            importer.forceToMono = false;
+            // 背景音乐单声道：立体声在这个游戏里听不出空间感，但体积直接砍一半
+            importer.forceToMono = true;
             importer.loadInBackground = true;
 
             // WebGL 上 Streaming 是不支持的（浏览器没法对 ogg 做随机读取），
@@ -44,7 +57,8 @@ namespace MinecraftTetris.EditorTools
             {
                 loadType = AudioClipLoadType.CompressedInMemory,
                 compressionFormat = AudioCompressionFormat.Vorbis,
-                quality = 0.7f,
+                // 27 MB 的 ogg 只当背景音乐用，0.7 在手机外放上听不出差别，但首屏要多下十几兆
+                quality = WebGLMusicQuality,
                 preloadAudioData = false,
             };
             importer.SetOverrideSampleSettings(BuildTargetGroup.WebGL, webgl);

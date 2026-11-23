@@ -101,17 +101,22 @@ namespace MinecraftTetris.EditorTools
                 if (importer == null)
                     continue;
 
-                if (importer.GetOverrideSampleSettings(BuildTargetGroup.WebGL).loadType
-                    == AudioClipLoadType.CompressedInMemory)
+                // 直接改默认设置（平台覆盖实测写不进 .meta），质量或载入方式不对就重导
+                var cur = importer.defaultSampleSettings;
+                if (cur.loadType == AudioClipLoadType.CompressedInMemory
+                    && Mathf.Abs(cur.quality - AudioImportSettings.WebGLMusicQuality) < 0.01f
+                    && cur.sampleRateSetting == AudioSampleRateSetting.OverrideSampleRate
+                    && cur.sampleRateOverride == 22050)
                     continue;
 
-                importer.SetOverrideSampleSettings(BuildTargetGroup.WebGL, new AudioImporterSampleSettings
-                {
-                    loadType = AudioClipLoadType.CompressedInMemory,
-                    compressionFormat = AudioCompressionFormat.Vorbis,
-                    quality = 0.7f,
-                    preloadAudioData = false,
-                });
+                var settings = cur;
+                settings.loadType = AudioClipLoadType.CompressedInMemory;
+                settings.compressionFormat = AudioCompressionFormat.Vorbis;
+                settings.quality = AudioImportSettings.WebGLMusicQuality;
+                settings.sampleRateSetting = AudioSampleRateSetting.OverrideSampleRate;
+                settings.sampleRateOverride = 22050;
+                settings.preloadAudioData = false;
+                importer.defaultSampleSettings = settings;
                 importer.SaveAndReimport();
                 changed++;
             }

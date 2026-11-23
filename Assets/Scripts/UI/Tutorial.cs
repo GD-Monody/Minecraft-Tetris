@@ -996,8 +996,10 @@ namespace MinecraftTetris
             float wFrac = portrait ? 0.96f : (MobileMode.Enabled ? 0.86f : 0.68f);
             float pw = Mathf.Min(Screen.width * wFrac, UiSkin.P(portrait ? 640f : 820f));
             float innerW = pw - pad * 2f;
-            // 竖屏：两个选项上下排；横屏 / 电脑：左右并排
-            float cardW = portrait ? innerW : (innerW - gap) * 0.5f;
+            // 竖屏、或者面板被挤窄时：两个选项上下排（并排的话每张卡只剩百来像素，
+            // 中文会被拆成三四行，像「玩法、界 / 面、设 / 置」那样很难看）
+            bool stack = portrait || pw < UiSkin.P(620f);
+            float cardW = stack ? innerW : (innerW - gap) * 0.5f;
 
             string[] titles = { "游戏小白", "游戏达人" };
             string[] bodies =
@@ -1028,7 +1030,7 @@ namespace MinecraftTetris
             float qH = Mathf.Max(UiSkin.P(40f),
                 _hStyle.CalcHeight(new GUIContent(question), innerW));
 
-            float cardsH = portrait ? cardH[0] + gap + cardH[1] : Mathf.Max(cardH[0], cardH[1]);
+            float cardsH = stack ? cardH[0] + gap + cardH[1] : Mathf.Max(cardH[0], cardH[1]);
             float ph = pad * 2f + qH + UiSkin.P(16f) + cardsH;
 
             var panel = new Rect((Screen.width - pw) * 0.5f, (Screen.height - ph) * 0.5f, pw, ph);
@@ -1045,10 +1047,10 @@ namespace MinecraftTetris
 
             float top = panel.y + pad + qH + UiSkin.P(16f);
             // 先把两张卡的位置算出来（悬停判断要用）
-            var cardA = portrait
+            var cardA = stack
                 ? new Rect(panel.x + pad, top, cardW, cardH[0])
                 : new Rect(panel.x + pad, top, cardW, cardsH);
-            var cardB = portrait
+            var cardB = stack
                 ? new Rect(panel.x + pad, top + cardH[0] + gap, cardW, cardH[1])
                 : new Rect(panel.x + pad + cardW + gap, top, cardW, cardsH);
 
@@ -1076,7 +1078,7 @@ namespace MinecraftTetris
                     card.width + UiSkin.P(3f), card.height + UiSkin.P(3f)), cardLine, cRad + UiSkin.P(1.5f));
                 RoundedFill(card, i == 0 ? cardFillA : cardFillB, cRad);
 
-                float ty = portrait ? UiSkin.P(16f) : UiSkin.P(18f);
+                float ty = UiSkin.P(16f);
                 GUI.Label(new Rect(card.x, card.y + ty, cardW, titleH), titles[i], _optTitle);
                 GUI.Label(new Rect(card.x + bodyPad, card.y + ty + titleH + UiSkin.P(10f),
                     bodyW[i], bodyH[i] + UiSkin.P(8f)), wrapped[i], _optBody);

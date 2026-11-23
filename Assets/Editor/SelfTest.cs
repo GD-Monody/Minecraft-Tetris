@@ -1563,8 +1563,12 @@ namespace MinecraftTetris.EditorTools
 
             AudioClip song = Resources.Load<AudioClip>(MusicPlayer.GameTrackPaths[0]);
             Check("曲子不是空文件（时长 > 60 秒）", song != null && song.length > 60f);
-            Check("音乐按流式导入（不整首解码进内存）",
-                song != null && song.loadType == AudioClipLoadType.Streaming);
+            // 原来是「必须 Streaming」：桌面流式省内存。但浏览器不支持流式播放，
+            // 而平台覆盖实测写不进 .meta，所以现在统一用「压缩进内存」——网页版才能出声。
+            // 这里改成断言「不是整首解码进内存」（Streaming 或 CompressedInMemory 都算合格）。
+            Check("音乐不整首解码进内存（流式或压缩进内存）",
+                song != null && (song.loadType == AudioClipLoadType.Streaming
+                    || song.loadType == AudioClipLoadType.CompressedInMemory));
 
             Check("音乐音量夹到 0~1 且保留两位小数",
                 Mathf.Approximately(GameSettings.ClampMusicVolume(0.456f), 0.46f) &&
