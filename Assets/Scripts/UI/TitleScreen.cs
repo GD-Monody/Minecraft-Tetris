@@ -926,6 +926,18 @@ namespace MinecraftTetris
             float bx = panel.x + (w - bw) * 0.5f;
             float top = panel.y + Pg(desk ? 86f : (wide ? 44f : 88f));
 
+            // 行数会变（玩法页加了一行「作弊」之后是 5 行）：按「返回按钮上方」这条底线
+            // 等比缩一次行高和行距，否则最后一行会被返回压住（横屏最挤，一下就顶上了）
+            float backTop = panel.yMax - Pg(wide ? 12f : 18f) - bh;
+            float limit = backTop - Pg(10f) - top;
+            float need = labels.Length * bh + Mathf.Max(0, labels.Length - 1) * (step - bh);
+            if (need > limit && need > 0f)
+            {
+                float shrink = Mathf.Clamp(limit / need, 0.6f, 1f);
+                bh *= shrink;
+                step *= shrink;
+            }
+
             for (int i = 0; i < labels.Length; i++)
             {
                 if (TutBtn(new Rect(bx, top + i * step, bw, bh), labels[i], _btnBig))
@@ -1054,6 +1066,7 @@ namespace MinecraftTetris
                     "下落速度：" + GameSettings.FallSpeed.ToString("0.00") + "×",
                     elim,
                     "特殊方块开关",
+                    GameSettings.CheatUndo ? "作弊：开" : "作弊：关",
                 },
                 new System.Action[]
                 {
@@ -1081,6 +1094,11 @@ namespace MinecraftTetris
                     {
                         _mechScroll = Vector2.zero;
                         GoPage(SettingsPage.Mech);
+                    },
+                    () =>
+                    {
+                        // 撤销是「回滚整张网格」，默认关着；打开后在暂停面板里多一颗按钮
+                        GameSettings.CheatUndo = !GameSettings.CheatUndo;
                     },
                 });
         }
@@ -1840,7 +1858,7 @@ namespace MinecraftTetris
                     // 数字、英文两侧不留空格：IMGUI 只在这类空格处才断行，
                     // 留着空格会出现「一格最多 8」/「份，…」这种断法（截图里就是这样）
                     Desc = "往低处和两边流，一格最多8份，碰到源岩浆会变成黑曜石。"
-                        + "TNT上方有水时，它爆炸不会破坏任何方块。",
+                        + "会浇灭旁边的火（木头还留着）。TNT上方有水时，它爆炸不会破坏任何方块。",
                 },
                 new GuideItem
                 {

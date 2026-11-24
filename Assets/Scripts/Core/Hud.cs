@@ -331,6 +331,20 @@ namespace MinecraftTetris
         }
 
         /// <summary>
+        /// 暂停键左边那颗「撤销」的宽度（作弊关着时是 0）。
+        /// Hud 算统计面板可用宽度、MobileControls 摆位置都读它，两边才不会错位。
+        /// </summary>
+        public static float MobileUndoWidth
+        {
+            get
+            {
+                if (!GameSettings.CheatUndo)
+                    return 0f;
+                return UiSkin.P(MobileMode.Enabled ? 78f : 68f);
+            }
+        }
+
+        /// <summary>
         /// 右上角暂停键的边长。Hud 算留白、MobileControls 摆位置都用它 ——
         /// 两边各算一套的话，窗口一变就会错位（之前暂停键比横条高出一截就是这么来的）。
         /// </summary>
@@ -358,8 +372,10 @@ namespace MinecraftTetris
 
             float h = MobileStatsHeight;
             // 宽度给到 184，但不能压住右上角的暂停键（窄屏上就按剩余宽度铺满）
+            float undoW = MobileUndoWidth;
             float w = Mathf.Min(UiSkin.P(214f),
-                Screen.width - safe.x - rightInset - m * 2f - MobilePauseSize);
+                Screen.width - safe.x - rightInset - m * 2f - MobilePauseSize
+                    - (undoW > 0f ? undoW + m : 0f));
             var panel = new Rect(safe.x + m, topInset + m, w, h);
             _statsPanel = panel;
             DrawPanel(panel);

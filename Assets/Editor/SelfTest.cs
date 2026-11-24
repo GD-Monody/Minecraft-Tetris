@@ -1920,6 +1920,46 @@ namespace MinecraftTetris.EditorTools
             Check("连碎两层后沙落到底，全程没有多报格子",
                 gOrder.Grid.Get(2, 0, 0) == mechSand && CountFilled(gOrder.Grid) == 1);
 
+            // ---------- 水能灭火 ----------
+            GameSettings.SetMech(GameSettings.MechKind.FireBurn, true);
+            Fire.Reset();
+            Fluids.Reset();
+
+            var gQuench = new Grid(5, 5, 1);
+            Fluids.Prepare(gQuench);
+            gQuench.Set(2, 0, 0, mechLog);
+            Check("木头点得着", Fire.Ignite(gQuench, 2, 0, 0) && Fire.IsBurning(2, 0, 0));
+
+            Fluids.SetAmount(1, 0, 0, Fluids.MaxAmount, Fluids.WaterId);
+            Fire.Tick(gQuench, 0.1f);
+            Check("旁边有水，火被浇灭", !Fire.IsBurning(2, 0, 0));
+            Check("浇灭记在 LastDoused 里", Fire.LastDoused.Count == 1);
+            Check("浇灭后方块还留着（不会连木头一起没）", gQuench.Get(2, 0, 0) == mechLog);
+
+            Fire.Reset();
+            Fluids.Reset();
+
+            // ---------- 作弊撤销 ----------
+            GameSettings.CheatUndo = false;
+            var gNoCheat = new GameLoop(6, 10, 1, 21);
+            gNoCheat.HardDrop();
+            Check("作弊关着不记快照", !gNoCheat.CanUndo);
+
+            GameSettings.CheatUndo = true;
+            var gUndo = new GameLoop(6, 10, 1, 22);
+            int filledBefore = CountFilled(gUndo.Grid);
+            gUndo.HardDrop();
+            Check("硬降之后场上多了方块", CountFilled(gUndo.Grid) > filledBefore);
+            Check("落定之后可以撤销", gUndo.CanUndo);
+
+            // 撤销的是「已经落下的那一块」，正在下落的方块不能被动
+            Piece falling = gUndo.Current;
+            Check("撤销成功", gUndo.UndoLastPlacement());
+            Check("撤销后网格回到落定之前", CountFilled(gUndo.Grid) == filledBefore);
+            Check("撤销不替换正在下落的方块", gUndo.Current == falling);
+            Check("一步只能撤销一次", !gUndo.CanUndo);
+            GameSettings.CheatUndo = false;
+
             // ---------- 雪与冰遇岩浆融化 ----------
             int snowId = BlockCatalog.SnowId;
             int iceId = BlockCatalog.IceId;

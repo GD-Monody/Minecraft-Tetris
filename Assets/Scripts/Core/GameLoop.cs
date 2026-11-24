@@ -150,6 +150,23 @@ namespace MinecraftTetris
         public int Score;
         public int LinesCleared;
         public bool GameOver;
+
+        // ── 作弊撤销（设置 → 玩法 → 作弊）──────────────────────────
+        // 落定前把现场整个记下来（网格 / 流体 / 分数 / 这一块方块本身），
+        // 按撤销时整张回滚。只留一份：这就是「上一步」。
+        int[] _undoGrid;
+        int[] _undoFluid;
+        int _undoScore;
+        int _undoLines;
+
+        /// <summary>现在能不能撤销（作弊开着、有快照、没结束）。</summary>
+        public bool CanUndo
+        {
+            get { return GameSettings.CheatUndo && _undoGrid != null; }
+        }
+
+        /// <summary>撤销之后触发：视图层整场重画、预览层跟着更新。</summary>
+        public event Action Undone;
         /// <summary>1 倍速时每格下落间隔（秒）。实际间隔 = BaseFallInterval / FallSpeed。</summary>
         public const float BaseFallInterval = 0.8f;
 
@@ -202,6 +219,8 @@ namespace MinecraftTetris
         public event Action FireIgnited;
         /// <summary>有方块烧光消失了：视图层刷那几格、撒碎块（列表见 LastBurnedOut）。</summary>
         public event Action BlocksBurned;
+        /// <summary>火被水浇灭了（方块还在）。视图层冒白烟、嘶一声。</summary>
+        public event Action FireDoused;
         /// <summary>海绵吸到水了：视图层刷流体层、撒水花（结果见 LastSpongeSoaks）。</summary>
         public event Action WaterSoaked;
 
@@ -528,8 +547,57 @@ namespace MinecraftTetris
             return new Vector3Int(x, y, z);
         }
 
+        /// <summary>落定前把现场记下来（作弊撤销用）。关掉作弊就不留快照。</summary>
+        void SaveUndoSnapshot()
+        {
+            if (!GameSettings.CheatUndo || Current == null)
+            {
+                _undoGrid = null;
+                _undoFluid = null;
+                return;
+            }
+
+            _undoGrid = Grid.Export();
+            _undoFluid = Fluids.Export();
+            _undoScore = Score;
+            _undoLines = LinesCleared;
+        }
+
+        /// <summary>
+        /// 撤销上一步放置：把**已经落下**的那一块从场上拿走（网格 / 流体 / 分数退回，
+        /// 落定前）。正在下落的方块不动 —— 它还在玩家手里，撤它没有意义。
+        ///
+        /// 火力、TNT 引信这类「进行中」的状态直接清掉 —— 它们记的是坐标，
+        /// 回滚之后那些坐标上是什么已经变了，留着只会烧错地方。
+        /// </summary>
+        public bool UndoLastPlacement()
+        {
+            if (!CanUndo)
+                return false;
+
+            Grid.Import(_undoGrid);
+            Fluids.Import(Grid, _undoFluid);
+
+            Score = _undoScore;
+            LinesCleared = _undoLines;
+            GameOver = false;
+
+            Fire.Reset();
+            Tnt.Reset();
+            Glass.LastCrushed.Clear();
+            LastGravityMoves.Clear();
+
+            _undoGrid = null;
+            _undoFluid = null;
+
+            Undone?.Invoke();
+            return true;
+        }
+
         void LockPiece()
         {
+            SaveUndoSnapshot();
+
             int blockId = Current.BlockId;
 
             // 落定时还有格子在场地顶部之外，说明已经堆到顶了，这才是真正的游戏结束。
@@ -789,7 +857,13 @@ namespace MinecraftTetris
         /// </summary>
         void BurnTick(float dt)
         {
-            if (!Fire.Tick(Grid, dt))
+            bool burned = Fire.Tick(Grid, dt);
+
+            // 浇灭不改变网格，但要冒烟，所以单独派一次（只有烧光的才需要落重力）
+            if (Fire.LastDoused.Count > 0 && FireDoused != null)
+                FireDoused();
+
+            if (!burned)
             {
                 FlushFireIgnited();
                 return;
@@ -1065,6 +1139,9 @@ namespace MinecraftTetris
             Score = 0;
             LinesCleared = 0;
             GameOver = false;
+            // 上一局的撤销快照必须丢掉：作弊开着时按撤销会把旧场地的方块灌进新一局
+            _undoGrid = null;
+            _undoFluid = null;
             _fallTimer = 0f;
             Next = _bag.Next();
             NextBlockId = RandomBlockId();

@@ -127,6 +127,51 @@ namespace MinecraftTetris
             _id[x, y, z] = amount > 0 ? id : 0;
         }
 
+        /// <summary>
+        /// 作弊撤销用：把整张流体表拷出来（前半存份数、后半存编号）。
+        /// 水不写网格，光回滚 Grid 的话水会留在原处，跟回滚后的方块对不上。
+        /// </summary>
+        public static int[] Export()
+        {
+            if (_amount == null)
+                return null;
+
+            int n = _amount.Length;
+            var data = new int[n * 2];
+            int i = 0;
+            for (int z = 0; z < _sz; z++)
+                for (int y = 0; y < _sy; y++)
+                    for (int x = 0; x < _sx; x++)
+                    {
+                        data[i] = _amount[x, y, z];
+                        data[n + i] = _id[x, y, z];
+                        i++;
+                    }
+            return data;
+        }
+
+        /// <summary>作弊撤销用：把 Export 出来的表写回去（尺寸和当前场地对不上就忽略）。</summary>
+        public static void Import(Grid grid, int[] data)
+        {
+            if (grid == null || data == null)
+                return;
+
+            Ensure(grid);
+            int n = _amount.Length;
+            if (data.Length != n * 2)
+                return;
+
+            int i = 0;
+            for (int z = 0; z < _sz; z++)
+                for (int y = 0; y < _sy; y++)
+                    for (int x = 0; x < _sx; x++)
+                    {
+                        _amount[x, y, z] = data[i];
+                        _id[x, y, z] = data[n + i];
+                        i++;
+                    }
+        }
+
         /// <summary>把一格的水直接清掉（消行时用）。</summary>
         public static void ClearCell(int x, int y, int z)
         {

@@ -102,6 +102,13 @@ namespace MinecraftTetris
         float _btnDia = 40f;
         Rect _pad;
         Rect _pauseRect;
+        /// <summary>暂停键左边那颗「撤销」（作弊关着时宽高为 0，不画不接）。</summary>
+        Rect _undoRect;
+
+        /// <summary>现在能不能撤（作弊开着、有上一步）。由 Bootstrap 注入。</summary>
+        public System.Func<bool> CanUndo;
+        /// <summary>点了「撤销」。</summary>
+        public System.Action OnUndoClick;
         float _stripH;
 
         int _padFinger = -1;
@@ -116,6 +123,8 @@ namespace MinecraftTetris
         int _lastDepth = -1;
         int _lastLayout = -1;
         int _lastMove = -1;
+        /// <summary>上一次排版时作弊开关的状态。它变了只需重算右上角，不用整屏重排。</summary>
+        bool _lastCheat;
         int _styleTheme = -1;
         bool _styleWide;
 
@@ -147,6 +156,13 @@ namespace MinecraftTetris
             if (Screen.width != _lastW || Screen.height != _lastH || CurrentDepth != _lastDepth
                 || KeyLayout != _lastLayout || GameSettings.MoveStyle != _lastMove)
                 Layout();
+
+            // 作弊开关单独处理：只重算右上角那两块，不动按键布局（正在按的手指不能被踢掉）
+            if (GameSettings.CheatUndo != _lastCheat)
+            {
+                _lastCheat = GameSettings.CheatUndo;
+                LayoutTopKeys();
+            }
 
             _out = default(InputState);
 
@@ -301,6 +317,7 @@ namespace MinecraftTetris
             _lastDepth = CurrentDepth;
             _lastLayout = KeyLayout;
             _lastMove = GameSettings.MoveStyle;
+            _lastCheat = GameSettings.CheatUndo;
 
             BuildSlots();
 
@@ -317,11 +334,11 @@ namespace MinecraftTetris
 
             float pad = Mathf.Max(6f, w * 0.016f);
 
-            // 暂停键贴右上角（Hud.MobilePauseSize 是唯一的尺寸来源）
+            // 暂停键 & 撤销键（Hud.MobilePauseSize 是唯一的尺寸来源）
             float ps = Hud.MobilePauseSize;
             float m = UiSkin.P(wide ? 6f : 8f);
             float topInset = Screen.height - (safe.y + safe.height);
-            _pauseRect = new Rect(w - safeRight - m - ps, topInset + m, ps, ps);
+            LayoutTopKeys();
 
             if (wide)
             {
@@ -374,6 +391,31 @@ namespace MinecraftTetris
             LayoutGrid(new Rect(keysLeft, _pad.y, keysW, _pad.height), pad * 0.8f);
             LayoutDpad();
             ContentBottom = top;
+        }
+
+        /// <summary>
+        /// 只算右上角那对「撤销 / 暂停」。单独抽出来是因为撤销键的存在与否跟着
+        /// 设置里的作弊开关走：开关一拨，按钮就得当场出现或消失，不能等下一次
+        /// 整屏重排 —— 以前整屏 Layout 只在尺寸 / 深度 / 键位变化时跑，玩家在
+        /// 设置里关掉作弊再回游戏，那颗撤销键会一直挂在那儿。
+        /// </summary>
+        void LayoutTopKeys()
+        {
+            float w = Screen.width;
+            bool wide = w > Screen.height;
+            Rect safe = Screen.safeArea;
+            float safeRight = Mathf.Max(0f, w - (safe.x + safe.width));
+            float topInset = Screen.height - (safe.y + safe.height);
+            float ps = Hud.MobilePauseSize;
+            float m = UiSkin.P(wide ? 6f : 8f);
+
+            _pauseRect = new Rect(w - safeRight - m - ps, topInset + m, ps, ps);
+
+            // 撤销键贴在暂停键左边，和它同一行、同高（作弊关着时宽度是 0，等于不存在）
+            float uw = Hud.MobileUndoWidth;
+            _undoRect = uw > 0f
+                ? new Rect(_pauseRect.x - m - uw, _pauseRect.y, uw, ps)
+                : new Rect(0f, 0f, 0f, 0f);
         }
 
         /// <summary>把在用的槽位铺成 rows x cols 的网格。</summary>
@@ -484,6 +526,14 @@ namespace MinecraftTetris
 
         void Begin(int finger, Vector2 p)
         {
+            if (_undoRect.width > 0f && _undoRect.Contains(p))
+            {
+                // 和暂停键一样按下即响应；没得撤时点了不做事（键本身是灰的）
+                if (!Over && OnUndoClick != null && CanUndo != null && CanUndo())
+                    OnUndoClick();
+                return;
+            }
+
             if (_pauseRect.Contains(p))
             {
                 // 暂停键按下即响应：等抬手指再响应的话，手指划出去就点不动了
@@ -659,6 +709,22 @@ namespace MinecraftTetris
             }
 
             DrawPause();
+            DrawUndo();
+        }
+
+        /// <summary>暂停键左边那颗「撤销」：没得撤时压暗，但不隐藏（位置稳定，不会跳）。</summary>
+        void DrawUndo()
+        {
+            if (_undoRect.width <= 0f)
+                return;
+
+            bool can = CanUndo != null && CanUndo();
+            Fill(_undoRect, can
+                ? (Light ? new Color(1f, 1f, 1f, 0.88f) : new Color(0.11f, 0.13f, 0.18f, 0.8f))
+                : (Light ? new Color(1f, 1f, 1f, 0.42f) : new Color(0.11f, 0.13f, 0.18f, 0.32f)));
+            Border(_undoRect, new Color(UiSkin.Accent.r, UiSkin.Accent.g, UiSkin.Accent.b,
+                can ? 0.32f : 0.14f));
+            GUI.Label(_undoRect, "撤销", _pauseStyle);
         }
 
         void DrawPad()

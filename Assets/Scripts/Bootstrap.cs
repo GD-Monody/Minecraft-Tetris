@@ -155,6 +155,14 @@ namespace MinecraftTetris
             _music = gameObject.AddComponent<MusicPlayer>();
             _music.SetVolume(GameSettings.MusicVolume);
 
+            // 作弊撤销：开了作弊之后，手机右上角暂停键左边多一颗「撤销」。
+            // 桌面没有暂停键（用户要求：电脑上暂停是 Esc），那条路走退格快捷键，见 Update。
+            if (_mobile != null)
+            {
+                _mobile.CanUndo = delegate { return _loop != null && _loop.CanUndo; };
+                _mobile.OnUndoClick = UndoPlacement;
+            }
+
             _hud = gameObject.AddComponent<Hud>();
             _hud.Loop = _loop;
             _hud.OnRestartClick = RestartGame;
@@ -343,6 +351,14 @@ namespace MinecraftTetris
                 _title.Visible = false;
                 _paused = true;
             }
+            // -cheatundo：打开作弊撤销（截图核对暂停面板多出来的那颗按钮）
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-cheatundo") >= 0)
+            {
+                GameSettings.CheatUndo = true;
+                // 先落一块：撤销那一步要有快照，「上一步」才存在
+                if (_loop != null)
+                    _loop.HardDrop();
+            }
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-gameover") >= 0)
                 _forceGameOverAt = 1.5f;
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-sandtest") >= 0)
@@ -464,8 +480,11 @@ namespace MinecraftTetris
             _loop.SnowMelted += OnSnowMelted;
             _loop.GolemSummoned += OnGolemSummoned;
             _loop.FireIgnited += OnFireIgnited;
+            _loop.FireDoused += OnFireDoused;
             _loop.BlocksBurned += OnBlocksBurned;
             _loop.WaterSoaked += OnWaterSoaked;
+
+            _loop.Undone += OnUndone;
 
             _view.RefreshAll();
             _view.SnapPiece(_loop.Current);
@@ -503,6 +522,12 @@ namespace MinecraftTetris
 
             if (Input.GetKeyDown(KeyCode.F12))
                 CaptureShot("manual_shot.png");
+
+            // 作弊撤销：桌面上直接按退格就撤（手机走暂停面板那颗按钮）。
+            // 放在这里而不是输入层：它跟方块移动那套键位无关，也不该被玩家改键覆盖。
+            if (GameSettings.CheatUndo && _title != null && !_title.Visible && _loop.CanUndo
+                && Input.GetKeyDown(KeyCode.Backspace))
+                UndoPlacement();
 
             // -structuretest 下按 F5 重新摆一遍，方便反复看那一波扫回去
             if (_structureDemo && Input.GetKeyDown(KeyCode.F5))
@@ -690,6 +715,23 @@ namespace MinecraftTetris
 
             Screen.SetResolution(w, h, false);
             Debug.Log("[window] 窗口设为 " + w + "x" + h);
+        }
+
+        /// <summary>撤销上一步放置（作弊功能，见 GameLoop.UndoLastPlacement）。</summary>
+        void UndoPlacement()
+        {
+            if (_loop == null)
+                return;
+            _loop.UndoLastPlacement();   // 不能撤时自己会返回 false
+        }
+
+        /// <summary>撤销完：整场重画，当前方块摆回它原来的位置。</summary>
+        void OnUndone()
+        {
+            if (_view == null || _loop == null)
+                return;
+            _view.RefreshAll();
+            _view.SnapPiece(_loop.Current);
         }
 
         /// <summary>现在是不是在游戏里（标题页 / 设置盖着的时候算不在）。</summary>
@@ -2391,6 +2433,26 @@ namespace MinecraftTetris
             {
                 Vector3Int c = Fire.LastIgnited[i];
                 _particles.EmitCell(c.x, c.y, c.z, BlockCatalog.OakLogId > 0 ? BlockCatalog.OakLogId : 1, 1);
+            }
+        }
+
+        /// <summary>
+        /// 火被水浇灭了：嘶一声、冒一股白烟。方块本身还在，所以不用清格子。
+        /// </summary>
+        void OnFireDoused()
+        {
+            if (_sfx != null)
+                _sfx.PlayFizz();
+
+            if (_particles == null)
+                return;
+
+            // 白烟：借雪块的白色碎屑。火是橙黄的，灭了该是白的，一眼能分辨
+            int white = BlockCatalog.SnowId > 0 ? BlockCatalog.SnowId : 1;
+            for (int i = 0; i < Fire.LastDoused.Count; i++)
+            {
+                Vector3Int c = Fire.LastDoused[i];
+                _particles.EmitCell(c.x, c.y, c.z, white, 2);
             }
         }
 

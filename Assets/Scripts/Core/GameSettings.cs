@@ -16,6 +16,7 @@ namespace MinecraftTetris
         const string GhostKey = "ghost.piece";
         const string KeyLayoutKey = "keys.layout";
         const string MoveStyleKey = "move.style";
+        const string CheatUndoKey = "cheat.undo";
 
         public const int MinSizeX = 5;
         public const int MaxSizeX = 20;
@@ -73,6 +74,22 @@ namespace MinecraftTetris
         public static bool CanUseLayerMode
         {
             get { return SizeZ > 1; }
+        }
+
+        /// <summary>
+        /// 作弊：允许撤销上一步放置。
+        ///
+        /// 默认关 —— 它会把整张网格回滚到上一次落定之前，属于破坏平衡的功能，
+        /// 只给「摆错了想反悔」的场合用。开着的时候暂停键左边会多一颗「撤销」。
+        /// </summary>
+        public static bool CheatUndo
+        {
+            get { return PlayerPrefs.GetInt(CheatUndoKey, 0) != 0; }
+            set
+            {
+                PlayerPrefs.SetInt(CheatUndoKey, value ? 1 : 0);
+                PlayerPrefs.Save();
+            }
         }
 
         /// <summary>
