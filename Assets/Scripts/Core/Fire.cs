@@ -52,6 +52,7 @@ namespace MinecraftTetris
         static readonly List<Vector3Int> _ignited = new List<Vector3Int>();
         static readonly List<Vector3Int> _burnedOut = new List<Vector3Int>();
         static readonly List<int> _burnedBlocks = new List<int>();
+        static readonly List<Vector3Int> _doused = new List<Vector3Int>();
 
         static float _spreadTimer;
 
@@ -66,6 +67,9 @@ namespace MinecraftTetris
 
         /// <summary>和 LastBurnedOut 一一对应的方块编号（烧掉之前是什么，粒子要用）。</summary>
         public static List<int> LastBurnedBlocks { get { return _burnedBlocks; } }
+
+        /// <summary>这一帧被水浇灭的格子（方块没烧掉，只是火灭了）。</summary>
+        public static List<Vector3Int> LastDoused { get { return _doused; } }
 
         // 六向邻居：下、上、左、右、后、前。和 Melt / Fluids 里的顺序一致。
         static readonly int[] Dx = { 0, 0, -1, 1, 0, 0 };
@@ -230,6 +234,7 @@ namespace MinecraftTetris
             _ignited.Clear();
             _burnedOut.Clear();
             _burnedBlocks.Clear();
+            _doused.Clear();
 
             // 中途关掉开关：已经烧着的直接掐灭，不留到下次打开时再烧
             if (grid == null || !GameSettings.FireBurns)
@@ -266,10 +271,12 @@ namespace MinecraftTetris
                     continue;
                 }
 
-                // 水漫过来 → 浇灭，方块留着（原版也是这样：火灭了木头还在）
+                // 水漫过来 → 浇灭，方块留着（原版也是这样：火灭了木头还在）。
+                // 记一下：视图层要冒白烟 + 嘶一声，不然玩家只会觉得「火莫名其妙没了」
                 if (TouchesWater(b.X, b.Y, b.Z))
                 {
                     _burning.RemoveAt(i);
+                    _doused.Add(new Vector3Int(b.X, b.Y, b.Z));
                     continue;
                 }
 
@@ -345,6 +352,10 @@ namespace MinecraftTetris
         {
             if (Fluids.WaterId <= 0)
                 return false;
+
+            // 水漫进火所在的这一格也算（水不写网格，只记份数）
+            if (WaterAt(x, y, z))
+                return true;
 
             for (int k = 0; k < 6; k++)
             {
