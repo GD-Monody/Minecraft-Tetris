@@ -82,10 +82,10 @@ namespace MinecraftTetris.EditorTools
         /// <summary>
         /// 批处理构建 Android APK，产物在 BuildAndroid/MinecraftTetris.apk。
         ///
-        /// 脚本后端用 Mono：IL2CPP 必须要 NDK，本机没装；Mono 一样能出 ARM64 包，
-        /// 先用它把「能不能装、能不能玩」跑通，要上架再换 IL2CPP。
-        /// SDK / JDK 用本机现成的那套（D:\DeepSeek-Harness\tools\android），
-        /// 构建时通过命令行 -androidSdkPath / -androidJdkPath 指过来。
+        /// 脚本后端用 IL2CPP、只出 ARM64：32 位包在现代手机上跑的是兼容层，真机上帧数
+        /// 掉得厉害（2026-11-25 反馈）。IL2CPP 要 NDK，用 -androidNdkPath 指进来。
+        /// SDK / JDK / NDK 都用本机现成的那套（D:\DeepSeek-Harness\tools\android），
+        /// 构建时通过命令行 -androidSdkPath / -androidJdkPath / -androidNdkPath 指过来。
         /// </summary>
         [MenuItem("MinecraftTetris/构建 Android 版")]
         public static void BuildAndroid()
@@ -107,10 +107,15 @@ namespace MinecraftTetris.EditorTools
             PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Android, "com.monody.minecrafttetris");
             PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel22;
             PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevelAuto;
-            PlayerSettings.Android.targetArchitectures =
-                AndroidArchitecture.ARMv7 | AndroidArchitecture.ARM64;
-            // IL2CPP 没 NDK 跑不了；Mono 出包快，调试装机足够
-            PlayerSettings.SetScriptingBackend(BuildTargetGroup.Android, ScriptingImplementation.Mono2x);
+
+            // 只出 ARM64：Mono 后端根本出不了 64 位包，32 位（ARMv7）在现代手机上跑的是
+            // 兼容层，实测帧数明显低一截。IL2CPP + ARM64 是原生跑，也是 Google Play 的硬性要求。
+            // 代价是编译从 1 分钟变成十几分钟、包体也大一点。
+            PlayerSettings.SetScriptingBackend(BuildTargetGroup.Android, ScriptingImplementation.IL2CPP);
+            PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
+            // 存档格式是自己写的、没有反射取类型的地方，Low 够用；再往上裁容易把用到的东西裁掉
+            PlayerSettings.SetManagedStrippingLevel(BuildTargetGroup.Android, ManagedStrippingLevel.Low);
+
             // 没配自己的 keystore 就用 Unity 的 debug key，装得上、但上不了架
             PlayerSettings.Android.useCustomKeystore = false;
             EditorUserBuildSettings.buildAppBundle = false;
