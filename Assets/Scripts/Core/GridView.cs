@@ -140,6 +140,17 @@ namespace MinecraftTetris
         Quaternion _pieceRot = Quaternion.identity;
         Quaternion _pieceRotTarget = Quaternion.identity;
 
+        // 旋转是一段「定长」缓动，不是逐帧追目标。
+        //
+        // 以前用 Quaternion.Slerp(cur, target, k) 每帧追：帧间隔一大（手机上 30~50fps、
+        // dt 忽长忽短），每帧转过的角度就差很多，看着是一跳一跳的 —— 浏览器那边稳定 60fps
+        // 所以显得顺。改成先把「起点 / 终点 / 已用时间」记下来，按时间推进缓动，
+        // 帧率再抖，角度在时间轴上的曲线也是同一条，观感就一致了。
+        Quaternion _rotFrom = Quaternion.identity;
+        float _rotT = 1f;
+        /// <summary>一次旋转（90°）走完要多久。0.12 秒大概是一口气连转两下也不糊的节奏。</summary>
+        const float RotDuration = 0.12f;
+
         // 追赶速度：越大越快贴到位。16 大约 0.1 秒走完 80%
         const float Smooth = 16f;
 
@@ -301,10 +312,16 @@ namespace MinecraftTetris
                             UpdateFireCover(x, y, z);
                     }
 
-            // 正在下落的方块：位置追目标，朝向也慢慢转到新角度
+            // 正在下落的方块：位置追目标，朝向按时间缓动到新角度
             if (_pieceCells == null)
                 return;
-            _pieceRot = Quaternion.Slerp(_pieceRot, _pieceRotTarget, k * 1.4f);
+            if (_rotT < 1f)
+            {
+                _rotT = Mathf.Min(1f, _rotT + Time.deltaTime / RotDuration);
+                // ease-out：起步快、收尾软，和浏览器里那个手感的节奏一致
+                float e = 1f - Mathf.Pow(1f - _rotT, 3f);
+                _pieceRot = Quaternion.Slerp(_rotFrom, _pieceRotTarget, e);
+            }
             Quaternion rot = _pieceRot;
             for (int i = 0; i < _pieceCells.Length; i++)
             {
@@ -345,6 +362,9 @@ namespace MinecraftTetris
                 return;
 
             _pieceRot = _pieceRotTarget;
+            // 冻结收尾：把还在半路的旋转也一步放到位，解冻后不会看到它接着转
+            _rotFrom = _pieceRotTarget;
+            _rotT = 1f;
             for (int i = 0; i < _pieceCells.Length; i++)
             {
                 GameObject go = _pieceCells[i];
@@ -911,7 +931,15 @@ namespace MinecraftTetris
             int n = piece.Cells.Length;
             EnsurePieceCapacity(n);
             // 朝向直接取逻辑层算好的，不做账：三组旋转键怎么按，这里都不会累积误差
-            _pieceRotTarget = piece.Rot.ToQuaternion();
+            Quaternion target = piece.Rot.ToQuaternion();
+            // 注意这里是每帧都调（Bootstrap 每帧 RefreshPiece），所以只在目标真变了的时候
+            // 才重起一段缓动；否则每帧重置 _rotT，方块就永远转不到头
+            if (Quaternion.Angle(_pieceRotTarget, target) > 0.01f)
+            {
+                _rotFrom = _pieceRot;
+                _rotT = 0f;
+            }
+            _pieceRotTarget = target;
 
             int idx = piece.BlockId - 1;
             if (idx < 0 || idx >= _meshes.Length)
@@ -957,6 +985,8 @@ namespace MinecraftTetris
             }
             _pieceRotTarget = piece.Rot.ToQuaternion();
             _pieceRot = _pieceRotTarget;
+            _rotFrom = _pieceRotTarget;
+            _rotT = 1f;
         }
 
         /// <summary>
