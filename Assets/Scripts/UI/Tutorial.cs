@@ -28,6 +28,13 @@ namespace MinecraftTetris
         {
             public string Title;
             public string Body;
+
+            /// <summary>
+            /// 按当前画面现算正文（手机竖屏 / 横屏文案不同时用）。
+            /// 不能在建步骤时判断朝向：BuildSteps 跑在 Start 里，那时 -window 还没生效，
+            /// Screen 还是默认尺寸，判断出来一律是横屏。
+            /// </summary>
+            public System.Func<string> BodyOf;
             /// <summary>高亮的矩形（GUI 坐标）；返回零矩形表示不挖洞、整屏压暗。</summary>
             public Func<Rect> Hole;
             /// <summary>满足就自动进下一步；null 表示只能点按钮。</summary>
@@ -385,8 +392,10 @@ namespace MinecraftTetris
             _steps.Add(new Step
             {
                 Title = "游戏规则",
-                Body = "上面三个标签是「玩法 / 按键 / 特殊方块」，内容多的时候右侧可以滚动。\n"
-                    + "特殊方块那页尤其值得翻一遍；不用全记住，知道去哪儿查就行。",
+                // 手机上「按键」那一栏是隐藏的（没有键盘），标签数得按端说
+                Body = MobileMode.Enabled
+                    ? "上面两个标签是「玩法 / 特殊方块」，内容多的时候右侧可以滚动。"
+                    : "上面三个标签是「玩法 / 按键 / 特殊方块」，内容多的时候右侧可以滚动。",
                 Hole = () => PageRect(),
                 Enter = () => GoRules(0),
                 NoBack = true,      // 前一步在游戏里，回不去了，别给「上一步」
@@ -410,7 +419,7 @@ namespace MinecraftTetris
             _steps.Add(new Step
             {
                 Title = "设置 · 音乐",
-                Body = "这里是背景音乐和音效的音量，拖滑条就能调，左边那颗是静音。",
+                Body = "这里是背景音乐和音效的音量，音量大小可以拖滑动条调节。",
                 Hole = () => PageRect(),
                 PanelCorner = true,
                 Enter = () => GoPage(TitleScreen.PageSound),
@@ -419,8 +428,8 @@ namespace MinecraftTetris
             {
                 Title = "设置 · 操作",
                 Body = MobileMode.Enabled
-                    ? "这里是键位布局：初级四个键，高级九宫格（带前后移动和俯视旋转）；\n"
-                        + "下面还能切「移动」用滑动还是十字键。"
+                    ? "最上面切「移动」用滑动还是十字键；\n"
+                        + "下面是键位：初级四个键，高级九宫格。"
                     : "这里可以给每个动作单独改键，也能一键恢复默认。\n"
                         + "下面那行是落点提示开关。",
                 Hole = () => PageRect(),
@@ -430,7 +439,10 @@ namespace MinecraftTetris
             _steps.Add(new Step
             {
                 Title = "设置 · 屏幕",
-                Body = "亮色 / 暗色主题，以及画面相关的开关，挑顺眼的就行。",
+                Body = MobileMode.Enabled
+                    ? "最上面切屏幕方向：自动 / 横屏 / 竖屏；\n"
+                        + "下面是亮色 / 暗色主题。"
+                    : "这里是亮色 / 暗色主题。",
                 Hole = () => PageRect(),
                 PanelCorner = true,
                 Enter = () => GoPage(TitleScreen.PageScreen),
@@ -438,8 +450,14 @@ namespace MinecraftTetris
             _steps.Add(new Step
             {
                 Title = "设置 · 玩法",
-                Body = "场地尺寸、下落速度、消除方式（行消 / 层消）、特殊方块机制开关都在这里。\n"
-                    + "刚上手时机制是关着的，熟了再一项项打开。",
+                Body = MobileMode.Enabled
+                    ? "场地尺寸、下落速度、消除方式（行消 / 层消）、特殊方块机制开关都在这里。\n"
+                        + "刚上手时机制是关着的，熟了再一项项打开。\n"
+                        + "这里还有一行「作弊」：打开后右上角暂停键旁边会多一颗「撤销」，"
+                        + "能把上一块摆错的方块拿走。"
+                    : "场地尺寸、下落速度、消除方式（行消 / 层消）、特殊方块机制开关都在这里。\n"
+                        + "刚上手时机制是关着的，熟了再一项项打开。\n"
+                        + "这里还有一行「作弊」：打开后按退格，就能把上一块摆错的方块拿走。",
                 Hole = () => PageRect(),
                 PanelCorner = true,
                 Enter = () => GoPage(TitleScreen.PagePlay),
@@ -463,8 +481,24 @@ namespace MinecraftTetris
                 Title = "创意工坊怎么用",
                 BottomEdge = true,
                 Compact = true,
-                Body = "左边是模具列表，中间是三维建造台：点一格放一块，再点一下拿走。\n"
-                    + "右边可以试拼自己的模具，满意了保存、启用，它就会进游戏。",
+                // 三端布局不一样：电脑左右分栏、手机竖屏上下叠、手机横屏左右分。
+                // 操作也不一样：电脑右键擦，手机得先开「擦除」开关再点。
+                // 朝向每帧现算，见 Step.BodyOf 的注释。
+                BodyOf = () =>
+                {
+                    if (!MobileMode.Enabled)
+                        return "左边是模具列表，右面是三维建造台：点一格放一块，右键点一下擦掉。\n"
+                            + "下面的按钮管选层、镜像、清空这些，做好保存、启用，它就会进游戏。";
+
+                    if (Screen.width <= Screen.height)
+                        return "最上面是模具列表，用「←」「→」翻页；中间是三维建造台："
+                            + "点一格放一块，要删先打开下面的「擦除」再点那一格。\n"
+                            + "再往下是选层、镜像、清空这些按键，做好保存、启用，它就会进游戏。";
+
+                    return "左边是三维建造台，右边一列是模具翻页、选层、镜像、清空；"
+                        + "点一格放一块，要删先打开「擦除」再点那一格。\n"
+                        + "做好保存、启用，它就会进游戏。";
+                },
                 Hole = () => PageRect(),
                 PanelCorner = true,
                 Enter = () => GoPage(TitleScreen.PageWorkshop),
@@ -474,7 +508,7 @@ namespace MinecraftTetris
             _steps.Add(new Step
             {
                 Title = "把场地调深一点",
-                Body = "把「深度 Z」拖到 2，然后点「应用」。\n"
+                Body = "把「深度 Z」拖到 2 以上的某个值，然后点「应用」。\n"
                     + "两层之后才有前后移动、层消，也才有层次图。",
                 Hole = () => PageRect(),
                 PanelCorner = true,
@@ -1111,7 +1145,7 @@ namespace MinecraftTetris
 
             float innerW = pw - pad * 2f;
 
-            string body = s.Body ?? "";
+            string body = s.BodyOf != null ? (s.BodyOf() ?? "") : (s.Body ?? "");
             string wrapped = CjkWrap.Wrap(body, _bStyle, innerW, false);
             float bw = Mathf.Min(innerW,
                 Mathf.Max(UiSkin.P(40f), CjkWrap.MaxLineWidth(wrapped, _bStyle)) + UiSkin.P(4f));
@@ -1206,27 +1240,29 @@ namespace MinecraftTetris
             float by = panel.yMax - pad - btnH;
             float gapBtn = UiSkin.P(16f);
 
-            // 有主按钮：上一步 + 主按钮成对居中；
-            // 没有主按钮（要玩家自己动手）：上一步靠左收窄，提示文字占右边剩下的宽度
-            // —— 之前两者各按「撑满」算宽度，窄屏上提示会被挤出面板右边（截图里那样）
-            float btw = hasPrimary
-                ? Mathf.Min(UiSkin.P(240f), (innerW - gapBtn) * 0.5f)
-                : Mathf.Min(UiSkin.P(140f), innerW * 0.42f);
+            // 主按钮的宽度要按**文字实际宽度**算：手机上 UiSkin.P(240) 缩完只有一百来像素，
+            // 「看完了，下一步」六个字直接顶出按钮外（截图里那个字跑到框外就是这个）。
+            string primaryLabel = s.Action != null ? (s.ActionLabel ?? "继续") : s.Button;
+            float needW = _btnLabelAlt.CalcSize(new GUIContent(primaryLabel)).x + UiSkin.P(36f);
+
+            float backW = Mathf.Min(UiSkin.P(120f), innerW * 0.36f);
+            float maxPrimary = innerW - (canBack && hasPrimary ? backW + gapBtn : 0f);
+            float mainW = Mathf.Clamp(needW, UiSkin.P(110f),
+                Mathf.Max(UiSkin.P(110f), Mathf.Min(UiSkin.P(260f), maxPrimary)));
 
             if (hasPrimary)
             {
-                float totalW = canBack ? btw * 2f + gapBtn : btw;
+                float totalW = canBack ? mainW + backW + gapBtn : mainW;
                 float bx = panel.x + (pw - totalW) * 0.5f;
                 if (canBack)
                 {
-                    if (DrawGhostButton(new Rect(bx, by, btw, btnH), "上一步"))
+                    if (DrawGhostButton(new Rect(bx, by, backW, btnH), "上一步"))
                         Back();
-                    bx += btw + gapBtn;
+                    bx += backW + gapBtn;
                 }
 
                 bool isAction = s.Action != null;
-                if (DrawActionButton(new Rect(bx, by, btw, btnH),
-                        isAction ? (s.ActionLabel ?? "继续") : s.Button))
+                if (DrawActionButton(new Rect(bx, by, mainW, btnH), primaryLabel))
                 {
                     if (isAction)
                         s.Action();
@@ -1239,9 +1275,9 @@ namespace MinecraftTetris
                 float hintX = panel.x + pad;
                 if (canBack)
                 {
-                    if (DrawGhostButton(new Rect(hintX, by, btw, btnH), "上一步"))
+                    if (DrawGhostButton(new Rect(hintX, by, backW, btnH), "上一步"))
                         Back();
-                    hintX += btw + gapBtn;
+                    hintX += backW + gapBtn;
                 }
                 float hintW = Mathf.Max(UiSkin.P(60f), panel.x + pw - pad - hintX);
                 GUI.Label(new Rect(hintX, by, hintW, btnH),
