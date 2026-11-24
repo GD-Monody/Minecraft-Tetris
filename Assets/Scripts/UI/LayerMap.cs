@@ -690,17 +690,14 @@ namespace MinecraftTetris
             float cellW = (availW - pad * 2f - labelW) / Mathf.Max(1, grid.SizeX);
             float cellH = (maxPanelH - fixedH) / Mathf.Max(1, grid.SizeZ);
 
-            cellW = Mathf.Clamp(cellW, cellMin, UiSkin.P(compact ? 18f : 26f));
-            if (compact)
-            {
-                // 高度富余时也不要把格子拉成细长竖条（竖屏第一版就是这样，一列列看得别扭）：
-                // 最多到格子宽的 1.35 倍，剩下的高度宁可空着
-                cellH = Mathf.Clamp(cellH, cellMin, Mathf.Max(cellMin, cellW * 1.35f));
-            }
-            else
-            {
-                cellH = cellW;      // 桌面保持正方格
-            }
+            // 一格 = 一个方块，长宽比必须 1:1。
+            // 以前手机这边让高度最多到宽的 1.35 倍（怕竖条难看），结果一格比一格长，
+            // 看着像被压扁了一点点（用户截图里就是）。现在两边取较小值，强行正方。
+            float side = Mathf.Min(cellW, cellH);
+            side = Mathf.Max(side, cellMin);
+            side = Mathf.Min(side, UiSkin.P(compact ? 18f : 26f));
+            cellW = side;
+            cellH = side;
 
             float mapW = cellW * grid.SizeX + labelW;
             float mapH = cellH * grid.SizeZ;
