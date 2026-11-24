@@ -175,6 +175,9 @@ namespace MinecraftTetris
             _nextPreview.Init(_view);
             _hud.Preview = _nextPreview;
 
+            // 帧率角标：手机性能问题靠猜没用，先把 fps / 帧间隔摆到屏幕上（调试期先常开）
+            gameObject.AddComponent<PerfOverlay>();
+
             // 创意工坊的三维建造台：自带一台相机渲到贴图里，只有打开那一页时才开着。
             // 建在这里（TitleScreen 之前）只是先建对象，接 _title 那两行得等下面建完它才能跑，
             // 不然 _title 还是 null，Start 直接炸——第一次跑就栽在这。
