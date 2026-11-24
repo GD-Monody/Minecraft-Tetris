@@ -77,3 +77,7 @@ _backup/
 
 # 安卓打包产物
 BuildAndroid/
+
+# 安装包 / 免安装包产物，以及打安装包时的临时目录
+BuildInstaller/
+.msi-tmp/
