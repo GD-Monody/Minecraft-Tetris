@@ -143,9 +143,18 @@ namespace MinecraftTetris
                 _mobile = gameObject.AddComponent<MobileControls>();
                 _mobile.OnPause = TogglePause;
                 _mobile.Visible = false;
-                // 手机上没人帮你关垂直同步：不锁帧的话一直贴着屏幕刷新跑，发热掉电都难看
+                // 手机上没人帮你关垂直同步：不锁帧的话一直贴着屏幕刷新跑，发热掉电都难看。
+                //
+                // 但帧率**必须跟着屏幕刷新率走**，硬写 60 在高刷屏上是灾难：
+                // 90Hz 屏上 vsync 只认 11.1ms 的整数倍，60fps 根本凑不出来 —— 一帧要等
+                // 两个刷新间隔（22.2ms），正好掉到 45fps，看起来就像「稳定地卡」。
+                // 真机实测 45fps / 22.2ms / 每秒 40 多帧超时，和这个吻合。
                 QualitySettings.vSyncCount = 0;
-                Application.targetFrameRate = 60;
+                int hz = Mathf.RoundToInt(Screen.currentResolution.refreshRate);
+                if (hz < 60) hz = 60;
+                if (hz > 120) hz = 120;
+                Application.targetFrameRate = hz;
+                Debug.Log("[mobile] 屏幕刷新率 " + hz + "Hz，目标帧率跟它走");
                 Screen.sleepTimeout = SleepTimeout.NeverSleep;
                 // 画质档从 Ultra 降到 Medium：Ultra 是照桌面显卡拉的，手机上先求稳，
                 // 真要往回加再说（这游戏没有实时阴影，档位差的是光照数量和贴图过滤）

@@ -30,6 +30,7 @@ namespace MinecraftTetris
         float _msShown;
         int _slowShown;
         float _loop, _view, _hud, _ctl, _map;
+        string _hzInfo = "";
 
         GUIStyle _style;
         readonly StringBuilder _sb = new StringBuilder(96);
@@ -68,6 +69,10 @@ namespace MinecraftTetris
                 _map = (float)(PerfCounters.MapMs / n);
                 PerfCounters.Reset();
 
+                // 屏幕刷新率 vs 我们锁的目标帧率：90Hz 屏锁 60 会退成 45，这个对照一眼能看出来
+                _hzInfo = "屏" + Mathf.RoundToInt(Screen.currentResolution.refreshRate)
+                          + " / 目标" + Application.targetFrameRate;
+
                 _frames = 0;
                 _slow = 0;
                 _elapsed = 0f;
@@ -92,6 +97,7 @@ namespace MinecraftTetris
             _sb.Length = 0;
             _sb.Append(Mathf.RoundToInt(_fpsShown)).Append(" fps   ")
                .Append(_msShown.ToString("0.0")).Append(" ms   卡顿 ").Append(_slowShown)
+               .Append("   ").Append(_hzInfo)
                .Append('\n')
                .Append("逻辑 ").Append(_loop.ToString("0.0"))
                .Append("  视图 ").Append(_view.ToString("0.0"))
