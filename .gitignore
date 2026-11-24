@@ -74,3 +74,6 @@ WebDeploy/
 
 # 素材备份（字体原文件、字符表等，只在本地留档）
 _backup/
+
+# 安卓打包产物
+BuildAndroid/
