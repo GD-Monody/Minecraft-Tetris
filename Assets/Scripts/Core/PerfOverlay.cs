@@ -37,10 +37,9 @@ namespace MinecraftTetris
 
         void Awake()
         {
-            // 手机上先一直开着，量完数据再决定要不要收进设置里
-            _show = MobileMode.Enabled;
-            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-fps") >= 0)
-                _show = true;
+            // 平时不显示：手机上一直挂着太碍事。要量性能时用命令行带 -fps 启动
+            // （桌面版：MinecraftTetris.exe -fps）。计时本身几乎不花钱，留着随时能用。
+            _show = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-fps") >= 0;
         }
 
         void Update()
