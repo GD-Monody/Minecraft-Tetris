@@ -148,6 +148,13 @@ namespace MinecraftTetris
 
         void OnGUI()
         {
+            long t0 = PerfCounters.Now;
+            DrawMap();
+            PerfCounters.MapMs += PerfCounters.Ms(t0);
+        }
+
+        void DrawMap()
+        {
             Grid grid = Loop != null ? Loop.Grid : null;
             if (Hidden || grid == null || !UsefulFor(grid.SizeZ))
                 return;

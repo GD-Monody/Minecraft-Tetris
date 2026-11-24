@@ -271,6 +271,7 @@ namespace MinecraftTetris
             }
             _wasFrozen = false;
 
+            long __t0 = PerfCounters.Now;
             float k = 1f - Mathf.Exp(-Smooth * Time.deltaTime);
             _fireTime += Time.deltaTime;
             UpdateFireFrame();
@@ -314,7 +315,10 @@ namespace MinecraftTetris
 
             // 正在下落的方块：位置追目标，朝向按时间缓动到新角度
             if (_pieceCells == null)
+            {
+                PerfCounters.ViewMs += PerfCounters.Ms(__t0);
                 return;
+            }
             if (_rotT < 1f)
             {
                 _rotT = Mathf.Min(1f, _rotT + Time.deltaTime / RotDuration);
@@ -332,6 +336,8 @@ namespace MinecraftTetris
                 go.transform.position = _pieceVisual[i];
                 go.transform.rotation = rot;
             }
+
+            PerfCounters.ViewMs += PerfCounters.Ms(__t0);
         }
 
         /// <summary>

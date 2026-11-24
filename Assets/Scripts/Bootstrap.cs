@@ -667,11 +667,16 @@ namespace MinecraftTetris
             if (_mobile != null)
                 input = InputState.Merge(input, _mobile.Read());
 
+            long __t0 = PerfCounters.Now;
             _loop.Tick(Time.deltaTime, input);
+            PerfCounters.LoopMs += PerfCounters.Ms(__t0);
+
+            long __t1 = PerfCounters.Now;
             _view.RefreshPiece(_loop.Current);
             SyncTntFlash();
             SyncFire();
             SyncGhost();
+            PerfCounters.ViewMs += PerfCounters.Ms(__t1);
 
             // 调试用：-demo 启动时在自动截图前炸一把粒子，方便截图看效果
             if (_demoMode && !_demoBurst && Time.time > 5.2f)

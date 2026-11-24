@@ -234,6 +234,13 @@ namespace MinecraftTetris
 
         void OnGUI()
         {
+            long t0 = PerfCounters.Now;
+            DrawHud();
+            PerfCounters.HudMs += PerfCounters.Ms(t0);
+        }
+
+        void DrawHud()
+        {
             if (Hidden)
                 return;
 

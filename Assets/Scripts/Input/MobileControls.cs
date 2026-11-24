@@ -680,6 +680,13 @@ namespace MinecraftTetris
 
         void OnGUI()
         {
+            long t0 = PerfCounters.Now;
+            DrawControls();
+            PerfCounters.CtlMs += PerfCounters.Ms(t0);
+        }
+
+        void DrawControls()
+        {
             if (!Visible || !UiSkin.WorthDrawing())
                 return;
 
