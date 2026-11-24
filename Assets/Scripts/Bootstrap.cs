@@ -1060,11 +1060,44 @@ namespace MinecraftTetris
             }
         }
 
+        /// <summary>
+        /// 截图存到工程下的 Logs/，文件名带时间戳。
+        ///
+        /// 以前写 Application.persistentDataPath（C:\Users\…\LocalLow\MinecraftTetris）：
+        /// 每轮验证都覆盖同一个 auto_shot.png，旧图留不住，而且那个目录在系统盘上，
+        /// 一轮轮验证下来攒的全是碎图（回收站里一次能翻出四百多张）。
+        /// 现在直接落进工程目录，验证完翻目录就行，也不再去系统盘上制造垃圾。
+        /// </summary>
         void CaptureShot(string fileName)
         {
-            string path = System.IO.Path.Combine(Application.persistentDataPath, fileName);
+            string name = System.IO.Path.GetFileNameWithoutExtension(fileName)
+                          + "_" + System.DateTime.Now.ToString("MMdd_HHmmss") + ".png";
+            string path = System.IO.Path.Combine(ShotDir(), name);
             ScreenCapture.CaptureScreenshot(path);
             Debug.Log("[MinecraftTetris] 截图: " + path);
+        }
+
+        static string ShotDir()
+        {
+#if UNITY_STANDALONE
+            // 构建产物在 <工程>/Build/ 下，dataPath 指到 <…>/Build/MinecraftTetris_Data，
+            // 往上两级就是工程根目录
+            string proj = System.IO.Path.GetFullPath(
+                System.IO.Path.Combine(Application.dataPath, "..", ".."));
+            string logs = System.IO.Path.Combine(proj, "Logs");
+            try
+            {
+                if (!System.IO.Directory.Exists(logs))
+                    System.IO.Directory.CreateDirectory(logs);
+                return logs;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning("[MinecraftTetris] Logs 目录建不出来，退回 persistentDataPath: " + e.Message);
+            }
+#endif
+            // 手机 / 网页上还是写各自的可写目录（安卓的 persistentDataPath 在应用私有空间里）
+            return Application.persistentDataPath;
         }
 
         void RestartGame()
