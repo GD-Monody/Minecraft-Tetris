@@ -202,6 +202,8 @@ namespace MinecraftTetris
                 _layerMap.Loop = _loop;
                 _layerMap.View = _view;     // 「只亮 z 面」要改视图层的可见性
                 _layerMap.Controls = _mobile;   // 横屏时那颗按钮要跟暂停键对齐
+                // 反向也连一下：撤销键要贴着层次图的折叠键摆（否则横屏下两颗键会叠在一起）
+                _mobile.Layer = _layerMap;
                 _layerMap.Hidden = true;    // 开始界面盖着的时候不画
                 // -openmap：截图核对俯视图的版式用（手机上它默认是收起的）
                 if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-openmap") >= 0)

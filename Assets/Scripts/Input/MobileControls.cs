@@ -102,8 +102,13 @@ namespace MinecraftTetris
         float _btnDia = 40f;
         Rect _pad;
         Rect _pauseRect;
-        /// <summary>暂停键左边那颗「撤销」（作弊关着时宽高为 0，不画不接）。</summary>
+        /// <summary>暂停键旁边那颗「撤销」（作弊关着时宽高为 0，不画不接）。</summary>
         Rect _undoRect;
+        /// <summary>上一次算撤销键用的层次图折叠键矩形，变了才重排。</summary>
+        Rect _lastTab;
+
+        /// <summary>层俯视图（手机上那颗「层次图 / 收起」折叠键）。撤销键要贴着它摆。</summary>
+        public LayerMap Layer;
 
         /// <summary>现在能不能撤（作弊开着、有上一步）。由 Bootstrap 注入。</summary>
         public System.Func<bool> CanUndo;
@@ -162,6 +167,18 @@ namespace MinecraftTetris
             {
                 _lastCheat = GameSettings.CheatUndo;
                 LayoutTopKeys();
+            }
+
+            // 层次图折叠键的位置是它自己 OnGUI 里算的（横屏左上、竖屏右边一条），
+            // 撤销键贴着它摆，所以它一变就得跟着挪 —— 否则横屏下两颗键会叠在一起。
+            if (Layer != null)
+            {
+                Rect tab = Layer.TabRect;
+                if (tab != _lastTab)
+                {
+                    _lastTab = tab;
+                    LayoutTopKeys();
+                }
             }
 
             _out = default(InputState);
@@ -411,11 +428,20 @@ namespace MinecraftTetris
 
             _pauseRect = new Rect(w - safeRight - m - ps, topInset + m, ps, ps);
 
-            // 撤销键贴在暂停键左边，和它同一行、同高（作弊关着时宽度是 0，等于不存在）
+            // 「撤销」贴在层次图那颗折叠键下面，尺寸跟它一样。
+            //
+            // 以前挂在暂停键左边：横屏时右上是层次图面板的地方，展开后面板正好压在
+            // 撤销键上（真机上两颗键叠成一团，按下去到底触发哪个看运气）。
+            // 收到折叠键下面之后，两者永远上下排列，展开/收起都不会互相压。
+            // 没有层次图（场地只有一层深、或用的是桌面键盘）时退回老位置。
             float uw = Hud.MobileUndoWidth;
-            _undoRect = uw > 0f
-                ? new Rect(_pauseRect.x - m - uw, _pauseRect.y, uw, ps)
-                : new Rect(0f, 0f, 0f, 0f);
+            Rect pill = Layer != null ? Layer.TabRect : new Rect(0f, 0f, 0f, 0f);
+            if (uw <= 0f)
+                _undoRect = new Rect(0f, 0f, 0f, 0f);
+            else if (pill.width > 0f)
+                _undoRect = new Rect(pill.x, pill.yMax + m, pill.width, pill.height);
+            else
+                _undoRect = new Rect(_pauseRect.x - m - uw, _pauseRect.y, uw, ps);
         }
 
         /// <summary>把在用的槽位铺成 rows x cols 的网格。</summary>
