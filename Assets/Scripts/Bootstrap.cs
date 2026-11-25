@@ -59,6 +59,8 @@ namespace MinecraftTetris
         Camera _mainCam;
         CameraRig _rig;
         float _fieldHalfW;
+        /// <summary>上一次取景时的窗口尺寸。窗口一变就要重算相机距离（见 Update）。</summary>
+        int _lastFitW = -1, _lastFitH = -1;
         float _fieldHalfH;
         Camera _bgCam;          // 只清屏、不画东西的垫底相机
         bool _camLogged;
@@ -202,8 +204,12 @@ namespace MinecraftTetris
                 _layerMap.Loop = _loop;
                 _layerMap.View = _view;     // 「只亮 z 面」要改视图层的可见性
                 _layerMap.Controls = _mobile;   // 横屏时那颗按钮要跟暂停键对齐
-                // 反向也连一下：撤销键要贴着层次图的折叠键摆（否则横屏下两颗键会叠在一起）
-                _mobile.Layer = _layerMap;
+                // 反向也连一下：横屏下撤销键要贴着层次图的折叠键摆。
+                // 注意 _mobile 只有手机端才有，桌面跑了会直接空引用 —— 而且这个异常发生在
+                // Start 中途，后面的标题页、相机取景、主题全都不会执行，表现是「一整片黑 + 几个面板」。
+                // 所以必须判空。
+                if (_mobile != null)
+                    _mobile.Layer = _layerMap;
                 _layerMap.Hidden = true;    // 开始界面盖着的时候不画
                 // -openmap：截图核对俯视图的版式用（手机上它默认是收起的）
                 if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-openmap") >= 0)
@@ -526,6 +532,20 @@ namespace MinecraftTetris
             // 松手 0.35 秒后 ResizeGuard 自己还原，这里不用管恢复。
             if (ResizeGuard.Frozen)
                 return;
+
+            // 窗口尺寸变了就重新取景。
+            //
+            // 桌面上没有任何地方管这件事：相机只在启动时按 aspect 算过一次距离，
+            // 之后把窗口拖扁（或者 -window / 系统恢复了一个和启动时不同的尺寸），
+            // aspect 变了距离却没变，场地就被推到画面外 —— 只剩一片黑加几个面板。
+            // 手机上不用这里管，那条路在 SyncMobileUi 里按可视区重算。
+            if (!MobileMode.Enabled && _rig != null
+                && (Screen.width != _lastFitW || Screen.height != _lastFitH))
+            {
+                _lastFitW = Screen.width;
+                _lastFitH = Screen.height;
+                _rig.FitToField(_fieldHalfW, _fieldHalfH, 1.06f);
+            }
 
             SyncMobileUi();
             SyncUiInsets();

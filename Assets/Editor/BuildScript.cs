@@ -26,7 +26,11 @@ namespace MinecraftTetris.EditorTools
                 scenes = new[] { "Assets/Scenes/Game.unity" },
                 locationPathName = Path.Combine(outDir, "MinecraftTetris.exe"),
                 target = BuildTarget.StandaloneWindows64,
-                options = BuildOptions.None,
+                // -dev：编成开发版（带符号，运行时栈里有行号）。排查「Start 里空引用」这种
+                // 只报方法名的问题时靠它，平时不带这个参数，包小一些。
+                options = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-dev") >= 0
+                    ? BuildOptions.Development | BuildOptions.AllowDebugging
+                    : BuildOptions.None,
             };
 
             BuildReport report = BuildPipeline.BuildPlayer(options);
