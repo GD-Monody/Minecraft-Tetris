@@ -31,7 +31,19 @@
     <!-- 应用和功能里显示的图标（取游戏自己的 exe，省得再塞一份 ico） -->
     <Icon Id="AppIcon" SourceFile="$(var.SrcDir)\MinecraftTetris.exe" />
     <Property Id="ARPPRODUCTICON" Value="AppIcon" />
-    <Property Id="ARPNOMODIFY" Value="1" />
+    <!-- ARPNOMODIFY 由 WixUI 自己定义，这里不要重复声明（会报 Duplicate symbol） -->
+
+    <!--
+      安装向导。MSI 默认是没有界面的（双击直接静默装），要「欢迎 → 选路径 → 进度 → 完成」
+      这一套就得引 WixUI，并用 WixVariable 把默认的灰底图换成我们自己的：
+      banner 是顶部横条（MSI 自己在上面对齐产品名），dialog 是左侧大图。
+      两张图都故意做成浅色 —— MSI 的文字固定是深色，深底会看不清。
+    -->
+    <WixVariable Id="WixUIBannerBmp" Value="$(var.ArtDir)\banner.bmp" />
+    <WixVariable Id="WixUIDialogBmp" Value="$(var.ArtDir)\dialog.bmp" />
+    <UIRef Id="WixUI_InstallDir" />
+    <!-- 这一页的「更改目录」按钮改的就是这个属性指向的目录 -->
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
 
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="LocalAppDataFolder">

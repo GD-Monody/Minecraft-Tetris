@@ -45,7 +45,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-"%WIX%\candle.exe" -nologo -dSrcDir="%SRC%" -out "%OBJ%\\" "%OBJ%\Files.wxs" "%~dp0main.wxs"
+"%WIX%\candle.exe" -nologo -dSrcDir="%SRC%" -dArtDir="%~dp0art" -out "%OBJ%\\" "%OBJ%\Files.wxs" "%~dp0main.wxs"
 if errorlevel 1 (
     echo [FAILED] candle
     exit /b 1

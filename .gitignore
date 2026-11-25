@@ -84,3 +84,6 @@ BuildInstaller/
 
 # MSI 编译中间产物
 .msi-obj/
+
+# MSI 反编译产物的临时目录（dark.exe -x 生成）
+.msi-dump/
