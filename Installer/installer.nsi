@@ -82,8 +82,14 @@ Section "游戏主程序（必需）" SEC_MAIN
 
   ; /nonfatal：单个文件失败不立刻抛系统弹窗，攒到最后统一报，
   ; 这样能给出「是不是游戏还开着」这种有用的提示，而不是一串文件名。
+  ;
+  ; 另外两样不带：
+  ; · *.bat / *.log —— Build\ 下的 play-portrait.bat 之类是开发脚本；
+  ; · UnityCrashHandler64.exe —— 只是崩溃报告器，游戏本体不需要它。
+  ;   而且它经常被杀软判定成可疑文件、写入直接被拒（实测本机就被卡在这一步），
+  ;   不带它反而更容易装成功。
   ClearErrors
-  File /nonfatal /r /x *.bat /x *.log "${SRC_DIR}\*.*"
+  File /nonfatal /r /x *.bat /x *.log /x UnityCrashHandler64.exe "${SRC_DIR}\*.*"
   IfErrors 0 write_ok
     MessageBox MB_ICONSTOP|MB_OK \
       "有些文件没能写入 $INSTDIR。$\r$\n$\r$\n常见原因：$\r$\n· 游戏正在运行（先退出再装）；$\r$\n· 目标目录被别的程序占用，或者没有写权限（换一个目录试试）。"
