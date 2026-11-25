@@ -554,8 +554,8 @@ namespace MinecraftTetris
         {
             if (_undoRect.width > 0f && _undoRect.Contains(p))
             {
-                // 和暂停键一样按下即响应；没得撤时点了不做事（键本身是灰的）
-                if (!Over && OnUndoClick != null && CanUndo != null && CanUndo())
+                // 和暂停键一样按下即响应；没得撤、或者暂停 / 结算锁着时点了不做事（键是灰的）
+                if (!Locked && OnUndoClick != null && CanUndo != null && CanUndo())
                     OnUndoClick();
                 return;
             }
@@ -745,19 +745,31 @@ namespace MinecraftTetris
             DrawUndo();
         }
 
-        /// <summary>暂停键左边那颗「撤销」：没得撤时压暗，但不隐藏（位置稳定，不会跳）。</summary>
+        /// <summary>
+        /// 「撤销」键：没得撤、或者暂停 / 结算期间都压暗，但不隐藏（位置稳定，不会跳）。
+        ///
+        /// 之前只判「有没有上一步」，没判暂停 —— 暂停面板盖上来以后这颗键还是亮的、还能点，
+        /// 跟旁边一片灰掉的按键完全不一样，也和「暂停了就别再动棋盘」对不上。
+        /// </summary>
         void DrawUndo()
         {
             if (_undoRect.width <= 0f)
                 return;
 
-            bool can = CanUndo != null && CanUndo();
+            bool can = CanUndo != null && CanUndo() && !Locked;
             Fill(_undoRect, can
                 ? (Light ? new Color(1f, 1f, 1f, 0.88f) : new Color(0.11f, 0.13f, 0.18f, 0.8f))
-                : (Light ? new Color(1f, 1f, 1f, 0.42f) : new Color(0.11f, 0.13f, 0.18f, 0.32f)));
+                : (Light ? new Color(1f, 1f, 1f, 0.34f) : new Color(0.11f, 0.13f, 0.18f, 0.28f)));
             Border(_undoRect, new Color(UiSkin.Accent.r, UiSkin.Accent.g, UiSkin.Accent.b,
-                can ? 0.32f : 0.14f));
+                can ? 0.32f : 0.12f));
+
+            // 字也要压暗：上面的 Fill / Border 只管底色和边框，文字用的是 _pauseStyle 里的固定颜色，
+            // 光改底色的话会变成「浅框 + 黑字」，比旁边灰掉的「层次图」显眼得多。
+            Color oldColor = GUI.color;
+            if (!can)
+                GUI.color = new Color(1f, 1f, 1f, 0.42f);
             GUI.Label(_undoRect, "撤销", _pauseStyle);
+            GUI.color = oldColor;
         }
 
         void DrawPad()
