@@ -41,6 +41,8 @@
     -->
     <WixVariable Id="WixUIBannerBmp" Value="$(var.ArtDir)\banner.bmp" />
     <WixVariable Id="WixUIDialogBmp" Value="$(var.ArtDir)\dialog.bmp" />
+    <!-- 许可页正文：WiX 自带的是 Lorem ipsum 占位文字，换成我们自己的中文说明 -->
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.ArtDir)\license.rtf" />
     <UIRef Id="WixUI_InstallDir" />
     <!-- 这一页的「更改目录」按钮改的就是这个属性指向的目录 -->
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  外层引导包（Burn）：生成一个 Setup.exe，里面捆着 MSI。
+
+  商业软件基本都是这个形状：用户拿到的是单个 exe，exe 先起自己的界面，再把真正干活的
+  MSI 交给 Windows Installer 服务。好处是一个文件分发、可以顺带装运行库（.NET / VC++）；
+  坏处是多一层，出问题要分「引导层还是 MSI 层」。
+
+  DisplayInternalUI="yes"：exe 自己那层只做欢迎 / 进度，具体页面（选目录、许可）
+  交给内层 MSI 的 WixUI —— 这样选安装路径那个页面还在，不会因为套了一层就丢掉。
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+     xmlns:bal="http://schemas.microsoft.com/wix/BalExtension">
+
+  <Bundle Name="Minecraft Tetris"
+          Version="1.0.0.0"
+          Manufacturer="GD-Monody"
+          UpgradeCode="7C0A2F5E-1B4D-4C8A-9E63-2F8B5A1D4C77"
+          IconSourceFile="$(var.ArtDir)\setup.ico">
+
+    <BootstrapperApplicationRef Id="WixStandardBootstrapperApplication.RtfLicense">
+      <bal:WixStandardBootstrapperApplication LicenseFile="$(var.ArtDir)\license.rtf"
+                                              LogoFile="$(var.ArtDir)\logo.bmp" />
+    </BootstrapperApplicationRef>
+
+    <Chain>
+      <!-- 内层 MSI 用自己那套 WixUI 页面（含选安装位置） -->
+      <MsiPackage Id="MainMsi"
+                  SourceFile="$(var.MsiPath)"
+                  Vital="yes"
+                  Compressed="yes"
+                  DisplayInternalUI="yes" />
+    </Chain>
+  </Bundle>
+</Wix>

@@ -51,7 +51,10 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM -loc: WiX ships the wizard text only in English; WixUI_zh-CN.wxl (from the WiX
+REM repo, MS-RL) carries the Chinese strings. -cultures makes light pick it up.
 "%WIX%\light.exe" -nologo -b "%SRC%" -ext WixUIExtension -sval ^
+    -loc "%~dp0WixUI_zh-CN.wxl" -cultures:zh-CN ^
     -out "%OUT%\MinecraftTetris-1.0.msi" "%OBJ%\main.wixobj" "%OBJ%\Files.wixobj"
 if errorlevel 1 (
     echo [FAILED] light
