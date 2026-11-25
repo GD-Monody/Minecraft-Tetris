@@ -13,6 +13,9 @@ namespace MinecraftTetris.EditorTools
         {
             SetupPlayer();
             SetupTextures();
+            // 桌面的 exe 图标：任务栏、桌面快捷方式、安装后的开始菜单都取它。
+            // 之前只给安卓设过图标，Windows 版一直是 Unity 的默认图标。
+            SetupIcons(BuildTargetGroup.Standalone, "Windows");
 
             string outDir = "Build";
             if (!Directory.Exists(outDir))
@@ -92,7 +95,7 @@ namespace MinecraftTetris.EditorTools
         {
             SetupPlayer();
             SetupTextures();
-            SetupAndroidIcons();
+            SetupIcons(BuildTargetGroup.Android, "Android");
             ApplyAndroidToolPaths();
 
             // 先切平台：贴图会被重新按 Android 的压缩格式导一遍，不切的话
@@ -227,20 +230,23 @@ namespace MinecraftTetris.EditorTools
 
         /// <summary>
         /// 把 Assets/Art/AppIcon 里那几张 PNG 按 Unity 要的尺寸塞进图标槽。
-        /// 拿不到对应尺寸就给最接近的（Unity 会自己缩），总比留一个空槽变成默认图标好。
+        ///
+        /// **必须是精确尺寸**：Unity 对尺寸不匹配的图标会直接跳过（Windows 版实测：
+        /// 用 512 去填 256 的槽，最后 exe 的图标一个都没换，大小跟播放器模板一模一样）。
+        /// 所以这里先找同名精确的，找不到才退而求其次拿更大的缩。
         /// </summary>
-        static void SetupAndroidIcons()
+        static void SetupIcons(BuildTargetGroup group, string label)
         {
-            int[] sizes = PlayerSettings.GetIconSizesForTargetGroup(BuildTargetGroup.Android);
+            int[] sizes = PlayerSettings.GetIconSizesForTargetGroup(group);
             var icons = new Texture2D[sizes.Length];
-            string[] have = { "48", "72", "96", "144", "192", "512" };
+            int[] have = { 16, 32, 48, 64, 72, 96, 128, 144, 192, 256, 512, 1024 };
 
             for (int i = 0; i < sizes.Length; i++)
             {
-                string pick = have[have.Length - 1];
-                foreach (string s in have)
+                int pick = have[have.Length - 1];
+                foreach (int s in have)
                 {
-                    if (int.Parse(s) >= sizes[i])
+                    if (s >= sizes[i])
                     {
                         pick = s;
                         break;
@@ -251,10 +257,13 @@ namespace MinecraftTetris.EditorTools
                 icons[i] = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
                 if (icons[i] == null)
                     Debug.LogWarning("[MinecraftTetris] 图标缺失: " + path);
+                else if (pick != sizes[i])
+                    Debug.LogWarning("[MinecraftTetris] 图标尺寸不匹配: 槽位 " + sizes[i]
+                                     + " 用了 " + pick + "（Unity 可能会跳过这一槽）");
             }
 
-            PlayerSettings.SetIconsForTargetGroup(BuildTargetGroup.Android, icons);
-            Debug.Log("[MinecraftTetris] Android 图标尺寸: " + string.Join(",", sizes));
+            PlayerSettings.SetIconsForTargetGroup(group, icons);
+            Debug.Log("[MinecraftTetris] " + label + " 图标尺寸: " + string.Join(",", sizes));
         }
 
         /// <summary>
