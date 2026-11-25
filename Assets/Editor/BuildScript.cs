@@ -60,7 +60,13 @@ namespace MinecraftTetris.EditorTools
             if (!Directory.Exists(outDir))
                 Directory.CreateDirectory(outDir);
 
-            PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Disabled;
+            // 压缩用 Gzip，并且打开「解压兜底」：
+            // · 不压缩时 .data 有 56MB，itch / 任何静态托管都要整包传；
+            // · Gzip 靠 .gz 后缀 + 响应头 Content-Encoding 生效，而静态托管（itch 可以，
+            //   但我们自己的预览服务不一定）不一定给这个头 —— 开了兜底以后，Unity 的 loader
+            //   在收到没解压的字节时自己解，两种服务器都能跑。
+            PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Gzip;
+            PlayerSettings.WebGL.decompressionFallback = true;
             PlayerSettings.WebGL.memorySize = 512;
             // 自带模板带一条 Unity 页脚，手机上白占高度；这个模板是满屏画布 + 触控禁缩放
             PlayerSettings.WebGL.template = "PROJECT:MinecraftMobile";
