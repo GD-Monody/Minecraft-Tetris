@@ -81,3 +81,6 @@ BuildAndroid/
 # 安装包 / 免安装包产物，以及打安装包时的临时目录
 BuildInstaller/
 .msi-tmp/
+
+# MSI 编译中间产物
+.msi-obj/

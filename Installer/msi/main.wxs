@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  我的世界俄罗斯方块 —— MSI 安装包定义（WiX 3.x）
+
+  为什么除了 NSIS 还要做一份 MSI：
+  本机的安全软件（联想电脑管家 / 火绒引擎）会把「未签名 exe 大批量创建文件」当成勒索行为，
+  整进程拒写 —— NSIS 安装包因此每个文件都写不进去。而 MSI 的写文件动作是由
+  Windows Installer 服务（msiexec，微软签名的系统组件）执行的，不经过我们那个 exe，
+  通常不会命中这条规则。正经商业软件走 MSI / MSIX 也有这个原因。
+
+  装到 %LOCALAPPDATA%\Programs\MinecraftTetris（perUser），不弹 UAC。
+  存档在 LocalLow，卸载不会删。
+
+  编译见 build_msi.bat（heat 生成文件清单 → candle 编译 → light 链接）。
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*"
+           Name="Minecraft Tetris"
+           Language="2052"
+           Version="1.0.0.0"
+           Manufacturer="GD-Monody"
+           Codepage="936"
+           UpgradeCode="03932C30-DABF-444A-B8CC-66159A50AFCD">
+
+    <!-- perUser：装到当前用户目录，不弹 UAC；MajorUpgrade 让新版直接覆盖旧版 -->
+    <Package InstallerVersion="500" Compressed="yes" InstallScope="perUser" Platform="x64"
+             SummaryCodepage="936" />
+    <MajorUpgrade DowngradeErrorMessage="A newer version is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- 应用和功能里显示的图标（取游戏自己的 exe，省得再塞一份 ico） -->
+    <Icon Id="AppIcon" SourceFile="$(var.SrcDir)\MinecraftTetris.exe" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+    <Property Id="ARPNOMODIFY" Value="1" />
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="LocalAppDataFolder">
+        <Directory Id="ProgramsFolder" Name="Programs">
+          <Directory Id="INSTALLFOLDER" Name="MinecraftTetris" />
+        </Directory>
+      </Directory>
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="AppMenuFolder" Name="Minecraft Tetris" />
+      </Directory>
+      <Directory Id="DesktopFolder" />
+    </Directory>
+
+    <!-- 开始菜单：启动 + 卸载。KeyPath 用注册表值，MSI 要求每个组件有唯一 key path -->
+    <DirectoryRef Id="AppMenuFolder">
+      <Component Id="StartMenuShortcuts" Guid="*">
+        <Shortcut Id="StartMenuApp"
+                  Name="Minecraft Tetris"
+                  Description="Minecraft Tetris 3D"
+                  Target="[INSTALLFOLDER]MinecraftTetris.exe"
+                  WorkingDirectory="INSTALLFOLDER" />
+        <Shortcut Id="StartMenuUninstall"
+                  Name="Uninstall Minecraft Tetris"
+                  Target="[System64Folder]msiexec.exe"
+                  Arguments="/x [ProductCode]" />
+        <RemoveFolder Id="RemoveAppMenuFolder" On="uninstall" />
+        <RegistryValue Root="HKCU" Key="Software\MinecraftTetris"
+                       Name="StartMenu" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <!-- 桌面快捷方式 -->
+    <DirectoryRef Id="DesktopFolder">
+      <Component Id="DesktopShortcut" Guid="*">
+        <Shortcut Id="DesktopApp"
+                  Name="Minecraft Tetris"
+                  Description="Minecraft Tetris 3D"
+                  Target="[INSTALLFOLDER]MinecraftTetris.exe"
+                  WorkingDirectory="INSTALLFOLDER" />
+        <RegistryValue Root="HKCU" Key="Software\MinecraftTetris"
+                       Name="Desktop" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <Feature Id="Main" Title="Game files" Level="1" Display="expand">
+      <ComponentGroupRef Id="GameFiles" />
+      <ComponentRef Id="StartMenuShortcuts" />
+      <ComponentRef Id="DesktopShortcut" />
+    </Feature>
+  </Product>
+</Wix>
