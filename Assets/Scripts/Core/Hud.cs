@@ -363,6 +363,16 @@ namespace MinecraftTetris
         }
 
         /// <summary>
+        /// 手机按键上的字号。撤销 / 暂停 / 收起 / 只亮 这几颗键原来各算各的，
+        /// 放在一起大小不一（真机上一眼就看出来）。统一从这里取，改一处全都跟着变。
+        /// 系数 0.32 是按暂停键高度定的，和「撤销」原来那档一致。
+        /// </summary>
+        public static int MobileKeyFontSize
+        {
+            get { return Mathf.Max(10, Mathf.RoundToInt(MobilePauseSize * 0.32f)); }
+        }
+
+        /// <summary>
         /// 手机左上角的统计面板。
         ///
         /// 以前是横贯整屏的一条通栏（分数 / 消除 / 最高 / 下一个），在手机上一眼就是

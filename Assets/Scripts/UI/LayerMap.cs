@@ -76,6 +76,10 @@ namespace MinecraftTetris
         GUIStyle _headMissStyle;
         GUIStyle _sliderShadow;
         GUIStyle _pillStyle;
+        /// <summary>「只亮 z 面」中间那段的样式（与别的按键同字号）。</summary>
+        GUIStyle _focusStyle;
+        /// <summary>两端的 −/+ 样式（比字再大一点，手指好点）。</summary>
+        GUIStyle _signStyle;
         int _fontTitle = -1;
         int _fontSmall = -1;
         static Texture2D _atlas;
@@ -270,9 +274,9 @@ namespace MinecraftTetris
             string mid = on
                 ? (narrow ? "z=" + (shownZ + 1) : "只亮 z=" + (shownZ + 1))
                 : (narrow ? "只亮" : "只亮 z 面");
-            GUI.Label(new Rect(r.x, r.y, zone, h), "−", _pillStyle);
-            GUI.Label(new Rect(r.xMax - zone, r.y, zone, h), "+", _pillStyle);
-            GUI.Label(new Rect(r.x + zone, r.y, w - zone * 2f, h), mid, _pillStyle);
+            GUI.Label(new Rect(r.x, r.y, zone, h), "−", _signStyle);
+            GUI.Label(new Rect(r.xMax - zone, r.y, zone, h), "+", _signStyle);
+            GUI.Label(new Rect(r.x + zone, r.y, w - zone * 2f, h), mid, _focusStyle);
 
             if (InputLocked)
                 return;
@@ -325,6 +329,12 @@ namespace MinecraftTetris
                 ? safe.x + UiSkin.P(8f)
                 : Screen.width - safeRight - w - UiSkin.P(4f);
             var r = new Rect(x, Hud.MobileBarHeight + UiSkin.P(4f), w, h);
+
+            // 字和「撤销 / 暂停」一档，但竖屏那条竖键只有二十来像素宽，
+            // 按统一字号会把「层 / 次 / 图」裁掉 —— 这里按宽度收一下，横屏不受影响
+            if (MobileMode.Enabled)
+                _pillStyle.fontSize = Mathf.Max(9,
+                    Mathf.Min(Hud.MobileKeyFontSize, Mathf.RoundToInt(w * 0.66f)));
 
             // 记下来：面板展开时要贴在它左边
             _tabRect = r;
@@ -457,10 +467,19 @@ namespace MinecraftTetris
             _headMissStyle = Make(title, WarnYellow, TextAnchor.MiddleRight);
             // 滑条上那行字的影子：样式只建一次，别每帧 new（IMGUI 每帧都走一遍这里）
             _sliderShadow = Make(title, Light ? new Color(0f, 0f, 0f, 0f) : new Color(0f, 0f, 0f, 0.85f), TextAnchor.MiddleLeft);
-            _pillStyle = Make(Mathf.Max(10, Mathf.RoundToInt(small * 1.1f)),
-                Light ? new Color(0.10f, 0.12f, 0.16f, 1f) : new Color(0.86f, 0.93f, 1f, 1f),
-                TextAnchor.MiddleCenter);
+            // 按键字号：手机上统一跟「撤销 / 暂停」一档（Hud.MobileKeyFontSize），
+            // 桌面上没有那几颗键，沿用原来的小字档。
+            int key = MobileMode.Enabled ? Hud.MobileKeyFontSize : Mathf.Max(10, Mathf.RoundToInt(small * 1.1f));
+            Color keyColor = Light ? new Color(0.10f, 0.12f, 0.16f, 1f) : new Color(0.86f, 0.93f, 1f, 1f);
+
+            _pillStyle = Make(key, keyColor, TextAnchor.MiddleCenter);
             _pillStyle.wordWrap = false;
+            // 「只亮 z 面」那颗三段键：中间那段的字和别的键一档
+            _focusStyle = Make(key, keyColor, TextAnchor.MiddleCenter);
+            _focusStyle.wordWrap = false;
+            // 两端的 −/+ 比字再大一点：它们是给手指点的，小符号不好瞄
+            _signStyle = Make(Mathf.RoundToInt(key * 1.35f), keyColor, TextAnchor.MiddleCenter);
+            _signStyle.wordWrap = false;
         }
 
         int _styleTheme = -1;

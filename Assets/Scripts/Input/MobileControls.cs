@@ -428,17 +428,17 @@ namespace MinecraftTetris
 
             _pauseRect = new Rect(w - safeRight - m - ps, topInset + m, ps, ps);
 
-            // 「撤销」贴在层次图那颗折叠键下面，尺寸跟它一样。
+            // 「撤销」在横屏时贴到层次图折叠键下面，竖屏保持原来的位置。
             //
-            // 以前挂在暂停键左边：横屏时右上是层次图面板的地方，展开后面板正好压在
-            // 撤销键上（真机上两颗键叠成一团，按下去到底触发哪个看运气）。
-            // 收到折叠键下面之后，两者永远上下排列，展开/收起都不会互相压。
-            // 没有层次图（场地只有一层深、或用的是桌面键盘）时退回老位置。
+            // 横屏的冲突是：撤销原来挂在暂停键左边，而右上正好是层次图面板，展开后压住它。
+            // 竖屏没有这个冲突 —— 折叠键是屏幕右边那条竖键、暂停键在右上角，撤销夹在
+            // 暂停键左边的空档里本来就合适，硬塞到竖键下面反而挤。
+            // 没有层次图（场地只有一层深、或用的是桌面键盘）时也退回老位置。
             float uw = Hud.MobileUndoWidth;
             Rect pill = Layer != null ? Layer.TabRect : new Rect(0f, 0f, 0f, 0f);
             if (uw <= 0f)
                 _undoRect = new Rect(0f, 0f, 0f, 0f);
-            else if (pill.width > 0f)
+            else if (wide && pill.width > 0f)
                 _undoRect = new Rect(pill.x, pill.yMax + m, pill.width, pill.height);
             else
                 _undoRect = new Rect(_pauseRect.x - m - uw, _pauseRect.y, uw, ps);
@@ -1212,9 +1212,10 @@ namespace MinecraftTetris
             _labelStyle.fontSize = size;
             _labelStyle.alignment = TextAnchor.MiddleCenter;
 
-            // 暂停键上的「暂停 / 继续」单独一档：方键，字太大就折成两行
+            // 暂停键上的「暂停 / 继续」、撤销键上的「撤销」：字号统一取 Hud.MobileKeyFontSize，
+            // 免得和层次图那几颗键各画各的
             _pauseStyle = new GUIStyle(_labelStyle);
-            _pauseStyle.fontSize = Mathf.Max(10, Mathf.RoundToInt(Hud.MobilePauseSize * 0.32f));
+            _pauseStyle.fontSize = Hud.MobileKeyFontSize;
             _pauseStyle.normal.textColor = Light
                 ? new Color(0.10f, 0.12f, 0.16f, 0.95f)
                 : new Color(0.88f, 0.94f, 1f, 0.95f);
