@@ -84,18 +84,31 @@ namespace MinecraftTetris
                 : Orientation == ScreenMode.Portrait ? "portrait"
                 : "auto");
 #elif UNITY_ANDROID && !UNITY_EDITOR
-            // 安卓不用 LandscapeLeft/Right 那种「锁死一侧」的写法：
-            // 那会让屏幕固定朝一个方向，玩家换个手拿就是倒的。
-            // 正确做法是留在 AutoRotation，只改「允许哪几个方向」——
-            // 系统于是按重力传感器在允许的范围内转，等于 sensorLandscape。
-            // （ScreenOrientation.Landscape 这个值在新版 Unity 里已经废弃，编译不过。）
-            bool land = Orientation != ScreenMode.Portrait;
-            bool port = Orientation != ScreenMode.Landscape;
-            Screen.autorotateToLandscapeLeft = land;
-            Screen.autorotateToLandscapeRight = land;
-            Screen.autorotateToPortrait = port;
-            Screen.autorotateToPortraitUpsideDown = false;
-            Screen.orientation = ScreenOrientation.AutoRotation;
+            // 必须用「锁定方向」的值（Portrait / LandscapeLeft），不能只靠
+            // autorotateToXXX + AutoRotation。
+            //
+            // 原因：AutoRotation 落到安卓是 fullUser，它会**尊重系统的自动旋转开关**。
+            // 玩家把通知栏里的「自动旋转」关掉时（很常见），fullUser 就不转了 ——
+            // 表现出来就是「选了横屏，屏幕纹丝不动」。
+            // 而 Portrait / LandscapeLeft 对应 SCREEN_ORIENTATION_PORTRAIT / LANDSCAPE，
+            // 是强制值，不看系统开关，选了就一定转。
+            // 「自动」仍然交回系统，那时才该尊重玩家的旋转开关。
+            switch (Orientation)
+            {
+                case ScreenMode.Landscape:
+                    Screen.orientation = ScreenOrientation.LandscapeLeft;
+                    break;
+                case ScreenMode.Portrait:
+                    Screen.orientation = ScreenOrientation.Portrait;
+                    break;
+                default:
+                    Screen.autorotateToLandscapeLeft = true;
+                    Screen.autorotateToLandscapeRight = true;
+                    Screen.autorotateToPortrait = true;
+                    Screen.autorotateToPortraitUpsideDown = false;
+                    Screen.orientation = ScreenOrientation.AutoRotation;
+                    break;
+            }
 #endif
         }
 
