@@ -69,13 +69,33 @@ namespace MinecraftTetris
             ApplyOrientation();
         }
 
-        /// <summary>把选择推给网页端。桌面 / 编辑器上没有这回事，直接跳过。</summary>
+        /// <summary>
+        /// 把选择真正推给设备。网页端走模板里的 JS；安卓走 Unity 自己的
+        /// <see cref="Screen.orientation"/>（它落到 Activity 的 requestedOrientation，
+        /// 系统会真的转屏）。
+        ///
+        /// 之前只写了 WebGL 那一支，安卓上是空实现 —— 设置里点「屏幕：横屏」
+        /// 只有文字在变，屏幕纹丝不动（真机上就是这个现象）。
+        /// </summary>
         public static void ApplyOrientation()
         {
 #if UNITY_WEBGL && !UNITY_EDITOR
             MT_SetOrientation(Orientation == ScreenMode.Landscape ? "landscape"
                 : Orientation == ScreenMode.Portrait ? "portrait"
                 : "auto");
+#elif UNITY_ANDROID && !UNITY_EDITOR
+            // 安卓不用 LandscapeLeft/Right 那种「锁死一侧」的写法：
+            // 那会让屏幕固定朝一个方向，玩家换个手拿就是倒的。
+            // 正确做法是留在 AutoRotation，只改「允许哪几个方向」——
+            // 系统于是按重力传感器在允许的范围内转，等于 sensorLandscape。
+            // （ScreenOrientation.Landscape 这个值在新版 Unity 里已经废弃，编译不过。）
+            bool land = Orientation != ScreenMode.Portrait;
+            bool port = Orientation != ScreenMode.Landscape;
+            Screen.autorotateToLandscapeLeft = land;
+            Screen.autorotateToLandscapeRight = land;
+            Screen.autorotateToPortrait = port;
+            Screen.autorotateToPortraitUpsideDown = false;
+            Screen.orientation = ScreenOrientation.AutoRotation;
 #endif
         }
 
