@@ -362,7 +362,13 @@ def m_leaf(img, c):
 
 
 def m_explosive(img, c):
-    """炸药：红底 + 黑斜纹 + 顶部引线与火花。"""
+    """炸药：红底 + 黑斜纹，就这些。
+
+    先后试过两种「引线」：先是块中间一根浅卡其色的棍加黄点，后来改成 1px 引线
+    加暗带。两次都被一眼看出是「贴上去的一小块」——16 像素下，任何异色的
+    小色块都会脱离整块的气质，反而像脏点。所以干脆不画引线：
+    红黑斜纹本身就够认了，引线单独有自己那块方块。
+    """
     p = img.load()
     for y in range(TILE):
         for x in range(TILE):
@@ -371,27 +377,24 @@ def m_explosive(img, c):
         for x in range(TILE):
             if ((x + y) // 3) % 2 == 0:
                 pen(p, x, y, (48, 34, 32), 1.0, 255)
-    for y in range(0, 4):
-        pen(p, TILE // 2 - 1, y, (196, 158, 116), 1.0, 255)
-        pen(p, TILE // 2, y, (156, 120, 84), 1.0, 255)
-    pen(p, TILE // 2 - 1, 0, (255, 236, 150), 1.0, 255)
-    pen(p, TILE // 2, 0, (255, 190, 70), 1.0, 255)
 
 
 def m_fuse(img, c):
-    """引线：麻绳编股 + 顶端火星。"""
+    """引线：45° 编织纹（两股交替）。
+
+    原来的棋盘格太规整，像格子布；改成斜向编织后和炸药的斜纹是同一套方向语言。
+    顶端那颗「火星」也去掉了，理由同上：16px 上一点异色就是一块脏。
+    """
     p = img.load()
     for y in range(TILE):
         for x in range(TILE):
-            p[x, y] = sh(c, 0.7)
-    for y in range(1, TILE - 1):
-        for x in range(1, TILE - 1):
-            if (x + y * 2) % 4 < 2:
-                pen(p, x, y, (206, 172, 128), 1.0, 255)
+            p[x, y] = sh(c, 0.62)
+    for y in range(TILE):
+        for x in range(TILE):
+            if ((x + y) // 2) % 2 == 0:
+                pen(p, x, y, c, 1.12, 255)
             else:
-                pen(p, x, y, (140, 100, 68), 1.0, 255)
-    pen(p, TILE // 2, 1, (255, 232, 140), 1.0, 255)
-    pen(p, TILE // 2, 2, (255, 170, 60), 1.0, 255)
+                pen(p, x, y, c, 0.78, 255)
 
 
 # 材质表：名字 -> (主色, 明度系数, 图案, 不透明度)
