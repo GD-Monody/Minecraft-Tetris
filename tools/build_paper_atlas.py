@@ -32,11 +32,20 @@ def hnoise(x, y, salt=0):
     return ((n ^ (n >> 16)) & 0xFFFF) / 65535.0
 
 
-def sh(c, f, a=None):
-    r = max(0, min(255, int(c[0] * f)))
-    g = max(0, min(255, int(c[1] * f)))
-    b = max(0, min(255, int(c[2] * f)))
-    return (r, g, b, c[3] if a is None else a)
+def sh(c, f, a=None, cap=248):
+    """按比例提亮/压暗，并且**不让它撞上 255**。
+
+    直接 clamp 到 255 的后果：亮通道先顶到顶，暗通道还没到，颜色就被推向白色 ——
+    浅色块（蜡纸、铝箔）的折痕上会冒出几个白点，看着像补丁。
+    这里改成「撞顶就整体再缩回来」，色相和饱和度都保住。
+    """
+    raw = [c[0] * f, c[1] * f, c[2] * f]
+    top = max(raw)
+    if top > cap:
+        k = cap / top
+        raw = [v * k for v in raw]
+    return (max(0, int(raw[0])), max(0, int(raw[1])), max(0, int(raw[2])),
+            c[3] if a is None else a)
 
 
 def base_paper(img, tint, fiber=0.05, vgrad=0.06):
@@ -119,9 +128,11 @@ def motif_hazard(img, c):
 
 
 def motif_glass(img, c):
-    p = img.load()
-    for i in range(5):                               # 一道亮折
-        pen(p, 3 + i, 12 - i, (255, 255, 255), 1.0, 200)
+    """玻璃不再画那道白色斜点。
+
+    16 像素上一串白点会被读成「多出来的脏东西」，而不是反光。
+    玻璃的身份交给「半透明 + 边框 + 上下折痕」已经够了。"""
+    return
 
 
 def motif_fiber(img, c):
@@ -151,6 +162,38 @@ def motif_crystal(img, c):
             pen(p, x, 11 - i, c, 0.86)
 
 
+def motif_roll(img, c):
+    """纸卷：横向的卷边与层叠阴影，靠明暗就能读出来，不需要画符号。"""
+    p = img.load()
+    for y in range(2, TILE - 2):
+        k = 1.06 if y % 4 < 2 else 0.90
+        for x in range(2, TILE - 2):
+            pen(p, x, y, c, k)
+
+
+def motif_tape(img, c):
+    """胶带：半透明 + 两道平行边，像一条贴上去的带子。"""
+    p = img.load()
+    for y in range(3, 13):
+        for x in range(1, TILE - 1):
+            pen(p, x, y, c, 1.02, 205)
+    for x in range(1, TILE - 1):
+        pen(p, x, 3, c, 1.22, 225)
+        pen(p, x, 12, c, 0.82, 225)
+
+
+def motif_foil(img, c):
+    """铝箔：亮面 + 折皱。折皱只用同色相明暗，不掺白色。"""
+    p = img.load()
+    for y in range(TILE):
+        for x in range(TILE):
+            k = 0.92 + 0.26 * hnoise(x // 2, y, 131)
+            pen(p, x, y, c, k)
+    for i in range(2, TILE - 2, 4):
+        for x in range(2, TILE - 2):
+            pen(p, x, i + (x % 3), c, 1.22)
+
+
 def motif_gear(img, c):
     p = img.load()
     for i in range(4, 12):                           # 外圈
@@ -163,21 +206,27 @@ def motif_gear(img, c):
 
 
 def motif_switch(img, c):
+    """开关：一条凹槽 + 一个同色相的亮点（不用白色，白色在浅灰底上就是补丁）。"""
     p = img.load()
-    for i in range(4, 12):                           # 底板
-        pen(p, i, 8, c, 0.86)
-    for x in range(5, 8):                            # 拨杆
-        for y in range(5, 9):
-            pen(p, x, y, c, 1.16 if x < 7 else 1.02)
-    pen(p, 10, 8, c, 1.22)                           # 指示灯
+    for x in range(3, TILE - 3):
+        pen(p, x, 8, c, 0.80)                        # 凹槽
+        pen(p, x, 9, c, 1.10)
+    for y in range(6, 9):
+        for x in range(5, 7):
+            pen(p, x, y, c, 1.22)                    # 滑块，同色相提亮
 
 
 def motif_lamp(img, c):
+    """灯：中心 2x2 用同色相提亮四档当灯芯，外面一圈弱光。
+
+    原来画的是白色十字 —— 在浅黄底上等于一块白色补丁。
+    同色相提亮看起来才是「这盏灯在发黄光」。"""
     p = img.load()
-    for (x, y) in ((7, 6), (8, 6), (7, 7), (8, 7), (7, 8), (8, 8), (6, 7), (9, 7)):
-        pen(p, x, y, (255, 255, 255), 1.0, 235)
-    for (x, y) in ((5, 5), (10, 5), (5, 10), (10, 10)):   # 光晕
-        pen(p, x, y, c, 1.22)
+    for y in range(7, 9):
+        for x in range(7, 9):
+            pen(p, x, y, c, 1.6)
+    for (x, y) in ((6, 7), (9, 7), (7, 6), (8, 9)):
+        pen(p, x, y, c, 1.3)
 
 
 def motif_flake(img, c):
@@ -218,18 +267,23 @@ def m_water(img, c):
 
 
 def m_lava(img, c):
-    """岩浆：亮红主体 + 明黄熔线 + 暗色硬壳块，三档拉开才刺眼。"""
+    """岩浆：亮红主体 + 两条连贯的熔线 + 少量暗壳。
+
+    熔线用「沿 x 走、y 按噪声起伏」画成连续折线，比一串散点像岩浆得多。
+    """
     p = img.load()
     for y in range(TILE):
         for x in range(TILE):
             p[x, y] = sh(c, 0.85 + 0.25 * hnoise(x // 3, y // 3, 31))
-    for i in range(3):
-        x0, y0 = 2 + i * 4, 3 + (i * 5) % 9
-        for k in range(4):
-            pen(p, x0 + k, y0 + (k % 2), (255, 226, 130), 1.0, 255)
-            pen(p, x0 + k, y0 + (k % 2) + 1, (190, 46, 26), 1.0, 255)
-    for (x, y) in ((3, 11), (11, 5), (6, 13)):
-        pen(p, x, y, (128, 30, 20), 1.0, 255)
+    for vein, base_y in ((0, 3), (1, 9)):
+        y = base_y
+        for x in range(2, TILE - 2):
+            y += 0 if hnoise(x, base_y, 37 + vein) > 0.5 else (1 if hnoise(x, base_y, 41 + vein) > 0.5 else -1)
+            y = max(2, min(TILE - 3, y))
+            pen(p, x, y, c, 1.75, 255)          # 亮熔
+            pen(p, x, y + 1, c, 0.72, 255)      # 下面压暗，才有厚度
+    for (x, y) in ((4, 13), (11, 6), (8, 14)):
+        pen(p, x, y, c, 0.45, 255)              # 暗壳碎点
 
 
 def m_oil(img, c):
@@ -269,10 +323,10 @@ def m_acid(img, c):
         for a in range(0, 360, 12):
             x = cx + int(round(math.cos(math.radians(a)) * r))
             y = cy + int(round(math.sin(math.radians(a)) * r))
-            pen(p, x, y, (232, 255, 190), 1.0, 235)
+            pen(p, x, y, c, 1.45, 235)
         pen(p, cx, cy, c, 0.62)
     for x in range(2, TILE - 2):
-        pen(p, x, 2, (232, 255, 190), 1.0, 200)
+        pen(p, x, 2, c, 1.35, 200)
 
 
 def m_sand_flow(img, c):
@@ -290,19 +344,29 @@ def m_sand_flow(img, c):
 
 
 def m_gravel(img, c):
-    """砾石：大小不一的碎块 + 暗缝，颗粒比沙粗一档。"""
+    """砾石：一堆 2~3 像素的小碎块 + 暗缝。
+
+    上一版是 6 块 4~6 像素的大块，16px 下拼起来像一张脸。
+    颗粒要小、要多、大小不齐，才像碎石。
+    """
     p = img.load()
     for y in range(TILE):
         for x in range(TILE):
-            p[x, y] = sh(c, 0.62)
-    chunks = [(2, 2, 5, 4, 1.10), (9, 2, 4, 4, 0.98), (2, 8, 4, 5, 1.02),
-              (7, 7, 5, 4, 1.16), (12, 10, 2, 3, 0.94), (5, 12, 6, 2, 1.06)]
-    for (x0, y0, w, h, k) in chunks:
-        for y in range(y0, min(TILE - 1, y0 + h)):
-            for x in range(x0, min(TILE - 1, x0 + w)):
-                p[x, y] = sh(c, k)
-        for x in range(x0, min(TILE - 1, x0 + w)):
-            pen(p, x, y0, c, k * 1.22)
+            p[x, y] = sh(c, 0.58)
+    rnd = 0
+    for gy in range(0, TILE, 3):
+        for gx in range(0, TILE, 3):
+            rnd += 1
+            if hnoise(gx, gy, 71) < 0.18:
+                continue
+            w = 2 + int(hnoise(gx, gy, 73) * 2)
+            h = 2 + int(hnoise(gx, gy, 77) * 2)
+            k = 0.92 + hnoise(gx, gy, 79) * 0.34
+            for y in range(gy, min(TILE - 1, gy + h)):
+                for x in range(gx, min(TILE - 1, gx + w)):
+                    pen(p, x, y, c, k)
+            for x in range(gx, min(TILE - 1, gx + w)):
+                pen(p, x, gy, c, k * 1.10)      # 顶面只亮一点点
 
 
 def m_dust(img, c):
@@ -438,11 +502,11 @@ KINDS = [
     ("hazard",       (236, 186, 96),   1.00, motif_hazard, 255),
     ("explosive",    (206, 66, 58),    1.00, m_explosive, 255),
     ("fuse",         (150, 108, 76),   1.00, m_fuse,      255),
-    ("switch",       (188, 192, 196),  1.00, motif_switch, 255),
+    ("paper_roll",   (206, 196, 176),  1.00, motif_roll,   255),
     ("lamp",         (246, 236, 186),  1.04, motif_lamp,   255),
-    ("gear",         (170, 168, 160),  1.00, motif_gear,   255),
-    ("magnet",       (198, 128, 130),  1.00, motif_brick,  255),
-    ("cannon",       (128, 130, 136),  0.96, motif_brick,  255),
+    ("kraft_tape",   (214, 186, 140),  1.00, motif_tape,   210),
+    ("foil",         (198, 202, 208),  1.00, motif_foil,   255),
+    ("wax_paper",    (232, 222, 196),  1.00, None,         190),
     # 透明 / 晶体
     ("glass",        (216, 238, 244),  1.02, motif_glass,  120),
     ("frosted",      (226, 236, 240),  1.02, None,         165),
@@ -503,7 +567,7 @@ CN = {
     "paper_kraft": "纸张", "cardboard": "板纸", "corrugated": "瓦楞纸",
     "plank": "木板", "log": "原木", "leaf": "叶",
     "hazard": "警示板", "explosive": "炸药", "fuse": "引线",
-    "switch": "开关", "lamp": "灯", "gear": "齿轮", "magnet": "磁石", "cannon": "炮管",
+    "paper_roll": "纸卷", "lamp": "灯", "kraft_tape": "胶带", "foil": "铝箔", "wax_paper": "蜡纸",
     "glass": "玻璃", "frosted": "磨砂玻璃", "stained_red": "红彩玻",
     "stained_blue": "蓝彩玻", "crystal": "水晶",
     "dye_red": "红纸", "dye_orange": "橙纸", "dye_yellow": "黄纸",

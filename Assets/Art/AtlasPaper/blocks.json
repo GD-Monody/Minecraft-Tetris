@@ -229,8 +229,8 @@
   },
   {
     "id": 33,
-    "name": "switch",
-    "cn": "开关",
+    "name": "paper_roll",
+    "cn": "纸卷",
     "tags": []
   },
   {
@@ -243,20 +243,20 @@
   },
   {
     "id": 35,
-    "name": "gear",
-    "cn": "齿轮",
+    "name": "kraft_tape",
+    "cn": "胶带",
     "tags": []
   },
   {
     "id": 36,
-    "name": "magnet",
-    "cn": "磁石",
+    "name": "foil",
+    "cn": "铝箔",
     "tags": []
   },
   {
     "id": 37,
-    "name": "cannon",
-    "cn": "炮管",
+    "name": "wax_paper",
+    "cn": "蜡纸",
     "tags": []
   },
   {

@@ -30,11 +30,11 @@ leaf
 hazard
 explosive
 fuse
-switch
+paper_roll
 lamp
-gear
-magnet
-cannon
+kraft_tape
+foil
+wax_paper
 glass
 frosted
 stained_red
