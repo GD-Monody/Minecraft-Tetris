@@ -197,6 +197,190 @@ def motif_spark(img, c):
         pen(p, x, y, c, 1.15)
 
 
+
+
+# ── 机制块专用纹理 ──────────────────────────────────────────────────────
+# 为什么单独画：重力/易燃/液体/爆炸这四类方块，玩家必须一眼认出来，
+# 纸的明度差（石比土灰一点）不够用 —— 得给它们各自的「招牌」笔触。
+
+def m_water(img, c):
+    """水：深蓝底 + 横向浪脊。浪脊上方提亮、下方压暗，才像有起伏的水面。"""
+    p = img.load()
+    for y in range(TILE):
+        for x in range(TILE):
+            k = 0.78 + 0.22 * (1 - y / (TILE - 1))
+            p[x, y] = sh(c, k)
+    for base in (4, 9, 13):
+        for x in range(1, TILE - 1):
+            y = base + int(round(math.sin(x * 0.75 + base) * 0.9))
+            pen(p, x, y, c, 1.55)
+            pen(p, x, y + 1, c, 0.62)
+
+
+def m_lava(img, c):
+    """岩浆：亮红主体 + 明黄熔线 + 暗色硬壳块，三档拉开才刺眼。"""
+    p = img.load()
+    for y in range(TILE):
+        for x in range(TILE):
+            p[x, y] = sh(c, 0.85 + 0.25 * hnoise(x // 3, y // 3, 31))
+    for i in range(3):
+        x0, y0 = 2 + i * 4, 3 + (i * 5) % 9
+        for k in range(4):
+            pen(p, x0 + k, y0 + (k % 2), (255, 226, 130), 1.0, 255)
+            pen(p, x0 + k, y0 + (k % 2) + 1, (190, 46, 26), 1.0, 255)
+    for (x, y) in ((3, 11), (11, 5), (6, 13)):
+        pen(p, x, y, (128, 30, 20), 1.0, 255)
+
+
+def m_oil(img, c):
+    """油：近黑的底 + 油膜虹彩（紫/绿细条）。黑的块在暗场景里容易消失，
+    所以靠那道虹彩反光把它「勾」出来。"""
+    p = img.load()
+    for y in range(TILE):
+        for x in range(TILE):
+            p[x, y] = sh(c, 0.9 + 0.14 * hnoise(x, y, 41))
+    for i, y in enumerate((5, 9, 12)):
+        col = (96, 74, 140) if i % 2 == 0 else (58, 110, 96)
+        for x in range(2 + i, min(TILE - 2, 9 + i)):
+            pen(p, x, y, col, 1.0, 230)
+    pen(p, 11, 6, (210, 220, 240), 1.0, 200)
+
+
+def m_acid(img, c):
+    """酸：黄绿底 + 气泡（亮环 + 暗心）。气泡是「腐蚀性」最省像素的表达。"""
+    p = img.load()
+    for y in range(TILE):
+        for x in range(TILE):
+            p[x, y] = sh(c, 0.86 + 0.2 * hnoise(x // 2, y // 2, 51))
+    for (cx, cy, r) in ((5, 6, 2), (10, 10, 2), (8, 3, 1)):
+        for a in range(0, 360, 12):
+            x = cx + int(round(math.cos(math.radians(a)) * r))
+            y = cy + int(round(math.sin(math.radians(a)) * r))
+            pen(p, x, y, (232, 255, 190), 1.0, 235)
+        pen(p, cx, cy, c, 0.62)
+    for x in range(2, TILE - 2):
+        pen(p, x, 2, (232, 255, 190), 1.0, 200)
+
+
+def m_sand_flow(img, c):
+    """沙：斜向流纹 + 底边碎屑。流纹给「会滑下去」的暗示。"""
+    p = img.load()
+    for y in range(TILE):
+        for x in range(TILE):
+            p[x, y] = sh(c, 0.92 + 0.14 * hnoise(x, y, 61))
+    for y in range(3, TILE - 2, 3):
+        for x in range(1, TILE - 1):
+            if (x + y) % 5 < 3:
+                pen(p, x, y, c, 0.84)
+    for x in range(3, TILE - 3):
+        pen(p, x, TILE - 2, c, 0.78)
+
+
+def m_gravel(img, c):
+    """砾石：大小不一的碎块 + 暗缝，颗粒比沙粗一档。"""
+    p = img.load()
+    for y in range(TILE):
+        for x in range(TILE):
+            p[x, y] = sh(c, 0.62)
+    chunks = [(2, 2, 5, 4, 1.10), (9, 2, 4, 4, 0.98), (2, 8, 4, 5, 1.02),
+              (7, 7, 5, 4, 1.16), (12, 10, 2, 3, 0.94), (5, 12, 6, 2, 1.06)]
+    for (x0, y0, w, h, k) in chunks:
+        for y in range(y0, min(TILE - 1, y0 + h)):
+            for x in range(x0, min(TILE - 1, x0 + w)):
+                p[x, y] = sh(c, k)
+        for x in range(x0, min(TILE - 1, x0 + w)):
+            pen(p, x, y0, c, k * 1.22)
+
+
+def m_dust(img, c):
+    """粉尘：极细颗粒 + 底部堆积，比沙更轻更散。"""
+    p = img.load()
+    for y in range(TILE):
+        for x in range(TILE):
+            n = hnoise(x, y, 71)
+            p[x, y] = sh(c, 0.88 + n * 0.18 + (0.10 if y > TILE * 0.7 else 0.0))
+    for (x, y) in ((3, 5), (9, 4), (6, 9), (12, 11)):
+        pen(p, x, y, c, 1.18)
+
+
+def m_paper_stack(img, c):
+    """纸张：三层错开的纸边 + 卷角。易燃物要有「薄、能烧」的感觉。"""
+    p = img.load()
+    for y in range(TILE):
+        for x in range(TILE):
+            p[x, y] = sh(c, 0.96 + 0.06 * hnoise(x, y, 81))
+    for y in (4, 8, 12):
+        for x in range(1, TILE - 1):
+            pen(p, x, y, c, 0.86)
+        for x in range(1, TILE - 1):
+            pen(p, x, y + 1, c, 1.05)
+    for i in range(4):                      # 右上卷角
+        for x in range(TILE - 2 - i, TILE - 1):
+            pen(p, x, 1 + i, (255, 255, 255), 1.0, 220)
+
+
+def m_cardboard(img, c):
+    """瓦楞纸：竖向短楞（不是横的），加一道磨损边。"""
+    p = img.load()
+    for y in range(TILE):
+        for x in range(TILE):
+            p[x, y] = sh(c, 0.94 + 0.1 * hnoise(x // 2, y, 91))
+    for x in range(2, TILE - 2, 2):
+        for y in range(3, TILE - 3):
+            pen(p, x, y, c, 0.84 if (y + x) % 4 < 2 else 1.10)
+    for x in range(1, TILE - 1):
+        pen(p, x, TILE - 2, c, 0.74)
+
+
+def m_leaf(img, c):
+    """叶子：中脉 + 侧脉 + 卷边。"""
+    p = img.load()
+    for y in range(TILE):
+        for x in range(TILE):
+            p[x, y] = sh(c, 0.9 + 0.2 * hnoise(x, y, 101))
+    for y in range(3, TILE - 2):
+        pen(p, TILE // 2, y, c, 0.72)                  # 中脉
+    for i, y in enumerate((5, 8, 11)):
+        for k in range(3):
+            pen(p, TILE // 2 - 1 - k, y + (k % 2), c, 0.78)
+            pen(p, TILE // 2 + 1 + k, y + (k % 2), c, 0.78)
+    for x in range(3, TILE - 3):
+        pen(p, x, 2, c, 1.2)
+
+
+def m_explosive(img, c):
+    """炸药：红底 + 黑斜纹 + 顶部引线与火花。"""
+    p = img.load()
+    for y in range(TILE):
+        for x in range(TILE):
+            p[x, y] = sh(c, 0.96 + 0.12 * hnoise(x, y, 111))
+    for y in range(TILE):
+        for x in range(TILE):
+            if ((x + y) // 3) % 2 == 0:
+                pen(p, x, y, (48, 34, 32), 1.0, 255)
+    for y in range(0, 4):
+        pen(p, TILE // 2 - 1, y, (196, 158, 116), 1.0, 255)
+        pen(p, TILE // 2, y, (156, 120, 84), 1.0, 255)
+    pen(p, TILE // 2 - 1, 0, (255, 236, 150), 1.0, 255)
+    pen(p, TILE // 2, 0, (255, 190, 70), 1.0, 255)
+
+
+def m_fuse(img, c):
+    """引线：麻绳编股 + 顶端火星。"""
+    p = img.load()
+    for y in range(TILE):
+        for x in range(TILE):
+            p[x, y] = sh(c, 0.7)
+    for y in range(1, TILE - 1):
+        for x in range(1, TILE - 1):
+            if (x + y * 2) % 4 < 2:
+                pen(p, x, y, (206, 172, 128), 1.0, 255)
+            else:
+                pen(p, x, y, (140, 100, 68), 1.0, 255)
+    pen(p, TILE // 2, 1, (255, 232, 140), 1.0, 255)
+    pen(p, TILE // 2, 2, (255, 170, 60), 1.0, 255)
+
+
 # 材质表：名字 -> (主色, 明度系数, 图案, 不透明度)
 STONE = (150, 150, 156)
 KINDS = [
@@ -214,30 +398,30 @@ KINDS = [
     ("grass",        (126, 164, 104),  1.00, motif_fiber, 255),
     ("clay",         (176, 138, 112),  0.98, motif_soil,  255),
     ("mud",          (118, 96, 74),    0.92, motif_soil,  255),
-    ("gravel",       (146, 140, 130),  0.96, motif_soil,  255),
+    ("gravel",       (138, 132, 124),  1.00, m_gravel,    255),
     ("ash",          (120, 118, 116),  0.94, None,        255),
     # 沙 / 粉
-    ("sand",         (232, 214, 172),  1.02, motif_sand,  255),
-    ("dust",         (222, 214, 200),  1.00, motif_sand,  255),
-    ("salt",         (244, 242, 236),  1.04, motif_sand,  255),
-    ("snow",         (246, 248, 250),  1.05, motif_flake, 255),
+    ("sand",         (232, 208, 152),  1.00, m_sand_flow, 255),
+    ("dust",         (216, 210, 198),  1.00, m_dust,      255),
+    ("salt",         (246, 240, 228),  1.04, motif_sand,  255),
+    ("snow",         (238, 244, 252),  1.05, motif_flake, 255),
     # 液体
-    ("water",        (150, 194, 224),  1.00, motif_liquid, 190),
-    ("lava",         (238, 132, 72),   1.00, motif_liquid, 235),
-    ("acid",         (170, 214, 118),  1.00, motif_liquid, 210),
-    ("oil",          (110, 102, 120),  0.98, motif_liquid, 235),
+    ("water",        (46, 92, 186),    1.00, m_water,     205),
+    ("lava",         (232, 84, 44),    1.00, m_lava,      248),
+    ("acid",         (168, 202, 70),   1.00, m_acid,      218),
+    ("oil",          (62, 56, 72),     1.00, m_oil,       238),
     ("glow",         (250, 224, 150),  1.04, motif_spark,  240),
     # 纸 / 木
-    ("paper_kraft",  (196, 172, 134),  1.00, motif_fiber, 255),
-    ("cardboard",    (204, 176, 132),  1.00, motif_fiber, 255),
-    ("corrugated",   (188, 164, 126),  0.98, motif_fiber, 255),
+    ("paper_kraft",  (232, 228, 218),  1.00, m_paper_stack, 255),
+    ("cardboard",    (198, 166, 122),  1.00, m_cardboard, 255),
+    ("corrugated",   (188, 160, 120),  1.00, m_cardboard, 255),
     ("plank",        (198, 164, 118),  1.00, motif_brick, 255),
     ("log",          (168, 134, 96),   0.98, motif_fiber, 255),
-    ("leaf",         (128, 168, 108),  1.00, motif_soil,  255),
+    ("leaf",         (116, 168, 96),   1.00, m_leaf,      255),
     # 功能 / 危险
     ("hazard",       (236, 186, 96),   1.00, motif_hazard, 255),
-    ("explosive",    (224, 118, 96),   1.00, motif_hazard, 255),
-    ("fuse",         (196, 120, 96),   1.00, motif_fiber,  255),
+    ("explosive",    (206, 66, 58),    1.00, m_explosive, 255),
+    ("fuse",         (150, 108, 76),   1.00, m_fuse,      255),
     ("switch",       (188, 192, 196),  1.00, motif_switch, 255),
     ("lamp",         (246, 236, 186),  1.04, motif_lamp,   255),
     ("gear",         (170, 168, 160),  1.00, motif_gear,   255),
