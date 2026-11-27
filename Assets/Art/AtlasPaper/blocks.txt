@@ -19,7 +19,7 @@ snow
 water
 lava
 acid
-oil
+fuel
 glow
 paper_kraft
 cardboard

@@ -422,7 +422,7 @@ KINDS = [
     ("water",        (46, 92, 186),    1.00, m_water,     205),
     ("lava",         (232, 84, 44),    1.00, m_lava,      248),
     ("acid",         (168, 202, 70),   1.00, m_acid,      218),
-    ("oil",          (196, 148, 62),   1.00, m_oil,       238),
+    ("fuel",         (196, 148, 62),   1.00, m_oil,       238),
     ("glow",         (250, 224, 150),  1.04, motif_spark,  240),
     # 纸 / 木
     ("paper_kraft",  (232, 228, 218),  1.00, m_paper_stack, 255),
@@ -476,6 +476,64 @@ WALL_LAYOUT = [
 ]
 
 
+
+
+# ── 中文名与机制标签 ────────────────────────────────────────────────────
+# 这张表就是「方块表」的唯一来源：图集、blocks.txt、blocks.json 全由它生成，
+# 游戏侧以后再从 blocks.json 生成 C# 常量，图集 id 和机制就不会走偏。
+#
+# 机制词表（对应现有代码里的四个模块）：
+#   gravity   受重力，下方空了就掉（Gravity.cs）
+#   flammable 可被点燃（Fire.cs）
+#   liquid    会流动、填满空腔（Fluids.cs）
+#   explosive 会炸（Tnt.cs）；fuse 只传火不炸
+#   melt      岩浆遇水凝固成哪个方块
+#   glow      自发光（只影响观感）
+
+CN = {
+    "stone": "石", "stone_smooth": "磨光石", "cobble": "圆石", "slate": "板岩",
+    "marble": "大理石", "granite": "花岗岩", "brick": "砖", "tile": "瓷砖",
+    "soil": "土", "grass": "草", "clay": "黏土", "mud": "泥",
+    "gravel": "砾石", "ash": "灰",
+    "sand": "沙", "dust": "粉尘", "salt": "盐", "snow": "雪",
+    "water": "水", "lava": "岩浆", "acid": "酸", "fuel": "燃料", "glow": "辉光液",
+    "paper_kraft": "纸张", "cardboard": "板纸", "corrugated": "瓦楞纸",
+    "plank": "木板", "log": "原木", "leaf": "叶",
+    "hazard": "警示板", "explosive": "炸药", "fuse": "引线",
+    "switch": "开关", "lamp": "灯", "gear": "齿轮", "magnet": "磁石", "cannon": "炮管",
+    "glass": "玻璃", "frosted": "磨砂玻璃", "stained_red": "红彩玻",
+    "stained_blue": "蓝彩玻", "crystal": "水晶",
+    "dye_red": "红纸", "dye_orange": "橙纸", "dye_yellow": "黄纸",
+    "dye_green": "绿纸", "dye_teal": "青纸", "dye_blue": "蓝纸",
+    "dye_purple": "紫纸", "dye_pink": "粉纸", "dye_brown": "棕纸",
+    "dye_gray": "灰纸", "dye_black": "黑纸", "dye_white": "白纸",
+}
+
+TAGS = {
+    # 受重力：松散颗粒。盐也算，它和沙一样是散粒
+    "gravity": ["sand", "dust", "gravel", "salt"],
+    # 可燃：纸质与木质。燃料是液体，单独由 liquid+flammable 表达
+    "flammable": ["paper_kraft", "cardboard", "corrugated", "plank", "log", "leaf", "fuel"],
+    # 液体：四种，行为一致、颜色各异
+    "liquid": ["water", "lava", "acid", "fuel"],
+    # 爆炸与传火
+    "explosive": ["explosive"],
+    "fuse": ["fuse"],
+    # 自发光
+    "glow": ["glow", "lamp"],
+    # 岩浆遇水凝固成板岩
+    "melt_into": {"lava": "slate"},
+}
+
+
+def tags_of(name):
+    out = [k for k, v in TAGS.items() if isinstance(v, list) and name in v]
+    for src, dst in TAGS["melt_into"].items():
+        if name == src:
+            out.append("melt:" + dst)
+    return out
+
+
 def make(kind, tile=TILE):
     name, tint, bright, motif, alpha = kind
     img = Image.new("RGBA", (tile, tile), (0, 0, 0, 0))
@@ -527,5 +585,19 @@ if __name__ == "__main__":
     atlas.save(os.path.join(out_dir, "atlas.png"))
     with open(os.path.join(out_dir, "blocks.txt"), "w", encoding="utf-8") as f:
         f.write("\n".join(k[0] for k in KINDS) + "\n")
+
+    # blocks.json：id / 英文名 / 中文名 / 机制标签，游戏侧据此生成常量
+    import json
+    table = []
+    for i, k in enumerate(KINDS):
+        name = k[0]
+        table.append({
+            "id": i + 1,                      # 0 留给「空气」，和现有存档约定一致
+            "name": name,
+            "cn": CN.get(name, name),
+            "tags": tags_of(name),
+        })
+    with open(os.path.join(out_dir, "blocks.json"), "w", encoding="utf-8") as f:
+        json.dump(table, f, ensure_ascii=False, indent=2)
     preview(tiles).save(os.path.join(root, "Logs", "paper_atlas_preview.png"))
     print("图集 %dx%d，%d 块，%d 列" % (atlas.width, atlas.height, len(KINDS), COLS))
