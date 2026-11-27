@@ -19,6 +19,7 @@ SUBSTRATA —— 纸艺折纸风格图集（16x16）。
 
 import math
 import os
+import random
 from PIL import Image
 
 TILE = 16
@@ -344,29 +345,43 @@ def m_sand_flow(img, c):
 
 
 def m_gravel(img, c):
-    """砾石：一堆 2~3 像素的小碎块 + 暗缝。
+    """砾石：直接画十来颗圆石子，互相稍微叠着，缝里露暗底。
 
-    上一版是 6 块 4~6 像素的大块，16px 下拼起来像一张脸。
-    颗粒要小、要多、大小不齐，才像碎石。
+    前三版都不对，记录下来免得再走一遍：
+    · 6 个大圆角块 → 拼起来像一张脸；
+    · 3px 网格摆碎块 → 缝连成直角迷宫；
+    · 抖动网格 + 最近种子 → 缝退化成零散黑点，石子之间明暗差又不够，看着是一片灰。
+    结论：16px 上「自动生成石子」很难自然，不如老老实实摆位置、给每颗石子
+    做左上一档亮、右下一档暗，眼睛就会读成一颗颗圆的。
     """
+    import math
+    rnd = random.Random(23)
+    stones = []
+    for gy in range(4):
+        for gx in range(4):
+            cx = gx * 4 + 2 + rnd.uniform(-0.9, 0.9)
+            cy = gy * 4 + 2 + rnd.uniform(-0.9, 0.9)
+            r = rnd.uniform(1.5, 2.3)
+            tone = rnd.uniform(-1.0, 1.0)          # 每颗石子自己的明暗
+            stones.append((cx, cy, r, tone))
+
     p = img.load()
     for y in range(TILE):
         for x in range(TILE):
-            p[x, y] = sh(c, 0.58)
-    rnd = 0
-    for gy in range(0, TILE, 3):
-        for gx in range(0, TILE, 3):
-            rnd += 1
-            if hnoise(gx, gy, 71) < 0.18:
-                continue
-            w = 2 + int(hnoise(gx, gy, 73) * 2)
-            h = 2 + int(hnoise(gx, gy, 77) * 2)
-            k = 0.92 + hnoise(gx, gy, 79) * 0.34
-            for y in range(gy, min(TILE - 1, gy + h)):
-                for x in range(gx, min(TILE - 1, gx + w)):
-                    pen(p, x, y, c, k)
-            for x in range(gx, min(TILE - 1, gx + w)):
-                pen(p, x, gy, c, k * 1.10)      # 顶面只亮一点点
+            pen(p, x, y, c, 0.74)                  # 先铺暗底，缝就是它（别太黑，一黑就成格子）
+    for (cx, cy, r, tone) in stones:
+        for y in range(max(0, int(cy - r - 1)), min(TILE, int(cy + r + 2))):
+            for x in range(max(0, int(cx - r - 1)), min(TILE, int(cx + r + 2))):
+                dx, dy = x - cx, y - cy
+                d = math.hypot(dx, dy)
+                if d > r:
+                    continue
+                k = 1.06 + tone * 0.09
+                if dx + dy < -r * 0.35:            # 左上受光
+                    k += 0.12
+                elif dx + dy > r * 0.45:           # 右下背光
+                    k -= 0.10
+                pen(p, x, y, c, k)
 
 
 def m_dust(img, c):
