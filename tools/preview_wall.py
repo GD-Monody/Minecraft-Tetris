@@ -11,20 +11,24 @@
 import os
 from PIL import Image, ImageEnhance
 
-from build_original_atlas import BLOCKS, TILE, build
+import importlib, sys
 
-DEPTH_X = 10      # 侧面宽度
-DEPTH_Y = 10      # 顶面高度
+MODULE = sys.argv[1] if len(sys.argv) > 1 else "build_original_atlas"
+mod = importlib.import_module(MODULE)
+BLOCKS, TILE, build = mod.BLOCKS, mod.TILE, mod.build
+
+DEPTH_X = max(6, TILE // 2)      # 侧面宽度
+DEPTH_Y = max(6, TILE // 2)      # 顶面高度
 COLS, ROWS = 9, 6
 
 # 一面墙的配方：用名字取图，没写的高度就随机挑一个「实心」块
 WALL = [
-    ["snow", "snow", "ice", "ice", "stone", "stone", "cobble", "cobble", "leaves"],
-    ["soil", "grass", "grass", "log", "planks", "planks", "stone", "cobble", "leaves"],
-    ["soil", "soil", "stone", "stone", "brick", "brick", "metal", "metal", "glass"],
-    ["soil", "sand", "sand", "stone", "lava", "brick", "metal", "glass", "glass"],
-    ["stone", "sand", "gravel", "lava", "lava", "cooled", "explosive", "explosive", "glass"],
-    ["stone", "stone", "cooled", "cooled", "crystal", "gold", "explosive", "planks", "water"],
+    ["core", "led", "glass", "glass", "led", "plate", "vent", "vent", "core"],
+    ["plate", "circuit", "circuit", "battery", "battery", "steel_brick", "armor", "armor", "led"],
+    ["rivet", "plate", "hazard", "hazard", "conduit", "conduit", "plate", "glass", "glass"],
+    ["steel_brick", "plate", "plasma", "plasma", "hazard", "core", "plate", "white_panel", "glass"],
+    ["rubble", "dust", "plate", "plasma", "plasma", "conduit", "circuit", "white_panel", "glass"],
+    ["dust", "grate", "grate", "rubble", "coolant", "coolant", "battery", "plate", "coolant"],
 ]
 
 
@@ -58,7 +62,7 @@ def main():
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     log_dir = os.path.join(root, "Logs")
     os.makedirs(log_dir, exist_ok=True)
-    out = os.path.join(log_dir, "original_wall_mock.png")
+    out = os.path.join(log_dir, MODULE.replace("build_", "").replace("_atlas", "") + "_wall_mock.png")
     canvas.convert("RGB").save(out)
     print("立体预览 ->", out, canvas.size)
 
