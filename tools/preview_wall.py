@@ -16,6 +16,7 @@ import importlib, sys
 MODULE = sys.argv[1] if len(sys.argv) > 1 else "build_original_atlas"
 mod = importlib.import_module(MODULE)
 BLOCKS, TILE, build = mod.BLOCKS, mod.TILE, mod.build
+WALL_LAYOUT = getattr(mod, "WALL_LAYOUT", None)
 
 DEPTH_X = max(6, TILE // 2)      # 侧面宽度
 DEPTH_Y = max(6, TILE // 2)      # 顶面高度
@@ -45,9 +46,10 @@ def main():
         for x in range(0, w, 4):
             canvas.paste(tuple(int(c * k) for c in (26, 29, 36)) + (255,), (x, y, x + 4, y + 1))
 
+    layout = WALL_LAYOUT or WALL
     for row in range(ROWS - 1, -1, -1):          # 从后往前
         for col in range(COLS):
-            name = WALL[row][col]
+            name = layout[row][col]
             tile = by_name.get(name) or by_name["stone"]
             x = 10 + col * TILE
             y = 10 + row * (TILE + DEPTH_Y)
