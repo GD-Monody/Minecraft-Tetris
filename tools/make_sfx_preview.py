@@ -11,9 +11,8 @@ SRC_PLACE = os.path.join(ROOT, "Assets", "Resources", "Sfx", "Place")
 SRC_UI = os.path.join(ROOT, "Assets", "Resources", "Sfx")
 DST = os.path.join(ROOT, "Logs", "sfx_preview")
 
-GROUPS = [("stone", "石头"), ("wood", "木头"), ("gravel", "砾石"), ("grass", "草/叶"),
-          ("sand", "沙"), ("snow", "雪"), ("glass", "玻璃"), ("metal", "金属"),
-          ("crystal", "晶体"), ("water", "水"), ("lava", "岩浆")]
+GROUPS = [("do", "do"), ("re", "re"), ("mi", "mi"), ("fa", "fa"),
+          ("so", "so"), ("la", "la"), ("xi", "xi")]
 UIS = [("click", "点击"), ("place_stone", "放置(默认)"), ("break_stone", "石头碎"),
        ("break_wood", "木头碎"), ("break_glass", "玻璃碎"), ("break_gravel", "砾石碎"),
        ("break_sand", "沙碎"), ("tnt_explode1", "爆炸1"), ("tnt_explode2", "爆炸2"),
@@ -23,9 +22,8 @@ UIS = [("click", "点击"), ("place_stone", "放置(默认)"), ("break_stone", "
 
 
 def main():
-    if os.path.isdir(DST):
-        shutil.rmtree(DST)
-    os.makedirs(DST)
+    # 不整目录删（会触发批量删除保护），同名覆盖即可
+    os.makedirs(DST, exist_ok=True)
 
     for g, _ in GROUPS:
         for v in range(1, 5):

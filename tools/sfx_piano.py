@@ -29,36 +29,29 @@ OUT = os.path.join(ROOT, "Logs", "sfx_piano")
 # C2 65.4 / G2 98 / C3 130.8 / D3 146.8 / E3 164.8 / G3 196
 # C4 261.6 / E4 329.6 / G4 392 / A4 440 / C5 523.3 / E5 659.3 / A5 880 / C6 1046.5
 NOTES = {
-    # 七声音阶 do re mi fa so la xi，跨两个八度。
-    # 低音给重的、高音给轻的：连放时自然形成旋律走向，而不是一堆随机音高。
-    "stone":   261.63,   # do  C4
-    "wood":    293.66,   # re  D4
-    "gravel":  329.63,   # mi  E4
-    "sand":    349.23,   # fa  F4
-    "grass":   392.00,   # so  G4
-    "snow":    440.00,   # la  A4
-    "glass":   493.88,   # xi  B4
-    "metal":   523.25,   # do  C5
-    "crystal": 659.25,   # mi  E5
-    "water":   220.00,   # la  A3（低八度）
-    "lava":    130.81,   # do  C3（低八度）
+    # 七个音，放置时按顺序循环（do re mi fa so la xi），不再跟材质绑定。
+    "do": 261.63,   # C4
+    "re": 293.66,   # D4
+    "mi": 329.63,   # E4
+    "fa": 349.23,   # F4
+    "so": 392.00,   # G4
+    "la": 440.00,   # A4
+    "xi": 493.88,   # B4
 }
 
-CN = {"stone": "石头", "wood": "木头", "gravel": "砾石", "grass": "草/叶", "sand": "沙",
-      "snow": "雪", "glass": "玻璃", "metal": "金属", "crystal": "晶体",
-      "water": "水", "lava": "岩浆"}
+CN = {"do": "do", "re": "re", "mi": "mi", "fa": "fa",
+      "so": "so", "la": "la", "xi": "xi"}
 
 # 音量：雪和草最轻
-VOL = {"stone": 0.55, "wood": 0.58, "gravel": 0.50, "grass": 0.34, "sand": 0.45,
-       "snow": 0.20, "glass": 0.46, "metal": 0.50, "crystal": 0.44,
-       "water": 0.48, "lava": 0.55}
+VOL = {"do": 0.56, "re": 0.56, "mi": 0.58, "fa": 0.55,
+       "so": 0.56, "la": 0.55, "xi": 0.54}
 
 # 衰减时长：低音留得久，高音收得快
 # 音长整体缩短：原来是 0.64~0.72s，连放两块就叠在一起，听着糊。
 # 现在 0.34~0.55s，既保留钢琴的衰减尾巴，又不至于互相盖住。
-DECAY = {"stone": 0.30, "wood": 0.27, "gravel": 0.22, "grass": 0.17, "sand": 0.21,
-         "snow": 0.13, "glass": 0.25, "metal": 0.29, "crystal": 0.28,
-         "water": 0.25, "lava": 0.38}
+# 尾音 0.42s：太短就没有琴的余韵，太长连放会糊。
+DECAY = {"do": 0.44, "re": 0.42, "mi": 0.40, "fa": 0.38,
+         "so": 0.36, "la": 0.34, "xi": 0.32}
 
 
 def seed_of(t):
@@ -66,38 +59,60 @@ def seed_of(t):
 
 
 def piano(freq, dur, decay, seed, brightness=1.0):
+    """真钢琴的四个特征，缺一个就会"像电子琴"：
+
+    1. 同音多弦：一根弦是一个纯正弦，太干净。真琴每个音有 2~3 根弦，
+       彼此差零点几音分，叠加后产生缓慢的"拍"（chorus），这是"活"的来源。
+    2. 双段衰减：音头几十分之一秒掉得很快，之后拖一条长尾。
+       单一指数衰减听起来像"叮"的一声铃，不像琴。
+    3. 高次谐波衰减更快：所以音头亮、尾巴暗，这是钢琴最容易被忽略的一点。
+    4. 音板共鸣：80~150Hz 的箱体低频，给声音一个"体积"。
+    """
     n = int(SR * dur)
     t = np.arange(n) / SR
     rng = np.random.default_rng(seed)
 
     x = np.zeros(n)
-    B = 0.0004                       # 弦的不谐和系数
+    B = 0.0004                     # 弦的不谐和
+    detunes = (-0.7, 0.0, 0.8)     # 三根弦，单位：音分
+
     for k in range(1, 17):
         fk = freq * k * math.sqrt(1.0 + B * k * k)
-        if fk > SR / 2 - 200:        # 超过奈奎斯特会混叠，直接跳过
+        if fk > SR / 2 - 300:
             break
-        amp = (1.0 / (k ** 1.2)) * brightness
-        dec = decay / (1.0 + 0.55 * (k - 1))     # 高次谐波衰减快 → 音头亮尾巴暗
-        phase = rng.uniform(0, 2 * math.pi)
-        x += amp * np.sin(2 * math.pi * fk * t + phase) * np.exp(-t / dec)
 
-    # 琴槌击弦：最初 8ms 的宽带噪声，音量很小，但决定"是敲出来的"
-    hammer_n = int(SR * 0.008)
-    if hammer_n < n:
-        nz = rng.normal(0, 1, hammer_n) * np.exp(-np.arange(hammer_n) / SR / 0.002)
-        x[:hammer_n] += nz * 0.08
+        # 幅度按 1/k^1.25 衰减，再加一个随谐波次数上升的高频衰减
+        amp = (1.0 / (k ** 1.25)) * brightness
+        if k > 4:
+            amp *= 0.72 ** (k - 4)
 
-    # 早期反射：4 条延迟线模拟室内反射。量很小，只为了"有空间"而不是"加混响"
-    wet = np.zeros(n)
-    for delay_ms, gain in ((17, 0.30), (29, 0.22), (43, 0.15), (61, 0.10)):
-        d = int(SR * delay_ms / 1000.0)
-        if d < n:
-            wet[d:] += x[:-d] * gain
-    x = x + wet * 0.35
+        # 双段包络：快衰减 + 长尾
+        fast = np.exp(-t / max(decay * 0.18, 0.008))
+        slow = np.exp(-t / (decay * 1.9)) * 0.42
+        env_k = fast + slow
 
-    # 起音包络：2ms 到满，避免爆音
-    a = np.clip(t / 0.002, 0, 1)
-    x *= a
+        for d in detunes:
+            fd = fk * (2.0 ** (d / 1200.0))
+            x += (amp / len(detunes)) * np.sin(2 * math.pi * fd * t + rng.uniform(0, 6.28)) * env_k
+
+    # 音板共鸣：低频箱体
+    x += np.sin(2 * math.pi * 98.0 * t) * np.exp(-t / (decay * 0.8)) * 0.05
+    x += np.sin(2 * math.pi * 147.0 * t) * np.exp(-t / (decay * 0.5)) * 0.03
+
+    # 槌击：带通噪声（1.5~5kHz），只有 4ms，决定"是敲出来的"
+    hn = min(int(SR * 0.004), n)
+    if hn > 4:
+        nz = rng.normal(0, 1, hn)
+        nz = np.diff(np.concatenate([[0.0], nz]))          # 粗略高通
+        a = 0.35
+        acc, sm = 0.0, np.zeros(hn)
+        for i in range(hn):                                 # 一阶低通，做出带通
+            acc += a * (nz[i] - acc)
+            sm[i] = acc
+        x[:hn] += sm * np.exp(-np.arange(hn) / SR / 0.0012) * 0.10
+
+    # 起音 1.5ms，避免爆音
+    x *= np.clip(t / 0.0015, 0.0, 1.0)
 
     peak = float(np.max(np.abs(x)))
     return x * (VOL_OF_CURRENT / peak) if peak > 1e-9 else x
@@ -113,7 +128,7 @@ def make(group, variant):
     freq *= 2 ** (rng.uniform(-4, 4) / 1200.0)      # ±4 音分
     brightness = rng.uniform(0.88, 1.12)
 
-    dur = DECAY[group] + 0.22
+    dur = DECAY[group] * 2.4
     global VOL_OF_CURRENT
     VOL_OF_CURRENT = VOL[group]
     return piano(freq, dur, DECAY[group], seed_of("%s-%d-p" % (group, variant)), brightness)

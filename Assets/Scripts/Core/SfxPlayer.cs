@@ -151,13 +151,46 @@ namespace MinecraftTetris
                 Play(_fallbackPlace, 1f, 1f + Random.Range(-PitchJitter, PitchJitter));
         }
 
-        /// <summary>放下一个方块：按它所属的 MC 材质组选音效。</summary>
+        /// <summary>下一个要播的音级（0=do … 6=xi）。</summary>
+        int _scaleStep;
+
+        /// <summary>新开一局时把音阶拨回 do。</summary>
+        public void ResetScale()
+        {
+            _scaleStep = 0;
+        }
+
+        /// <summary>
+        /// 放下一个方块：按「放置顺序」走音阶，不看材质。
+        ///
+        /// 第一块 do、第二块 re……到 xi 后回到 do，连续放置自然形成旋律。
+        /// 之前是按材质分组播（石一个音、木一个音），但材质和音高没有对应关系，
+        /// 连放时音高乱跳，听着像"随机响"，这就是用户说的"很怪"。
+        ///
+        /// 这里刻意不用 pitch 抖动：音阶要准，一抖就不是 do re mi 了。
+        /// 变体之间的差异在合成阶段就做进音色里（相位、亮度），音高是一致的。
+        /// </summary>
         public void PlayPlace(BlockDef def)
         {
-            int group = 0;   // 0 是 stone，查不到组就用石头声
-            if (def != null && def.PlaceSfxGroup != null && _groupIndex != null)
-                _groupIndex.TryGetValue(def.PlaceSfxGroup, out group);
-            PlayPlaceGroup(group);
+            if (_placeClips == null || _placeClips.Length == 0)
+            {
+                if (_fallbackPlace != null)
+                    Play(_fallbackPlace, 1f, 1f);
+                return;
+            }
+
+            int step = _scaleStep % _placeClips.Length;
+            _scaleStep = (_scaleStep + 1) % 4096;      // 只防溢出，不参与取模语义
+
+            AudioClip[] clips = _placeClips[step];
+            if (clips != null && clips.Length > 0)
+            {
+                Play(clips[Random.Range(0, clips.Length)], _placeVolume[step], 1f);
+                return;
+            }
+
+            if (_fallbackPlace != null)
+                Play(_fallbackPlace, 1f, 1f);
         }
 
         public void PlayClear(int lines)

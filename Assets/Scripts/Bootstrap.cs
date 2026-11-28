@@ -1144,6 +1144,9 @@ namespace MinecraftTetris
             ClearGolemModels();
             _loop.FallSpeed = GameSettings.FallSpeed;
             _particles.Clear();
+            // 音阶从 do 重新开始：每局第一块都该是 do，而不是接着上一局停下的音级
+            if (_sfx != null)
+                _sfx.ResetScale();
             _paused = false;
             _view.RefreshAll();
             _view.ClearFlash();

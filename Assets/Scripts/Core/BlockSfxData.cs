@@ -11,38 +11,24 @@ namespace MinecraftTetris
 {
     public static class BlockSfxData
     {
-        public const int GroupCount = 11;
+        public const int GroupCount = 7;
 
         /// <summary>组名。SfxPlayer 按这个字符串查索引。</summary>
         public static readonly string[] Groups =
         {
-            "stone",
-            "wood",
-            "gravel",
-            "grass",
-            "sand",
-            "snow",
-            "glass",
-            "metal",
-            "crystal",
-            "water",
-            "lava",
+            "do", "re", "mi", "fa", "so", "la", "xi",
         };
 
         /// <summary>每组可用的 clip（Resources/Sfx/Place 下的文件名，不带扩展名）。</summary>
         public static readonly string[][] GroupClips =
         {
-            new[] { "stone1", "stone2", "stone3", "stone4" },
-            new[] { "wood1", "wood2", "wood3", "wood4" },
-            new[] { "gravel1", "gravel2", "gravel3", "gravel4" },
-            new[] { "grass1", "grass2", "grass3", "grass4" },
-            new[] { "sand1", "sand2", "sand3", "sand4" },
-            new[] { "snow1", "snow2", "snow3", "snow4" },
-            new[] { "glass1", "glass2", "glass3", "glass4" },
-            new[] { "metal1", "metal2", "metal3", "metal4" },
-            new[] { "crystal1", "crystal2", "crystal3", "crystal4" },
-            new[] { "water1", "water2", "water3", "water4" },
-            new[] { "lava1", "lava2", "lava3", "lava4" },
+            new[] { "do1", "do2", "do3", "do4" },
+            new[] { "re1", "re2", "re3", "re4" },
+            new[] { "mi1", "mi2", "mi3", "mi4" },
+            new[] { "fa1", "fa2", "fa3", "fa4" },
+            new[] { "so1", "so2", "so3", "so4" },
+            new[] { "la1", "la2", "la3", "la4" },
+            new[] { "xi1", "xi2", "xi3", "xi4" },
         };
 
         /// <summary>
@@ -51,17 +37,7 @@ namespace MinecraftTetris
         /// </summary>
         public static readonly float[] GroupVolume =
         {
-            1.00f,   // stone
-            1.05f,   // wood
-            1.00f,   // gravel
-            0.85f,   // grass
-            0.95f,   // sand
-            0.90f,   // snow
-            0.80f,   // glass
-            1.00f,   // metal
-            0.85f,   // crystal
-            0.95f,   // water
-            1.00f,   // lava
+            1f, 1f, 1f, 1f, 1f, 1f, 1f,
         };
     }
 }
