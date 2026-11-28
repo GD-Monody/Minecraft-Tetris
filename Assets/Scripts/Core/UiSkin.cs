@@ -43,7 +43,10 @@ namespace MinecraftTetris
         public const float MenuScale = 2f;
 
         /// <summary>字体资源在 Resources 下的路径（不含扩展名）。</summary>
-        public const string FontPath = "Fonts/STKaiTi";
+        // 思源黑体（Noto Sans SC Medium，SIL OFL 1.1，可商用）。
+        // 原来是华文楷体：楷体是商用需授权的字体，去 IP 版必须换掉。
+        // 选 Medium 而不是 Regular：界面大量小字号，Regular 在深色底上发虚。
+        public const string FontPath = "Fonts/SubstrataSans";
 
         static float _scale = -1f;
         static int _w;
@@ -126,7 +129,7 @@ namespace MinecraftTetris
             // 资源没导进来（比如有人删了 ttf）时退回系统字体，至少不是一屏方框
             Debug.LogWarning("[MinecraftTetris] 没找到 Resources/" + FontPath + "，退回系统字体");
             return Font.CreateDynamicFontFromOSFont(
-                new[] { "STKaiti", "华文楷体", "KaiTi", "楷体", "Microsoft YaHei", "SimHei", "Arial" }, 40);
+                new[] { "Noto Sans SC", "Microsoft YaHei", "SimHei", "Arial" }, 40);
         }
 
         // ── 配色 ────────────────────────────────────────────────────────────

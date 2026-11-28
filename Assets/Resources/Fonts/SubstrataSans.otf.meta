@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 66ea9550edfa63f4e9e982bbd0736afa
+guid: 333c5213ed6b8434196444d55a698f8f
 TrueTypeFontImporter:
   externalObjects: {}
   serializedVersion: 4
@@ -9,7 +9,7 @@ TrueTypeFontImporter:
   characterPadding: 1
   includeFontData: 1
   fontNames:
-  - STKaiti
+  - Noto Sans SC
   fallbackFontReferences: []
   customCharacters: 
   fontRenderingMode: 0
