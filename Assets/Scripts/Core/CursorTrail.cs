@@ -35,13 +35,14 @@ namespace MinecraftTetris
         int _count;
 
         Texture2D _glow;
+        Texture2D _white;
         float _time;
 
-        /// <summary>拖尾本体的颜色：深蓝。</summary>
-        static readonly Color TrailColor = new Color(0.10f, 0.32f, 1f, 1f);
+        /// <summary>拖尾本体：青。比原来的深蓝更清亮，也和封面、水方块同一套色。</summary>
+        static readonly Color TrailColor = new Color(0.13f, 0.70f, 0.84f, 1f);
 
-        /// <summary>靠近光标那一段偏亮蓝白，看起来像「发光」而不是「一团蓝墨水」。</summary>
-        static readonly Color HotColor = new Color(0.58f, 0.80f, 1f, 1f);
+        /// <summary>靠近光标那一段偏近白青，看起来像「发光」而不是「一块青色」。</summary>
+        static readonly Color HotColor = new Color(0.74f, 0.97f, 1f, 1f);
 
         static CursorTrail _instance;
         int _drawnFrame = -1;
@@ -92,6 +93,9 @@ namespace MinecraftTetris
         {
             _instance = this;
             _glow = MakeGlowTexture(64);
+            _white = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+            _white.SetPixel(0, 0, Color.white);
+            _white.Apply();
         }
 
         void OnDestroy()
@@ -100,6 +104,8 @@ namespace MinecraftTetris
                 _instance = null;
             if (_glow != null)
                 Destroy(_glow);
+            if (_white != null)
+                Destroy(_white);
         }
 
         void Update()
@@ -199,33 +205,71 @@ namespace MinecraftTetris
                 }
             }
 
-            // 光标本身：外圈呼吸 + 内芯。
-            // 鼠标停住一会儿尾巴就淡光了（_count 归零），这时这三颗光斑是场上唯一的指针
-            // —— 系统光标已经藏掉，所以中心要画得更实一点，不然在浅色方块上找不着自己。
-            float idle = _count == 0 ? 1f : 0f;
-            float coreSize = Mathf.Lerp(0.75f, 0.62f, idle);
-            float coreAlpha = Mathf.Lerp(0.55f, 0.92f, idle);
-
-            float pulse = 0.85f + 0.15f * Mathf.Sin(_time * 3.4f);
-            Blob(mouse, unit * 3.4f * pulse, new Color(TrailColor.r, TrailColor.g, TrailColor.b, 0.18f));
-            Blob(mouse, unit * 1.7f * pulse, new Color(TrailColor.r, TrailColor.g, TrailColor.b, 0.34f));
-            Blob(mouse, unit * coreSize, new Color(HotColor.r, HotColor.g, HotColor.b, coreAlpha));
+            // 光标本身：一圈缓慢自转的方框 + 中心实心方块。
+            // 鼠标停住时拖尾会淡光，这颗就是场上唯一的指针，所以中心要够实。
+            DrawCursor(mouse, unit);
 
             GUI.color = prevColor;
         }
 
-        /// <summary>画一个拖尾光斑：k = 1 是刚生成（小而亮），k = 0 是快消失（大而淡）。</summary>
+        /// <summary>
+        /// 画一个拖尾方块：越老越小、转得越多、越淡。
+        ///
+        /// 原来是「越老越大的圆光斑」——扩散的彗尾。改成方块之后，尾巴读起来是
+        /// 「一路留下的小方块在缩小消失」，和游戏本身是方块做的一件事对得上；
+        /// 旋转则让整条尾巴有方向感（同向转，像被拖过去）。
+        /// </summary>
         void DrawNode(Vector2 pos, float age, float unit)
         {
             float k = 1f - age / Life;
             if (k <= 0f)
                 return;
 
-            float size = Mathf.Lerp(unit * 2.8f, unit * 0.85f, k);   // 越老越大，像在扩散
-            float a = Mathf.Pow(k, 1.7f) * 0.55f;
+            float size = Mathf.Lerp(unit * 1.5f, unit * 0.45f, k);   // 越老越小
+            float a = Mathf.Pow(k, 1.5f) * 0.65f;
+            float rot = (1f - k) * -110f;                            // 同向旋转，尾巴有方向
 
             Color c = Color.Lerp(TrailColor, HotColor, k * k);
-            Blob(pos, size, new Color(c.r, c.g, c.b, a));
+
+            Matrix4x4 prevMat = GUI.matrix;
+            GUIUtility.RotateAroundPivot(rot, pos);
+            GUI.color = new Color(c.r, c.g, c.b, a);
+            GUI.DrawTexture(new Rect(pos.x - size * 0.5f, pos.y - size * 0.5f, size, size), _white);
+            GUI.matrix = prevMat;
+        }
+
+        /// <summary>光标：缓慢自转的方框 + 中心实心方块。</summary>
+        void DrawCursor(Vector2 p, float unit)
+        {
+            float r = unit * 1.45f;
+            float t = Mathf.Max(1.2f, unit * 0.10f);      // 线宽
+            float rot = _time * 42f;                       // 每秒 42°，慢到不晃眼
+
+            Matrix4x4 prevMat = GUI.matrix;
+            GUIUtility.RotateAroundPivot(rot, p);
+
+            // 四角描边画一个方框（IMGUI 没有画框的接口，四条矩形拼）
+            Colors(new Color(HotColor.r, HotColor.g, HotColor.b, 0.72f));
+            FrameSegment(p, r, t);
+            GUI.matrix = prevMat;
+
+            // 中心方块：整体旋转会糊，单独画一个不转的
+            float cs = unit * 0.62f;
+            GUI.color = new Color(1f, 1f, 1f, 0.95f);
+            GUI.DrawTexture(new Rect(p.x - cs * 0.5f, p.y - cs * 0.5f, cs, cs), _white);
+        }
+
+        void Colors(Color c)
+        {
+            GUI.color = c;
+        }
+
+        void FrameSegment(Vector2 p, float r, float t)
+        {
+            GUI.DrawTexture(new Rect(p.x - r, p.y - r, r * 2f, t), _white);          // 上
+            GUI.DrawTexture(new Rect(p.x - r, p.y + r - t, r * 2f, t), _white);      // 下
+            GUI.DrawTexture(new Rect(p.x - r, p.y - r, t, r * 2f), _white);          // 左
+            GUI.DrawTexture(new Rect(p.x + r - t, p.y - r, t, r * 2f), _white);      // 右
         }
 
         void Blob(Vector2 center, float size, Color color)
