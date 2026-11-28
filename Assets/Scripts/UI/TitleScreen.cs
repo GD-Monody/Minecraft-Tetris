@@ -1758,8 +1758,8 @@ namespace MinecraftTetris
         /// </summary>
         static readonly string[][] PlayRules =
         {
-            new[] { "游戏玩法", "参照经典游戏《俄罗斯方块》。" },
-            new[] { "游戏方块来源", "《我的世界》。" },
+            new[] { "游戏玩法", "经典下落式方块玩法：整层填满就消除。" },
+            new[] { "游戏方块来源", "全部方块与贴图均为本项目原创绘制。" },
             new[] { "游戏场地", "默认 10 × 20 × 1，可在「设置 → 场地尺寸」里调。" },
             // 第三段是这一条在手机上的说法：手机上既没有键盘，也没有「按键设置」那一页
             new[] { "方向选择", "支持沿 x、y、z 轴任意旋转 90°，键位可以在 设置 → 按键设置 里自定义。",
@@ -1805,27 +1805,59 @@ namespace MinecraftTetris
         {
             if (_guideItems != null)
                 return;
-
             _guideItems = new[]
             {
-                // TNT 和红石块合成一格：本来就是同一条机制（红石点火），
-                // 分开占两格的话加上傀儡就变成 13 格，三列排不下（4 行已是面板上限）
                 new GuideItem
                 {
-                    Ids = new[] { Tnt.TntId, Tnt.RedstoneId },
-                    Title = "TNT / 红石块",
-                    Desc = "红石方块、以及侦测器的激发面会激活TNT，在几秒钟后爆炸，"
-                        + "同时引爆周围的TNT。",
+                    Ids = new[] { BlockCatalog.SandId, BlockCatalog.DustId,
+                                  BlockCatalog.GravelId, BlockCatalog.SaltId },
+                    Title = "重力方块",
+                    Desc = "沙、粉尘、砾石、盐下面是空的就往下掉，被炸出的弹坑会自己填平。",
                 },
                 new GuideItem
                 {
-                    Ids = new[] { BlockCatalog.ObserverId },
-                    Title = "侦测器",
-                    IconFace = 2,       // 正面那只「眼睛」，顶面是一块灰板认不出来
-                    // 方块没有朝向（同一格永远画同一面），所以把激发面固定成底面，
-                    // 文案里必须说清楚，否则玩家会以为四面都能引燃
-                    Desc = "只有激发面（朝下那一面）贴着 TNT 才会把它点着；"
-                        + "侧面、顶上贴着 TNT 都不算。",
+                    Ids = new[] { BlockCatalog.WaterId },
+                    Title = "水",
+                    // 数字、英文两侧不留空格：IMGUI 只在这类空格处才断行
+                    Desc = "往低处和两边流，碰到源岩浆会凝固成黑曜石。"
+                        + "会浇灭旁边的火（木头还留着）。炸药上方有水时，它爆炸不会破坏任何方块。",
+                },
+                new GuideItem
+                {
+                    Ids = new[] { BlockCatalog.LavaId },
+                    Title = "岩浆",
+                    Desc = "流得比水慢；源岩浆碰到水凝固成黑曜石，流动的岩浆凝成圆石。"
+                        + "炸药挨着岩浆会被点着。",
+                },
+                new GuideItem
+                {
+                    Ids = new[] { BlockCatalog.AcidId },
+                    Title = "酸",
+                    Desc = "流动性和水一样。黄绿色的那滩别和青色的水搞混。",
+                },
+                new GuideItem
+                {
+                    Ids = new[] { BlockCatalog.FindId("fuel") },
+                    Title = "燃料",
+                    Desc = "琥珀色的可燃液体：流动性和水一样，但火会顺着液面蔓延，"
+                        + "别把它引到炸药旁边。",
+                },
+                new GuideItem
+                {
+                    Ids = new[]
+                    {
+                        BlockCatalog.FindId("paper_kraft"), BlockCatalog.FindId("cardboard"),
+                        BlockCatalog.FindId("corrugated"), BlockCatalog.FindId("plank"),
+                        BlockCatalog.FindId("log"), BlockCatalog.FindId("leaf"),
+                    },
+                    Title = "易燃方块",
+                    Desc = "纸质和木质的方块都会被火烧掉，火还会顺着它们蔓延。",
+                },
+                new GuideItem
+                {
+                    Ids = new[] { BlockCatalog.FindId("explosive") },
+                    Title = "炸药",
+                    Desc = "被火点着后过几秒爆炸，同时引爆周围的炸药。",
                 },
                 new GuideItem
                 {
@@ -1835,62 +1867,9 @@ namespace MinecraftTetris
                 },
                 new GuideItem
                 {
-                    Ids = new[] { BlockCatalog.BedrockId },
-                    Title = "基岩",
+                    Ids = new[] { BlockCatalog.BedrockId, BlockCatalog.FindId("obsidian") },
+                    Title = "基岩 / 黑曜石",
                     Desc = "不随消除下落，也炸不掉。",
-                },
-                new GuideItem
-                {
-                    // 黑曜石和下面那几种是同一类：都炸不掉，合成一条说
-                    Ids = new[]
-                    {
-                        FindBlock("obsidian"), FindBlock("crying_obsidian"),
-                        FindBlock("ancient_debris"), FindBlock("netherite_block"),
-                        FindBlock("reinforced_deepslate"), FindBlock("command_block"),
-                    },
-                    Title = "防爆方块",
-                    Desc = "黑曜石、远古残骸、下界合金块、强化深板岩、命令方块都炸不掉。",
-                },
-                new GuideItem
-                {
-                    Ids = new[] { FindBlock("water") },
-                    Title = "水",
-                    // 数字、英文两侧不留空格：IMGUI 只在这类空格处才断行，
-                    // 留着空格会出现「一格最多 8」/「份，…」这种断法（截图里就是这样）
-                    Desc = "往低处和两边流，一格最多8份，碰到源岩浆会变成黑曜石。"
-                        + "会浇灭旁边的火（木头还留着）。TNT上方有水时，它爆炸不会破坏任何方块。",
-                },
-                new GuideItem
-                {
-                    Ids = new[] { FindBlock("lava") },
-                    Title = "岩浆",
-                    Desc = "流得比水慢；源岩浆碰到水变黑曜石，流动的岩浆变圆石。"
-                        + "TNT挨着岩浆会被点着。",
-                },
-                new GuideItem
-                {
-                    Ids = new[] { FindBlock("sand"), FindBlock("gravel") },
-                    Title = "沙子 / 沙砾",
-                    Desc = "下面是空的就往下掉，被炸出的弹坑会自己填平。",
-                },
-                new GuideItem
-                {
-                    // 会掉的是粉末，不是硬化后的混凝土（用户特意纠正过）；展示一张白的就够
-                    Ids = new[] { FindBlock("white_concrete_powder") },
-                    Title = "混凝土粉末",
-                    Desc = "和沙子一样受重力，下面是空的就往下掉。",
-                },
-                new GuideItem
-                {
-                    Ids = new[] { BlockCatalog.SnowId, BlockCatalog.IceId },
-                    Title = "雪块 / 冰",
-                    Desc = "贴着岩浆（任意一面）就化成水，水再被岩浆烫成黑曜石。",
-                },
-                new GuideItem
-                {
-                    Ids = new[] { BlockCatalog.CarvedPumpkinId, BlockCatalog.SnowId },
-                    Title = "傀儡",
-                    Desc = "先落雪 / 铁 / 铜块，南瓜头压上去就召出傀儡。",
                 },
                 new GuideItem
                 {
@@ -1900,15 +1879,9 @@ namespace MinecraftTetris
                 },
                 new GuideItem
                 {
-                    Ids = new[] { Sponge.SpongeId, Sponge.WetSpongeId },
-                    Title = "海绵",
-                    Desc = "干海绵吸走周围 7×7×7 里够得着的水（最多 65 格）并变成湿海绵；湿的吸不动。",
-                },
-                new GuideItem
-                {
-                    Ids = new[] { FindBlock("oak_log") },
-                    Title = "原木",
-                    Desc = "落定后，周围空位会长出同种树叶。",
+                    Ids = new[] { BlockCatalog.SnowId, BlockCatalog.IceId },
+                    Title = "雪 / 冰",
+                    Desc = "贴着岩浆（任意一面）就化成水，水再被岩浆烫成黑曜石。",
                 },
             };
         }

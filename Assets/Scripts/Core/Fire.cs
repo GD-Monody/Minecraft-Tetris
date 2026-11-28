@@ -100,40 +100,9 @@ namespace MinecraftTetris
         /// <summary>这块砖烧得着吗（木头 / 羊毛 / 树叶这类）。</summary>
         public static bool IsFlammable(int blockId)
         {
-            if (blockId <= 0)
-                return false;
-
-            if (_flammable == null)
-            {
-                BlockDef[] blocks = BlockCatalog.Blocks;
-                _flammable = new bool[blocks.Length + 1];
-                for (int i = 0; i < blocks.Length; i++)
-                {
-                    string name = blocks[i].Name;
-                    bool skip = false;
-                    for (int k = 0; k < NonFlammableWords.Length; k++)
-                    {
-                        if (name.Contains(NonFlammableWords[k]))
-                        {
-                            skip = true;
-                            break;
-                        }
-                    }
-                    if (skip)
-                        continue;
-
-                    for (int k = 0; k < FlammableWords.Length; k++)
-                    {
-                        if (name.Contains(FlammableWords[k]))
-                        {
-                            _flammable[i + 1] = true;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            return blockId < _flammable.Length && _flammable[blockId];
+            // 可燃由方块表的 flammable 标签决定（纸质/木质/燃料）。
+            // 之前按 MC 名字的关键词表判断，换表后关键词全部失效。
+            return blockId > 0 && BlockCatalog.HasTag(blockId, "flammable");
         }
 
         /// <summary>重开一局 / 演示场景重摆时清干净。</summary>

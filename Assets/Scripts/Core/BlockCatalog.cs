@@ -83,38 +83,59 @@ namespace MinecraftTetris
         /// <summary>结构方块的编号（0 = 表里没这个方块）。落定时记住构造，被消时还原。</summary>
         public static readonly int StructureId = FindId("structure_block");
 
-        /// <summary>侦测器的编号（0 = 表里没这个方块）。底面贴着 TNT 会点燃它，见 Observer.cs。</summary>
+        /// <summary>
+        /// 侦测器的编号。Substrata 没有这个方块（MC 专属机制），常量保留让代码能编译，
+        /// 值为 0 时 Observer.cs 的判定全部落空，整个侦测器玩法自动休眠。
+        /// </summary>
         public static readonly int ObserverId = FindId("observer");
 
         /// <summary>玻璃的编号（0 = 表里没这个方块）。上面压着方块就会碎，见 Glass.cs。</summary>
         public static readonly int GlassId = FindId("glass");
 
-        /// <summary>雪块的编号（0 = 表里没这个方块）。挨着岩浆会化成水，见 Melt.cs。</summary>
-        public static readonly int SnowId = FindId("snow_block");
+        /// <summary>雪块的编号。挨着岩浆会化成水，见 Melt.cs。</summary>
+        public static readonly int SnowId = FindId("snow");
 
         /// <summary>冰的编号（0 = 表里没这个方块）。挨着岩浆会化成水，见 Melt.cs。</summary>
         public static readonly int IceId = FindId("ice");
 
-        /// <summary>
-        /// 可以当傀儡脑袋的两格：雕刻南瓜和普通南瓜都认（原版两个都行）。
-        /// 见 Golem.cs。
-        /// </summary>
+        // —— 以下都是 MC 专属方块（傀儡系统），Substrata 表里没有，值恒为 0 ——
+        // 常量保留是为了引用它们的代码能编译；IsHead / 身体判定全部落空，傀儡玩法休眠。
         public static readonly int CarvedPumpkinId = FindId("carved_pumpkin");
         public static readonly int PumpkinId = FindId("pumpkin");
-
-        /// <summary>铁傀儡的身体材质。</summary>
         public static readonly int IronBlockId = FindId("iron_block");
-
-        /// <summary>铜傀儡的身体材质。</summary>
         public static readonly int CopperBlockId = FindId("copper_block");
-
-        /// <summary>原木。雪傀儡的手臂在原版是两根棕色树枝，实体贴图里没画，拿原木凑。</summary>
         public static readonly int OakLogId = FindId("oak_log");
-
-        /// <summary>铜块的三个氧化阶段。用哪个阶段的铜块召唤，傀儡就从哪个阶段开始。</summary>
         public static readonly int ExposedCopperId = FindId("exposed_copper");
         public static readonly int WeatheredCopperId = FindId("weathered_copper");
         public static readonly int OxidizedCopperId = FindId("oxidized_copper");
+
+        /// <summary>水的编号。Fluids.cs 的流动与「岩浆遇水凝固」都靠它。</summary>
+        public static readonly int WaterId = FindId("water");
+        public static readonly int LavaId = FindId("lava");
+        public static readonly int AcidId = FindId("acid");
+        public static readonly int FuelId = FindId("fuel");
+        public static readonly int SandId = FindId("sand");
+        public static readonly int DustId = FindId("dust");
+        public static readonly int GravelId = FindId("gravel");
+        public static readonly int SaltId = FindId("salt");
+
+        /// <summary>机制标签查询：tags 由 blocks.json 一并生成（gravity/flammable/liquid/…）。</summary>
+        public static bool HasTag(int blockId, string tag)
+        {
+            int index = blockId - 1;
+            if (index < 0 || index >= Blocks.Length)
+                return false;
+            string tags = BlockCatalogData.Tags[index];
+            if (string.IsNullOrEmpty(tags))
+                return false;
+            // 精确匹配逗号分段，避免 "sand" 撞上 "quicksand" 这类前缀
+            foreach (var part in tags.Split(','))
+            {
+                if (part.Trim() == tag)
+                    return true;
+            }
+            return false;
+        }
 
         /// <summary>
         /// 这一格是不是「消除时不下落」的锚点方块（目前只有基岩）。
@@ -135,9 +156,7 @@ namespace MinecraftTetris
         /// </summary>
         static readonly string[] BlastProofNames =
         {
-            "bedrock", "obsidian", "crying_obsidian",
-            "ancient_debris", "netherite_block", "reinforced_deepslate",
-            "command_block", "chain_command_block", "repeating_command_block",
+            "bedrock", "obsidian",
         };
 
         static bool[] _blastProof;
@@ -167,7 +186,8 @@ namespace MinecraftTetris
             return blockId <= _blastProof.Length && _blastProof[blockId];
         }
 
-        static int FindId(string name)
+        /// <summary>按英文名查编号。公开给图鉴/工坊这类「按名字找方块」的调用方。</summary>
+        public static int FindId(string name)
         {
             for (int i = 0; i < Blocks.Length; i++)
             {
@@ -197,6 +217,7 @@ namespace MinecraftTetris
             var defs = new BlockDef[count];
             for (int i = 0; i < count; i++)
             {
+                int index = i;
                 var tiles = new Tile[6];
                 for (int f = 0; f < 6; f++)
                 {
@@ -205,14 +226,16 @@ namespace MinecraftTetris
                 }
 
                 string name = BlockCatalogData.Names[i];
-                bool transparent = IsTransparent(name);
+                bool transparent = BlockCatalogData.TransparentFlags != null
+                    && index < BlockCatalogData.TransparentFlags.Length
+                    && BlockCatalogData.TransparentFlags[index] != 0;
                 defs[i] = new BlockDef(
                     name,
                     BlockCatalogData.NamesZh[i],
                     tiles[0], tiles[1], tiles[2], tiles[3], tiles[4], tiles[5],
                     PlaceSfxGroupOf(i),
                     transparent,
-                    IsCutout(i, name, transparent));
+                    IsCutout(index));
             }
             return defs;
         }
@@ -220,31 +243,39 @@ namespace MinecraftTetris
         /// <summary>放置音效分组，数据在 BlockSfxData（由 tools/build_place_sfx.py 生成）。</summary>
         static string PlaceSfxGroupOf(int index)
         {
-            if (index < 0 || index >= BlockSfxData.BlockGroup.Length)
+            // 音效组由生成器按材质写进数据（stone/wood/sand/glass/...），
+            // 实际的音频文件还是 MC 的，第二步换素材时只要替换 clip，组名不动。
+            if (BlockCatalogData.SfxGroups == null || index >= BlockCatalogData.SfxGroups.Length)
                 return "stone";
-            return BlockSfxData.BlockGroup[index];
-        }
-
-        static bool IsTransparent(string name)
-        {
-            // 冰和玻璃、树叶一样是半透明材质：贴图自带 alpha，得走 BlockTransparentMat，
-            // 不然冰块会被画成一块不透明的白板。
-            return name.Contains("glass") || name.Contains("leaves") || name.Contains("ice");
+            return BlockCatalogData.SfxGroups[index];
         }
 
         /// <summary>
-        /// 贴图带镂空的方块要按 alpha test 画。数据在 BlockCatalogData.CutoutFlags
-        /// （图集脚本扫出来的：六个面里只要有一面有整块透明的像素就算）。
+        /// 半透明材质（水/玻璃/冰/燃料这些贴图自带 alpha 的）走 BlockTransparentMat，
+        /// 不然会被画成不透明的色块。标记由生成器扫图集 alpha 算出来。
         /// </summary>
-        static bool IsCutout(int index, string name, bool transparent)
+        static bool IsTransparent(int index)
         {
-            // 玻璃 / 树叶 / 冰已经是半透明材质了，别动它们 —— 换回镂空会让冰块的
-            // 半透明变成硬边，是回归。
-            if (transparent)
-                return false;
+            return BlockCatalogData.TransparentFlags != null
+                && index < BlockCatalogData.TransparentFlags.Length
+                && BlockCatalogData.TransparentFlags[index] != 0;
+        }
+
+        /// <summary>
+        /// 贴图带镂空的方块要按 alpha test 画。标记由生成器扫图集 alpha 算出来
+        /// （面里既有全透明像素又有不透明像素才算，纯半透明走 transparent）。
+        /// </summary>
+        static bool IsCutout(int index)
+        {
             if (BlockCatalogData.CutoutFlags == null || index >= BlockCatalogData.CutoutFlags.Length)
                 return false;
             return BlockCatalogData.CutoutFlags[index] != 0;
+        }
+
+        /// <summary>这一格要不要按半透明渲染（贴图自带 alpha 的材质）。</summary>
+        public static bool IsTransparentBlock(int blockId)
+        {
+            return blockId > 0 && blockId <= Blocks.Length && Blocks[blockId - 1].Transparent;
         }
 
         /// <summary>这一格要不要按镂空渲染（贴图有透明的洞）。</summary>

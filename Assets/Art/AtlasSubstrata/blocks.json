@@ -293,6 +293,30 @@
   },
   {
     "id": 43,
+    "name": "bedrock",
+    "cn": "基岩",
+    "tags": []
+  },
+  {
+    "id": 44,
+    "name": "obsidian",
+    "cn": "黑曜石",
+    "tags": []
+  },
+  {
+    "id": 45,
+    "name": "ice",
+    "cn": "冰",
+    "tags": []
+  },
+  {
+    "id": 46,
+    "name": "structure_block",
+    "cn": "结构方块",
+    "tags": []
+  },
+  {
+    "id": 47,
     "name": "dye_red",
     "cn": "红纸",
     "tags": [
@@ -300,7 +324,7 @@
     ]
   },
   {
-    "id": 44,
+    "id": 48,
     "name": "dye_orange",
     "cn": "橙纸",
     "tags": [
@@ -308,7 +332,7 @@
     ]
   },
   {
-    "id": 45,
+    "id": 49,
     "name": "dye_yellow",
     "cn": "黄纸",
     "tags": [
@@ -316,7 +340,7 @@
     ]
   },
   {
-    "id": 46,
+    "id": 50,
     "name": "dye_green",
     "cn": "绿纸",
     "tags": [
@@ -324,7 +348,7 @@
     ]
   },
   {
-    "id": 47,
+    "id": 51,
     "name": "dye_teal",
     "cn": "青纸",
     "tags": [
@@ -332,7 +356,7 @@
     ]
   },
   {
-    "id": 48,
+    "id": 52,
     "name": "dye_blue",
     "cn": "蓝纸",
     "tags": [
@@ -340,7 +364,7 @@
     ]
   },
   {
-    "id": 49,
+    "id": 53,
     "name": "dye_purple",
     "cn": "紫纸",
     "tags": [
@@ -348,7 +372,7 @@
     ]
   },
   {
-    "id": 50,
+    "id": 54,
     "name": "dye_pink",
     "cn": "粉纸",
     "tags": [
@@ -356,7 +380,7 @@
     ]
   },
   {
-    "id": 51,
+    "id": 55,
     "name": "dye_brown",
     "cn": "棕纸",
     "tags": [
@@ -364,7 +388,7 @@
     ]
   },
   {
-    "id": 52,
+    "id": 56,
     "name": "dye_gray",
     "cn": "灰纸",
     "tags": [
@@ -372,7 +396,7 @@
     ]
   },
   {
-    "id": 53,
+    "id": 57,
     "name": "dye_black",
     "cn": "黑纸",
     "tags": [
@@ -380,7 +404,7 @@
     ]
   },
   {
-    "id": 54,
+    "id": 58,
     "name": "dye_white",
     "cn": "白纸",
     "tags": [

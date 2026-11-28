@@ -11,8 +11,7 @@ namespace MinecraftTetris
         // 特殊方块：按方块英文名认。混凝土粉末全是 *_concrete_powder，用后缀判。
         static readonly string[] SpecialNames =
         {
-            "sand", "red_sand", "gravel",
-            "suspicious_sand", "suspicious_gravel",
+            "sand", "gravel", "dust", "salt",
         };
 
         // 每 SpecialEvery 个方块里，有一个整块用特殊材质
@@ -100,8 +99,7 @@ namespace MinecraftTetris
                 if (SpecialNames[i] == name)
                     return true;
             }
-            // 只有混凝土粉末受重力（硬化块是成品砖，见 Gravity），所以只把粉末收进特殊池
-            return name.EndsWith("_concrete_powder");
+            return false;
         }
 
         static void Ensure()
@@ -151,16 +149,16 @@ namespace MinecraftTetris
                     _lavaId = i + 1;
                     continue;
                 }
-                if (n == "tnt")
+                if (n == "explosive")
                 {
-                    // TNT 不进普通池：它是「道具」不是「砖」，出现频率要按件数控制。
+                    // 炸药不进普通池：它是「道具」不是「砖」，出现频率要按件数控制。
                     _tntId = i + 1;
                     continue;
                 }
-                if (n == "redstone_block")
+                if (n == "fuse")
                 {
-                    // 红石块同时留在普通池里（偶尔自然出现，能顺手点着场上的 TNT），
-                    // 另外记下编号，抽到 TNT 之后强制跟一块。
+                    // 引线替代了红石块的点火职责：留在普通池里（偶尔自然出现，
+                    // 能顺手点着场上的炸药），另外记下编号。
                     _redstoneId = i + 1;
                 }
                 if (n == "bedrock")
@@ -177,7 +175,7 @@ namespace MinecraftTetris
                     _structureId = i + 1;
                     continue;
                 }
-                if (n.EndsWith("_leaves"))
+                if (n == "leaf")
                 {
                     // 树叶是原木长出来的，不该当成一整块方块的材质掉下来
                     continue;
@@ -189,11 +187,11 @@ namespace MinecraftTetris
                     _glassId = i + 1;
                     continue;
                 }
-                if (n == "snow_block" || n == "ice")
+                if (n == "snow" || n == "ice")
                 {
-                    // 雪块 / 冰也单独发（见 MeltEvery）：它俩的机制要碰上岩浆才触发，
-                    // 埋在三百多种的普通池里等于没有。行为本身由「雪与冰遇岩浆融化」开关控制。
-                    if (n == "snow_block")
+                    // 雪 / 冰也单独发（见 MeltEvery）：它俩的机制要碰上岩浆才触发，
+                    // 埋在普通池里等于没有。行为本身由「雪与冰遇岩浆融化」开关控制。
+                    if (n == "snow")
                         _snowId = i + 1;
                     else
                         _iceId = i + 1;

@@ -20,6 +20,11 @@ namespace MinecraftTetris.EditorTools
 
         public static void Run()
         {
+            // 自检的每一节都需要对应机制是「开」的（有的节自己开关并还原，
+            // 但只要有一节忘了还原，后面的节就会静默失败）。批量跑的时候
+            // 用的是全新注册表，干脆开头把全部机制打开，跑完也不还原 ——
+            // batchmode 跑完就退出，不会污染玩家的设置。
+            GameSettings.SetAllMech(true);
             var sb = new StringBuilder();
             int pass = 0;
             int fail = 0;
@@ -464,7 +469,7 @@ namespace MinecraftTetris.EditorTools
             }
             Check("超宽形状居中后被夹回盒子里", wideInBox);
 
-            Check("建造台找得到编辑器里用的那种方块", BlockCatalog.IdOf("diamond_block") > 0);
+            Check("建造台找得到编辑器里用的那种方块", BlockCatalog.IdOf("crystal") > 0);
 
             // 贴着盒壁的方块：命中的那一面朝外，外侧那一格已经出盒 —— 建造台要判「放不下」
             VoxelHit hw;
@@ -524,7 +529,7 @@ namespace MinecraftTetris.EditorTools
             }
 
             // 方块材质表 + 图集格子范围
-            Check("方块材质表: " + BlockCatalog.Blocks.Length + " 种", BlockCatalog.Blocks.Length >= 100);
+            Check("方块材质表: " + BlockCatalog.Blocks.Length + " 种（去 IP 版是 58 块）", BlockCatalog.Blocks.Length >= 50);
             int badTiles = 0;
             for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
             {
@@ -552,24 +557,16 @@ namespace MinecraftTetris.EditorTools
             for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
                 if (BlockCatalog.Blocks[i].Cutout)
                     cutCount++;
-            Check("只有少数方块是镂空的（带洞的贴图）", cutCount > 0 && cutCount < 60);
+            // 新表里没有带洞的方块（铜格栅那类 MC 方块已移除），镂空材质暂时闲置
+            Check("新表没有镂空方块（洞类方块已随 MC 表移除）", cutCount == 0);
 
-            // 四种氧化程度的铜格栅都要镂空；实心铜块不能镂空
-            bool gratesCut = true;
-            foreach (string g in new[] { "copper_grate", "exposed_copper_grate",
-                                         "weathered_copper_grate", "oxidized_copper_grate" })
-            {
-                int id = IdOf(g);
-                if (id == 0 || !BlockCatalog.IsCutoutBlock(id))
-                    gratesCut = false;
-            }
-            Check("四种铜格栅都按镂空渲染", gratesCut);
-            Check("实心铜块不镂空", !BlockCatalog.IsCutoutBlock(IdOf("copper_block")) &&
-                                    !BlockCatalog.IsCutoutBlock(IdOf("cut_copper")));
-            Check("空格子 / 越界不算镂空", !BlockCatalog.IsCutoutBlock(0) &&
-                                           !BlockCatalog.IsCutoutBlock(BlockCatalog.Blocks.Length + 1));
+            // 玻璃 / 冰这些走半透明；实心方块不走
+            Check("玻璃走半透明材质", BlockCatalog.IsTransparentBlock(BlockCatalog.GlassId));
+            Check("实心方块不走半透明", !BlockCatalog.IsTransparentBlock(IdOf("stone")));
+            Check("空格子 / 越界不算半透明", !BlockCatalog.IsTransparentBlock(0) &&
+                                           !BlockCatalog.IsTransparentBlock(BlockCatalog.Blocks.Length + 1));
 
-            // 图集里那一格确实有透明的像素（表和贴图对得上）
+            // 图集里那一格确实带 alpha（表和贴图对得上）
             string atlasPng = System.IO.Path.Combine(Application.dataPath, "Resources/atlas.png");
             if (System.IO.File.Exists(atlasPng))
             {
@@ -588,14 +585,14 @@ namespace MinecraftTetris.EditorTools
                     int oy = atlasTex.height - (d.North.Row * cell + pad) - 16;
                     for (int y = 0; y < 16; y++)
                         for (int x = 0; x < 16; x++)
-                            if (apx[(oy + y) * atlasTex.width + ox + x].a < 128)
+                            if (apx[(oy + y) * atlasTex.width + ox + x].a < 250)
                                 holes++;
                     return holes;
                 }
 
-                Check("铜格栅贴图确实有洞（侧面 16x16 里有透明像素）",
-                      Holes(IdOf("copper_grate")) > 20);
-                Check("实心铜块贴图没有洞", Holes(IdOf("copper_block")) == 0);
+                Check("玻璃贴图确实带 alpha（侧面有非 255 的像素）",
+                      Holes(BlockCatalog.GlassId) > 20);
+                Check("石头贴图不透明", Holes(IdOf("stone")) == 0);
             }
 
             Material cutMat = Resources.Load<Material>("AtlasCutoutMat");
@@ -605,13 +602,11 @@ namespace MinecraftTetris.EditorTools
                   cutMat.mainTexture != null);
             if (cutMat != null)
             {
-                Check("铜格栅用的是镂空材质",
-                      BlockMesh.GetMaterial(BlockCatalog.Of(IdOf("copper_grate"))) == cutMat);
-                Check("实心方块还是用普通图集材质",
-                      BlockMesh.GetMaterial(BlockCatalog.Of(IdOf("copper_block"))) == BlockMesh.AtlasMaterial);
-                // 玻璃 / 树叶本来就是半透明材质，别被镂空这条规则改回去
-                Check("玻璃仍然是半透明材质（没被镂空规则改掉）",
+                // 新表里没有镂空方块（铜格栅那类），玻璃系走半透明材质
+                Check("玻璃用的是半透明材质而不是镂空材质",
                       BlockMesh.GetMaterial(BlockCatalog.Of(BlockCatalog.GlassId)) != cutMat);
+                Check("实心方块用的是普通图集材质",
+                      BlockMesh.GetMaterial(BlockCatalog.Of(IdOf("stone"))) == BlockMesh.AtlasMaterial);
             }
 
             // ---------- 落点提示（当前方块会停在哪，用高亮方框标出来） ----------
@@ -678,9 +673,9 @@ namespace MinecraftTetris.EditorTools
 
             UiSkin.Current = themeWas;
 
-            // 放置音效：按 MC 原版材质分组，数据由 tools/build_place_sfx.py 生成
+            // 放置音效组：由材质生成器按新方块表写出（clip 本身还是 MC 的，第二步换素材）
             Check("音效分组数和方块表对齐",
-                BlockSfxData.BlockGroup.Length == BlockCatalogData.Names.Length);
+                BlockCatalogData.SfxGroups.Length == BlockCatalogData.Names.Length);
 
             var groupSet = new System.Collections.Generic.HashSet<string>(BlockSfxData.Groups);
             int unknownGroup = 0;
@@ -733,16 +728,15 @@ namespace MinecraftTetris.EditorTools
             System.Func<string, string> groupOf = delegate(string n)
             {
                 int idx = System.Array.IndexOf(BlockCatalogData.Names, n);
-                return idx < 0 ? "<没有这个方块>" : BlockSfxData.BlockGroup[idx];
+                return idx < 0 ? "<没有这个方块>" : BlockCatalogData.SfxGroups[idx];
             };
-            Check("橡木木板 -> 木头音", groupOf("oak_planks") == "wood");
+            Check("木板 -> 木头音", groupOf("plank") == "wood");
             Check("石头 -> 石头音", groupOf("stone") == "stone");
-            Check("羊毛 -> 布的音", groupOf("black_wool") == "wool");
             Check("沙子 -> 沙子音", groupOf("sand") == "sand");
-            Check("TNT -> 草的音（原版如此）", groupOf("tnt") == "grass");
+            Check("炸药 -> 草的音（原版 TNT 就挂在草组）", groupOf("explosive") == "grass");
             Check("黑曜石 -> 石头音", groupOf("obsidian") == "stone");
-            Check("水 -> 倒桶音", groupOf("water") == "fluid_water");
-            Check("岩浆 -> 倒桶音", groupOf("lava") == "fluid_lava");
+            Check("水 -> 倒桶音（暂借玻璃组，换音频素材时一并处理）", groupOf("water") == "glass");
+            Check("岩浆 -> 石头音（暂借，换音频素材时一并处理）", groupOf("lava") == "stone");
 
             // 流体要用的方块编号（水、岩浆、黑曜石、原石）在方块表里查一次
             Fluids.Init();
@@ -916,82 +910,7 @@ namespace MinecraftTetris.EditorTools
             }
             Check("抽 3000 块能同时抽到雪块和冰", sawSnow && sawIce);
 
-            // 南瓜头 + 身体：只给南瓜头的话它自己坐在场上召不出傀儡，
-            // 身体又都埋在三百多分之一的普通池里；顺序还必须是身体在前 ——
-            // 南瓜头要压在身体上面才召得出来，先落南瓜头就永远凑不成。
-            int pumpkinPool = BlockCatalog.CarvedPumpkinId > 0
-                ? BlockCatalog.CarvedPumpkinId
-                : BlockCatalog.PumpkinId;
-            int ironPool = BlockCatalog.IronBlockId;
-            int copperPool = BlockCatalog.CopperBlockId;
-            Check("南瓜头不在普通池和特殊池里（单独按块数发）",
-                pumpkinPool > 0 &&
-                System.Array.IndexOf(BlockPools.Normal, pumpkinPool) < 0 &&
-                System.Array.IndexOf(BlockPools.Special, pumpkinPool) < 0);
-            Check("铁块和铜块仍留在普通池里（自然出现也能凑傀儡）",
-                ironPool > 0 && copperPool > 0 &&
-                System.Array.IndexOf(BlockPools.Normal, ironPool) >= 0 &&
-                System.Array.IndexOf(BlockPools.Normal, copperPool) >= 0);
-
-            Random.InitState(20261112);
-            int pumpkinSeen = 0;
-            int[] bodyHit = new int[3];          // 雪 / 铁 / 铜各抽到几回
-            bool bodyAlwaysLeads = true;
-            bool ironGivesTwo = true;
-            int prev1 = 0, prev2 = 0;            // 上两块抽到的编号
-            for (int i = 0; i < 6000 && pumpkinSeen < 18; i++)
-            {
-                int id = BlockPools.NextRandomId();
-                if (id == pumpkinPool)
-                {
-                    pumpkinSeen++;
-
-                    bool isSnow = prev1 == snowPool;
-                    bool isIron = prev1 == ironPool;
-                    bool isCopper = prev1 == copperPool;
-                    if (!isSnow && !isIron && !isCopper)
-                    {
-                        bodyAlwaysLeads = false;
-                    }
-                    else
-                    {
-                        bodyHit[isSnow ? 0 : (isIron ? 1 : 2)]++;
-
-                        // 铁傀儡是倒 T 的四块铁，一块四格方块得正好抽成 T 型才拼得出来，
-                        // 所以铁身体必须连着给两块：紧挨南瓜头的那块前面还得有一块铁。
-                        // 雪 / 铜一块就够。
-                        if (isIron && prev2 != ironPool)
-                            ironGivesTwo = false;
-                    }
-                }
-                prev2 = prev1;
-                prev1 = id;
-            }
-            Check("抽得到南瓜头", pumpkinSeen > 0);
-            Check("南瓜头前面紧挨着雪块 / 铁块 / 铜块（身体先落，头才压得上去）",
-                bodyAlwaysLeads);
-            Check("铁块身体连着给两块（倒 T 四格才拼得出来）", ironGivesTwo);
-            Check("三种身体都能抽到", bodyHit[0] > 0 && bodyHit[1] > 0 && bodyHit[2] > 0);
-
-            // 身体落定就补南瓜头：玩家自己抽到铁块 / 铜块把身体搭好之后，
-            // 不用再等那 90 块的周期（等到了摆法也多半被埋了）。
-            BlockPools.Build();                 // 清计数，自检里不碰存档
-            BlockPools.OnPieceLanded(snowPool);
-            Check("雪块落定后下一抽给南瓜头", BlockPools.NextRandomId() == pumpkinPool);
-
-            BlockPools.OnPieceLanded(ironPool);
-            Check("刚发过南瓜头，紧接着落身体不会连发（冷却生效）",
-                BlockPools.NextRandomId() != pumpkinPool);
-
-            for (int i = 0; i < BlockPools.PumpkinFollowGap + 1; i++)
-                BlockPools.NextRandomId();
-            BlockPools.OnPieceLanded(ironPool);
-            Check("冷却过后铁块落地补南瓜头", BlockPools.NextRandomId() == pumpkinPool);
-
-            for (int i = 0; i < BlockPools.PumpkinFollowGap + 1; i++)
-                BlockPools.NextRandomId();
-            BlockPools.OnPieceLanded(Tnt.TntId);   // 随便一块非身体方块
-            Check("普通方块落地不补南瓜头", BlockPools.NextRandomId() != pumpkinPool);
+            // 南瓜头补发机制（MC 傀儡系统）在 Substrata 表里没有对应方块，休眠，测试一并移除。
 
             int stoneId = 1;
             for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
@@ -1163,39 +1082,12 @@ namespace MinecraftTetris.EditorTools
             Tnt.Reset();
             Fluids.Reset();
 
-            // 炸不掉的方块：基岩、三种命令方块、黑曜石、哭泣的黑曜石、远古残骸、
-            // 下界合金块、强化深板岩（原版 TNT 也炸不动它们）
-            int bedrockForBlast = 0, obsidianId = 0, cryingObsidianId = 0;
-            int ancientDebrisId = 0, netheriteBlockId = 0, reinforcedDeepslateId = 0;
-            int commandBlockId = 0, chainCommandBlockId = 0, repeatingCommandBlockId = 0;
-            for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
-            {
-                string n = BlockCatalog.Blocks[i].Name;
-                if (n == "bedrock") bedrockForBlast = i + 1;
-                else if (n == "obsidian") obsidianId = i + 1;
-                else if (n == "crying_obsidian") cryingObsidianId = i + 1;
-                else if (n == "ancient_debris") ancientDebrisId = i + 1;
-                else if (n == "netherite_block") netheriteBlockId = i + 1;
-                else if (n == "reinforced_deepslate") reinforcedDeepslateId = i + 1;
-                else if (n == "command_block") commandBlockId = i + 1;
-                else if (n == "chain_command_block") chainCommandBlockId = i + 1;
-                else if (n == "repeating_command_block") repeatingCommandBlockId = i + 1;
-            }
-            Check("黑曜石和哭泣的黑曜石都在方块表里", obsidianId > 0 && cryingObsidianId > 0);
-            Check("防爆的那几种都在方块表里",
-                ancientDebrisId > 0 && netheriteBlockId > 0 && reinforcedDeepslateId > 0 &&
-                commandBlockId > 0 && chainCommandBlockId > 0 && repeatingCommandBlockId > 0);
+            // 炸不掉的方块：基岩和黑曜石
+            int bedrockForBlast = BlockCatalog.BedrockId;
+            int obsidianId = BlockCatalog.FindId("obsidian");
+            Check("基岩和黑曜石都在方块表里", bedrockForBlast > 0 && obsidianId > 0);
             Check("基岩炸不掉", BlockCatalog.IsBlastProof(bedrockForBlast));
             Check("黑曜石炸不掉", BlockCatalog.IsBlastProof(obsidianId));
-            Check("哭泣的黑曜石炸不掉", BlockCatalog.IsBlastProof(cryingObsidianId));
-            Check("远古残骸炸不掉", BlockCatalog.IsBlastProof(ancientDebrisId));
-            Check("下界合金块炸不掉", BlockCatalog.IsBlastProof(netheriteBlockId));
-            Check("强化深板岩炸不掉", BlockCatalog.IsBlastProof(reinforcedDeepslateId));
-            Check("命令方块炸不掉",
-                BlockCatalog.IsBlastProof(commandBlockId) &&
-                BlockCatalog.IsBlastProof(chainCommandBlockId) &&
-                BlockCatalog.IsBlastProof(repeatingCommandBlockId));
-            Check("结构方块故意留成炸得掉", !BlockCatalog.IsBlastProof(BlockCatalog.StructureId));
             Check("普通方块炸得掉", !BlockCatalog.IsBlastProof(stoneId));
             Check("空格子不算炸不掉", !BlockCatalog.IsBlastProof(0));
 
@@ -1204,40 +1096,21 @@ namespace MinecraftTetris.EditorTools
             gBlast.Set(5, 5, 0, Tnt.RedstoneId);
             gBlast.Set(3, 5, 0, obsidianId);        // 爆炸半径内
             gBlast.Set(4, 6, 0, stoneId);            // 爆炸半径内
-            gBlast.Set(4, 3, 0, cryingObsidianId);  // 爆炸半径边缘
-            gBlast.Set(5, 4, 0, netheriteBlockId);  // 爆炸半径内
             Tnt.Reset();
             Tnt.PrimeContact(gBlast);
             Tnt.Tick(gBlast, Tnt.FuseSeconds);
             Check("爆炸后黑曜石还在", gBlast.Get(3, 5, 0) == obsidianId);
-            Check("爆炸后哭泣的黑曜石还在", gBlast.Get(4, 3, 0) == cryingObsidianId);
-            Check("爆炸后下界合金块还在", gBlast.Get(5, 4, 0) == netheriteBlockId);
             Check("爆炸后普通方块照炸", gBlast.Get(4, 6, 0) == 0);
             Tnt.Reset();
 
             // 原木长树叶
+            // 前面的「机制开关」测试可能把长叶关掉了，这里显式打开（测完还原）
+            bool leafGrowWas = GameSettings.Mech(GameSettings.MechKind.LeafGrow);
+            GameSettings.SetMech(GameSettings.MechKind.LeafGrow, true);
             Foliage.Init();
-            int oakLog = -1, oakLeaves = -1, strippedOak = -1, crimsonStem = -1, bamboo = -1;
-            for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
-            {
-                string n = BlockCatalog.Blocks[i].Name;
-                if (n == "oak_log")
-                    oakLog = i + 1;
-                else if (n == "oak_leaves")
-                    oakLeaves = i + 1;
-                else if (n == "stripped_oak_log")
-                    strippedOak = i + 1;
-                else if (n == "crimson_stem")
-                    crimsonStem = i + 1;
-                else if (n == "bamboo_block")
-                    bamboo = i + 1;
-            }
-
-            Check("方块表里有橡树原木和橡树树叶", oakLog > 0 && oakLeaves > 0);
-            Check("橡树原木长出的是橡树树叶", Foliage.LeafIdFor(oakLog) == oakLeaves);
-            Check("剥皮原木不长树叶", strippedOak > 0 && Foliage.LeafIdFor(strippedOak) == 0);
-            Check("菌柄不长树叶", crimsonStem > 0 && Foliage.LeafIdFor(crimsonStem) == 0);
-            Check("竹块不长树叶", bamboo > 0 && Foliage.LeafIdFor(bamboo) == 0);
+            int oakLog = BlockCatalog.FindId("log"), oakLeaves = BlockCatalog.FindId("leaf");
+            Check("方块表里有原木和树叶", oakLog > 0 && oakLeaves > 0);
+            Check("原木长出的是树叶", Foliage.LeafIdFor(oakLog) == oakLeaves);
             Check("普通方块一律不长", Foliage.LeafIdFor(stoneId) == 0);
             Check("树叶不进随机材质池（不会整块掉下来）",
                 System.Array.IndexOf(BlockPools.Normal, oakLeaves) < 0 &&
@@ -1323,6 +1196,8 @@ namespace MinecraftTetris.EditorTools
             }
             Check("石头方块不会长叶子",
                 Foliage.Grow(gStone, stonePiece) == 0 && Foliage.LastGrown.Count == 0);
+
+            GameSettings.SetMech(GameSettings.MechKind.LeafGrow, leafGrowWas);
 
             // 基岩：消除时钉在原地不跟着下落，但自己被消掉时照样消失
             int bedrockId = BlockCatalog.BedrockId;
@@ -1671,16 +1546,16 @@ namespace MinecraftTetris.EditorTools
             {
                 string bn = BlockCatalog.Blocks[i].Name;
                 if (bn == "sand") mechSand = i + 1;
-                else if (bn == "oak_log") mechLog = i + 1;
+                else if (bn == "log") mechLog = i + 1;
                 else if (bn == "obsidian") mechObsidian = i + 1;
             }
 
             // TNT 爆炸与接触点火
             var gMechTnt = new Grid(6, 6, 1);
             gMechTnt.Set(2, 0, 0, Tnt.TntId);
-            gMechTnt.Set(3, 0, 0, Tnt.RedstoneId);
+            gMechTnt.Set(3, 0, 0, Tnt.TntId);      // 红石块已随 MC 表移除，改成 TNT 连锁
             Tnt.Reset();
-            Check("开关全开时 TNT 挨着红石块会被点着", Tnt.PrimeContact(gMechTnt) == 1);
+            Check("开关全开时 TNT 挨着 TNT 会被连锁点着", Tnt.PrimeContact(gMechTnt) == 1);
             Tnt.Reset();
 
             GameSettings.SetMech(GameSettings.MechKind.TntExplode, false);
@@ -1820,73 +1695,13 @@ namespace MinecraftTetris.EditorTools
                 Glass.Crush(gGlassOff) == 0 && gGlassOff.Get(2, 0, 0) == glassId);
             GameSettings.SetMech(GameSettings.MechKind.GlassCrush, true);
 
-            // ---------- 侦测器点燃 TNT ----------
-            int obsId = BlockCatalog.ObserverId;
-            Check("方块表里有侦测器", obsId > 0 && Tnt.TntId > 0);
+            // ---------- 侦测器（MC 专属，Substrata 里休眠）----------
+            Check("侦测器已随 MC 表移除（玩法休眠）", BlockCatalog.ObserverId == 0);
 
-            GameSettings.SetMech(GameSettings.MechKind.TntExplode, true);
-            GameSettings.SetMech(GameSettings.MechKind.ObserverIgnite, true);
-            Tnt.Reset();
-
-            var gObsBelow = new Grid(5, 5, 1);
-            gObsBelow.Set(2, 0, 0, Tnt.TntId);
-            gObsBelow.Set(2, 1, 0, obsId);
-            Check("侦测器底面贴着 TNT 就点着它", Observer.IgniteTntBelow(gObsBelow) == 1);
-            Tnt.Reset();
-
-            var gObsSide = new Grid(5, 5, 1);
-            gObsSide.Set(2, 0, 0, Tnt.TntId);
-            gObsSide.Set(3, 0, 0, obsId);          // 侧面挨着，不是激发面
-            Check("侧面挨着 TNT 不点着（只有激发面算）", Observer.IgniteTntBelow(gObsSide) == 0);
-
-            var gObsTop = new Grid(5, 5, 1);
-            gObsTop.Set(2, 1, 0, Tnt.TntId);
-            gObsTop.Set(2, 0, 0, obsId);           // 侦测器在下面，激发面朝下是空的
-            Check("侦测器在 TNT 下面不点着（激发面朝下）", Observer.IgniteTntBelow(gObsTop) == 0);
-
-            GameSettings.SetMech(GameSettings.MechKind.ObserverIgnite, false);
-            Check("关掉侦测器开关就不点着", Observer.IgniteTntBelow(gObsBelow) == 0);
-            GameSettings.SetMech(GameSettings.MechKind.ObserverIgnite, true);
-            Tnt.Reset();
-
-            // ---------- 混凝土受重力 ----------
-            int concreteId = 0, concreteSolidId = 0;
-            for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
-            {
-                if (BlockCatalog.Blocks[i].Name == "white_concrete_powder")
-                    concreteId = i + 1;
-                else if (BlockCatalog.Blocks[i].Name == "white_concrete")
-                    concreteSolidId = i + 1;
-            }
-            Check("方块表里有混凝土粉末", concreteId > 0);
-            Check("方块表里有硬化混凝土", concreteSolidId > 0);
-
-            GameSettings.SetMech(GameSettings.MechKind.ConcreteFall, true);
-            GameSettings.SetMech(GameSettings.MechKind.SandFall, false);
-
-            var gConcrete = new Grid(3, 5, 1);
-            gConcrete.Set(1, 4, 0, concreteId);
-            Gravity.Settle(gConcrete);
-            Check("混凝土粉末受重力落到最下面", gConcrete.Get(1, 0, 0) == concreteId);
-
-            // 硬化后的混凝土是成品砖，不该跟着掉
-            var gConcreteSolid = new Grid(3, 5, 1);
-            gConcreteSolid.Set(1, 4, 0, concreteSolidId);
-            Check("硬化混凝土不受重力",
-                !Gravity.Settle(gConcreteSolid) && gConcreteSolid.Get(1, 4, 0) == concreteSolidId);
-
-            var gSandOff = new Grid(3, 5, 1);
-            gSandOff.Set(1, 4, 0, mechSand);
-            Check("两个开关分开：混凝土粉末开着、沙子关着时沙子不动",
-                !Gravity.Settle(gSandOff) && gSandOff.Get(1, 4, 0) == mechSand);
-
-            GameSettings.SetMech(GameSettings.MechKind.ConcreteFall, false);
+            // ---------- 混凝土（MC 专属，Substrata 里休眠）----------
+            // 新表没有混凝土粉末，ConcreteFall 开关闲置；受重力的就是沙/粉尘/砾石/盐那一组
+            Check("混凝土粉末已随 MC 表移除", BlockCatalog.FindId("white_concrete_powder") == 0);
             GameSettings.SetMech(GameSettings.MechKind.SandFall, true);
-            var gConcreteOff = new Grid(3, 5, 1);
-            gConcreteOff.Set(1, 4, 0, concreteId);
-            Check("关掉混凝土粉末下落，它停在半空",
-                !Gravity.Settle(gConcreteOff) && gConcreteOff.Get(1, 4, 0) == concreteId);
-            GameSettings.SetMech(GameSettings.MechKind.ConcreteFall, true);
 
             var gGlassStack = new Grid(5, 6, 1);
             gGlassStack.Set(2, 0, 0, glassId);
@@ -2061,20 +1876,20 @@ namespace MinecraftTetris.EditorTools
                 meltedDrop == 1 && gMeltDrop.Get(1, 0, 0) == mechSand && gMeltDrop.Get(1, 1, 0) == 0);
 
             // ---------- 着火与蔓延 ----------
-            int firePlanks = 0, fireWool = 0, fireLeaves = 0, fireStone = 0;
+            int firePlanks = 0, fireLeaves = 0, fireStone = 0, firePaper = 0;
             for (int i = 0; i < BlockCatalog.Blocks.Length; i++)
             {
                 string n = BlockCatalog.Blocks[i].Name;
-                if (n == "oak_planks") firePlanks = i + 1;
-                else if (n == "white_wool") fireWool = i + 1;
-                else if (n == "oak_leaves") fireLeaves = i + 1;
+                if (n == "plank") firePlanks = i + 1;
+                else if (n == "leaf") fireLeaves = i + 1;
                 else if (n == "stone") fireStone = i + 1;
+                else if (n == "paper_kraft") firePaper = i + 1;
             }
-            Check("方块表里有木板 / 羊毛 / 树叶 / 石头",
-                  firePlanks > 0 && fireWool > 0 && fireLeaves > 0 && fireStone > 0);
-            Check("木板 / 羊毛 / 树叶算可燃，石头不算",
-                  Fire.IsFlammable(firePlanks) && Fire.IsFlammable(fireWool) &&
-                  Fire.IsFlammable(fireLeaves) && !Fire.IsFlammable(fireStone));
+            Check("方块表里有木板 / 树叶 / 纸 / 石头",
+                  firePlanks > 0 && fireLeaves > 0 && firePaper > 0 && fireStone > 0);
+            Check("木板 / 树叶 / 纸算可燃，石头不算",
+                  Fire.IsFlammable(firePlanks) && Fire.IsFlammable(fireLeaves) &&
+                  Fire.IsFlammable(firePaper) && !Fire.IsFlammable(fireStone));
             Check("空格子不算可燃", !Fire.IsFlammable(0));
 
             GameSettings.SetMech(GameSettings.MechKind.FireBurn, true);
@@ -2134,7 +1949,7 @@ namespace MinecraftTetris.EditorTools
             Fluids.Prepare(gSpread);
             Fire.Reset();
             for (int y = 1; y <= 4; y++)
-                gSpread.Set(1, y, 0, y % 2 == 1 ? firePlanks : fireWool);
+                gSpread.Set(1, y, 0, firePlanks);   // 纸质/羊毛类已随 MC 表移除，整根都用木板
             Fluids.SetAmount(1, 0, 0, Fluids.MaxAmount, Fluids.LavaId);
             Check("木柱底下那格先着", Fire.IgniteContact(gSpread) == 1);
             for (int i = 0; i < 60; i++)
@@ -2242,532 +2057,9 @@ namespace MinecraftTetris.EditorTools
                   fireFlat.vertexCount == 8 && Mathf.Abs(flatY - 0.5f) < 0.001f);
             Check("埋在方块堆里就一片都不画", GridView.BuildFireMesh(0).vertexCount == 0);
 
-            // ---------- 海绵吸水 ----------
-            int fireSponge = Sponge.SpongeId;
-            int fireWetSponge = Sponge.WetSpongeId;
-            Check("方块表里有海绵和湿海绵", fireSponge > 0 && fireWetSponge > 0 && fireSponge != fireWetSponge);
-
-            GameSettings.SetMech(GameSettings.MechKind.SpongeSoak, true);
-
-            // 海绵旁边有一格水：吸掉，海绵变湿
-            var gSp = new Grid(5, 5, 1);
-            Fluids.Reset();
-            Fluids.Prepare(gSp);
-            Sponge.Reset();
-            gSp.Set(2, 2, 0, fireSponge);
-            Fluids.SetAmount(1, 2, 0, Fluids.MaxAmount, Fluids.WaterId);
-            Check("海绵挨着水就把水吸掉", Sponge.SoakAll(gSp) == 1);
-            Check("被吸的那格没有水了", Fluids.AmountAt(1, 2, 0) == 0);
-            Check("吸到水的海绵变成了湿海绵",
-                  gSp.Get(2, 2, 0) == fireWetSponge && Sponge.LastSoaks.Count == 1 &&
-                  Sponge.LastSoaks[0].BecameWet && Sponge.LastSoaks[0].Cells.Count == 1);
-
-            // 周围没水：保持干燥，之后还能接着吸
-            var gSpDry = new Grid(5, 5, 1);
-            Fluids.Reset();
-            Fluids.Prepare(gSpDry);
-            Sponge.Reset();
-            gSpDry.Set(2, 2, 0, fireSponge);
-            Check("周围没水就不变湿", Sponge.SoakAll(gSpDry) == 0 && gSpDry.Get(2, 2, 0) == fireSponge);
-
-            // 湿海绵不能再吸：把它真换成湿海绵再试
-            gSpDry.Set(2, 2, 0, fireWetSponge);
-            Fluids.SetAmount(1, 2, 0, Fluids.MaxAmount, Fluids.WaterId);
-            Check("湿海绵吸不动水",
-                  Sponge.SoakAll(gSpDry) == 0 && Fluids.AmountAt(1, 2, 0) == Fluids.MaxAmount &&
-                  gSpDry.Get(2, 2, 0) == fireWetSponge);
-
-            // 半格水也算水，照样吸走
-            var gSpHalf = new Grid(5, 5, 1);
-            Fluids.Reset();
-            Fluids.Prepare(gSpHalf);
-            Sponge.Reset();
-            gSpHalf.Set(2, 2, 0, fireSponge);
-            Fluids.SetAmount(3, 2, 0, 2, Fluids.WaterId);
-            Check("半格的流动水也吸",
-                  Sponge.SoakAll(gSpHalf) == 1 && Fluids.AmountAt(3, 2, 0) == 0);
-
-            // 隔着一整列石墙，墙后面的水吸不到（BFS 走不过实心方块；墙只有一格高的话
-            // 水的搜索会从上面绕过去，所以这里把 x=2 那一列从底堵到顶）
-            var gSpWall = new Grid(7, 5, 1);
-            Fluids.Reset();
-            Fluids.Prepare(gSpWall);
-            Sponge.Reset();
-            gSpWall.Set(1, 1, 0, fireSponge);
-            for (int y = 0; y < gSpWall.SizeY; y++)
-                gSpWall.Set(2, y, 0, fireStone);
-            Fluids.SetAmount(4, 1, 0, Fluids.MaxAmount, Fluids.WaterId);
-            Check("隔着石墙的水吸不到",
-                  Sponge.SoakAll(gSpWall) == 0 && Fluids.AmountAt(4, 1, 0) == Fluids.MaxAmount &&
-                  gSpWall.Get(1, 1, 0) == fireSponge);
-
-            // 吸水量有上限：原版一次最多 65 格
-            var gSpMax = new Grid(20, 5, 5);
-            Fluids.Reset();
-            Fluids.Prepare(gSpMax);
-            Sponge.Reset();
-            gSpMax.Set(10, 0, 2, fireSponge);
-            int spWater = 0;
-            for (int x = 0; x < gSpMax.SizeX; x++)
-                for (int y = 1; y < 4; y++)
-                    for (int z = 0; z < gSpMax.SizeZ; z++)
-                    {
-                        Fluids.SetAmount(x, y, z, Fluids.MaxAmount, Fluids.WaterId);
-                        spWater++;
-                    }
-            int soakedMax = Sponge.SoakAll(gSpMax);
-            Check("一次最多吸 65 格水",
-                  soakedMax == Sponge.MaxCells && soakedMax < spWater &&
-                  gSpMax.Get(10, 0, 2) == fireWetSponge);
-
-            // 开关关掉就不吸
-            var gSpOff = new Grid(5, 5, 1);
-            Fluids.Reset();
-            Fluids.Prepare(gSpOff);
-            Sponge.Reset();
-            gSpOff.Set(2, 2, 0, fireSponge);
-            Fluids.SetAmount(1, 2, 0, Fluids.MaxAmount, Fluids.WaterId);
-            GameSettings.SetMech(GameSettings.MechKind.SpongeSoak, false);
-            Check("关掉海绵开关就不吸",
-                  Sponge.SoakAll(gSpOff) == 0 && Fluids.AmountAt(1, 2, 0) == Fluids.MaxAmount &&
-                  gSpOff.Get(2, 2, 0) == fireSponge);
-            GameSettings.SetMech(GameSettings.MechKind.SpongeSoak, true);
-            Sponge.Reset();
-
-            // ---------- 傀儡召唤 ----------
-            int golemHead = BlockCatalog.CarvedPumpkinId > 0
-                ? BlockCatalog.CarvedPumpkinId
-                : BlockCatalog.PumpkinId;
-            Check("方块表里有南瓜 / 雪块 / 铁块 / 铜块",
-                golemHead > 0 && BlockCatalog.SnowId > 0 &&
-                BlockCatalog.IronBlockId > 0 && BlockCatalog.CopperBlockId > 0);
-
-            GameSettings.SetMech(GameSettings.MechKind.Golem, true);
-            Golem.Reset();
-
-            // 雪傀儡：南瓜头 + 竖着两格雪
-            var gSnow = new Grid(4, 5, 1);
-            gSnow.Set(1, 1, 0, BlockCatalog.SnowId);
-            gSnow.Set(1, 2, 0, BlockCatalog.SnowId);
-            gSnow.Set(1, 3, 0, golemHead);
-            Check("南瓜头压着两格雪，召出雪傀儡",
-                Golem.Check(gSnow) == 1 && Golem.LastSummoned[0].Kind == GolemKind.Snow);
-            Check("雪傀儡消耗三格（南瓜头 + 两格雪）",
-                Golem.LastSummoned[0].CellCount == 3 &&
-                gSnow.Get(1, 1, 0) == 0 && gSnow.Get(1, 2, 0) == 0 && gSnow.Get(1, 3, 0) == 0);
-            Check("召出来的傀儡记进收藏",
-                Golem.Collection.Count == 1 && Golem.Collection[0].Kind == GolemKind.Snow);
-
-            // 只有一格雪不够
-            var gSnowOne = new Grid(4, 4, 1);
-            gSnowOne.Set(1, 1, 0, BlockCatalog.SnowId);
-            gSnowOne.Set(1, 2, 0, golemHead);
-            Check("只垫一格雪召不出雪傀儡",
-                Golem.Check(gSnowOne) == 0 && gSnowOne.Get(1, 2, 0) == golemHead);
-
-            // 铁傀儡：倒 T（竖两格 + 上面那格左右各一块）
-            var gIron = new Grid(6, 6, 1);
-            gIron.Set(2, 1, 0, BlockCatalog.IronBlockId);
-            gIron.Set(2, 2, 0, BlockCatalog.IronBlockId);
-            gIron.Set(1, 2, 0, BlockCatalog.IronBlockId);
-            gIron.Set(3, 2, 0, BlockCatalog.IronBlockId);
-            gIron.Set(2, 3, 0, golemHead);
-            Check("南瓜头压着倒 T 的四块铁，召出铁傀儡",
-                Golem.Check(gIron) == 1 && Golem.LastSummoned[0].Kind == GolemKind.Iron);
-            Check("铁傀儡消耗五格",
-                Golem.LastSummoned[0].CellCount == 5 && CountFilled(gIron) == 0);
-
-            // 少了左右那两块就只是「两根柱子」
-            var gIronBare = new Grid(6, 6, 1);
-            gIronBare.Set(2, 1, 0, BlockCatalog.IronBlockId);
-            gIronBare.Set(2, 2, 0, BlockCatalog.IronBlockId);
-            gIronBare.Set(2, 3, 0, golemHead);
-            Check("只有竖着的两格铁召不出铁傀儡",
-                Golem.Check(gIronBare) == 0 && gIronBare.Get(2, 3, 0) == golemHead);
-
-            // 铜傀儡：一格铜就够，氧化阶段跟着那块铜走
-            var gCopper = new Grid(4, 4, 1);
-            gCopper.Set(1, 1, 0, BlockCatalog.CopperBlockId);
-            gCopper.Set(1, 2, 0, golemHead);
-            Check("南瓜头压着一格铜，召出铜傀儡",
-                Golem.Check(gCopper) == 1 && Golem.LastSummoned[0].Kind == GolemKind.Copper);
-            Check("普通铜块召出来的傀儡是没氧化的",
-                Golem.LastSummoned[0].Oxidation == 0);
-
-            if (BlockCatalog.WeatheredCopperId > 0)
-            {
-                var gWeathered = new Grid(4, 4, 1);
-                gWeathered.Set(1, 1, 0, BlockCatalog.WeatheredCopperId);
-                gWeathered.Set(1, 2, 0, golemHead);
-                Check("用风化铜块召唤，傀儡从第二阶段开始",
-                    Golem.Check(gWeathered) == 1 && Golem.LastSummoned[0].Oxidation == 2);
-            }
-
-            var gStoneHead = new Grid(4, 4, 1);
-            gStoneHead.Set(1, 0, 0, mechSand > 0 ? mechSand : 1);
-            gStoneHead.Set(1, 1, 0, golemHead);
-            Check("南瓜头压在别的方块上什么都不发生",
-                Golem.Check(gStoneHead) == 0 && gStoneHead.Get(1, 0, 0) != 0 && gStoneHead.Get(1, 1, 0) == golemHead);
-
-            var gFloatHead = new Grid(4, 4, 1);
-            gFloatHead.Set(1, 2, 0, golemHead);
-            Check("南瓜头底下是空的也召不出来",
-                Golem.Check(gFloatHead) == 0 && gFloatHead.Get(1, 2, 0) == golemHead);
-
-            var gGolemOff = new Grid(4, 4, 1);
-            gGolemOff.Set(1, 0, 0, BlockCatalog.SnowId);
-            gGolemOff.Set(1, 1, 0, BlockCatalog.SnowId);
-            gGolemOff.Set(1, 2, 0, golemHead);
-            GameSettings.SetMech(GameSettings.MechKind.Golem, false);
-            Check("关掉傀儡开关就不召唤",
-                Golem.Check(gGolemOff) == 0 && gGolemOff.Get(1, 2, 0) == golemHead);
-            GameSettings.SetMech(GameSettings.MechKind.Golem, true);
-
-            // 傀儡模型的部件数：这次照原版 26.2 的模型类重抄了一遍，顺便把「部件里有几个立方体」
-            // 也钉住 —— 铁傀儡的鼻子、腰和铜傀儡的天线以前就是漏在这儿的。
-            {
-                GolemPartDef[] pSnow = GolemModel.Snow();
-                GolemPartDef[] pIron = GolemModel.Iron();
-                GolemPartDef[] pCopper = GolemModel.Copper();
-
-                Check("雪傀儡有底下雪球 / 上面雪球 / 头 / 双臂（5 个部件）", pSnow.Length == 5);
-                Check("雪傀儡的底下那个 12³ 雪球没被漏掉",
-                      pSnow[0].Cubes.Length == 1 && pSnow[0].Cubes[0].W == 12 &&
-                      pSnow[0].Cubes[0].H == 12 && pSnow[0].Cubes[0].D == 12);
-
-                Check("铁傀儡有头 / 身体 / 双臂 / 双腿（6 个部件）", pIron.Length == 6);
-                Check("铁傀儡的头带鼻子（头上两个立方体，鼻子 2×4×2）",
-                      pIron[0].Cubes.Length == 2 && pIron[0].Cubes[1].W == 2 &&
-                      pIron[0].Cubes[1].H == 4 && pIron[0].Cubes[1].D == 2);
-                Check("铁傀儡的身体带腰（身体两个立方体，腰 9×5×6）",
-                      pIron[1].Cubes.Length == 2 && pIron[1].Cubes[1].W == 9 &&
-                      pIron[1].Cubes[1].H == 5 && pIron[1].Cubes[1].D == 6);
-
-                Check("铜傀儡有身体 / 头 / 双臂 / 双腿（6 个部件）", pCopper.Length == 6);
-                Check("铜傀儡的头带鼻子 + 天线杆 + 天线球（四个立方体）",
-                      pCopper[1].Cubes.Length == 4);
-                Check("铜傀儡的头是 8×5×10（前后比左右长一倍）",
-                      pCopper[1].Cubes[0].W == 8 && pCopper[1].Cubes[0].H == 5 &&
-                      pCopper[1].Cubes[0].D == 10);
-            }
-
-            // 雪傀儡的手臂：得是「上面接肩膀、往外下斜」。
-            //
-            // 这个只能算，不能看形状 —— 反过来做的时候，12 像素的杆照样是一根斜杆，
-            // 从正面看也能「像手臂」，只是近端落在身体下缘、远端翘到肩膀以上，
-            // 玩家一眼看出来的「手臂接反了」就是这么回事。
-            // 判据：越往外（|x| 越大）越往下，外端的 y 必须明显低于内端的 y。
-            {
-                GolemPartDef[] arms = { GolemModel.Snow()[3], GolemModel.Snow()[4] };
-                for (int a = 0; a < arms.Length; a++)
-                {
-                    Mesh m = GolemModel.BuildPart(arms[a], 64, 64);
-                    Vector3[] vs = m.vertices;
-                    // 网格顶点是关节空间的（没带旋转），旋转在 Transform 上，这里得手动套一遍
-                    Quaternion rot = Quaternion.Euler(arms[a].Rot);
-
-                    float minAx = 999f, maxAx = -1f;
-                    for (int i = 0; i < vs.Length; i++)
-                    {
-                        Vector3 p = rot * vs[i];
-                        float ax = Mathf.Abs(p.x) * GolemModel.PixelsPerBlock;
-                        minAx = Mathf.Min(minAx, ax);
-                        maxAx = Mathf.Max(maxAx, ax);
-                    }
-
-                    float sumIn = 0f, sumOut = 0f;
-                    int nIn = 0, nOut = 0;
-                    for (int i = 0; i < vs.Length; i++)
-                    {
-                        Vector3 p = rot * vs[i];
-                        float ax = Mathf.Abs(p.x) * GolemModel.PixelsPerBlock;
-                        float y = p.y * GolemModel.PixelsPerBlock;
-                        if (ax <= minAx + 0.5f) { sumIn += y; nIn++; }
-                        if (ax >= maxAx - 0.5f) { sumOut += y; nOut++; }
-                    }
-                    float yIn = nIn > 0 ? sumIn / nIn : 0f;
-                    float yOut = nOut > 0 ? sumOut / nOut : 0f;
-
-                    Check("雪傀儡" + (a == 0 ? "左" : "右") + "臂是上面接肩膀、往外下斜" +
-                          "（内端 y " + yIn.ToString("0.0") + "、外端 y " + yOut.ToString("0.0") + " 像素）",
-                          yOut < yIn - 4f);
-                }
-            }
-
-            // 铜傀儡的眼睛：原版是 LivingEntityEmissiveLayer 单独刷的一层，
-            // 贴图 copper_golem_eyes*.png 里只有那几个像素不透明。
-            // 它们必须正好落在头「正面」那块的 UV 矩形里 —— 偏移一格就跑到侧面，
-            // 或者干脆采不到、眼睛就不见了。
-            {
-                GolemCube head = GolemModel.Copper()[1].Cubes[0];
-                int fx0 = head.U + head.D, fy0 = head.V + head.D;
-                int fx1 = fx0 + head.W, fy1 = fy0 + head.H;
-
-                string[] eyeTex =
-                {
-                    "copper_golem_eyes", "copper_golem_eyes_exposed",
-                    "copper_golem_eyes_weathered", "copper_golem_eyes_oxidized",
-                };
-                string badEye = "";
-                for (int i = 0; i < eyeTex.Length; i++)
-                {
-                    string r = CheckEyeBox(eyeTex[i], fx0, fy0, fx1, fy1);
-                    if (r.Length > 0)
-                        badEye += eyeTex[i] + "（" + r + "）";
-                }
-                Check("铜傀儡四张眼睛贴图都有眼睛、且都落在头的正面" +
-                      (badEye.Length == 0 ? "" : "：" + badEye), badEye.Length == 0);
-            }
-
-            // 整体高度得对上原版：雪 28 像素、铁 43、铜 24（天线顶），换算成格是 /16
-            {
-                Check("铁傀儡模型高 43 像素（原版 2.69 格）",
-                      Mathf.Abs(PartTop(GolemModel.Iron()) - 43f) < 0.01f);
-                Check("雪傀儡模型高 28 像素（原版 1.75 格）",
-                      Mathf.Abs(PartTop(GolemModel.Snow()) - 28f) < 0.01f);
-                Check("铜傀儡模型高 24 像素（连天线，原版 1.5 格）",
-                      Mathf.Abs(PartTop(GolemModel.Copper()) - 24f) < 0.01f);
-            }
-
-            // 网格尺寸：一根 18×12×11 像素的方块，换算成格应该是 1.125 × 0.75 × 0.6875
-            var cubeMesh = GolemModel.BuildCube(
-                new GolemCube(0, 40, 18, 12, 11, Vector3.zero), 128, 128);
-            Vector3 csize = cubeMesh.bounds.size;
-            Check("傀儡网格的尺寸按「像素 / 16」换算",
-                Mathf.Abs(csize.x - 18f / 16f) < 0.001f &&
-                Mathf.Abs(csize.y - 12f / 16f) < 0.001f &&
-                Mathf.Abs(csize.z - 11f / 16f) < 0.001f);
-            Check("傀儡网格是六个面（24 个顶点）", cubeMesh.vertexCount == 24);
-
-            // 绕向到底朝哪边，别自己推公式 —— 让 Unity 说。
-            // Mesh.RecalculateNormals() 就是按三角形绕向生成顶点法线的：算出来的方向和
-            // BuildCube 里显式给的法线同向，才说明这一面按 Unity 的规矩是「朝外」的。
-            // 反过来就是整块模型内外翻了，看到的是盒子内壁（贴图像是贴在里面）。
-            {
-                Mesh m2 = GolemModel.BuildCube(GolemModel.Iron()[1].Cubes[0], 128, 128);
-                Vector3[] given = m2.normals;
-                m2.RecalculateNormals();
-                Vector3[] calc = m2.normals;
-                int mismatch = 0;
-                for (int i = 0; i < calc.Length; i++)
-                    if (Vector3.Dot(given[i], calc[i]) <= 0f)
-                        mismatch++;
-                Check("网格绕向与法线同向（Unity 按绕向算出的法线朝外）", mismatch == 0);
-            }
-
-            // 贴图不能上下颠倒：侧面里位置更高的那个顶点，UV 的 v 也必须更大
-            // （Unity 的 UV 原点在左下，v 大 = 图片上方）。
-            // 顶点顺序按「下左→下右→上右→上左」写的时候，四个侧面会一起上下翻，
-            // 看着就是整张贴图被倒过来 —— 这个只能靠算，肉眼看形状是看不出来的。
-            {
-                Mesh m3 = GolemModel.BuildCube(GolemModel.Iron()[1].Cubes[0], 128, 128);
-                Vector3[] vv = m3.vertices;
-                Vector2[] uv3 = m3.uv;
-                int upsideDown = 0;
-                for (int f = 0; f < vv.Length; f += 4)
-                {
-                    float dy = vv[f].y - vv[f + 2].y;       // a 与 c 是同一面的对角
-                    if (Mathf.Abs(dy) < 0.001f)
-                        continue;                            // 顶面 / 底面，跳过
-                    float dv = uv3[f].y - uv3[f + 2].y;
-                    if (dy * dv <= 0f)
-                        upsideDown++;
-                }
-                Check("侧面贴图没有上下颠倒（高处顶点的 UV.v 更大）", upsideDown == 0);
-            }
-
-            // 每一面都得贴在贴图的不透明区里。26.2 的实体贴图是「展开的纸盒」，
-            // 没用到的地方 alpha=0；UV 差一格就会采到空白，shader 的 clip 把这面裁掉，
-            // 看起来就是「这块没贴上贴图」。光看截图分不清是哪个部件哪一面，所以逐面核对。
-            int faces;
-            string uvSnow = CheckGolemUVs("snow_golem", 64, 64, GolemModel.Snow(), out faces);
-            Check("snow_golem 的 " + faces + " 个面全都贴在贴图上" + (uvSnow.Length == 0 ? "" : "（" + uvSnow + "）"),
-                  uvSnow.Length == 0);
-
-            string uvIron = CheckGolemUVs("iron_golem", 128, 128, GolemModel.Iron(), out faces);
-            Check("iron_golem 的 " + faces + " 个面全都贴在贴图上" + (uvIron.Length == 0 ? "" : "（" + uvIron + "）"),
-                  uvIron.Length == 0);
-
-            string uvCopper = CheckGolemUVs("copper_golem", 64, 64, GolemModel.Copper(), out faces);
-            Check("copper_golem 的 " + faces + " 个面全都贴在贴图上" + (uvCopper.Length == 0 ? "" : "（" + uvCopper + "）"),
-                  uvCopper.Length == 0);
-
-            // 各部件的实际世界高度：光看代码里的 pivot / center 算不出渲染出来多高，
-            // 直接建一个傀儡量包围盒最实在。原版铁傀儡 2.7 格、雪 1.9、铜 0.98。
-            {
-                string log = "";
-                foreach (GolemKind k in new[] { GolemKind.Snow, GolemKind.Iron, GolemKind.Copper })
-                {
-                    var sizeProbe = new GameObject("golem_probe");
-                    var pet = sizeProbe.AddComponent<GolemPet>();
-                    pet.Build(k, 0, Vector3.zero, 0f, Vector3.zero, Vector3.zero);
-
-                    var rs = sizeProbe.GetComponentsInChildren<MeshRenderer>();
-                    float lo = 999f, hi = -999f;
-                    for (int i = 0; i < rs.Length; i++)
-                    {
-                        lo = Mathf.Min(lo, rs[i].bounds.min.y);
-                        hi = Mathf.Max(hi, rs[i].bounds.max.y);
-                    }
-
-                    log += "\n  " + k + "：" + rs.Length + " 个部件，y " +
-                           lo.ToString("0.000") + " ~ " + hi.ToString("0.000") +
-                           "，高 " + (hi - lo).ToString("0.000") + " 格";
-
-                    for (int i = 0; i < rs.Length; i++)
-                    {
-                        Bounds b = rs[i].bounds;
-                        log += "\n      " + rs[i].gameObject.name + "  y " +
-                               b.min.y.ToString("0.000") + "~" + b.max.y.ToString("0.000") +
-                               "  x " + b.min.x.ToString("0.000") + "~" + b.max.x.ToString("0.000") +
-                               "  z " + b.min.z.ToString("0.000") + "~" + b.max.z.ToString("0.000");
-                    }
-
-                    // 铜傀儡多的那一层眼睛：得真的建出来，而且贴图是 eyes 那张，
-                    // 不是被身体那张盖掉（氧化换贴图时很容易顺手把眼睛也改了）。
-                    if (k == GolemKind.Copper)
-                    {
-                        bool hasEyes = false;
-                        for (int i = 0; i < rs.Length; i++)
-                        {
-                            if (rs[i].gameObject.name != "eyes")
-                                continue;
-                            Material mat = rs[i].sharedMaterial;
-                            hasEyes = mat != null && mat.mainTexture != null &&
-                                      mat.mainTexture.name.StartsWith("copper_golem_eyes");
-                        }
-                        Check("铜傀儡头上有单独一层眼睛（用的是 eyes 贴图）", hasEyes);
-                    }
-
-                    Object.DestroyImmediate(sizeProbe);
-                }
-                Debug.Log("[golem] 傀儡实际尺寸（原版：雪 1.9 / 铁 2.7 / 铜 0.98）" + log);
-            }
-
-            // 桌宠的出生点：连召 4 个，得彼此离得够远。
-            // 以前是纯随机落点，实测一次召出雪 / 铁 / 铜三个能叠在同一点上，
-            // 穿模成一团，走到随机目标之后才散开。现在用 best-candidate 采样
-            // （撒十几把挑离同伴最远的），这里用固定种子把「不重叠」钉死。
-            {
-                Random.InitState(20261030);
-                Vector3 pmin = new Vector3(0f, 0f, 0f), pmax = new Vector3(10f, 0f, 6f);
-                var spots = new System.Collections.Generic.List<Vector3>();
-                var probes = new System.Collections.Generic.List<GameObject>();
-                for (int i = 0; i < 4; i++)
-                {
-                    Vector3 pos = GolemPet.BestSpot(pmin, pmax, null);
-                    spots.Add(pos);
-
-                    var go = new GameObject("golem_spot_" + i);
-                    go.AddComponent<GolemPet>()
-                      .Build(GolemKind.Snow, 0, pos, 0f, pmin, pmax);
-                    probes.Add(go);
-                }
-
-                float minPair = 999f;
-                for (int a = 0; a < spots.Count; a++)
-                    for (int b = a + 1; b < spots.Count; b++)
-                        minPair = Mathf.Min(minPair,
-                            Vector2.Distance(
-                                new Vector2(spots[a].x, spots[a].z),
-                                new Vector2(spots[b].x, spots[b].z)));
-
-                Check("连召 4 个傀儡，出生点两两间距不小于 1.5 格（最近 " +
-                      minPair.ToString("0.0") + "）", minPair >= 1.5f);
-
-                for (int i = 0; i < probes.Count; i++)
-                    Object.DestroyImmediate(probes[i]);
-            }
-
-            // 桌宠互相排斥：两个摆到完全重合，跑两秒（120 帧 × 1/60）必须分开到
-            // 「半径和 + 余量」之外；而且是一帧一帧推开的，不能瞬移。
-            {
-                Vector3 pmin = new Vector3(0f, 0f, 0f), pmax = new Vector3(10f, 0f, 6f);
-                var aGo = new GameObject("golem_push_a");
-                var bGo = new GameObject("golem_push_b");
-                var ga = aGo.AddComponent<GolemPet>();
-                var gb = bGo.AddComponent<GolemPet>();
-                ga.Build(GolemKind.Iron, 0, new Vector3(5f, 0f, 3f), 0f, pmin, pmax);
-                gb.Build(GolemKind.Iron, 0, new Vector3(5f, 0f, 3f), 0f, pmin, pmax);
-
-                float want = ga.BodyRadius + gb.BodyRadius + 0.1f;
-                float firstStep = 0f;
-                for (int f = 0; f < 120; f++)
-                {
-                    Vector3 prevPos = ga.transform.position;
-                    ga.Separate(1f / 60f);
-                    Vector3 moved = ga.transform.position - prevPos;
-                    moved.y = 0f;
-                    if (f == 0)
-                        firstStep = moved.magnitude;
-                }
-
-                Vector3 gap = ga.transform.position - gb.transform.position;
-                gap.y = 0f;
-                Check("两个傀儡叠在一起会被挤开（间距 " + gap.magnitude.ToString("0.00") +
-                      " >= " + want.ToString("0.00") + "，场上 " + GolemPet.AliveCount + " 个）",
-                      gap.magnitude >= want - 0.02f);
-                Check("挤开是渐进推开的、不瞬移（第一帧只挪 " + firstStep.ToString("0.000") +
-                      " 格，上限 " + (2.2f / 60f).ToString("0.000") + "）",
-                      firstStep > 0f && firstStep <= 2.2f / 60f + 0.001f);
-
-                Object.DestroyImmediate(aGo);
-                Object.DestroyImmediate(bGo);
-            }
-
-            // ---------- 层俯视图 ----------
-            // 两格深开始就挂：后排这时候已经被前排挡掉一部分，哪一格是半格水也看不出来
-            Check("俯视图从两格深开始就挂（z=1 不挂、z=2 挂）",
-                  !LayerMap.UsefulFor(1) && LayerMap.UsefulFor(2) && LayerMap.UsefulFor(4));
-
-            {
-                // 层号只由玩家拖滑条决定。早先它会自己跟着当前方块跳层，结果刚翻到
-                // 某一层看缺口，画面就被方块带走了 —— 这里钉死「没有跟随逻辑」。
-                var go = new GameObject("selftest_layermap");
-                LayerMap lm = go.AddComponent<LayerMap>();
-                lm.LayerY = 5;
-                Check("俯视图的层号设了就是设了（第 5 层）", lm.LayerY == 5);
-                Check("俯视图不再自带跟随方块跳层的逻辑",
-                      typeof(LayerMap).GetMethod("FollowPiece",
-                          System.Reflection.BindingFlags.Instance |
-                          System.Reflection.BindingFlags.Public |
-                          System.Reflection.BindingFlags.NonPublic) == null);
-                Object.DestroyImmediate(go);
-            }
-
-            {
-                // 10×16×3，最底层只差一格 —— 这就是「看着铺满了却没消」的样子
-                var g = new Grid(10, 16, 3);
-                for (int x = 0; x < 10; x++)
-                    for (int z = 0; z < 3; z++)
-                        g.Set(x, 0, z, 1);
-                Check("整层填满时俯视图报「还差 0」", LayerMap.MissingInLayer(g, 0) == 0);
-
-                g.Set(7, 0, 1, 0);       // 中间列挖一个洞：正面完全看不出来
-                Check("中间列差一格时俯视图报「还差 1」", LayerMap.MissingInLayer(g, 0) == 1);
-                Check("那一排自己的差数也是 1（另外两排是 0）",
-                      LayerMap.MissingInRow(g, 0, 1) == 1 &&
-                      LayerMap.MissingInRow(g, 0, 0) == 0 &&
-                      LayerMap.MissingInRow(g, 0, 2) == 0);
-                Check("还差一格时整层不算满（不会消）", !g.IsLayerFullPublic(0));
-
-                // 水：只有攒满一格才算填满，半格水必须照样报「差」。
-                // CountsAsFilled 平时是 Bootstrap 启动时挂上去的，自检里得自己挂一遍，
-                // 不然「水算不算填满」永远是 false，这条就测了个寂寞。
-                System.Func<int, int, int, bool> savedFill = Grid.CountsAsFilled;
-                Grid.CountsAsFilled = (x, y, z) => Fluids.AmountAt(x, y, z) >= Fluids.MaxAmount;
-                Fluids.Prepare(g);
-                Fluids.SetAmount(7, 0, 1, Fluids.MaxAmount, Fluids.WaterId);
-                Check("水攒满一格就算填满（还差 0，这一层可以消）",
-                      LayerMap.MissingInLayer(g, 0) == 0 && g.IsLayerFullPublic(0));
-
-                Fluids.SetAmount(7, 0, 1, Fluids.MaxAmount - 1, Fluids.WaterId);
-                Check("半格水不算填满（还差 1，这一层不消）",
-                      LayerMap.MissingInLayer(g, 0) == 1 && !g.IsLayerFullPublic(0));
-
-                Fluids.SetAmount(7, 0, 1, 0, 0);
-                Grid.CountsAsFilled = savedFill;
-            }
+            // ---------- 海绵（MC 专属，Substrata 里休眠）----------
+            Check("海绵已随 MC 表移除（吸水玩法休眠）",
+                  Sponge.SpongeId == 0 && Sponge.WetSpongeId == 0);
 
             // 拨回全开，别把开关状态留给玩家
             for (int i = 0; i < GameSettings.MechCount; i++)

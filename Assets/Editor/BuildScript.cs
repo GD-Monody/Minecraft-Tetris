@@ -330,8 +330,10 @@ namespace MinecraftTetris.EditorTools
             PlayerSettings.defaultScreenWidth = 1440;
             PlayerSettings.defaultScreenHeight = 900;
             PlayerSettings.runInBackground = true;
-            PlayerSettings.companyName = "MinecraftTetris";
-            PlayerSettings.productName = "MinecraftTetris";
+            // original 分支是去 IP 版：窗口标题、存档注册表键、包名都换成 Substrata。
+            // 注册表键带产品名（PlayerPrefs 前缀），不改的话两个游戏会共用一份存档。
+            PlayerSettings.companyName = "monody";
+            PlayerSettings.productName = "Substrata";
         }
 
         /// <summary>像素风必须用 Point 过滤、不压缩、无 mipmap，否则小尺寸贴图会被拉糊。</summary>

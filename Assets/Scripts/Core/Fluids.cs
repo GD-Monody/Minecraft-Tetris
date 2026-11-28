@@ -66,7 +66,7 @@ namespace MinecraftTetris
             _waterId = FindByName("water");
             _lavaId = FindByName("lava");
             _obsidianId = FindByName("obsidian");
-            _cobbleId = FindByName("cobblestone");
+            _cobbleId = FindByName("cobble");
             Debug.Log("[fluids] water=" + _waterId + " lava=" + _lavaId
                 + " obsidian=" + _obsidianId + " cobblestone=" + _cobbleId);
         }

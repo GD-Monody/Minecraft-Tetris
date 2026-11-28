@@ -40,6 +40,10 @@ frosted
 stained_red
 stained_blue
 crystal
+bedrock
+obsidian
+ice
+structure_block
 dye_red
 dye_orange
 dye_yellow

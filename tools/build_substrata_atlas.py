@@ -48,6 +48,38 @@ METAL = [(196, 200, 208), (176, 180, 190), (156, 160, 172), (134, 138, 152), (11
 SNOW = [(248, 250, 254), (240, 244, 250), (230, 236, 244), (218, 226, 238), (204, 214, 230)]
 
 
+BEDROCK = [(96, 96, 104), (78, 78, 88), (60, 60, 72), (44, 44, 56), (118, 116, 124)]
+OBSIDIAN = [(56, 44, 78), (46, 36, 66), (36, 28, 54), (28, 22, 44), (70, 58, 96)]
+ICE = [(188, 220, 244), (172, 208, 238), (154, 194, 230), (136, 180, 222), (210, 236, 250)]
+STRUCT = [(148, 150, 172), (124, 126, 152), (100, 102, 134), (78, 80, 114), (186, 190, 216)]
+
+
+def m_structure(g):
+    """结构方块：亮边框 + 内场 + 四角暗标，一眼看出「这不是普通方块」。"""
+    for i in range(T):
+        g[0][i] = g[T - 1][i] = 0
+        g[i][0] = g[i][T - 1] = 0
+    for y in range(2, T - 2):
+        for x in range(2, T - 2):
+            g[y][x] = 2
+    for (x, y) in ((2, 2), (T - 3, 2), (2, T - 3), (T - 3, T - 3)):
+        for dy in range(2):
+            for dx in range(2):
+                g[y + dy][x + dx] = 4
+    for y in range(7, 9):
+        for x in range(7, 9):
+            g[y][x] = 1
+
+
+def m_ice(g, rng):
+    """冰：两道短裂纹。"""
+    for (x0, y0) in ((3, 3), (10, 9)):
+        for k in range(5):
+            x, y = x0 + k, y0 + (k % 3)
+            if 0 <= x < T and 0 <= y < T:
+                g[y][x] = 0
+
+
 def dye_palette(hue):
     """染色纸调色板：同一色相 5 档，暗部往冷偏（降 R 升 B），亮部往黄偏。"""
     out = []
@@ -338,9 +370,9 @@ MOTIFS = {
 # (name, cn, tags, palette, alpha, marks{top/side/bottom})
 
 
-def B(name, cn, tags="", pal=STONE, alpha=255, marks=None):
+def B(name, cn, tags="", pal=STONE, alpha=255, marks=None, sfx="stone"):
     return dict(name=name, cn=cn, tags=[t for t in tags.split(",") if t],
-                pal=pal, alpha=alpha,
+                pal=pal, alpha=alpha, sfx=sfx,
                 marks=marks or {"top": "plain", "side": "plain", "bottom": "plain"})
 
 
@@ -348,8 +380,8 @@ BLOCKS = [
     B("stone", "石", "", STONE, marks={"side": "plain"}),
     B("stone_smooth", "磨光石", "", STONE),
     B("cobble", "圆石", "", STONE, marks={"side": "cobble", "top": "cobble"}),
-    B("slate", "板岩", "", [(110, 112, 122), (98, 100, 112), (86, 88, 102), (74, 76, 90), (62, 64, 78)]),
-    B("marble", "大理石", "", [(216, 214, 210), (200, 198, 194), (184, 182, 178), (168, 166, 164), (152, 150, 148)]),
+    B("slate", "板岩", "", [(110, 112, 122), (98, 100, 112), (86, 88, 102), (74, 76, 90), (62, 64, 78)], sfx="stone"),
+    B("marble", "大理石", "", [(216, 214, 210), (200, 198, 194), (184, 182, 178), (168, 166, 164), (152, 150, 148)], sfx="stone"),
     B("granite", "花岗岩", "", [(164, 148, 140), (148, 132, 124), (132, 116, 108), (116, 100, 92), (100, 84, 78)],
       marks={"side": "cobble", "top": "cobble"}),
     B("brick", "砖", "", [(178, 118, 100), (160, 104, 88), (142, 90, 76), (124, 76, 64), (106, 62, 52)],
@@ -358,13 +390,13 @@ BLOCKS = [
       marks={"side": "brick", "top": "brick"}),
     B("soil", "土", "", DIRT),
     B("grass", "草", "", DIRT, marks={"top": "grass_top", "side": "grass_side"}),
-    B("clay", "黏土", "", [(186, 148, 122), (170, 134, 108), (154, 120, 96), (138, 106, 84), (122, 92, 72)]),
-    B("mud", "泥", "", [(118, 96, 74), (104, 84, 64), (90, 72, 56), (76, 60, 48), (62, 48, 40)]),
+    B("clay", "黏土", "", [(186, 148, 122), (170, 134, 108), (154, 120, 96), (138, 106, 84), (122, 92, 72)], sfx="gravel"),
+    B("mud", "泥", "", [(118, 96, 74), (104, 84, 64), (90, 72, 56), (76, 60, 48), (62, 48, 40)], sfx="gravel"),
     B("gravel", "砾石", "", GRAVEL),
     B("ash", "灰", "", [(122, 120, 118), (110, 108, 106), (98, 96, 96), (86, 84, 86), (74, 72, 76)],
       marks={"side": "ash", "top": "ash"}),
     B("sand", "沙", "gravity", SAND),
-    B("dust", "粉尘", "gravity", [(216, 210, 198), (202, 196, 184), (188, 182, 170), (174, 168, 158), (160, 154, 146)]),
+    B("dust", "粉尘", "gravity", [(216, 210, 198), (202, 196, 184), (188, 182, 170), (174, 168, 158), (160, 154, 146)], sfx="sand"),
     B("salt", "盐", "gravity", SNOW),
     B("snow", "雪", "", SNOW, marks={"side": "snow", "top": "snow"}),
     B("water", "水", "liquid", WATER, 208, marks={"side": "water", "top": "water", "bottom": "water"}),
@@ -374,7 +406,7 @@ BLOCKS = [
     B("glow", "辉光液", "glow", [(252, 236, 176), (246, 224, 152), (238, 208, 128), (226, 188, 104), (212, 168, 84)],
       240, marks={"side": "glow", "top": "glow", "bottom": "glow"}),
     B("paper_kraft", "纸张", "flammable", PAPER),
-    B("cardboard", "板纸", "flammable", [(206, 178, 136), (192, 164, 122), (178, 150, 110), (162, 134, 96), (146, 118, 84)]),
+    B("cardboard", "板纸", "flammable", [(206, 178, 136), (192, 164, 122), (178, 150, 110), (162, 134, 96), (146, 118, 84)], sfx="wood"),
     B("corrugated", "瓦楞纸", "flammable", [(190, 164, 126), (176, 150, 114), (162, 136, 102), (148, 122, 90), (134, 108, 78)],
       marks={"side": "log_side"}),
     B("plank", "木板", "flammable", LOG, marks={"side": "plank", "top": "plank", "bottom": "plank"}),
@@ -402,6 +434,11 @@ BLOCKS = [
       150, marks={"side": "glass_border", "top": "glass_border", "bottom": "glass_border"}),
     B("crystal", "水晶", "glow", [(160, 220, 218), (144, 202, 202), (128, 182, 186), (112, 162, 168), (96, 142, 150)],
       220, marks={"side": "crystal", "top": "crystal", "bottom": "crystal"}),
+    B("bedrock", "基岩", "", BEDROCK, marks={"side": "ash", "top": "ash", "bottom": "ash"}),
+    B("obsidian", "黑曜石", "", OBSIDIAN, marks={"side": "ash", "top": "ash", "bottom": "ash"}),
+    B("ice", "冰", "", ICE, 190, marks={"side": "ice", "top": "ice", "bottom": "ice"}),
+    B("structure_block", "结构方块", "", STRUCT,
+      marks={"side": "structure", "top": "structure", "bottom": "structure"}),
 ]
 for dye, hue in DYE_HUES.items():
     cn = {"red": "红", "orange": "橙", "yellow": "黄", "green": "绿", "teal": "青",
@@ -409,6 +446,22 @@ for dye, hue in DYE_HUES.items():
           "gray": "灰", "black": "黑", "white": "白"}[dye[4:]]
     BLOCKS.append(B(dye, cn + "纸", "flammable", dye_palette(hue)))
 
+
+# 音效组：没在 B() 里单独指定的走这张表（组名必须出现在 BlockSfxData.Groups 里）
+SFX = {
+    "stone": "stone", "stone_smooth": "stone", "cobble": "stone", "slate": "stone",
+    "marble": "stone", "granite": "stone", "brick": "stone", "tile": "stone",
+    "soil": "gravel", "grass": "grass", "clay": "gravel", "mud": "gravel",
+    "gravel": "gravel", "ash": "gravel", "sand": "sand", "dust": "sand", "salt": "snow",
+    "snow": "snow", "water": "glass", "lava": "stone", "acid": "glass",
+    "fuel": "wood", "glow": "glass", "paper_kraft": "wood", "cardboard": "wood",
+    "corrugated": "wood", "plank": "wood", "log": "wood", "leaf": "grass",
+    "hazard": "stone", "explosive": "grass", "fuse": "wood", "lamp": "glass",
+    "foil": "metal", "paper_roll": "wood", "kraft_tape": "wood", "wax_paper": "wood",
+    "glass": "glass", "frosted": "glass", "stained_red": "glass",
+    "stained_blue": "glass", "crystal": "amethyst_block",
+    "bedrock": "stone", "structure_block": "stone", "obsidian": "stone", "ice": "glass",
+}
 
 # ── 组装 ────────────────────────────────────────────────────────────────
 
@@ -510,6 +563,97 @@ def wall(tiles, layout):
     return sheet
 
 
+def emit_csharp(out_dir, faces_by_block):
+    """从图集像素反推透明/镂空标记，并生成 C# 数据文件 BlockCatalogData.cs。
+
+    面序号顺序（和 BlockCatalog.BuildBlocks 的约定一致）：
+        0=Up(顶) 1=Down(底) 2=North 3=South 4=East 5=West（四面墙共用侧面）
+    """
+    cols, rows = COLS, (len(BLOCKS) * 3 + COLS - 1) // COLS
+    cell = T + PAD * 2
+    lines = []
+    lines.append("// 由 tools/build_substrata_atlas.py 自动生成，不要手改。")
+    lines.append("namespace MinecraftTetris")
+    lines.append("{")
+    lines.append("    public static class BlockCatalogData")
+    lines.append("    {")
+    lines.append("        public const int AtlasColumns = %d;" % cols)
+    lines.append("        public const int AtlasRows = %d;" % rows)
+    lines.append("        public const int TilePadding = %d;" % PAD)
+    lines.append("        public const int TilePixels = %d;" % T)
+    lines.append("        public const int CellPixels = %d;" % (T + PAD * 2))
+    lines.append("")
+    lines.append("        public static readonly string[] Names =")
+    lines.append("        {")
+    for b in BLOCKS:
+        lines.append('            "%s",' % b["name"])
+    lines.append("        };")
+    lines.append("")
+    lines.append("        public static readonly string[] NamesZh =")
+    lines.append("        {")
+    for b in BLOCKS:
+        lines.append('            "%s",' % b["cn"])
+    lines.append("        };")
+    lines.append("")
+    lines.append("        public static readonly string[] Tags =")
+    lines.append("        {")
+    for b in BLOCKS:
+        lines.append('            "%s",' % ",".join(b["tags"]))
+    lines.append("        };")
+    lines.append("")
+    lines.append("        public static readonly string[] SfxGroups =")
+    lines.append("        {")
+    for b in BLOCKS:
+        sf = b.get("sfx") or SFX.get(b["name"], "stone")
+        lines.append('            "%s",' % sf)
+    lines.append("        };")
+    lines.append("")
+    lines.append("        public static readonly int[] FaceTiles =")
+    lines.append("        {")
+    face_idx = 0
+    for b in BLOCKS:
+        idxs = []
+        for f in range(3):                     # top / side / bottom
+            i = face_idx + f
+            idxs.append(i)
+        face_idx += 3
+        top, bottom, side = idxs[0], idxs[2], idxs[1]
+        lines.append("            %d, %d, %d, %d, %d, %d,   // %s"
+                     % (top, bottom, side, side, side, side, b["name"]))
+    lines.append("        };")
+    lines.append("")
+    lines.append("        public static readonly byte[] TransparentFlags =")
+    lines.append("        {")
+    trans = []
+    cut = []
+    for b in BLOCKS:
+        imgs = faces_by_block[b["name"]]
+        is_t = 0
+        is_c = 0
+        for im in imgs:
+            alphas = [p[3] for p in im.getdata()]
+            if min(alphas) < 200:
+                is_t = 1
+            if min(alphas) < 120 and max(alphas) > 200:
+                is_c = 1
+        trans.append(is_t)
+        cut.append(is_c)
+    lines.append("            " + ", ".join(str(v) for v in trans) + ",")
+    lines.append("        };")
+    lines.append("")
+    lines.append("        public static readonly byte[] CutoutFlags =")
+    lines.append("        {")
+    lines.append("            " + ", ".join(str(v) for v in cut) + ",")
+    lines.append("        };")
+    lines.append("    }")
+    lines.append("}")
+
+    path = os.path.join(root, "Assets", "Scripts", "Core", "BlockCatalogData.cs")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+    print("C# 数据已生成:", path)
+
+
 if __name__ == "__main__":
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     out_dir = os.path.join(root, "Assets", "Art", "AtlasSubstrata")
@@ -518,6 +662,7 @@ if __name__ == "__main__":
 
     atlas, tiles, total = build()
     atlas.save(os.path.join(out_dir, "atlas.png"))
+    emit_csharp(out_dir, tiles)
 
     table = []
     for i, b in enumerate(BLOCKS):

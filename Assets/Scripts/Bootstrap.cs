@@ -232,7 +232,7 @@ namespace MinecraftTetris
                     for (int i = 0, k = 0; i < BlockCatalog.Blocks.Length && k < 3; i++)
                     {
                         string nm = BlockCatalog.Blocks[i].Name;
-                        if (nm == "stone" || nm == "dirt" || nm == "oak_planks")
+                        if (nm == "stone" || nm == "soil" || nm == "plank")
                             wall[k++] = i + 1;
                     }
                     if (wall[1] == 0) wall[1] = wall[0];

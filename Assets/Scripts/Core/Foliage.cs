@@ -69,6 +69,14 @@ namespace MinecraftTetris
                     continue;
 
                 string wood;
+                int leafId;
+                if (n == "log")
+                {
+                    // Substrata 的原木就叫 log，对应的叶子叫 leaf
+                    if (byName.TryGetValue("leaf", out leafId))
+                        _leafOf[i] = leafId;
+                    continue;
+                }
                 if (n.EndsWith("_log"))
                     wood = n.Substring(0, n.Length - 4);
                 else if (n.EndsWith("_wood"))
@@ -76,7 +84,6 @@ namespace MinecraftTetris
                 else
                     continue;
 
-                int leafId;
                 if (byName.TryGetValue(wood + "_leaves", out leafId))
                     _leafOf[i] = leafId;
             }

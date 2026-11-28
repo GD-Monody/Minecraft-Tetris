@@ -29,21 +29,9 @@ namespace MinecraftTetris
         /// <summary>这一类方块本身会不会受重力（不管设置里开没开）。</summary>
         public static bool IsFalling(int blockId)
         {
-            if (blockId <= 0)
-                return false;
-
-            string n = BlockCatalog.Of(blockId).Name;
-            if (string.IsNullOrEmpty(n))
-                return false;
-
-            if (n == "sand" || n == "red_sand" || n == "gravel")
-                return true;
-            if (n.StartsWith("suspicious_sand") || n.StartsWith("suspicious_gravel"))
-                return true;
-            if (IsConcretePowder(n))
-                return true;
-
-            return false;
+            // 受重力由方块表的 gravity 标签决定（沙/粉尘/砾石/盐）。
+            // 之前是按 MC 名字硬编码的字符串表，换方块表就得跟着改 —— 现在标签说了算。
+            return blockId > 0 && BlockCatalog.HasTag(blockId, "gravity");
         }
 
         /// <summary>

@@ -19,7 +19,7 @@ namespace MinecraftTetris
     public class GridFrame : MonoBehaviour
     {
         /// <summary>地台用哪种方块。想换材质改这一行就行（方块表里的英文名）。</summary>
-        const string FrameBlockName = "stone_bricks";
+        const string FrameBlockName = "brick";
 
         /// <summary>四周那圈围挡用哪种方块。必须是方块表里标了透明的（玻璃 / 冰之类）。</summary>
         const string GlassBlockName = "glass";

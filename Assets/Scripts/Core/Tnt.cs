@@ -95,16 +95,16 @@ namespace MinecraftTetris
             BlockDef[] blocks = BlockCatalog.Blocks;
             for (int i = 0; i < blocks.Length; i++)
             {
-                if (blocks[i].Name == "tnt")
+                if (blocks[i].Name == "explosive")
                     _tntId = i + 1;
-                else if (blocks[i].Name == "redstone_block")
+                else if (blocks[i].Name == "fuse")
                     _redstoneId = i + 1;
             }
 
             if (_tntId <= 0)
                 Debug.LogWarning("[tnt] 方块表里没有 tnt");
             if (_redstoneId <= 0)
-                Debug.LogWarning("[tnt] 方块表里没有 redstone_block");
+                Debug.Log("[tnt] 方块表里没有引线，红石点火路径休眠（火依然能点着炸药）");
         }
 
         public static void Reset()

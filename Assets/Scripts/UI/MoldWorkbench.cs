@@ -61,7 +61,7 @@ namespace MinecraftTetris
         const float DefaultPitch = 40f;
 
         /// <summary>编辑器里模具长什么样（游戏里它跟普通方块一样随机取材质）。</summary>
-        const string EditorBlock = "diamond_block";
+        const string EditorBlock = "crystal";
 
         /// <summary>提示行显示多久。</summary>
         const float HintSeconds = 1.8f;
