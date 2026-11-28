@@ -160,7 +160,7 @@ def s_glass(n, seed):
     base = 2400 * rng.uniform(0.92, 1.08)
     x = np.zeros(n)
     for k, (mul, amp) in enumerate(((1.0, 1.0), (1.5, 0.5), (2.35, 0.3), (3.1, 0.18))):
-        x += tone(base * mul, n, 0.09 / (k + 1), phase=rng.uniform(0, 6.28)) * amp
+        x += tone(base * mul, n, 0.065 / (k + 1), phase=rng.uniform(0, 6.28)) * amp
     x += bandpass(noise(n, seed + 9), 4000, 9000) * env(n, 0.001, 0.02) * 0.5
     return norm(x)
 
@@ -170,7 +170,7 @@ def s_metal(n, seed):
     rng = np.random.default_rng(seed)
     base = 380 * rng.uniform(0.95, 1.05)
     x = np.zeros(n)
-    for mul, amp, dec in ((1.0, 1.0, 0.35), (2.76, 0.7, 0.28), (5.4, 0.45, 0.2), (8.9, 0.25, 0.14)):
+    for mul, amp, dec in ((1.0, 1.0, 0.16), (2.76, 0.7, 0.12), (5.4, 0.45, 0.09), (8.9, 0.25, 0.06)):
         x += tone(base * mul, n, dec, phase=rng.uniform(0, 6.28)) * amp
     x += bandpass(noise(n, seed + 4), 3000, 8000) * env(n, 0.001, 0.015) * 0.4
     return norm(x)
@@ -182,8 +182,48 @@ def s_crystal(n, seed):
     base = 880 * rng.uniform(0.95, 1.05)
     x = np.zeros(n)
     for k, amp in enumerate((1.0, 0.6, 0.35, 0.2, 0.1)):
-        x += tone(base * (k + 1), n, 0.28 / (k + 1), phase=rng.uniform(0, 6.28)) * amp
+        x += tone(base * (k + 1), n, 0.14 / (k + 1), phase=rng.uniform(0, 6.28)) * amp
     return norm(x)
+
+
+def s_water(n, seed):
+    """水：低频"哗"一声 + 几个气泡。原来借用玻璃的高频"叮"，完全不像倒水。"""
+    rng = np.random.default_rng(seed)
+    x = bandpass(noise(n, seed), 300, 2600) * env(n, 0.015, 0.15)
+    for k in range(4):
+        start = int(rng.uniform(0.02, 0.13) * SR)
+        ln = secs(0.03)
+        if start + ln < n:
+            bub = bandpass(noise(ln, seed + k * 7), 900, 3200) * env(ln, 0.003, 0.018)
+            x[start:start + ln] += bub * 0.6
+    return norm(x, 0.6)
+
+
+def s_lava(n, seed):
+    """岩浆：粘稠的低频咕嘟，比水更闷更长，带一点 70Hz 的体。"""
+    x = lowpass(bandpass(noise(n, seed), 120, 1200), 900) * env(n, 0.02, 0.26)
+    x += tone(70, n, 0.22) * 0.7
+    return norm(x, 0.75)
+
+
+def s_water(n, seed):
+    """水：低频"哗"一声 + 几个气泡。原来借用玻璃的高频"叮"，完全不像倒水。"""
+    rng = np.random.default_rng(seed)
+    x = bandpass(noise(n, seed), 300, 2600) * env(n, 0.015, 0.15)
+    for k in range(4):
+        start = int(rng.uniform(0.02, 0.13) * SR)
+        ln = secs(0.03)
+        if start + ln < n:
+            bub = bandpass(noise(ln, seed + k * 7), 900, 3200) * env(ln, 0.003, 0.018)
+            x[start:start + ln] += bub * 0.6
+    return norm(x, 0.6)
+
+
+def s_lava(n, seed):
+    """岩浆：粘稠的低频咕嘟，比水更闷更长，带一点 70Hz 的体。"""
+    x = lowpass(bandpass(noise(n, seed), 120, 1200), 900) * env(n, 0.02, 0.26)
+    x += tone(70, n, 0.22) * 0.7
+    return norm(x, 0.75)
 
 
 # 组名 -> (生成函数, 时长秒)
@@ -194,9 +234,11 @@ PLACE = {
     "grass":   (s_grass, 0.26),
     "sand":    (s_sand, 0.30),
     "snow":    (s_snow, 0.28),
-    "glass":   (s_glass, 0.38),
-    "metal":   (s_metal, 0.55),
-    "crystal": (s_crystal, 0.60),
+    "glass":   (s_glass, 0.28),
+    "metal":   (s_metal, 0.32),
+    "crystal": (s_crystal, 0.30),
+    "water":   (s_water, 0.30),
+    "lava":    (s_lava, 0.45),
 }
 
 

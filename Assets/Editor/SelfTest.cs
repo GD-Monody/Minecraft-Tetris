@@ -735,8 +735,9 @@ namespace MinecraftTetris.EditorTools
             Check("沙子 -> 沙子音", groupOf("sand") == "sand");
             Check("炸药 -> 草的音（原版 TNT 就挂在草组）", groupOf("explosive") == "grass");
             Check("黑曜石 -> 石头音", groupOf("obsidian") == "stone");
-            Check("水 -> 倒桶音（暂借玻璃组，换音频素材时一并处理）", groupOf("water") == "glass");
-            Check("岩浆 -> 石头音（暂借，换音频素材时一并处理）", groupOf("lava") == "stone");
+            Check("水 -> 水声", groupOf("water") == "water");
+            Check("岩浆 -> 岩浆声", groupOf("lava") == "lava");
+            Check("酸借水声", groupOf("acid") == "water");
 
             // 流体要用的方块编号（水、岩浆、黑曜石、原石）在方块表里查一次
             Fluids.Init();

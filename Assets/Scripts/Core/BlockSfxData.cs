@@ -11,7 +11,7 @@ namespace MinecraftTetris
 {
     public static class BlockSfxData
     {
-        public const int GroupCount = 9;
+        public const int GroupCount = 11;
 
         /// <summary>组名。SfxPlayer 按这个字符串查索引。</summary>
         public static readonly string[] Groups =
@@ -25,6 +25,8 @@ namespace MinecraftTetris
             "glass",
             "metal",
             "crystal",
+            "water",
+            "lava",
         };
 
         /// <summary>每组可用的 clip（Resources/Sfx/Place 下的文件名，不带扩展名）。</summary>
@@ -39,6 +41,8 @@ namespace MinecraftTetris
             new[] { "glass1", "glass2", "glass3", "glass4" },
             new[] { "metal1", "metal2", "metal3", "metal4" },
             new[] { "crystal1", "crystal2", "crystal3", "crystal4" },
+            new[] { "water1", "water2", "water3", "water4" },
+            new[] { "lava1", "lava2", "lava3", "lava4" },
         };
 
         /// <summary>
@@ -56,6 +60,8 @@ namespace MinecraftTetris
             0.80f,   // glass
             1.00f,   // metal
             0.85f,   // crystal
+            0.95f,   // water
+            1.00f,   // lava
         };
     }
 }
