@@ -111,7 +111,6 @@ namespace MinecraftTetris
         float _t;
         bool _stylesReady;
         GUIStyle _subStyle;
-        GUIStyle _creditStyle;
         GUIStyle _btnStyle;
         /// <summary>主菜单专用：字号每帧按菜单缩放系数重算（按钮放大，字也跟着放大）。</summary>
         GUIStyle _menuBtnStyle;
@@ -279,7 +278,6 @@ namespace MinecraftTetris
         const float CharFall = 0.5f;
         const float SubStart = 2.35f;
         const float BtnStart = 2.8f;
-        const float CreditStart = 3.1f;
 
         static readonly GameAction[] AllActions =
         {
@@ -773,19 +771,12 @@ namespace MinecraftTetris
             }
         }
 
+        /// <summary>
+        /// 原本在标题页底部淡入一行署名。用户要求去掉，保留空方法让调用点不动
+        /// （删调用会牵动标题页的时序，没必要）。
+        /// </summary>
         void DrawCredit()
         {
-            float p = Mathf.Clamp01((_t - CreditStart) / 0.55f);
-            if (p <= 0f)
-                return;
-
-            // 这行是淡色署名：亮色主题下白字在浅底上看不见，换成深灰
-            _creditStyle.normal.textColor = UiSkin.Current == UiSkin.Theme.Light
-                ? new Color(0.42f, 0.47f, 0.55f, p * 0.9f)
-                : new Color(1f, 1f, 1f, p * 0.85f);
-            float creditW = WideTitle ? Screen.width * 0.5f : Screen.width;
-            GUI.Label(new Rect(0f, Screen.height - UiSkin.P(62f), creditW, UiSkin.P(28f)),
-                "AGENTS辅助完成", _creditStyle);
         }
 
         // ---------- 设置面板 ----------
@@ -1545,7 +1536,7 @@ namespace MinecraftTetris
             float y = panel.y + Pg(152f);
             GUI.Label(new Rect(bx, y, rowW, lineH), "按住圆头拖动，拖到最左就是静音", _hintBig);
             y += lineH;
-            GUI.Label(new Rect(bx, y, rowW, lineH), "原版曲库，随机播放，两首之间留一段静默", _hintBig);
+            GUI.Label(new Rect(bx, y, rowW, lineH), "随机播放，两首之间留一段静默", _hintBig);
             y += lineH;
             GUI.Label(new Rect(bx, y, rowW, lineH), "标题界面用菜单曲，进游戏换成常速曲", _hintBig);
             y += lineH;
@@ -1748,7 +1739,7 @@ namespace MinecraftTetris
             // 玩法栏不放提示行：六条本身就够直白，多一句反而显得啰嗦（玩家要求去掉）
             "",
             "这里显示的是当前键位，改键去 设置 → 按键设置。",
-            "只列和原版不一样、或者第一次玩容易搞错的机制；每一项都能在设置里单独关掉。",
+            "只列容易搞错、或者和常见玩法不一样的机制；每一项都能在设置里单独关掉。",
         };
 
         /// <summary>玩法栏的六段：小标题、正文各一行。</summary>
@@ -3087,7 +3078,6 @@ namespace MinecraftTetris
                 : new Color(0.10f, 0.12f, 0.15f, 0.98f));
 
             _subStyle = MakeStyle(30, UiSkin.TextPrimary, TextAnchor.MiddleCenter, FontStyle.Normal);
-            _creditStyle = MakeStyle(17, UiSkin.TextPrimary, TextAnchor.MiddleCenter, FontStyle.Normal);
             _panelTitleStyle = MakeStyle(32, UiSkin.TextPrimary, TextAnchor.MiddleCenter, FontStyle.Bold);
             _rowLabelStyle = MakeStyle(18, UiSkin.TextSecondary, TextAnchor.MiddleLeft, FontStyle.Normal);
             _hintStyle = MakeStyle(18, UiSkin.TextSecondary, TextAnchor.MiddleLeft, FontStyle.Normal);
