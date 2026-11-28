@@ -680,17 +680,11 @@ namespace MinecraftTetris.EditorTools
             // 放置音已经改成「按放置顺序走音阶」，不再按材质分组，
             // 所以方块表里的材质名和音效组名不再是同一套东西 ——
             // 这里改查音阶本身：七级齐全、每级四个变体。
-            Check("音阶是完整的七级", BlockSfxData.GroupCount == 7
-                  && BlockSfxData.Groups.Length == 7
-                  && BlockSfxData.Groups[0] == "do" && BlockSfxData.Groups[6] == "xi");
-
-            int shortGroup2 = 0;
-            for (int g = 0; g < BlockSfxData.GroupCount; g++)
-            {
-                if (BlockSfxData.GroupClips[g] == null || BlockSfxData.GroupClips[g].Length < 4)
-                    shortGroup2++;
-            }
-            Check("每一级都有至少 4 个变体", shortGroup2 == 0);
+            // 放置音现在是单一组「嗒」：不需要音高，也就不需要多级
+            Check("放置音只有一组", BlockSfxData.GroupCount == 1
+                  && BlockSfxData.Groups[0] == "tap");
+            Check("「嗒」有至少 4 个变体",
+                  BlockSfxData.GroupClips[0] != null && BlockSfxData.GroupClips[0].Length >= 4);
 
             int emptyGroup = 0;
             int totalClips = 0;

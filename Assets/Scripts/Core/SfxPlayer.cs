@@ -152,15 +152,11 @@ namespace MinecraftTetris
         }
 
         /// <summary>
-        /// 放下一个方块：音高跟着**落点高度**走，不跟顺序、也不跟材质。
+        /// 放下一个方块：只播一声极短的「嗒」。
         ///
-        /// 试过的两种都不行：
-        /// · 按材质 —— 材质和音高没有对应关系，连放时音高乱跳；
-        /// · 按放置顺序走音阶 —— 音高一路往上爬，像在弹音阶练习，而且和屏幕上的动作无关。
-        ///
-        /// 现在这条有物理依据：掉到底部是低音（沉稳），堆到高处是高音（紧张）。
-        /// 连放时音高随落点起伏 —— 平铺是低音、往高处堆才升调，听起来是"场地在长高"，
-        /// 而不是"有人在数音阶"。
+        /// 前面试过三种映射（按材质、按放置顺序走音阶、按落点高度），都"吵"。
+        /// 根因是放置每秒响 1~2 次 —— 任何带音高的声音连起来都会盖住背景音乐。
+        /// 现在它降级成节奏点：高频、60ms、音量 0.42；音乐性交给消行琶音。
         /// </summary>
         public void PlayPlace(BlockDef def, int cellY, int gridHeight)
         {
@@ -171,18 +167,12 @@ namespace MinecraftTetris
                 return;
             }
 
-            // 只用场地下半部分的实际高度：方块绝大多数落在这里，
-            // 按整个 20 格映射的话所有音都会挤在最底下两级，听不出变化。
-            const float Span = 10f;
-            float t = Mathf.Clamp01(cellY / Span);
-            int step = Mathf.Clamp(Mathf.RoundToInt(t * (_placeClips.Length - 1)),
-                                   0, _placeClips.Length - 1);
-
-            AudioClip[] clips = _placeClips[step];
+            AudioClip[] clips = _placeClips[0];
             if (clips != null && clips.Length > 0)
             {
-                // 音高不抖（音阶要准），变体差异在合成阶段已经做进音色里
-                Play(clips[Random.Range(0, clips.Length)], _placeVolume[step], 1f);
+                // 留一点点音高抖动：连放时不至于像电子节拍器
+                Play(clips[Random.Range(0, clips.Length)], _placeVolume[0],
+                     1f + Random.Range(-0.05f, 0.05f));
                 return;
             }
 

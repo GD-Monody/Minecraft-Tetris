@@ -238,6 +238,28 @@ def s_lava(n, seed):
     return norm(x, 0.75)
 
 
+def tap(n, seed):
+    """极短高频「嗒」：木块轻磕一下的感觉。
+
+    为什么要做成这样：放置音和 CC0 背景音乐都在 200~500Hz 抢地方，
+    连放时糊成一片。把放置音移到 2~6kHz、压到 60ms，
+    它就从"另一个乐器"变成"节奏点"，和 BGM 彻底错开频段。
+    """
+    rng = np.random.default_rng(seed)
+    t = np.arange(n) / SR
+
+    # 主体：高频带通噪声，衰减极快
+    x = bandpass(noise(n, seed), 1800, 6500) * env(n, 0.0004, 0.014)
+
+    # 一点谐振给"音高感"，不然只有噪声就是"噗"
+    f = 3100 * rng.uniform(0.9, 1.1)
+    x += np.sin(2 * math.pi * f * t) * np.exp(-t / 0.010) * 0.5
+
+    # 尾巴收干净：超过 35ms 的部分强行淡出，避免叠在下一块上
+    fade = np.clip((n - np.arange(n)) / (SR * 0.02), 0.0, 1.0)
+    return norm(x * fade, 0.40)
+
+
 # 组名 -> (生成函数, 时长秒)
 PLACE = {
     "stone":   (s_stone, 0.30),
@@ -252,6 +274,9 @@ PLACE = {
     "water":   (s_water, 0.30),
     "lava":    (s_lava, 0.45),
 }
+
+# 放置音只有一组「嗒」，四个变体（音高 ±10%、噪声种子不同）
+PLACE = {"tap": (tap, 0.06)}
 
 
 # ---------- 界面音 ----------
@@ -421,9 +446,10 @@ def build_place():
     os.makedirs(dirp, exist_ok=True)
     os.makedirs(TMP, exist_ok=True)
     n_made = 0
-    for group in PIANO_NOTES:
+    for group, (fn, dur) in PLACE.items():
         for v in range(1, 5):
-            x = piano_make(group, v)
+            n = secs(dur)
+            x = fn(n, seed_of("%s%d" % (group, v)))
             wav = os.path.join(TMP, "%s%d.wav" % (group, v))
             write_wav(wav, x, stereo=True)
             to_ogg(wav, os.path.join(dirp, "%s%d.ogg" % (group, v)))
