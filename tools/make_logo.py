@@ -11,6 +11,8 @@
 默认输出 Logs/title_substrata.png（先看效果，没问题再覆盖 Assets/Resources/title.png）。
 """
 
+import json
+import os
 import sys
 from PIL import Image
 
@@ -55,4 +57,18 @@ if __name__ == "__main__":
     out = sys.argv[1] if len(sys.argv) > 1 else "Logs/title_substrata.png"
     img = render("SUBSTRATA")
     img.save(out)
-    print("已生成", out, img.size)
+
+    # 同时输出 title_meta.json：TitleScreen 是按字符逐个切的（CharMeta x/w），
+    # 图和表必须由同一份几何算出来，不然每个「字」切出来的都是错位片段。
+    letters = "SUBSTRATA"
+    cell_w = 5 * SCALE
+    total = len(letters) * cell_w + (len(letters) - 1) * GAP
+    x0 = (W - total) // 2
+    chars = []
+    for i in range(len(letters)):
+        chars.append({"x": x0 + i * (cell_w + GAP), "w": cell_w, "space": False})
+    meta = {"chars": chars}
+    meta_path = os.path.splitext(out)[0] + "_meta.json"
+    with open(meta_path, "w", encoding="utf-8") as f:
+        json.dump(meta, f)
+    print("已生成", meta_path, "（%d 个字符）" % len(chars))
