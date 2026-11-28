@@ -148,6 +148,14 @@ namespace MinecraftTetris
         Texture2D _btnHover;
         Texture2D _btnActive;
 
+        // 标题页专用的一套深色按钮贴图。为什么不直接给白贴图乘 GUI.color：
+        // IMGUI 的 GUI.color 会调制「包括文字在内」的所有绘制，乘深色之后
+        // 按钮上的字也一起变暗了（试过，字几乎看不见）。所以单独做深色底。
+        Texture2D _darkBtnNormal;
+        Texture2D _darkBtnHover;
+        Texture2D _darkBtnActive;
+        GUIStyle _menuBtnDark;
+
         SettingsPage _page = SettingsPage.Main;
         int _capturingAction = -1;
         int _tmpX = 10;
@@ -547,12 +555,11 @@ namespace MinecraftTetris
         /// <summary>标题页整屏（雾化层 + 光尘 + 标题 + 按钮 + 署名）。</summary>
         void DrawTitleScreen()
         {
-            // 亮色主题不能压黑（整屏会变成一团深灰），改成压一层浅色雾化
-            DrawRect(new Rect(0f, 0f, Screen.width, Screen.height),
-                UiSkin.Current == UiSkin.Theme.Light
-                    ? new Color(0.93f, 0.96f, 1f, 0.55f)
-                    : new Color(0f, 0f, 0f, 0.55f));
+            // 标题页固定深色底：下落的方块只有压在深底上才看得出来，
+            // 浅蓝底会把它们冲成一片灰白（试过，像脏点）。设置页仍跟随主题。
+            DrawTitleBackdrop();
 
+            DrawFallingBlocks();
             DrawPortalMotes();
 
             DrawTitle();
@@ -652,11 +659,12 @@ namespace MinecraftTetris
 
                 // logo 是白色像素图，压在浅底上会糊掉：亮色主题把它整体压成深灰，
                 // 投影也跟着反过来用浅色，字才浮得起来。
-                bool light = UiSkin.Current == UiSkin.Theme.Light;
-                GUI.color = light ? new Color(1f, 1f, 1f, alpha * 0.85f) : new Color(0f, 0f, 0f, alpha * 0.75f);
+                // 标题页底固定是深色（DrawTitleBackdrop），所以字固定用亮色。
+                // 原来跟着主题走：亮色主题下把白字压成深灰，放到深底上直接隐形。
+                GUI.color = new Color(0f, 0f, 0f, alpha * 0.7f);
                 GUI.DrawTextureWithTexCoords(new Rect(dst.x + scale * 0.25f, dst.y + scale * 0.25f, dst.width, dst.height), _titleTex, uv);
 
-                GUI.color = light ? new Color(0.16f, 0.20f, 0.27f, alpha) : new Color(1f, 1f, 1f, alpha);
+                GUI.color = new Color(0.94f, 0.96f, 1f, alpha);
                 GUI.DrawTextureWithTexCoords(dst, _titleTex, uv);
             }
 
@@ -679,9 +687,8 @@ namespace MinecraftTetris
             if (p <= 0f)
                 return;
 
-            Color ink = UiSkin.TextPrimary;
-            ink.a = p;
-            _subStyle.normal.textColor = ink;
+            // 同上：深底上必须是亮字
+            _subStyle.normal.textColor = new Color(0.62f, 0.70f, 0.82f, p);
 
             // 紧贴标题下方：原来固定在 0.42H，按钮放大后会和第一颗按钮打架
             float subW = WideTitle ? Screen.width * 0.5f : Screen.width;
@@ -737,7 +744,10 @@ namespace MinecraftTetris
             // 字号跟着按钮一起放大，否则按钮长大字没长，反而更空
             // 横屏的按钮又高又宽，按 18 号配上去字显得很小，单独放大一档
             int baseSize = WideTitle ? 21 : 18;
-            _menuBtnStyle.fontSize = Mathf.Max(12, Mathf.RoundToInt(UiSkin.Size(baseSize) * lay.scale));
+            int menuFont = Mathf.Max(12, Mathf.RoundToInt(UiSkin.Size(baseSize) * lay.scale));
+            _menuBtnStyle.fontSize = menuFont;
+            if (_menuBtnDark != null)
+                _menuBtnDark.fontSize = menuFont;
 
             for (int i = 0; i < n; i++)
             {
@@ -764,11 +774,12 @@ namespace MinecraftTetris
                 _menuRects[items[i].Key] = rect;      // 教程高亮用
 
                 Color prev = GUI.color;
-                GUI.color = new Color(1f, 1f, 1f, p);
-                if (TutBtn(rect, items[i].Key, _menuBtnStyle))
+                GUI.color = new Color(1f, 1f, 1f, p);   // 只做淡入，不再染色
+                if (TutBtn(rect, items[i].Key, _menuBtnDark ?? _menuBtnStyle))
                     items[i].Value?.Invoke();
                 GUI.color = prev;
             }
+
         }
 
         /// <summary>
@@ -3117,6 +3128,18 @@ namespace MinecraftTetris
             _menuBtnStyle = new GUIStyle(_btnStyle);
             _menuBtnStyle.alignment = TextAnchor.MiddleCenter;
             _menuBtnStyle.fontSize = UiSkin.Size(18);
+
+            // 标题页深色按钮：底是深蓝灰，字是近白，悬停时略微提亮 + 偏暖
+            _darkBtnNormal = SolidTexture(new Color(0.13f, 0.16f, 0.22f, 0.94f));
+            _darkBtnHover = SolidTexture(new Color(0.19f, 0.24f, 0.32f, 0.97f));
+            _darkBtnActive = SolidTexture(new Color(0.10f, 0.13f, 0.18f, 0.96f));
+            _menuBtnDark = new GUIStyle(_menuBtnStyle);
+            _menuBtnDark.normal.background = _darkBtnNormal;
+            _menuBtnDark.hover.background = _darkBtnHover;
+            _menuBtnDark.active.background = _darkBtnActive;
+            _menuBtnDark.normal.textColor = new Color(0.90f, 0.93f, 0.98f, 1f);
+            _menuBtnDark.hover.textColor = new Color(1f, 0.96f, 0.88f, 1f);
+            _menuBtnDark.active.textColor = new Color(0.86f, 0.90f, 0.96f, 1f);
             // 「请把手机横过来」提示层的正文：居中、不折行（折了行固定 Rect 会顶破）
             _rotateHintStyle = MakeStyle(15, UiSkin.TextSecondary, TextAnchor.MiddleCenter, FontStyle.Normal);
             _rotateHintStyle.wordWrap = false;
@@ -3212,6 +3235,143 @@ namespace MinecraftTetris
                     phase = (float)rnd.NextDouble() * 6.2831853f,
                     speed = 0.5f + (float)rnd.NextDouble() * 1.3f
                 };
+            }
+        }
+
+        // ---------- 背景：不断下落的方块 ----------
+        //
+        // 用 IMGUI 直接画，不碰 3D 场景：标题页底下是真实场地，往里塞物体会
+        // 跟相机、光照、清理逻辑纠缠；这里只是"看起来有方块在落"，贴图 + 调制色就够。
+        // 每个方块画三块矩形：正面 + 上方压扁的顶面 + 右侧压窄的侧面 ——
+        // 不是真等距（IMGUI 画不了平行四边形），但配合下落运动读起来是立体的。
+
+        struct BgBlock
+        {
+            public float x;       // 0~1 屏幕横向
+            public float y;       // 0~1，1 = 屏幕上方之外
+            public float vy;      // 每秒下落比例
+            public float size;    // 相对屏高的边长
+            public int blockId;
+            public float alpha;
+            public float sway;    // 左右摇摆相位
+        }
+
+        BgBlock[] _bgBlocks;
+        float _bgT;
+        Texture2D _bgAtlasTex;
+
+        void InitBgBlocks()
+        {
+            if (_bgBlocks != null)
+                return;
+
+            // 挑颜色差得开的几种，背景才看得出"有东西在落"
+            string[] names = { "soil", "stone", "grass", "sand", "crystal", "log", "glass" };
+            var ids = new List<int>();
+            for (int i = 0; i < names.Length; i++)
+            {
+                int id = BlockCatalog.FindId(names[i]);
+                if (id > 0)
+                    ids.Add(id);
+            }
+            if (ids.Count == 0)
+                return;
+
+            var rng = new System.Random(20261128);
+            _bgBlocks = new BgBlock[14];
+            for (int i = 0; i < _bgBlocks.Length; i++)
+            {
+                _bgBlocks[i] = new BgBlock
+                {
+                    x = (float)rng.NextDouble(),
+                    // 初始纵向散开，否则一进标题页所有方块在同一高度、像一排
+                    y = (float)rng.NextDouble() * 1.7f - 0.7f,
+                    vy = 0.030f + (float)rng.NextDouble() * 0.055f,
+                    size = 0.055f + (float)rng.NextDouble() * 0.075f,
+                    blockId = ids[rng.Next(ids.Count)],
+                    alpha = 0.20f + (float)rng.NextDouble() * 0.20f,
+                    sway = (float)rng.NextDouble() * 6.28f,
+                };
+            }
+        }
+
+        /// <summary>
+        /// 标题页的底：竖向渐变。分条画是因为 IMGUI 没有渐变画笔，
+        /// 24 条一像素重叠，肉眼看不出接缝。
+        /// </summary>
+        void DrawTitleBackdrop()
+        {
+            int bands = 24;
+            Color top = new Color(0.043f, 0.055f, 0.082f);
+            Color bottom = new Color(0.086f, 0.105f, 0.145f);
+            float h = Screen.height / bands;
+            for (int i = 0; i < bands; i++)
+            {
+                Color c = Color.Lerp(top, bottom, i / (float)(bands - 1));
+                DrawRect(new Rect(0f, i * h, Screen.width, h + 1f), c);
+            }
+        }
+
+        void DrawFallingBlocks()
+        {
+            InitBgBlocks();
+            if (_bgBlocks == null)
+                return;
+
+            if (_bgAtlasTex == null)
+            {
+                Material m = BlockMesh.AtlasMaterial;
+                if (m != null)
+                    _bgAtlasTex = m.mainTexture as Texture2D;
+                if (_bgAtlasTex == null)
+                    return;
+            }
+
+            float dt = Mathf.Min(Time.deltaTime, 0.05f);
+            _bgT += dt;
+
+            int cell = BlockCatalog.CellPixels;
+            int pad = BlockCatalog.TilePadding;
+            float texW = _bgAtlasTex.width;
+            float texH = _bgAtlasTex.height;
+
+            for (int i = 0; i < _bgBlocks.Length; i++)
+            {
+                BgBlock b = _bgBlocks[i];
+                b.y -= b.vy * dt;
+                if (b.y < -0.22f)
+                {
+                    // 落出屏幕：从顶部重新来，顺便换位置/材质/透明度，看不出循环
+                    b.y = 1.12f + UnityEngine.Random.value * 0.25f;
+                    b.x = UnityEngine.Random.value;
+                    b.alpha = 0.20f + UnityEngine.Random.value * 0.20f;
+                }
+                _bgBlocks[i] = b;
+
+                Tile t = BlockCatalog.Of(b.blockId).North;
+                var uv = new Rect(
+                    (t.Col * cell + pad) / texW,
+                    1f - (t.Row * cell + pad + 16f) / texH,
+                    16f / texW, 16f / texH);
+
+                float size = Screen.height * b.size;
+                float sway = Mathf.Sin(_bgT * 0.55f + b.sway) * size * 0.05f;
+                float px = b.x * Screen.width - size * 0.5f + sway;
+                float py = (1f - b.y) * Screen.height;
+
+                Color old = GUI.color;
+                // IMGUI 的颜色是乘法调制且会被截到 1，没法"提亮"，
+                // 所以反过来：正面压暗一档、顶面保持原色，相对就有明暗差。
+                // 顶面压扁、保持原色；侧面压窄压暗；正面略压暗 —— 三者一拉开就有立体感
+                GUI.color = new Color(1f, 1f, 1f, b.alpha);
+                GUI.DrawTextureWithTexCoords(
+                    new Rect(px, py - size * 0.34f, size, size * 0.34f), _bgAtlasTex, uv);
+                GUI.color = new Color(0.52f, 0.55f, 0.66f, b.alpha);
+                GUI.DrawTextureWithTexCoords(
+                    new Rect(px + size, py, size * 0.28f, size), _bgAtlasTex, uv);
+                GUI.color = new Color(0.86f, 0.88f, 0.95f, b.alpha);
+                GUI.DrawTextureWithTexCoords(new Rect(px, py, size, size), _bgAtlasTex, uv);
+                GUI.color = old;
             }
         }
 
