@@ -11,8 +11,7 @@ SRC_PLACE = os.path.join(ROOT, "Assets", "Resources", "Sfx", "Place")
 SRC_UI = os.path.join(ROOT, "Assets", "Resources", "Sfx")
 DST = os.path.join(ROOT, "Logs", "sfx_preview")
 
-GROUPS = [("do", "do"), ("re", "re"), ("mi", "mi"), ("fa", "fa"),
-          ("so", "so"), ("la", "la"), ("xi", "xi")]
+GROUPS = [("tap", "放置（高频嗒）")]
 UIS = [("click", "点击"), ("place_stone", "放置(默认)"), ("break_stone", "石头碎"),
        ("break_wood", "木头碎"), ("break_glass", "玻璃碎"), ("break_gravel", "砾石碎"),
        ("break_sand", "沙碎"), ("tnt_explode1", "爆炸1"), ("tnt_explode2", "爆炸2"),
