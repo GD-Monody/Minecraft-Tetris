@@ -3265,8 +3265,9 @@ namespace MinecraftTetris
             if (_bgBlocks != null)
                 return;
 
-            // 挑颜色差得开的几种，背景才看得出"有东西在落"
-            string[] names = { "soil", "stone", "grass", "sand", "crystal", "log", "glass" };
+            // 只用亮色材质。深棕的土、原木压在深蓝底上几乎看不见（试过），
+            // 背景是陪衬，得"隐约可见"而不是"偶尔闪一下"。
+            string[] names = { "sand", "snow", "crystal", "grass", "glass", "plank" };
             var ids = new List<int>();
             for (int i = 0; i < names.Length; i++)
             {
@@ -3289,7 +3290,7 @@ namespace MinecraftTetris
                     vy = 0.030f + (float)rng.NextDouble() * 0.055f,
                     size = 0.055f + (float)rng.NextDouble() * 0.075f,
                     blockId = ids[rng.Next(ids.Count)],
-                    alpha = 0.20f + (float)rng.NextDouble() * 0.20f,
+                    alpha = 0.22f + (float)rng.NextDouble() * 0.26f,
                     sway = (float)rng.NextDouble() * 6.28f,
                 };
             }
@@ -3341,10 +3342,9 @@ namespace MinecraftTetris
                 b.y -= b.vy * dt;
                 if (b.y < -0.22f)
                 {
-                    // 落出屏幕：从顶部重新来，顺便换位置/材质/透明度，看不出循环
                     b.y = 1.12f + UnityEngine.Random.value * 0.25f;
                     b.x = UnityEngine.Random.value;
-                    b.alpha = 0.20f + UnityEngine.Random.value * 0.20f;
+                    b.alpha = 0.22f + UnityEngine.Random.value * 0.26f;
                 }
                 _bgBlocks[i] = b;
 
@@ -3355,23 +3355,21 @@ namespace MinecraftTetris
                     16f / texW, 16f / texH);
 
                 float size = Screen.height * b.size;
-                float sway = Mathf.Sin(_bgT * 0.55f + b.sway) * size * 0.05f;
-                float px = b.x * Screen.width - size * 0.5f + sway;
+                float px = b.x * Screen.width - size * 0.5f;
                 float py = (1f - b.y) * Screen.height;
 
-                Color old = GUI.color;
-                // IMGUI 的颜色是乘法调制且会被截到 1，没法"提亮"，
-                // 所以反过来：正面压暗一档、顶面保持原色，相对就有明暗差。
-                // 顶面压扁、保持原色；侧面压窄压暗；正面略压暗 —— 三者一拉开就有立体感
+                // 纯 2D：一个带轻微倾斜的正方形在飘落。
+                // 之前那版给每块加了「压扁的顶面 + 压窄的侧面」想装立体，但三个矩形
+                // 对不齐等距的斜边，看起来就是「方块外面又多套了一个矩形」。宁可平，不要歪。
+                float angle = Mathf.Sin(_bgT * 0.35f + b.sway) * 9f;   // ±9°，慢速摆动
+
+                Matrix4x4 oldMat = GUI.matrix;
+                Color oldCol = GUI.color;
+                GUIUtility.RotateAroundPivot(angle, new Vector2(px + size * 0.5f, py + size * 0.5f));
                 GUI.color = new Color(1f, 1f, 1f, b.alpha);
-                GUI.DrawTextureWithTexCoords(
-                    new Rect(px, py - size * 0.34f, size, size * 0.34f), _bgAtlasTex, uv);
-                GUI.color = new Color(0.52f, 0.55f, 0.66f, b.alpha);
-                GUI.DrawTextureWithTexCoords(
-                    new Rect(px + size, py, size * 0.28f, size), _bgAtlasTex, uv);
-                GUI.color = new Color(0.86f, 0.88f, 0.95f, b.alpha);
                 GUI.DrawTextureWithTexCoords(new Rect(px, py, size, size), _bgAtlasTex, uv);
-                GUI.color = old;
+                GUI.color = oldCol;
+                GUI.matrix = oldMat;
             }
         }
 
