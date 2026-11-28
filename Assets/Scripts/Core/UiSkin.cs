@@ -146,6 +146,15 @@ namespace MinecraftTetris
         static int _themeCache = -1;
 
         /// <summary>当前主题。存在 PlayerPrefs 里，默认亮色。</summary>
+        /// <summary>
+        /// 调试用：临时覆盖主题，不写 PlayerPrefs（命令行 -light / -dark）。
+        /// 手动改注册表不行 —— Unity 2020+ 把键名存成 "key_h&lt;hash&gt;"，外部写不进去。
+        /// </summary>
+        public static void DebugForceTheme(Theme t)
+        {
+            _themeCache = (int)t;
+        }
+
         public static Theme Current
         {
             get

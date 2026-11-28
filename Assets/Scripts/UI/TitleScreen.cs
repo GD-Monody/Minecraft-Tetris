@@ -619,7 +619,6 @@ namespace MinecraftTetris
             int texW = _titleTex.width;
             float titleW = texW * scale;
             float titleH = TitleHeight();
-            // 横屏：在左半屏里居中、竖直方向也居中
             float left = WideTitle
                 ? (Screen.width * 0.5f - titleW) * 0.5f
                 : (Screen.width - titleW) * 0.5f;
@@ -627,68 +626,111 @@ namespace MinecraftTetris
                 ? (Screen.height - titleH) * 0.42f
                 : TitleTopY();
 
+            bool light = UiSkin.Current == UiSkin.Theme.Light;
+
+            // 横屏保留原来那套逐字淡入：标题在左半屏，从上方砸下来会擦过顶部，
+            // 而且那边的空白要靠一个一个亮起来才好看（用户之前明确要求过）。
+            if (WideTitle)
+            {
+                for (int i = 0; i < _chars.Length; i++)
+                {
+                    CharMeta ch = _chars[i];
+                    if (ch.space)
+                        continue;
+                    float p1 = Mathf.Clamp01((_t - (TitleStart + i * CharDelay)) / CharFall);
+                    if (p1 <= 0f)
+                        continue;
+
+                    float y1 = targetY + (1f - p1) * UiSkin.P(12f);
+                    var dst = new Rect(left + ch.x * scale, y1, ch.w * scale, titleH);
+                    var uv = new Rect((float)ch.x / texW, 0f, (float)ch.w / texW, 1f);
+                    GUI.color = new Color(light ? 1f : 0f, light ? 1f : 0f, light ? 1f : 0f,
+                        p1 * (light ? 0.55f : 0.7f));
+                    GUI.DrawTextureWithTexCoords(
+                        new Rect(dst.x + scale * 0.25f, dst.y + scale * 0.25f, dst.width, dst.height), _titleTex, uv);
+                    GUI.color = light ? new Color(0.10f, 0.13f, 0.18f, p1) : new Color(0.94f, 0.96f, 1f, p1);
+                    GUI.DrawTextureWithTexCoords(dst, _titleTex, uv);
+                }
+                GUI.color = Color.white;
+                return;
+            }
+
+            // 整块砸落（竖屏 / 桌面）：
+            // 不再是"一个字一个字掉下来"，而是整行当一块重物自由落下 ——
+            // 用 EaseIn（越落越快）而不是 EaseOutBounce，落地之后才做形变，
+            // 观感是"砸下来"，跟原来那种"轻轻放下"完全不同。
+            const float FallDur = 0.40f;
+            float p = Mathf.Clamp01((_t - TitleStart) / FallDur);
+            float eased = p * p;                                  // 加速下落
+            float y = Mathf.Lerp(-titleH * 1.25f, targetY, eased);
+
+            // 落地后的压缩回弹：阻尼余弦，先压扁再弹起，几次之后停
+            float land = _t - (TitleStart + FallDur);
+            float squash = 0f;
+            if (land > 0f)
+                squash = -0.13f * Mathf.Exp(-7.5f * land) * Mathf.Cos(land * 24f);
+
+            float sy = 1f + squash;
+            float sx = 1f - squash * 0.45f;
+            float cx = left + titleW * 0.5f;
+            float cy = y + titleH * 0.5f;
+
+            Color ink = light
+                ? new Color(0.09f, 0.12f, 0.17f, 1f)
+                : new Color(0.94f, 0.96f, 1f, 1f);
+            Color shade = light
+                ? new Color(1f, 1f, 1f, 0.55f)
+                : new Color(0f, 0f, 0f, 0.7f);
+
             for (int i = 0; i < _chars.Length; i++)
             {
                 CharMeta ch = _chars[i];
                 if (ch.space)
                     continue;
 
-                float t0 = TitleStart + i * CharDelay;
-                float p = Mathf.Clamp01((_t - t0) / CharFall);
-                if (p <= 0f)
-                    continue;
-
-                // 横屏：逐字显现 —— 每个字在落点上原地淡入（带一点上浮），一个一个亮起来。
-                // 竖屏 / 桌面：保留原来那套「从屏幕上方掉下来、落地弹一下」。
-                // 两套要分开：横屏的标题在左半屏，从上往下掉会擦过顶部、也压不住左边那块空白；
-                // 而且用户明确要求横屏用逐字显现，别跟竖屏合并。
-                float y, alpha;
-                if (WideTitle)
-                {
-                    y = targetY + (1f - p) * UiSkin.P(12f);
-                    alpha = Mathf.Clamp01(p);
-                }
-                else
-                {
-                    y = Mathf.Lerp(-titleH, targetY, EaseOutBounce(p));
-                    alpha = Mathf.Clamp01(p * 4f);
-                }
-
                 var dst = new Rect(left + ch.x * scale, y, ch.w * scale, titleH);
                 var uv = new Rect((float)ch.x / texW, 0f, (float)ch.w / texW, 1f);
 
-                // logo 是白色像素图，压在浅底上会糊掉：亮色主题把它整体压成深灰，
-                // 投影也跟着反过来用浅色，字才浮得起来。
-                // 标题页底固定是深色（DrawTitleBackdrop），所以字固定用亮色。
-                // 原来跟着主题走：亮色主题下把白字压成深灰，放到深底上直接隐形。
-                GUI.color = new Color(0f, 0f, 0f, alpha * 0.7f);
-                GUI.DrawTextureWithTexCoords(new Rect(dst.x + scale * 0.25f, dst.y + scale * 0.25f, dst.width, dst.height), _titleTex, uv);
+                // 以标题中心为轴做压缩：整行一起变形，而不是每个字各缩各的
+                float nx = cx + (dst.x - cx) * sx;
+                float ny = cy + (dst.y - cy) * sy;
+                float nw = dst.width * sx;
+                float nh = dst.height * sy;
 
-                GUI.color = new Color(0.94f, 0.96f, 1f, alpha);
-                GUI.DrawTextureWithTexCoords(dst, _titleTex, uv);
+                GUI.color = shade;
+                GUI.DrawTextureWithTexCoords(
+                    new Rect(nx + scale * 0.3f, ny + scale * 0.3f, nw, nh), _titleTex, uv);
+                GUI.color = ink;
+                GUI.DrawTextureWithTexCoords(new Rect(nx, ny, nw, nh), _titleTex, uv);
+            }
+
+            // 冲击光带：落地瞬间从标题下方往两侧扫出去，0.45 秒淡完
+            if (land > 0f && land < 0.45f)
+            {
+                float k = land / 0.45f;
+                float halfW = Mathf.Lerp(titleW * 0.12f, Screen.width * 0.62f, k * k);
+                float a = (1f - k) * (light ? 0.30f : 0.42f);
+                float ly = targetY + titleH * 0.97f;
+                Color glow = light ? new Color(0.16f, 0.38f, 0.66f, a)
+                                   : new Color(0.72f, 0.90f, 1f, a);
+                DrawRect(new Rect(cx - halfW, ly, halfW * 2f, 1.5f), glow);
+                DrawRect(new Rect(cx - halfW * 0.55f, ly - 3f, halfW * 1.1f, 1.5f),
+                    new Color(glow.r, glow.g, glow.b, a * 0.55f));
             }
 
             GUI.color = Color.white;
         }
 
-        /// <summary>
-        /// 署名一行「Made by Monody」。
-        ///
-        /// 原来这里只有一行灰字，前面还有一段「Made with Unity」（白色，亮色主题下
-        /// 压在白底上几乎看不见）。那段去掉了，这一行改用主文字色：
-        /// 浅色近黑、深色纯白。
-        ///
-        /// 签名图不放这儿：贴在标题旁边怎么排都别扭，已经挪到网页的加载页（矢量 SVG，
-        /// 在 Unity 起来之前闪一下），见 WebGLTemplates 里的 #mt-splash。
-        /// </summary>
         void DrawSub()
         {
             float p = Mathf.Clamp01((_t - SubStart) / 0.7f);
             if (p <= 0f)
                 return;
 
-            // 同上：深底上必须是亮字
-            _subStyle.normal.textColor = new Color(0.62f, 0.70f, 0.82f, p);
+            // 深底用浅灰蓝，浅底要压深一档才看得清
+            _subStyle.normal.textColor = UiSkin.Current == UiSkin.Theme.Light
+                ? new Color(0.34f, 0.41f, 0.51f, p)
+                : new Color(0.62f, 0.70f, 0.82f, p);
 
             // 紧贴标题下方：原来固定在 0.42H，按钮放大后会和第一颗按钮打架
             float subW = WideTitle ? Screen.width * 0.5f : Screen.width;
@@ -751,32 +793,42 @@ namespace MinecraftTetris
 
             for (int i = 0; i < n; i++)
             {
-                float ti = BtnStart + i * 0.1f;
-                float p = Mathf.Clamp01((_t - ti) / 0.35f);
+                float ti = BtnStart + i * 0.09f;
+                float p = Mathf.Clamp01((_t - ti) / 0.45f);
                 if (p <= 0f)
                     continue;
 
                 float y = lay.startY + i * (lay.height + lay.gap);
-                float x;
-                if (WideTitle)
-                {
-                    // 横屏：贴在右半屏居中，并从右侧屏幕外滑进来（一个接一个）
-                    x = Screen.width * 0.5f + (Screen.width * 0.5f - lay.width) * 0.5f;
-                    x += (1f - p) * Screen.width * 0.45f;
-                }
-                else
-                {
-                    // 竖屏：从下方轻轻浮起
-                    x = (Screen.width - lay.width) * 0.5f;
-                    y += (1f - p) * UiSkin.P(18f);
-                }
+                float x = WideTitle
+                    ? Screen.width * 0.5f + (Screen.width * 0.5f - lay.width) * 0.5f
+                    : (Screen.width - lay.width) * 0.5f;
+
+                // 入场：弹性缩放 + 左右交替飞入。
+                // EaseOutBack 会过冲一点点（先冲过再退回来），按钮像"弹"到位；
+                // 原来是从右侧匀速滑进来，太平。奇偶交替方向则让一列按钮有节奏感。
+                float e = EaseOutBack(p);
+                float sc = 0.80f + 0.20f * e;
+                float dir = (i % 2 == 0) ? -1f : 1f;
+                x += dir * (1f - e) * Screen.width * (WideTitle ? 0.30f : 0.09f);
+                y += (1f - e) * UiSkin.P(WideTitle ? 0f : 12f);
+
                 var rect = new Rect(x, y, lay.width, lay.height);
                 _menuRects[items[i].Key] = rect;      // 教程高亮用
 
                 Color prev = GUI.color;
-                GUI.color = new Color(1f, 1f, 1f, p);   // 只做淡入，不再染色
-                if (TutBtn(rect, items[i].Key, _menuBtnDark ?? _menuBtnStyle))
+                Matrix4x4 prevMat = GUI.matrix;
+                GUI.color = new Color(1f, 1f, 1f, Mathf.Clamp01(p * 1.8f));
+                // 以按钮中心缩放：文字跟着一起缩，否则字会从框里溢出来
+                GUIUtility.ScaleAroundPivot(new Vector2(sc, sc),
+                    new Vector2(rect.x + rect.width * 0.5f, rect.y + rect.height * 0.5f));
+
+                GUIStyle btnStyle = UiSkin.Current == UiSkin.Theme.Light
+                    ? _menuBtnStyle                     // 浅色封面：白底深字
+                    : (_menuBtnDark ?? _menuBtnStyle);  // 深色封面：深底亮字
+                if (TutBtn(rect, items[i].Key, btnStyle))
                     items[i].Value?.Invoke();
+
+                GUI.matrix = prevMat;
                 GUI.color = prev;
             }
 
@@ -3303,8 +3355,10 @@ namespace MinecraftTetris
         void DrawTitleBackdrop()
         {
             int bands = 24;
-            Color top = new Color(0.043f, 0.055f, 0.082f);
-            Color bottom = new Color(0.086f, 0.105f, 0.145f);
+            bool light = UiSkin.Current == UiSkin.Theme.Light;
+            // 浅色封面：淡蓝灰到米白，给白天/户外用。深色是默认那一套。
+            Color top = light ? new Color(0.93f, 0.95f, 0.98f) : new Color(0.043f, 0.055f, 0.082f);
+            Color bottom = light ? new Color(0.79f, 0.85f, 0.92f) : new Color(0.086f, 0.105f, 0.145f);
             float h = Screen.height / bands;
             for (int i = 0; i < bands; i++)
             {
@@ -3366,7 +3420,10 @@ namespace MinecraftTetris
                 Matrix4x4 oldMat = GUI.matrix;
                 Color oldCol = GUI.color;
                 GUIUtility.RotateAroundPivot(angle, new Vector2(px + size * 0.5f, py + size * 0.5f));
-                GUI.color = new Color(1f, 1f, 1f, b.alpha);
+                // 浅色封面上要把方块压暗：它们是亮色材质，压在浅底上等于隐形
+                bool lightBg = UiSkin.Current == UiSkin.Theme.Light;
+                float tint = lightBg ? 0.58f : 1f;
+                GUI.color = new Color(tint, tint, tint, b.alpha * (lightBg ? 1.5f : 1f));
                 GUI.DrawTextureWithTexCoords(new Rect(px, py, size, size), _bgAtlasTex, uv);
                 GUI.color = oldCol;
                 GUI.matrix = oldMat;
@@ -3422,6 +3479,15 @@ namespace MinecraftTetris
             GUI.color = c;
             GUI.DrawTexture(r, Texture2D.whiteTexture);
             GUI.color = prev;
+        }
+
+        /// <summary>回弹缓动：结尾冲过头再退回来，用于按钮入场。</summary>
+        static float EaseOutBack(float t)
+        {
+            const float c1 = 1.70158f;
+            const float c3 = c1 + 1f;
+            float u = t - 1f;
+            return 1f + c3 * u * u * u + c1 * u * u;
         }
 
         static float EaseOutBounce(float t)

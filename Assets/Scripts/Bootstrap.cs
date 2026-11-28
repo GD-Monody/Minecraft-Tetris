@@ -294,6 +294,12 @@ namespace MinecraftTetris
             _workbench.OnChanged += _title.SaveMoldEdit;
 
             // 命令行带 -auto 时跳过开始界面，方便自动化截图与调试
+            // 调试：强制主题，方便截图核对两套封面（不写存档）
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-light") >= 0)
+                UiSkin.DebugForceTheme(UiSkin.Theme.Light);
+            else if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-dark") >= 0)
+                UiSkin.DebugForceTheme(UiSkin.Theme.Dark);
+
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-auto") >= 0)
                 _title.Visible = false;
             _demoMode = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-demo") >= 0;
