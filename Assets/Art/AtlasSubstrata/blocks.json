@@ -1,0 +1,390 @@
+[
+  {
+    "id": 1,
+    "name": "stone",
+    "cn": "石",
+    "tags": []
+  },
+  {
+    "id": 2,
+    "name": "stone_smooth",
+    "cn": "磨光石",
+    "tags": []
+  },
+  {
+    "id": 3,
+    "name": "cobble",
+    "cn": "圆石",
+    "tags": []
+  },
+  {
+    "id": 4,
+    "name": "slate",
+    "cn": "板岩",
+    "tags": []
+  },
+  {
+    "id": 5,
+    "name": "marble",
+    "cn": "大理石",
+    "tags": []
+  },
+  {
+    "id": 6,
+    "name": "granite",
+    "cn": "花岗岩",
+    "tags": []
+  },
+  {
+    "id": 7,
+    "name": "brick",
+    "cn": "砖",
+    "tags": []
+  },
+  {
+    "id": 8,
+    "name": "tile",
+    "cn": "瓷砖",
+    "tags": []
+  },
+  {
+    "id": 9,
+    "name": "soil",
+    "cn": "土",
+    "tags": []
+  },
+  {
+    "id": 10,
+    "name": "grass",
+    "cn": "草",
+    "tags": []
+  },
+  {
+    "id": 11,
+    "name": "clay",
+    "cn": "黏土",
+    "tags": []
+  },
+  {
+    "id": 12,
+    "name": "mud",
+    "cn": "泥",
+    "tags": []
+  },
+  {
+    "id": 13,
+    "name": "gravel",
+    "cn": "砾石",
+    "tags": []
+  },
+  {
+    "id": 14,
+    "name": "ash",
+    "cn": "灰",
+    "tags": []
+  },
+  {
+    "id": 15,
+    "name": "sand",
+    "cn": "沙",
+    "tags": [
+      "gravity"
+    ]
+  },
+  {
+    "id": 16,
+    "name": "dust",
+    "cn": "粉尘",
+    "tags": [
+      "gravity"
+    ]
+  },
+  {
+    "id": 17,
+    "name": "salt",
+    "cn": "盐",
+    "tags": [
+      "gravity"
+    ]
+  },
+  {
+    "id": 18,
+    "name": "snow",
+    "cn": "雪",
+    "tags": []
+  },
+  {
+    "id": 19,
+    "name": "water",
+    "cn": "水",
+    "tags": [
+      "liquid"
+    ]
+  },
+  {
+    "id": 20,
+    "name": "lava",
+    "cn": "岩浆",
+    "tags": [
+      "liquid",
+      "melt:slate"
+    ]
+  },
+  {
+    "id": 21,
+    "name": "acid",
+    "cn": "酸",
+    "tags": [
+      "liquid"
+    ]
+  },
+  {
+    "id": 22,
+    "name": "fuel",
+    "cn": "燃料",
+    "tags": [
+      "flammable",
+      "liquid"
+    ]
+  },
+  {
+    "id": 23,
+    "name": "glow",
+    "cn": "辉光液",
+    "tags": [
+      "glow"
+    ]
+  },
+  {
+    "id": 24,
+    "name": "paper_kraft",
+    "cn": "纸张",
+    "tags": [
+      "flammable"
+    ]
+  },
+  {
+    "id": 25,
+    "name": "cardboard",
+    "cn": "板纸",
+    "tags": [
+      "flammable"
+    ]
+  },
+  {
+    "id": 26,
+    "name": "corrugated",
+    "cn": "瓦楞纸",
+    "tags": [
+      "flammable"
+    ]
+  },
+  {
+    "id": 27,
+    "name": "plank",
+    "cn": "木板",
+    "tags": [
+      "flammable"
+    ]
+  },
+  {
+    "id": 28,
+    "name": "log",
+    "cn": "原木",
+    "tags": [
+      "flammable"
+    ]
+  },
+  {
+    "id": 29,
+    "name": "leaf",
+    "cn": "叶",
+    "tags": [
+      "flammable"
+    ]
+  },
+  {
+    "id": 30,
+    "name": "hazard",
+    "cn": "警示板",
+    "tags": []
+  },
+  {
+    "id": 31,
+    "name": "explosive",
+    "cn": "炸药",
+    "tags": [
+      "explosive"
+    ]
+  },
+  {
+    "id": 32,
+    "name": "fuse",
+    "cn": "引线",
+    "tags": [
+      "fuse"
+    ]
+  },
+  {
+    "id": 33,
+    "name": "lamp",
+    "cn": "灯",
+    "tags": [
+      "glow"
+    ]
+  },
+  {
+    "id": 34,
+    "name": "foil",
+    "cn": "铝箔",
+    "tags": []
+  },
+  {
+    "id": 35,
+    "name": "paper_roll",
+    "cn": "纸卷",
+    "tags": [
+      "flammable"
+    ]
+  },
+  {
+    "id": 36,
+    "name": "kraft_tape",
+    "cn": "胶带",
+    "tags": []
+  },
+  {
+    "id": 37,
+    "name": "wax_paper",
+    "cn": "蜡纸",
+    "tags": []
+  },
+  {
+    "id": 38,
+    "name": "glass",
+    "cn": "玻璃",
+    "tags": []
+  },
+  {
+    "id": 39,
+    "name": "frosted",
+    "cn": "磨砂玻璃",
+    "tags": []
+  },
+  {
+    "id": 40,
+    "name": "stained_red",
+    "cn": "红彩玻",
+    "tags": []
+  },
+  {
+    "id": 41,
+    "name": "stained_blue",
+    "cn": "蓝彩玻",
+    "tags": []
+  },
+  {
+    "id": 42,
+    "name": "crystal",
+    "cn": "水晶",
+    "tags": [
+      "glow"
+    ]
+  },
+  {
+    "id": 43,
+    "name": "dye_red",
+    "cn": "红纸",
+    "tags": [
+      "flammable"
+    ]
+  },
+  {
+    "id": 44,
+    "name": "dye_orange",
+    "cn": "橙纸",
+    "tags": [
+      "flammable"
+    ]
+  },
+  {
+    "id": 45,
+    "name": "dye_yellow",
+    "cn": "黄纸",
+    "tags": [
+      "flammable"
+    ]
+  },
+  {
+    "id": 46,
+    "name": "dye_green",
+    "cn": "绿纸",
+    "tags": [
+      "flammable"
+    ]
+  },
+  {
+    "id": 47,
+    "name": "dye_teal",
+    "cn": "青纸",
+    "tags": [
+      "flammable"
+    ]
+  },
+  {
+    "id": 48,
+    "name": "dye_blue",
+    "cn": "蓝纸",
+    "tags": [
+      "flammable"
+    ]
+  },
+  {
+    "id": 49,
+    "name": "dye_purple",
+    "cn": "紫纸",
+    "tags": [
+      "flammable"
+    ]
+  },
+  {
+    "id": 50,
+    "name": "dye_pink",
+    "cn": "粉纸",
+    "tags": [
+      "flammable"
+    ]
+  },
+  {
+    "id": 51,
+    "name": "dye_brown",
+    "cn": "棕纸",
+    "tags": [
+      "flammable"
+    ]
+  },
+  {
+    "id": 52,
+    "name": "dye_gray",
+    "cn": "灰纸",
+    "tags": [
+      "flammable"
+    ]
+  },
+  {
+    "id": 53,
+    "name": "dye_black",
+    "cn": "黑纸",
+    "tags": [
+      "flammable"
+    ]
+  },
+  {
+    "id": 54,
+    "name": "dye_white",
+    "cn": "白纸",
+    "tags": [
+      "flammable"
+    ]
+  }
+]
