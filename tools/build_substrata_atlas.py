@@ -370,7 +370,7 @@ MOTIFS = {
 # (name, cn, tags, palette, alpha, marks{top/side/bottom})
 
 
-def B(name, cn, tags="", pal=STONE, alpha=255, marks=None, sfx="stone"):
+def B(name, cn, tags="", pal=STONE, alpha=255, marks=None, sfx=None):
     return dict(name=name, cn=cn, tags=[t for t in tags.split(",") if t],
                 pal=pal, alpha=alpha, sfx=sfx,
                 marks=marks or {"top": "plain", "side": "plain", "bottom": "plain"})

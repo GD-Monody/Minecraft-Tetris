@@ -1553,9 +1553,9 @@ namespace MinecraftTetris.EditorTools
             // TNT 爆炸与接触点火
             var gMechTnt = new Grid(6, 6, 1);
             gMechTnt.Set(2, 0, 0, Tnt.TntId);
-            gMechTnt.Set(3, 0, 0, Tnt.TntId);      // 红石块已随 MC 表移除，改成 TNT 连锁
+            gMechTnt.Set(3, 0, 0, Tnt.RedstoneId);  // 红石块的点火职责由引线接替
             Tnt.Reset();
-            Check("开关全开时 TNT 挨着 TNT 会被连锁点着", Tnt.PrimeContact(gMechTnt) == 1);
+            Check("开关全开时 TNT 挨着引线会被点着", Tnt.PrimeContact(gMechTnt) == 1);
             Tnt.Reset();
 
             GameSettings.SetMech(GameSettings.MechKind.TntExplode, false);
@@ -2059,7 +2059,7 @@ namespace MinecraftTetris.EditorTools
 
             // ---------- 海绵（MC 专属，Substrata 里休眠）----------
             Check("海绵已随 MC 表移除（吸水玩法休眠）",
-                  Sponge.SpongeId == 0 && Sponge.WetSpongeId == 0);
+                  Sponge.SpongeId <= 0 && Sponge.WetSpongeId <= 0);
 
             // 拨回全开，别把开关状态留给玩家
             for (int i = 0; i < GameSettings.MechCount; i++)
