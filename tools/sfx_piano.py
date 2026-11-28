@@ -29,17 +29,19 @@ OUT = os.path.join(ROOT, "Logs", "sfx_piano")
 # C2 65.4 / G2 98 / C3 130.8 / D3 146.8 / E3 164.8 / G3 196
 # C4 261.6 / E4 329.6 / G4 392 / A4 440 / C5 523.3 / E5 659.3 / A5 880 / C6 1046.5
 NOTES = {
-    "stone":   130.81,   # C3
-    "wood":     98.00,   # G2
-    "gravel":  146.83,   # D3
-    "grass":   329.63,   # E4
-    "sand":    196.00,   # G3
-    "snow":    880.00,   # A5  —— 雪要轻、要高，像一层薄霜
-    "glass":   659.25,   # E5
-    "metal":   392.00,   # G4
-    "crystal": 1046.50,  # C6
-    "water":   220.00,   # A3
-    "lava":     65.41,   # C2
+    # 七声音阶 do re mi fa so la xi，跨两个八度。
+    # 低音给重的、高音给轻的：连放时自然形成旋律走向，而不是一堆随机音高。
+    "stone":   261.63,   # do  C4
+    "wood":    293.66,   # re  D4
+    "gravel":  329.63,   # mi  E4
+    "sand":    349.23,   # fa  F4
+    "grass":   392.00,   # so  G4
+    "snow":    440.00,   # la  A4
+    "glass":   493.88,   # xi  B4
+    "metal":   523.25,   # do  C5
+    "crystal": 659.25,   # mi  E5
+    "water":   220.00,   # la  A3（低八度）
+    "lava":    130.81,   # do  C3（低八度）
 }
 
 CN = {"stone": "石头", "wood": "木头", "gravel": "砾石", "grass": "草/叶", "sand": "沙",
@@ -52,9 +54,11 @@ VOL = {"stone": 0.55, "wood": 0.58, "gravel": 0.50, "grass": 0.34, "sand": 0.45,
        "water": 0.48, "lava": 0.55}
 
 # 衰减时长：低音留得久，高音收得快
-DECAY = {"stone": 0.42, "wood": 0.38, "gravel": 0.30, "grass": 0.22, "sand": 0.28,
-         "snow": 0.16, "glass": 0.34, "metal": 0.40, "crystal": 0.38,
-         "water": 0.34, "lava": 0.50}
+# 音长整体缩短：原来是 0.64~0.72s，连放两块就叠在一起，听着糊。
+# 现在 0.34~0.55s，既保留钢琴的衰减尾巴，又不至于互相盖住。
+DECAY = {"stone": 0.30, "wood": 0.27, "gravel": 0.22, "grass": 0.17, "sand": 0.21,
+         "snow": 0.13, "glass": 0.25, "metal": 0.29, "crystal": 0.28,
+         "water": 0.25, "lava": 0.38}
 
 
 def seed_of(t):
