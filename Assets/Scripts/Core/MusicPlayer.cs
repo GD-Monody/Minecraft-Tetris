@@ -30,26 +30,21 @@ namespace MinecraftTetris
         // 资源名都在 Assets/Resources/Music/ 下，一律 ASCII（中文路径打包会出编码问题）
         public static readonly string[] GameTrackPaths =
         {
-            "Music/game_sweden",
-            "Music/game_minecraft",
-            "Music/game_calm1",
-            "Music/game_calm2",
-            "Music/game_calm3",
-            "Music/game_hal1",
-            "Music/game_hal2",
-            "Music/game_hal3",
-            "Music/game_haggstrom",
-            "Music/game_piano1",
-            "Music/game_piano2",
-            "Music/game_piano3",
-            "Music/game_nuance1",
-            "Music/game_nuance2",
+            // 编号不连续是有原因的：substrata_02 / 03 在 Unity 里反复导入失败
+            // （文件本身完整，ffmpeg 能解，但 Resources.Load 拿不到 clip），
+            // 与其留两条永远报「缺音频」的路径，不如直接去掉。补曲时按空号加回来即可。
+            "Music/substrata_01",
+            "Music/substrata_04", "Music/substrata_05", "Music/substrata_06",
+            "Music/substrata_07", "Music/substrata_08", "Music/substrata_09",
+            "Music/substrata_10", "Music/substrata_11", "Music/substrata_12",
+            "Music/substrata_13", "Music/substrata_14",
         };
 
+        // 菜单曲目前只有一首（CC0 曲库里够长又合适的就这一首），
+        // 随机池只有一首时效果等同单曲循环，换素材时往这里加即可。
         public static readonly string[] MenuTrackPaths =
         {
-            "Music/menu_menu1",
-            "Music/menu_moog_city_2",
+            "Music/menu_01",
         };
 
         AudioSource _src;
