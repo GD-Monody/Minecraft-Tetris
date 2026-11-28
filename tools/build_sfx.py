@@ -27,13 +27,13 @@ import numpy as np
 # 避免两套参数各改一遍走样。
 import sys as _sys
 _sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from sfx_piano import make as piano_make, NOTES as PIANO_NOTES
+from sfx_piano import make as piano_make, NOTES as PIANO_NOTES, piano as piano_note
 
 # 放置音最终采用钢琴风格（见 tools/sfx_piano.py 的对比实验）。直接复用它的合成函数，
 # 避免两套参数各改一遍走样。
 import sys as _sys
 _sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from sfx_piano import make as piano_make, NOTES as PIANO_NOTES
+from sfx_piano import make as piano_make, NOTES as PIANO_NOTES, piano as piano_note
 
 SR = 44100
 FF = r"C:\Users\lenovo\AppData\Local\Programs\Python\Python314\Lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v9.0.2.exe"
@@ -318,11 +318,24 @@ def ui_levelup(n, seed):
 
 
 def ui_pickup(n, seed):
-    """得分：极短的上行滑音。"""
-    t = np.arange(n) / SR
-    freq = 900 + 1400 * (t / (n / SR))
-    phase = 2 * math.pi * np.cumsum(freq) / SR
-    x = np.sin(phase) * np.exp(-t / 0.05)
+    """得分：钢琴的快速上行琶音（C5 → G5 → C6）。
+
+    原来是一段 50ms 的电子滑音，和钢琴的放置音完全不在一个世界里。
+    现在复用同一套钢琴合成，只是音区更高、两个音错开 55ms ——
+    听起来是"叮-叮"两下向上跳，和放置音的 do re mi 是一套乐器。
+    """
+    # 三个音：C5 G5 C6，后两个依次延迟
+    notes = (523.25, 783.99, 1046.50)
+    delays = (0.0, 0.055, 0.105)
+    x = np.zeros(n)
+    for i, (f, dl) in enumerate(zip(notes, delays)):
+        seg = int(SR * 0.42)
+        d = piano_note(f, seg / SR, 0.26 - i * 0.03, seed + i * 17, brightness=1.15)
+        off = int(SR * dl)
+        if off >= n:
+            continue
+        take = min(len(d), n - off)
+        x[off:off + take] += d[:take] * (0.9 - i * 0.12)
     return norm(x, 0.5)
 
 
@@ -344,7 +357,7 @@ UI = {
     "tnt_fuse": (ui_fuse, 0.80),
     "fizz": (ui_fizz, 0.32),
     "levelup": (ui_levelup, 0.55),
-    "pickup_xp": (ui_pickup, 0.12),
+    "pickup_xp": (ui_pickup, 0.55),
 }
 
 
