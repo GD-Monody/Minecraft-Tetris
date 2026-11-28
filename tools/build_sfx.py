@@ -256,108 +256,131 @@ PLACE = {
 
 # ---------- 界面音 ----------
 
+# ---------- 界面音：全部用钢琴黑键（五声） ----------
+
+# 黑键频率表。选黑键而不是白键，是因为黑键本身就是五声音阶
+# （C# D# F# G# A#），任意两个撞在一起都不刺耳；
+# 而放置音走的是白键 do re mi，两套叠起来也不会打起来。
+BK = {
+    "C#1": 34.65, "D#1": 38.89, "F#1": 46.25, "G#1": 51.91, "A#1": 58.27,
+    "C#2": 69.30, "D#2": 77.78, "F#2": 92.50, "G#2": 103.83, "A#2": 116.54,
+    "C#3": 138.59, "D#3": 155.56, "F#3": 185.00, "G#3": 207.65, "A#3": 233.08,
+    "C#4": 277.18, "D#4": 311.13, "F#4": 369.99, "G#4": 415.30, "A#4": 466.16,
+    "C#5": 554.37, "D#5": 622.25, "F#5": 739.99, "G#5": 830.61, "A#5": 932.33,
+    "C#6": 1108.73, "D#6": 1244.51, "F#6": 1479.98, "G#6": 1661.22, "A#6": 1864.66,
+    "C#7": 2217.46,
+}
+
+
+def pn(freq, dur, decay, seed, vol, brightness=1.0):
+    """弹一个钢琴音。sfx_piano.piano 用模块级 VOL_OF_CURRENT 归一化，先设好再调。"""
+    import sfx_piano as sp
+    sp.VOL_OF_CURRENT = vol
+    return sp.piano(freq, dur, decay, seed, brightness)
+
+
 def ui_click(n, seed):
-    x = tone(1500, n, 0.018) * 0.7 + bandpass(noise(n, seed), 2000, 8000) * env(n, 0.001, 0.006) * 0.5
-    return norm(x, 0.45)
+    """点击：一颗高音，越短越好。"""
+    return pn(BK["C#6"], n / SR, 0.055, seed, 0.30)
 
 
 def ui_place_stone(n, seed):
-    return s_stone(n, seed)
+    return pn(BK["C#4"], n / SR, 0.26, seed, 0.45)
 
 
-def ui_break(n, seed, lo, hi, decay, tail=0.35):
-    """破碎：比放置更长、更散，尾部补一点碎屑。"""
-    x = bandpass(noise(n, seed), lo, hi) * env(n, 0.001, decay)
-    for k in range(5):
-        start = int(np.random.default_rng(seed + k).uniform(0.01, 0.12) * SR)
-        ln = secs(0.02)
-        if start + ln < n:
-            x[start:start + ln] += bandpass(noise(ln, seed + k * 5), lo, hi) * env(ln, 0.001, 0.01) * tail
-    return norm(x)
+def ui_break(n, seed, f1, f2, decay, vol=0.40):
+    """破碎：两个黑键一起砸下去。不协和但都在五声里，听起来是「裂」不是「噪」。"""
+    d = n / SR
+    a = pn(f1, d, decay, seed, vol)
+    b = pn(f2, d, decay * 0.75, seed + 31, vol * 0.7, brightness=1.1)
+    return norm(a + b, vol)
 
 
-def ui_explode(n, seed):
-    """爆炸：低频轰 + 宽带噪声，前面加一个极短的冲击。"""
-    low = lowpass(noise(n, seed), 240) * env(n, 0.001, 0.28) * 1.6
-    mid = bandpass(noise(n, seed + 3), 200, 4000) * env(n, 0.002, 0.16)
-    boom = tone(52, n, 0.30) * 0.9
-    x = low + mid + boom
-    return norm(x, 0.85)
+def ui_explode(n, seed, root):
+    """爆炸：低音区重击 —— 基频 + 两个八度泛音，衰减拉长。"""
+    d = n / SR
+    x = pn(root, d, 0.5, seed, 0.8)
+    x += pn(root * 2, d, 0.32, seed + 7, 0.45)
+    x += pn(root * 3, d, 0.18, seed + 11, 0.22)
+    return norm(x, 0.8)
 
 
 def ui_fuse(n, seed):
-    """引信：白噪声嘶嘶声，用慢速随机调制做出"噼啪"的不均匀感。"""
-    base = highpass(noise(n, seed), 2500)
+    """引信：高音以 45ms 的间隔反复敲，靠节奏做出「嘶——」而不是靠噪声。"""
+    x = np.zeros(n)
+    step = int(SR * 0.045)
     rng = np.random.default_rng(seed)
-    mod = np.ones(n)
-    step = int(SR * 0.01)
-    for i in range(0, n, step):
-        mod[i:i + step] = rng.uniform(0.35, 1.0)
-    x = base * mod * env(n, 0.02, 0.9)
-    return norm(x, 0.5)
+    for i in range(0, max(0, n - step), step):
+        seg = min(int(SR * 0.16), n - i)
+        d = pn(BK["C#6"], seg / SR, 0.04, seed + i, 0.20 + 0.12 * rng.random(), brightness=1.2)
+        x[i:i + seg] += d[:seg]
+    return norm(x, 0.40)
 
 
 def ui_fizz(n, seed):
-    """结晶 / 水浇火：中频嘶声，尾巴快速收掉。"""
-    x = bandpass(noise(n, seed), 1200, 6000) * env(n, 0.01, 0.22)
-    return norm(x, 0.55)
+    """结晶 / 灭火：一串高音快速下行，像水汽散开。"""
+    notes = ["A#6", "F#6", "C#6", "G#5", "D#5"]
+    x = np.zeros(n)
+    step = int(SR * 0.032)
+    for i, name in enumerate(notes):
+        off = i * step
+        seg = min(int(SR * 0.22), n - off)
+        if seg <= 0:
+            break
+        d = pn(BK[name], seg / SR, 0.10, seed + i * 13, 0.34)
+        x[off:off + seg] += d[:seg] * (1.0 - i * 0.12)
+    return norm(x, 0.45)
 
 
 def ui_levelup(n, seed):
-    """升级：三个上行音，每个带一点谐波。"""
+    """消多行：四个黑键上行，比得分更长更重。"""
+    notes = ["C#5", "F#5", "A#5", "C#6"]
     x = np.zeros(n)
-    notes = (523.25, 659.25, 783.99)
-    for i, f in enumerate(notes):
-        start = int(SR * 0.07 * i)
-        seg = n - start
-        lf = np.arange(seg) / SR
-        tone_seg = (np.sin(2 * math.pi * f * lf) * 0.7
-                    + np.sin(2 * math.pi * f * 2 * lf) * 0.25) * np.exp(-lf / 0.22)
-        x[start:] += tone_seg * (1.0 - i * 0.12)
-    return norm(x, 0.6)
+    step = int(SR * 0.072)
+    for i, name in enumerate(notes):
+        off = i * step
+        seg = min(int(SR * 0.42), n - off)
+        if seg <= 0:
+            break
+        d = pn(BK[name], seg / SR, 0.26, seed + i * 19, 0.48, brightness=1.08)
+        x[off:off + seg] += d[:seg] * (0.95 - i * 0.07)
+    return norm(x, 0.55)
 
 
 def ui_pickup(n, seed):
-    """得分：钢琴的快速上行琶音（C5 → G5 → C6）。
-
-    原来是一段 50ms 的电子滑音，和钢琴的放置音完全不在一个世界里。
-    现在复用同一套钢琴合成，只是音区更高、两个音错开 55ms ——
-    听起来是"叮-叮"两下向上跳，和放置音的 do re mi 是一套乐器。
-    """
-    # 三个音：C5 G5 C6，后两个依次延迟
-    notes = (523.25, 783.99, 1046.50)
-    delays = (0.0, 0.055, 0.105)
+    """得分：三个黑键快速上行。"""
+    notes = ["C#6", "F#6", "A#6"]
+    delays = (0.0, 0.052, 0.100)
     x = np.zeros(n)
-    for i, (f, dl) in enumerate(zip(notes, delays)):
-        seg = int(SR * 0.42)
-        d = piano_note(f, seg / SR, 0.26 - i * 0.03, seed + i * 17, brightness=1.15)
+    for i, (name, dl) in enumerate(zip(notes, delays)):
         off = int(SR * dl)
-        if off >= n:
+        seg = min(int(SR * 0.38), n - off)
+        if seg <= 0:
             continue
-        take = min(len(d), n - off)
-        x[off:off + take] += d[:take] * (0.9 - i * 0.12)
+        d = pn(BK[name], seg / SR, 0.22 - i * 0.03, seed + i * 17, 0.46, brightness=1.15)
+        x[off:off + seg] += d[:seg] * (0.9 - i * 0.1)
     return norm(x, 0.5)
 
 
 # 名字 -> (函数, 时长)：文件名与 SfxPlayer 里的硬编码路径保持一致
 UI = {
-    "click": (ui_click, 0.06),
-    "place_stone": (ui_place_stone, 0.30),
-    "break_stone": (lambda n, s: ui_break(n, s, 700, 3500, 0.10), 0.38),
-    "break_wood": (lambda n, s: ui_break(n, s, 300, 1600, 0.12), 0.38),
-    "break_glass": (lambda n, s: ui_break(n, s, 3000, 9000, 0.09), 0.38),
-    "break_gravel": (lambda n, s: ui_break(n, s, 1000, 4500, 0.11), 0.38),
-    "break_sand": (lambda n, s: ui_break(n, s, 1200, 5000, 0.13), 0.38),
-    "explode": (ui_explode, 0.70),
-    "tnt_explode1": (lambda n, s: ui_explode(n, s), 0.70),
-    "tnt_explode2": (lambda n, s: ui_explode(n, s + 21), 0.70),
-    "tnt_explode3": (lambda n, s: ui_explode(n, s + 42), 0.70),
-    "tnt_explode4": (lambda n, s: ui_explode(n, s + 63), 0.70),
+    "click": (ui_click, 0.10),
+    "place_stone": (ui_place_stone, 0.40),
+    "break_stone": (lambda n, s: ui_break(n, s, BK["C#3"], BK["G#3"], 0.14), 0.45),
+    "break_wood": (lambda n, s: ui_break(n, s, BK["D#3"], BK["A#3"], 0.12), 0.42),
+    "break_glass": (lambda n, s: ui_break(n, s, BK["C#6"], BK["F#6"], 0.09), 0.36),
+    "break_gravel": (lambda n, s: ui_break(n, s, BK["F#3"], BK["C#4"], 0.13), 0.42),
+    "break_sand": (lambda n, s: ui_break(n, s, BK["A#3"], BK["D#4"], 0.15), 0.45),
+    "explode": (lambda n, s: ui_explode(n, s, BK["C#2"]), 0.90),
+    "tnt_explode1": (lambda n, s: ui_explode(n, s, BK["C#2"]), 0.90),
+    "tnt_explode2": (lambda n, s: ui_explode(n, s + 21, BK["A#1"]), 0.90),
+    "tnt_explode3": (lambda n, s: ui_explode(n, s + 42, BK["D#2"]), 0.90),
+    "tnt_explode4": (lambda n, s: ui_explode(n, s + 63, BK["F#2"]), 0.90),
     "fuse": (ui_fuse, 0.80),
     "tnt_fuse": (ui_fuse, 0.80),
-    "fizz": (ui_fizz, 0.32),
-    "levelup": (ui_levelup, 0.55),
-    "pickup_xp": (ui_pickup, 0.55),
+    "fizz": (ui_fizz, 0.36),
+    "levelup": (ui_levelup, 0.60),
+    "pickup_xp": (ui_pickup, 0.50),
 }
 
 
