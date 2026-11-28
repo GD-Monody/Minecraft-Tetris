@@ -23,6 +23,18 @@ import zlib
 
 import numpy as np
 
+# 放置音最终采用钢琴风格（见 tools/sfx_piano.py 的对比实验）。直接复用它的合成函数，
+# 避免两套参数各改一遍走样。
+import sys as _sys
+_sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from sfx_piano import make as piano_make, NOTES as PIANO_NOTES
+
+# 放置音最终采用钢琴风格（见 tools/sfx_piano.py 的对比实验）。直接复用它的合成函数，
+# 避免两套参数各改一遍走样。
+import sys as _sys
+_sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from sfx_piano import make as piano_make, NOTES as PIANO_NOTES
+
 SR = 44100
 FF = r"C:\Users\lenovo\AppData\Local\Programs\Python\Python314\Lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v9.0.2.exe"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -338,11 +350,24 @@ UI = {
 
 # ---------- 输出 ----------
 
-def write_wav(path, x):
-    data = np.clip(x, -1.0, 1.0)
-    pcm = (data * 32767).astype("<i2")
+def _stereo(x, width=0.0007):
+    """左声道略提前、右声道略滞后：几十分之一毫秒的时差就够撑开宽度。"""
+    d = max(1, int(SR * width))
+    left = np.concatenate([x[d:], np.zeros(d)])
+    right = np.concatenate([np.zeros(d), x[:-d]])
+    return np.stack([left * 0.99, right * 0.99], axis=1)
+
+
+def write_wav(path, x, stereo=False):
+    if stereo:
+        data = _stereo(x)
+        ch = 2
+    else:
+        data = x
+        ch = 1
+    pcm = (np.clip(data, -1.0, 1.0) * 32767).astype("<i2")
     with wave.open(path, "wb") as w:
-        w.setnchannels(1)
+        w.setnchannels(ch)
         w.setsampwidth(2)
         w.setframerate(SR)
         w.writeframes(pcm.tobytes())
@@ -350,7 +375,7 @@ def write_wav(path, x):
 
 def to_ogg(wav_path, ogg_path):
     subprocess.run([FF, "-y", "-loglevel", "error", "-i", wav_path,
-                    "-c:a", "libvorbis", "-q:a", "4", "-ar", "44100", ogg_path],
+                    "-c:a", "libvorbis", "-q:a", "6", "-ar", "44100", ogg_path],
                    check=True)
     os.remove(wav_path)
 
@@ -360,12 +385,11 @@ def build_place():
     os.makedirs(dirp, exist_ok=True)
     os.makedirs(TMP, exist_ok=True)
     n_made = 0
-    for group, (fn, dur) in PLACE.items():
+    for group in PIANO_NOTES:
         for v in range(1, 5):
-            n = secs(dur)
-            x = fn(n, seed=seed_of("%s%d" % (group, v)))
+            x = piano_make(group, v)
             wav = os.path.join(TMP, "%s%d.wav" % (group, v))
-            write_wav(wav, x)
+            write_wav(wav, x, stereo=True)
             to_ogg(wav, os.path.join(dirp, "%s%d.ogg" % (group, v)))
             n_made += 1
     print("放置音 %d 个 / %d 组" % (n_made, len(PLACE)))
