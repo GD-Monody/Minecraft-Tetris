@@ -301,6 +301,9 @@ namespace MinecraftTetris
                             var p = new Vector3(x, y, z);
                             _cellVisual[x, y, z] = p;
                             go.transform.position = p;
+                            // 下落时的拉伸在这里复位；不回弹是因为落定后就不再进这个循环了，
+                            // 想加落地弹跳得单独开一张动画表，代价不值。
+                            go.transform.localScale = Vector3.one;
                             _settled[x, y, z] = true;
                             if (burn)
                                 UpdateFireCover(x, y, z);
@@ -309,6 +312,14 @@ namespace MinecraftTetris
 
                         _cellVisual[x, y, z] = Vector3.Lerp(v, new Vector3(x, y, z), k);
                         go.transform.position = _cellVisual[x, y, z];
+
+                        // 下落特效：还在半路时沿 y 拉长、横向压窄 —— 眼睛读成"坠下来"，
+                        // 而不是"瞬移过去再淡入"。位移量本身就带方向，不用额外做拖尾。
+                        float fallK = Mathf.Clamp(Mathf.Abs(dy) * 1.8f, 0f, 1f);
+                        if (fallK > 0.03f)
+                            go.transform.localScale = new Vector3(
+                                1f - 0.05f * fallK, 1f + 0.10f * fallK, 1f - 0.05f * fallK);
+
                         if (burn)
                             UpdateFireCover(x, y, z);
                     }
