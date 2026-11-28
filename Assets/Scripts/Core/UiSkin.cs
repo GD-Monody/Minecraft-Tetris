@@ -140,7 +140,9 @@ namespace MinecraftTetris
         /// </summary>
         public enum Theme { Dark = 0, Light = 1 }
 
-        const string ThemeKey = "ui.theme";
+        // 键名带 v2：旧存档里存的是浅色（那时浅色是默认），
+        // 不换键的话老玩家进来仍然是浅色，跟新的深色标题页接不上。
+        const string ThemeKey = "ui.theme.v2";
         static int _themeCache = -1;
 
         /// <summary>当前主题。存在 PlayerPrefs 里，默认亮色。</summary>
@@ -149,7 +151,9 @@ namespace MinecraftTetris
             get
             {
                 if (_themeCache < 0)
-                    _themeCache = Mathf.Clamp(PlayerPrefs.GetInt(ThemeKey, (int)Theme.Light), 0, 1);
+                    // 默认深色：标题页固定深底（背景方块要压在深色上才看得见），
+            // 设置页跟着深色才是一套。浅色仍可在设置里切，给户外强光用。
+            _themeCache = Mathf.Clamp(PlayerPrefs.GetInt(ThemeKey, (int)Theme.Dark), 0, 1);
                 return (Theme)_themeCache;
             }
             set
