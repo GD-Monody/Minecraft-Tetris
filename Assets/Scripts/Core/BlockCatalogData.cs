@@ -238,7 +238,7 @@ namespace MinecraftTetris
             "glass",
             "glass",
             "glass",
-            "amethyst_block",
+            "crystal",
             "stone",
             "stone",
             "glass",

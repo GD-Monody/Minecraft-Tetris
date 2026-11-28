@@ -459,7 +459,7 @@ SFX = {
     "hazard": "stone", "explosive": "grass", "fuse": "wood", "lamp": "glass",
     "foil": "metal", "paper_roll": "wood", "kraft_tape": "wood", "wax_paper": "wood",
     "glass": "glass", "frosted": "glass", "stained_red": "glass",
-    "stained_blue": "glass", "crystal": "amethyst_block",
+    "stained_blue": "glass", "crystal": "crystal",
     "bedrock": "stone", "structure_block": "stone", "obsidian": "stone", "ice": "glass",
 }
 
