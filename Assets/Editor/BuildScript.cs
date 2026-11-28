@@ -17,14 +17,16 @@ namespace MinecraftTetris.EditorTools
             // 之前只给安卓设过图标，Windows 版一直是 Unity 的默认图标。
             SetupIcons(BuildTargetGroup.Standalone, "Windows");
 
-            string outDir = "Build";
+            // original 分支是独立的 Substrata 游戏：输出目录、exe 名都和 MC 版分开，
+            // 两个游戏互不覆盖（MC 版在 main 分支，照旧输出到 Build/）。
+            string outDir = "BuildSubstrata";
             if (!Directory.Exists(outDir))
                 Directory.CreateDirectory(outDir);
 
             var options = new BuildPlayerOptions
             {
                 scenes = new[] { "Assets/Scenes/Game.unity" },
-                locationPathName = Path.Combine(outDir, "MinecraftTetris.exe"),
+                locationPathName = Path.Combine(outDir, "Substrata.exe"),
                 target = BuildTarget.StandaloneWindows64,
                 // -dev：编成开发版（带符号，运行时栈里有行号）。排查「Start 里空引用」这种
                 // 只报方法名的问题时靠它，平时不带这个参数，包小一些。
@@ -56,7 +58,7 @@ namespace MinecraftTetris.EditorTools
             SetupPlayer();
             SetupTextures();
 
-            string outDir = "BuildWebGL";
+            string outDir = "BuildSubstrataWeb";
             if (!Directory.Exists(outDir))
                 Directory.CreateDirectory(outDir);
 
@@ -140,14 +142,14 @@ namespace MinecraftTetris.EditorTools
             PlayerSettings.allowedAutorotateToLandscapeRight = true;
             PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
 
-            string outDir = "BuildAndroid";
+            string outDir = "BuildSubstrataAndroid";
             if (!Directory.Exists(outDir))
                 Directory.CreateDirectory(outDir);
 
             var options = new BuildPlayerOptions
             {
                 scenes = new[] { "Assets/Scenes/Game.unity" },
-                locationPathName = Path.Combine(outDir, "MinecraftTetris.apk"),
+                locationPathName = Path.Combine(outDir, "Substrata.apk"),
                 target = BuildTarget.Android,
                 options = BuildOptions.None,
             };

@@ -60,8 +60,13 @@ Thumbs.db
 *.zip
 *.7z
 
-# WebGL 构建产物
+# WebGL 构建产物（MC 版在 main 分支）
 BuildWebGL/
+
+# Substrata 构建产物（original 分支独立目录，不与 MC 版共用）
+BuildSubstrata/
+BuildSubstrataWeb/
+BuildSubstrataAndroid/
 
 # 编辑器本机的包管理器注册表配置（含镜像地址，因人而异）
 ProjectSettings/PackageManagerSettings.asset
