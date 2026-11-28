@@ -1144,9 +1144,6 @@ namespace MinecraftTetris
             ClearGolemModels();
             _loop.FallSpeed = GameSettings.FallSpeed;
             _particles.Clear();
-            // 音阶从 do 重新开始：每局第一块都该是 do，而不是接着上一局停下的音级
-            if (_sfx != null)
-                _sfx.ResetScale();
             _paused = false;
             _view.RefreshAll();
             _view.ClearFlash();
@@ -2617,7 +2614,7 @@ namespace MinecraftTetris
                     _particles.EmitCell(sm.X, sm.Y - 1, sm.Z, sm.BodyBlockId, 2);
                 }
                 if (_sfx != null && sm.BodyBlockId > 0)
-                    _sfx.PlayPlace(BlockCatalog.Of(sm.BodyBlockId));
+                    _sfx.PlayPlace(BlockCatalog.Of(sm.BodyBlockId), 0, _loop.Grid.SizeY);
             }
 
             // 展示位的序号就是它在 Collection 里的下标：先算出这一批的起点
@@ -2791,7 +2788,12 @@ namespace MinecraftTetris
 
         void OnPieceLocked(Piece piece)
         {
-            _sfx.PlayPlace(BlockCatalog.Of(piece.BlockId));
+            // 用方块落定后的平均高度决定音高（多格方块取平均，读起来更稳）
+            int sumY = 0;
+            for (int i = 0; i < piece.Cells.Length; i++)
+                sumY += piece.WorldCell(i).y;
+            int avgY = sumY / Mathf.Max(1, piece.Cells.Length);
+            _sfx.PlayPlace(BlockCatalog.Of(piece.BlockId), avgY, _loop.Grid.SizeY);
             // 朝向不在这里设：GameLoop 落定时已经把朝向写进网格那一格了，视图层刷新时
             // 自己会读出来（这样它才能跟着方块一起下落 / 消行，见 Grid._rot 的注释）。
             for (int i = 0; i < piece.Cells.Length; i++)
